@@ -1,0 +1,19 @@
+# Suites that MUST be selected when content_modifier_helper_accessor.cpp changes.
+#
+# contentModifier is a generic ArkUI API (since API 12) that lets developers
+# replace the default visual content of a component with a custom @Builder.
+# The native bridge is content_modifier_helper_accessor.cpp, which is shared
+# by all 15 components that expose the API: Button, Checkbox, CheckboxGroup,
+# DataPanel, Gauge, LoadingProgress, Progress, Radio, Rating, Select, Slider,
+# TextClock, TextTimer, Toggle, MenuItem.
+#
+# These suites test contentModifier directly (not just as scaffolding):
+ace_ets_module_ui/ace_ets_module_checkboxgroup_contentModifier/ace_ets_module_checkboxgroup_contentModifier_api21
+ace_ets_module_ui/ace_ets_module_gauge_contentModifier/ace_ets_module_gauge_contentModifier_api12
+ace_ets_module_ui/ace_ets_module_gauge_contentModifier/ace_ets_module_gauge_contentModifier_api12_static
+# information suite contains ProgressContentModifier tests
+ace_ets_module_ui/ace_ets_module_information/ace_ets_module_information_api12
+ace_ets_module_ui/ace_ets_module_information/ace_ets_module_information_api12_static
+# loadingProgress suite contains LoadingProgressContentModifier tests
+ace_ets_module_ui/ace_ets_module_loadingProgress/ace_ets_module_loadingProgress_api12
+ace_ets_module_ui/ace_ets_module_loadingProgress/ace_ets_module_loadingProgress_api12_static

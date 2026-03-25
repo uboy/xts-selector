@@ -1,0 +1,13 @@
+# Suites that MUST appear for menu_item_pattern.cpp change
+# Source: verified against real XTS workspace (ohos_master), 2026-03-21
+#
+# menu_item_pattern.cpp is the C++ implementation of MenuItem component.
+# Changes to it can affect any test that uses MenuItem, MenuItemModifier,
+# Menu, Select, or components that render menu items.
+#
+# Both entries verified to import MenuItem from @ohos.arkui.component:
+#   ace_ets_module_modifier_static: imports MenuItem, MenuItemModifier (menu.ets)
+#   ace_ets_module_menu_static: directly tests Menu/MenuItem rendering
+
+ace_ets_module_ui/ace_ets_module_modifier_static
+ace_ets_module_ui/ace_ets_module_dialog/ace_ets_module_menu_static

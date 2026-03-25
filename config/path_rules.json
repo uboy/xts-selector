@@ -1,0 +1,80 @@
+{
+  "special_path_rules": {
+    "componentutils": {
+      "modules": [
+        "@ohos.arkui.componentUtils"
+      ],
+      "symbols": [
+        "componentUtils",
+        "ComponentUtils"
+      ]
+    },
+    "overlaymanager": {
+      "modules": [
+        "@ohos.overlayManager",
+        "@ohos.arkui.UIContext"
+      ],
+      "symbols": [
+        "overlayManager",
+        "OverlayManager",
+        "UIContext"
+      ]
+    },
+    "promptaction": {
+      "modules": [
+        "@ohos.promptAction"
+      ],
+      "symbols": [
+        "promptAction",
+        "AlertDialog",
+        "ActionSheet",
+        "CustomDialog"
+      ]
+    },
+    "ohosprompt": {
+      "modules": [
+        "@ohos.prompt"
+      ],
+      "symbols": [
+        "prompt",
+        "Prompt"
+      ]
+    }
+  },
+  "pattern_alias": {
+    "button": [
+      "Button",
+      "ButtonModifier",
+      "Toggle",
+      "ToggleModifier",
+      "ToggleButton"
+    ],
+    "rich_editor": [
+      "RichEditor",
+      "RichEditorModifier",
+      "SelectionMenu"
+    ],
+    "dialog": [
+      "Dialog",
+      "AlertDialog",
+      "ActionSheet",
+      "CustomDialog",
+      "promptAction"
+    ],
+    "overlay": [
+      "OverlayManager",
+      "bindOverlay",
+      "bindPopup",
+      "bindSheet"
+    ],
+    "menuitem": [
+      "MenuItem",
+      "MenuItemModifier",
+      "MenuItemAttribute",
+      "MenuItemGroup",
+      "MenuItemGroupModifier",
+      "MenuItemGroupAttribute",
+      "MenuItemOptions"
+    ]
+  }
+}

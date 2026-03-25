@@ -1,0 +1,133 @@
+{
+  "composite_mappings": {
+    "content_modifier_helper_accessor": {
+      "families": [
+        "button",
+        "checkbox",
+        "checkboxgroup",
+        "datapanel",
+        "gauge",
+        "loadingprogress",
+        "menuitem",
+        "progress",
+        "radio",
+        "rating",
+        "select",
+        "slider",
+        "textclock",
+        "texttimer",
+        "toggle"
+      ],
+      "project_hints": [
+        "contentmodifier"
+      ],
+      "symbols": [
+        "ContentModifier"
+      ],
+      "method_hints": [
+        "contentModifier"
+      ],
+      "type_hints": [
+        "ContentModifier"
+      ]
+    },
+    "common_method_modifier": {
+      "project_hints": [
+        "commonattrs",
+        "modifier",
+        "interactiveattributes",
+        "dragcontrol",
+        "focuscontrol"
+      ],
+      "symbols": [
+        "CommonModifier",
+        "ModifierUtils"
+      ]
+    },
+    "common_view_model_ng": {
+      "project_hints": [
+        "commonattrs"
+      ],
+      "symbols": [
+        "CommonModifier",
+        "ModifierUtils"
+      ]
+    },
+    "menu_item_configuration_accessor": {
+      "families": [
+        "menuitem",
+        "select"
+      ],
+      "project_hints": [
+        "contentmodifier",
+        "menu",
+        "select"
+      ],
+      "symbols": [
+        "ContentModifier",
+        "MenuItem",
+        "MenuItemConfiguration"
+      ],
+      "method_hints": [
+        "contentModifier"
+      ],
+      "type_hints": [
+        "ContentModifier",
+        "MenuItemConfiguration"
+      ]
+    },
+    "menu_item_content_modifier_accessor_test": {
+      "families": [
+        "menuitem",
+        "select"
+      ],
+      "project_hints": [
+        "contentmodifier",
+        "menu",
+        "select"
+      ],
+      "symbols": [
+        "ContentModifier",
+        "MenuItem",
+        "MenuItemConfiguration"
+      ],
+      "method_hints": [
+        "contentModifier"
+      ],
+      "type_hints": [
+        "ContentModifier",
+        "MenuItemConfiguration"
+      ]
+    },
+    "menu_item_pattern": {
+      "families": [
+        "menuitem",
+        "select"
+      ],
+      "project_hints": [
+        "menu",
+        "menuitem",
+        "select"
+      ],
+      "symbols": [
+        "MenuItem",
+        "MenuItemModifier",
+        "MenuItemAttribute",
+        "MenuItemGroup",
+        "MenuItemGroupModifier",
+        "MenuItemGroupAttribute"
+      ]
+    },
+    "sub_tab_bar_style_accessor": {
+      "project_hints": [
+        "subtabbarstyle"
+      ],
+      "symbols": [
+        "SubTabBarStyle"
+      ],
+      "type_hints": [
+        "SubTabBarStyle"
+      ]
+    }
+  }
+}

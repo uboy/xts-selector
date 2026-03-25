@@ -1,0 +1,17 @@
+# Suites that must NOT dominate the top results for menu_item_pattern.cpp
+#
+# These are unrelated component suites. Their presence in the TOP-5
+# results indicates the ranking is broken (token overlap false positives).
+#
+# Matching rule: these strings must NOT appear in the top-5 project paths.
+
+# Button-only suites — ButtonModifier doesn't share code with MenuItem
+ace_ets_component_button
+ace_ets_component_toggle
+
+# Navigation — completely unrelated
+ace_ets_component_navigation
+ace_ets_component_navdestination
+
+# Video/media — unrelated
+ace_ets_component_video

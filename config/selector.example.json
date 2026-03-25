@@ -1,0 +1,18 @@
+{
+  "xts_root": "test/xts/acts/arkui",
+  "sdk_api_root": "interface/sdk-js/api",
+  "git_repo_root": "foundation/arkui/ace_engine",
+  "acts_out_root": "out/release/suites/acts",
+  "path_rules_file": "config/path_rules.json",
+  "composite_mappings_file": "config/composite_mappings.json",
+  "product_name": "rk3568",
+  "system_size": "standard",
+  "xts_suitetype": "hap_dynamic",
+  "git_remote": "gitcode",
+  "git_base_branch": "master",
+  "git_host_config": "../gitee_util/config.ini",
+  "gitcode_api_url": "https://gitcode.com",
+  "gitcode_token": "",
+  "cache_file": "/tmp/arkui_xts_impact_cache.json",
+  "device": "192.168.0.10:8710"
+}

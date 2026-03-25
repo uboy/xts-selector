@@ -1,0 +1,15 @@
+# Tests that must NOT appear for ButtonModifier (unrelated components)
+# These tests exist in XTS but test unrelated areas.
+# If any of these appear in the output it indicates over-selection.
+#
+# Format: one XTS project path fragment per line (non-comment lines)
+# Matching: substring match against output project paths
+
+# Navigation-only suites - ButtonModifier doesn't affect navigation
+ace_ets_component_navigation
+
+# Rich editor suites - ButtonModifier doesn't affect rich text
+ace_ets_component_richtext
+
+# Video component suites
+ace_ets_component_video

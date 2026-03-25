@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arkui-xts-selector"
+version = "0.1.0"
+description = "Suggest ArkUI XTS tests to run for changed files"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "OpenHarmony Tools" }
+]
+license = { text = "Apache-2.0" }
+dependencies = []
+
+[project.scripts]
+arkui-xts-selector = "arkui_xts_selector.cli:main_entry"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pyinstaller]
+entry = "scripts/pyinstaller_entry.py"

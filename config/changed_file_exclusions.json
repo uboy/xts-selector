@@ -1,0 +1,8 @@
+{
+  "path_prefixes": [
+    "test/unittest/",
+    "foundation/arkui/ace_engine/test/unittest/",
+    "test/mock/",
+    "foundation/arkui/ace_engine/test/mock/"
+  ]
+}

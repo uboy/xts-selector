@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.egg-info/
+
+.scratchpad/
+coordination/
+
+build/
+dist/
+
+arkui_xts_selector_report.json
+work.zip
