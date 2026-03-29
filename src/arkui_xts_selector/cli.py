@@ -50,6 +50,12 @@ REPO_ROOT = discover_repo_root()
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_DIR = PROJECT_ROOT / "config"
 DEFAULT_CACHE_FILE = Path("/tmp/arkui_xts_selector_cache.json")
+
+
+def default_cache_path(xts_root: Path) -> Path:
+    """Generate workspace-specific cache path to avoid race conditions."""
+    workspace_hash = hashlib.sha256(str(xts_root.resolve()).encode()).hexdigest()[:12]
+    return Path(f"/tmp/arkui_xts_selector_cache_{workspace_hash}.json")
 DEFAULT_REPORT_FILE = "arkui_xts_selector_report.json"
 DEFAULT_CHANGED_FILE_EXCLUSION_RULES = {
     "path_prefixes": [
@@ -123,6 +129,39 @@ SPECIAL_PATH_RULES = {
     "displaysync": {
         "symbols": ["DisplaySync", "SwiperDynamicSyncScene", "MarqueeDynamicSyncScene"],
     },
+    "scrollable": {
+        "symbols": ["Scroll", "List", "Grid", "WaterFlow", "Scroller",
+                     "ScrollModifier", "ListModifier", "GridModifier", "WaterFlowModifier"],
+        "project_hints": ["scroll", "list", "grid", "waterflow"],
+    },
+    "textfield": {
+        "symbols": ["TextInput", "TextArea", "TextInputModifier", "TextAreaModifier"],
+        "project_hints": ["textinput", "textarea"],
+    },
+    "textdrag": {
+        "symbols": ["Text", "TextInput", "RichEditor"],
+        "project_hints": ["text", "textinput", "richeditor"],
+    },
+    "scrollbar": {
+        "symbols": ["ScrollBar", "Scroll", "Scroller"],
+        "project_hints": ["scroll", "scrollbar"],
+    },
+    "swiperindicator": {
+        "symbols": ["Swiper", "SwiperModifier"],
+        "project_hints": ["swiper"],
+    },
+    "selectcontentoverlay": {
+        "symbols": ["Select", "SelectModifier"],
+        "project_hints": ["select"],
+    },
+    "selectoverlay": {
+        "symbols": ["Select", "SelectModifier"],
+        "project_hints": ["select"],
+    },
+    "formbutton": {
+        "symbols": ["FormComponent", "FormLink"],
+        "project_hints": ["form"],
+    },
 }
 
 PATTERN_ALIAS = {
@@ -188,6 +227,33 @@ PATTERN_ALIAS = {
     "particle":             ["Particle", "ParticleModifier"],
     "menu":                 ["Menu", "MenuItem", "MenuItemGroup", "MenuModifier", "MenuItemModifier"],
     "relative_container":   ["RelativeContainer"],
+    # --- NEW ENTRIES: HIGH priority (SDK declarations + XTS tests) ---
+    "gesture":              ["GestureGroup", "TapGesture", "LongPressGesture",
+                             "PanGesture", "PinchGesture", "RotationGesture", "SwipeGesture"],
+    "xcomponent":           ["XComponent", "XComponentController"],
+    "web":                  ["Web", "WebviewController", "RichText"],
+    "form":                 ["FormComponent", "FormLink"],
+    "folder_stack":         ["FolderStack"],
+    "animator":             ["Animator"],
+    "scroll_bar":           ["ScrollBar"],
+    "toast":                ["promptAction"],
+    "sheet":                ["bindSheet", "SheetSize"],
+    "action_sheet":         ["ActionSheet"],
+    "bubble":               ["Popup", "bindPopup"],
+    "symbol":               ["SymbolGlyph", "SymbolSpan", "SymbolSpanModifier"],
+    "security_component":   ["LocationButton", "PasteButton", "SaveButton"],
+    "navrouter":            ["NavRouter", "NavDestination"],
+    "navigator":            ["Navigator"],
+    "toolbaritem":          ["ToolBar", "ToolBarItem"],
+    # --- NEW ENTRIES: MEDIUM priority (internal, but XTS-linked) ---
+    "text_field":           ["TextInput", "TextArea", "TextInputModifier", "TextAreaModifier"],
+    "scrollable":           ["Scroll", "List", "Grid", "WaterFlow"],
+    "node_container":       ["NodeContainer"],
+    "effect_component":     ["EffectComponent"],
+    "form_link":            ["FormLink"],
+    "grid_container":       ["GridContainer"],
+    "swiper_indicator":     ["Swiper", "SwiperModifier"],
+    "render_node":          ["RenderNode", "FrameNode", "BuilderNode"],
 }
 
 DEFAULT_COMPOSITE_MAPPINGS = {
@@ -201,6 +267,7 @@ DEFAULT_COMPOSITE_MAPPINGS = {
         "method_hints": ["contentModifier"],
         "type_hints": ["ContentModifier"],
         "symbols": ["ContentModifier"],
+        "method_hint_required": True,
     },
     "common_method_modifier": {
         "project_hints": list(COMMON_PROJECT_HINTS),
@@ -381,7 +448,13 @@ def load_mapping_config(
     path_rules_data = load_json_if_exists(path_rules_file)
     composite_data = load_json_if_exists(composite_mappings_file)
     special_path_rules = merge_mapping_dict(SPECIAL_PATH_RULES, path_rules_data.get("special_path_rules", {}))
-    pattern_alias = merge_mapping_dict(PATTERN_ALIAS, path_rules_data.get("pattern_alias", {}))
+    # When config provides a full pattern_alias, replace rather than merge
+    # to avoid conflicts. Fallback to hardcoded PATTERN_ALIAS when absent.
+    config_pattern_alias = path_rules_data.get("pattern_alias", {})
+    if config_pattern_alias:
+        pattern_alias = merge_mapping_dict(PATTERN_ALIAS, config_pattern_alias)
+    else:
+        pattern_alias = dict(PATTERN_ALIAS)
     composite_mappings = merge_mapping_dict(DEFAULT_COMPOSITE_MAPPINGS, composite_data.get("composite_mappings", {}))
     return MappingConfig(
         special_path_rules=special_path_rules,
@@ -868,29 +941,111 @@ def discover_projects(xts_root: Path) -> list[TestProjectIndex]:
     return projects
 
 
+def _build_project_hash(project_root: Path, source_files: list[Path]) -> str:
+    """Compute hash for a single project based on its source files."""
+    h = hashlib.sha256()
+    for f in sorted(source_files):
+        try:
+            stat = f.stat()
+            h.update(f"{f}:{stat.st_mtime_ns}:{stat.st_size}".encode())
+        except OSError:
+            h.update(f"{f}:missing".encode())
+    return h.hexdigest()
+
+
+def _build_single_project(
+    test_json: Path,
+    root: Path,
+    xts_root: Path,
+) -> TestProjectIndex:
+    """Build index for a single project directory."""
+    skip_dirs = {".git", ".ohpm", "node_modules", "oh_modules", "out"}
+    files: list[TestFileIndex] = []
+    for dirpath, dirnames, filenames in os.walk(root, topdown=True, onerror=lambda _exc: None):
+        dirnames[:] = [name for name in dirnames if name not in skip_dirs]
+        base = Path(dirpath)
+        for filename in filenames:
+            if not filename.endswith((".ets", ".ts", ".js")):
+                continue
+            source = (base / filename).resolve()
+            files.append(parse_test_file(source))
+    relative_root = repo_rel(root)
+    test_json_rel = repo_rel(test_json)
+    test_file_names = parse_test_file_names_from_test_json(test_json)
+    return TestProjectIndex(
+        relative_root=relative_root,
+        test_json=test_json_rel,
+        bundle_name=parse_bundle_name(test_json),
+        files=files,
+        path_key=str(root.relative_to(xts_root)).replace(os.sep, "/").lower(),
+        variant=classify_project_variant(relative_root, test_file_names),
+    )
+
+
 def load_or_build_projects(xts_root: Path, cache_file: Path | None) -> tuple[list[TestProjectIndex], bool]:
+    CACHE_VERSION = 2
+
     if cache_file:
         cache_file.parent.mkdir(parents=True, exist_ok=True)
-    source_files = xts_source_files(xts_root)
-    manifest_hash = build_manifest_hash(source_files)
 
+    # Discover all project directories
+    skip_dirs = {".git", ".ohpm", "node_modules", "oh_modules", "out"}
+    project_dirs: list[tuple[Path, Path]] = []  # (test_json, root)
+    for test_json in sorted(xts_root.rglob("Test.json")):
+        if any(part in skip_dirs for part in test_json.parts):
+            continue
+        project_dirs.append((test_json, test_json.parent))
+
+    # Load old cache
+    old_cache: dict[str, dict] = {}
     if cache_file and cache_file.exists():
         try:
             cache_data = json.loads(read_text(cache_file))
-            if cache_data.get("manifest_hash") == manifest_hash:
-                projects = [TestProjectIndex.from_dict(item) for item in cache_data["projects"]]
-                return projects, True
+            if cache_data.get("version") == CACHE_VERSION:
+                old_cache = cache_data.get("projects", {})
         except (json.JSONDecodeError, KeyError, TypeError):
             pass
 
-    projects = discover_projects(xts_root)
+    # Build incrementally
+    new_cache: dict[str, dict] = {}
+    projects: list[TestProjectIndex] = []
+    cache_hits = 0
+
+    for test_json, root in project_dirs:
+        source_files = sorted(
+            f.resolve() for f in root.rglob("*")
+            if f.is_file() and (f.name == "Test.json" or f.suffix.lower() in {".ets", ".ts", ".js"})
+            and not any(skip in f.parts for skip in skip_dirs)
+        )
+        proj_hash = _build_project_hash(root, source_files)
+        rel_key = str(root.relative_to(xts_root)).replace(os.sep, "/")
+
+        if rel_key in old_cache and old_cache[rel_key].get("hash") == proj_hash:
+            # Cache hit
+            try:
+                project = TestProjectIndex.from_dict(old_cache[rel_key]["data"])
+                projects.append(project)
+                new_cache[rel_key] = old_cache[rel_key]
+                cache_hits += 1
+                continue
+            except (KeyError, TypeError):
+                pass
+
+        # Cache miss — rebuild
+        project = _build_single_project(test_json, root, xts_root)
+        projects.append(project)
+        new_cache[rel_key] = {"hash": proj_hash, "data": project.to_dict()}
+
+    # Save updated cache
     if cache_file:
         cache_payload = {
-            "manifest_hash": manifest_hash,
-            "projects": [item.to_dict() for item in projects],
+            "version": CACHE_VERSION,
+            "projects": new_cache,
         }
         cache_file.write_text(json.dumps(cache_payload, ensure_ascii=False), encoding="utf-8")
-    return projects, False
+
+    cache_used = cache_hits == len(project_dirs) and len(project_dirs) > 0
+    return projects, cache_used
 
 
 def load_sdk_index(sdk_api_root: Path) -> SdkIndex:
@@ -1024,6 +1179,8 @@ def apply_composite_mapping(
         signals["project_hints"].update(rule.get("project_hints", []))
         signals["method_hints"].update(rule.get("method_hints", []))
         signals["type_hints"].update(rule.get("type_hints", []))
+        if rule.get("method_hint_required", False):
+            signals["method_hint_required"] = True
 
 
 def infer_signals(
@@ -1047,6 +1204,7 @@ def infer_signals(
         "type_hints": set(),
         "raw_tokens": {part for part in parts if len(part) >= 4},
         "family_tokens": set(families),
+        "method_hint_required": False,
     }
 
     for key, rule in mapping_config.special_path_rules.items():
@@ -1317,6 +1475,37 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
         if reason not in seen:
             deduped.append(reason)
             seen.add(reason)
+
+    # --- Method hint negative correction ---
+    method_hints = signals.get("method_hints", set())
+    method_hint_required = signals.get("method_hint_required", False)
+
+    if method_hints and score > 0:
+        method_tokens = {compact_token(m) for m in method_hints if compact_token(m)}
+        matched_methods = method_tokens & lowered_member_calls
+        unmatched_methods = method_tokens - lowered_member_calls
+
+        if unmatched_methods:
+            if method_hint_required:
+                # Hard correction: file does NOT use the required method.
+                # Cap score at 5 (bucket = "possible related").
+                if score > 5:
+                    penalty = score - 5
+                    score = 5
+                    deduped.append(
+                        f"capped: missing required method "
+                        f"{', '.join(sorted(unmatched_methods))} (-{penalty})"
+                    )
+            else:
+                # Soft correction: -2 per unmatched method, max -4
+                penalty = min(4, len(unmatched_methods) * 2)
+                score = max(0, score - penalty)
+                if penalty > 0:
+                    deduped.append(
+                        f"missing method hint "
+                        f"{', '.join(sorted(unmatched_methods))} (-{penalty})"
+                    )
+
     return score, deduped
 
 
@@ -1426,7 +1615,10 @@ def resolve_variants_mode(variants_mode: str, changed_file: Path | None = None) 
     return 'both'
 
 
-def coverage_signature(file_hits: list[tuple[int, "TestFileIndex", list[str]]]) -> frozenset[str]:
+def coverage_signature(
+    file_hits: list[tuple[int, "TestFileIndex", list[str]]],
+    project_path_key: str = "",
+) -> frozenset[str]:
     """Compute a query-scoped coverage fingerprint for a project.
 
     The signature is the union of all signal-matching reasons across every
@@ -1437,6 +1629,11 @@ def coverage_signature(file_hits: list[tuple[int, "TestFileIndex", list[str]]]) 
     normalized member-call tokens from the matched files. This keeps
     `scrollToIndex()` and `justifyContent()` style scaffolding projects from
     being treated as identical when their reason strings are otherwise the same.
+
+    When ``project_path_key`` is provided, the last meaningful segment of
+    the project path (with common prefixes/suffixes stripped) is added to the
+    signature so that projects testing different attributes (e.g. borderColor
+    vs backgroundColor) are not collapsed even when their reason sets match.
 
     Two projects with the same signature provide *identical* evidence for the
     current query — running both gives the developer no additional confidence.
@@ -1453,7 +1650,20 @@ def coverage_signature(file_hits: list[tuple[int, "TestFileIndex", list[str]]]) 
         for member in file_index.member_calls
         if compact_token(member)
     }
-    return frozenset(reasons | member_tokens)
+
+    path_category: set[str] = set()
+    if project_path_key:
+        last_segment = project_path_key.rsplit("/", 1)[-1] if "/" in project_path_key else project_path_key
+        for prefix in ("ace_ets_component_", "ace_ets_module_", "ace_c_arkui_"):
+            if last_segment.startswith(prefix):
+                last_segment = last_segment[len(prefix):]
+                break
+        for suffix in ("_static", "_dynamic"):
+            if last_segment.endswith(suffix):
+                last_segment = last_segment[:-len(suffix)]
+        path_category.add(f"_category:{compact_token(last_segment)}")
+
+    return frozenset(reasons | member_tokens | path_category)
 
 
 def deduplicate_by_coverage_signature(
@@ -1523,6 +1733,7 @@ def build_query_signals(
         "type_hints": set(),
         "raw_tokens": set(parts),
         "family_tokens": set(),
+        "method_hint_required": False,
     }
     if not compact:
         return signals
@@ -1547,7 +1758,12 @@ def build_query_signals(
 
     for key, rule in mapping_config.composite_mappings.items():
         compact_key = compact_token(key)
-        if compact in compact_key or compact_key in compact:
+        # Token-based matching: exact compact match OR all key tokens present
+        # in query tokens. Prevents short queries like "content" from matching
+        # "content_modifier_helper_accessor".
+        key_tokens = {compact_token(t) for t in tokenize_path_parts(key) if compact_token(t)}
+        query_tokens = {compact_token(t) for t in tokenize_path_parts(query) if compact_token(t)}
+        if compact == compact_key or key_tokens.issubset(query_tokens):
             signals["symbols"].update(rule.get("symbols", []))
             signals["project_hints"].update(rule.get("project_hints", []))
             signals["method_hints"].update(rule.get("method_hints", []))
@@ -1557,6 +1773,8 @@ def build_query_signals(
                 signals["family_tokens"].add(family_key)
                 signals["project_hints"].add(family_key)
                 signals["symbols"].update(content_index.family_to_symbols.get(family_key, set()))
+            if rule.get("method_hint_required", False):
+                signals["method_hint_required"] = True
 
     return {
         "modules": {item for item in signals["modules"] if item},
@@ -1572,6 +1790,7 @@ def build_query_signals(
             compact_token(item) for item in signals["family_tokens"]
             if item and compact_token(item) not in CONTENT_MODIFIER_NOISE
         },
+        "method_hint_required": signals["method_hint_required"],
     }
 
 
@@ -1774,7 +1993,7 @@ def format_report(
                 # are eligible for coverage deduplication. Must-run and
                 # high-confidence suites always pass through so that every
                 # explicitly-tested suite is preserved regardless of keep_per_signature.
-                "_coverage_sig": coverage_signature(file_hits) if _bucket == "possible related" else None,
+                "_coverage_sig": coverage_signature(file_hits, project_path_key=project.path_key) if _bucket == "possible related" else None,
                 "score": score,
                 "confidence": confidence(score),
                 "bucket": _bucket,
@@ -1886,7 +2105,7 @@ def format_report(
             _nlx = project_has_non_lexical_evidence(project_reasons, file_hits)
             _bucket = candidate_bucket(score, _nlx)
             project_entry = {
-                "_coverage_sig": coverage_signature(file_hits) if _bucket == "possible related" else None,
+                "_coverage_sig": coverage_signature(file_hits, project_path_key=project.path_key) if _bucket == "possible related" else None,
                 "score": score,
                 "confidence": confidence(score),
                 "bucket": _bucket,
@@ -2205,7 +2424,12 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
     gitcode_api_url = args.gitcode_api_url or cfg.get("gitcode_api_url") or ini_url
     gitcode_token = args.gitcode_token or cfg.get("gitcode_token") or ini_token
     cache_value = None if args.no_cache else (args.cache_file or cfg.get("cache_file"))
-    cache_file = resolve_path(cache_value, DEFAULT_CACHE_FILE, repo_root) if cache_value else None
+    if args.no_cache:
+        cache_file = None
+    elif cache_value and cache_value != str(DEFAULT_CACHE_FILE):
+        cache_file = resolve_path(cache_value, DEFAULT_CACHE_FILE, repo_root)
+    else:
+        cache_file = default_cache_path(xts_root)
     return AppConfig(
         repo_root=repo_root,
         xts_root=xts_root,

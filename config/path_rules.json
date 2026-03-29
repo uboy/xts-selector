@@ -1,80 +1,143 @@
 {
   "special_path_rules": {
     "componentutils": {
-      "modules": [
-        "@ohos.arkui.componentUtils"
-      ],
-      "symbols": [
-        "componentUtils",
-        "ComponentUtils"
-      ]
+      "modules": ["@ohos.arkui.componentUtils"],
+      "symbols": ["componentUtils", "ComponentUtils"]
     },
     "overlaymanager": {
-      "modules": [
-        "@ohos.overlayManager",
-        "@ohos.arkui.UIContext"
-      ],
-      "symbols": [
-        "overlayManager",
-        "OverlayManager",
-        "UIContext"
-      ]
+      "modules": ["@ohos.overlayManager", "@ohos.arkui.UIContext"],
+      "symbols": ["overlayManager", "OverlayManager", "UIContext"]
     },
     "promptaction": {
-      "modules": [
-        "@ohos.promptAction"
-      ],
-      "symbols": [
-        "promptAction",
-        "AlertDialog",
-        "ActionSheet",
-        "CustomDialog"
-      ]
+      "modules": ["@ohos.promptAction"],
+      "symbols": ["promptAction", "AlertDialog", "ActionSheet", "CustomDialog"]
     },
     "ohosprompt": {
-      "modules": [
-        "@ohos.prompt"
-      ],
-      "symbols": [
-        "prompt",
-        "Prompt"
-      ]
+      "modules": ["@ohos.prompt"],
+      "symbols": ["prompt", "Prompt"]
+    },
+    "scrollable": {
+      "symbols": ["Scroll", "List", "Grid", "WaterFlow", "Scroller",
+                   "ScrollModifier", "ListModifier", "GridModifier", "WaterFlowModifier"],
+      "project_hints": ["scroll", "list", "grid", "waterflow"]
+    },
+    "textfield": {
+      "symbols": ["TextInput", "TextArea", "TextInputModifier", "TextAreaModifier"],
+      "project_hints": ["textinput", "textarea"]
+    },
+    "textdrag": {
+      "symbols": ["Text", "TextInput", "RichEditor"],
+      "project_hints": ["text", "textinput", "richeditor"]
+    },
+    "scrollbar": {
+      "symbols": ["ScrollBar", "Scroll", "Scroller"],
+      "project_hints": ["scroll", "scrollbar"]
+    },
+    "swiperindicator": {
+      "symbols": ["Swiper", "SwiperModifier"],
+      "project_hints": ["swiper"]
+    },
+    "selectcontentoverlay": {
+      "symbols": ["Select", "SelectModifier"],
+      "project_hints": ["select"]
+    },
+    "selectoverlay": {
+      "symbols": ["Select", "SelectModifier"],
+      "project_hints": ["select"]
+    },
+    "formbutton": {
+      "symbols": ["FormComponent", "FormLink"],
+      "project_hints": ["form"]
     }
   },
   "pattern_alias": {
-    "button": [
-      "Button",
-      "ButtonModifier",
-      "Toggle",
-      "ToggleModifier",
-      "ToggleButton"
-    ],
-    "rich_editor": [
-      "RichEditor",
-      "RichEditorModifier",
-      "SelectionMenu"
-    ],
-    "dialog": [
-      "Dialog",
-      "AlertDialog",
-      "ActionSheet",
-      "CustomDialog",
-      "promptAction"
-    ],
-    "overlay": [
-      "OverlayManager",
-      "bindOverlay",
-      "bindPopup",
-      "bindSheet"
-    ],
-    "menuitem": [
-      "MenuItem",
-      "MenuItemModifier",
-      "MenuItemAttribute",
-      "MenuItemGroup",
-      "MenuItemGroupModifier",
-      "MenuItemGroupAttribute",
-      "MenuItemOptions"
-    ]
+    "button": ["Button", "ButtonModifier", "Toggle", "ToggleModifier", "ToggleButton"],
+    "toggle": ["Toggle", "ToggleModifier", "ToggleButton"],
+    "text": ["Text", "Span", "TextModifier", "SpanModifier", "ContainerSpanModifier"],
+    "text_input": ["TextInput", "TextInputModifier"],
+    "text_area": ["TextArea", "TextAreaModifier"],
+    "text_clock": ["TextClock", "TextClockModifier"],
+    "text_picker": ["TextPicker", "TextPickerModifier"],
+    "list": ["List", "ListItem", "ListItemGroup", "ListModifier", "ListItemModifier", "ListItemGroupModifier"],
+    "grid": ["Grid", "GridModifier", "GridItem", "GridItemModifier"],
+    "grid_row": ["GridRow", "GridRowModifier"],
+    "grid_col": ["GridCol", "GridColModifier"],
+    "navigation": ["Navigation", "Navigator", "NavDestination", "NavRouter",
+                    "NavigationModifier", "NavDestinationModifier", "NavigatorModifier"],
+    "search": ["Search", "SearchModifier"],
+    "swiper": ["Swiper", "SwiperModifier"],
+    "rich_editor": ["RichEditor", "RichEditorModifier", "SelectionMenu"],
+    "dialog": ["Dialog", "AlertDialog", "ActionSheet", "CustomDialog", "promptAction"],
+    "overlay": ["OverlayManager", "bindOverlay", "bindPopup", "bindSheet"],
+    "slider": ["Slider", "SliderModifier"],
+    "image": ["Image", "ImageModifier", "ImageSpanModifier"],
+    "image_animator": ["ImageAnimator", "ImageAnimatorModifier"],
+    "checkbox": ["Checkbox", "CheckboxModifier"],
+    "checkboxgroup": ["CheckboxGroup", "CheckboxGroupModifier"],
+    "radio": ["Radio", "RadioModifier"],
+    "rating": ["Rating", "RatingModifier"],
+    "progress": ["Progress", "ProgressModifier"],
+    "loading_progress": ["LoadingProgress", "LoadingProgressModifier"],
+    "gauge": ["Gauge", "GaugeModifier"],
+    "data_panel": ["DataPanel", "DataPanelModifier"],
+    "marquee": ["Marquee", "MarqueeModifier"],
+    "qrcode": ["QRCode", "QRCodeModifier"],
+    "badge": ["Badge"],
+    "select": ["Select", "SelectModifier"],
+    "video": ["Video", "VideoModifier"],
+    "canvas": ["Canvas"],
+    "tabs": ["Tabs", "TabContent", "TabsModifier"],
+    "waterflow": ["WaterFlow", "WaterFlowModifier"],
+    "refresh": ["Refresh", "RefreshModifier"],
+    "scroll": ["Scroll", "ScrollModifier", "Scroller"],
+    "indexer": ["AlphabetIndexer", "AlphabetIndexerModifier"],
+    "patternlock": ["PatternLock", "PatternLockModifier"],
+    "picker": ["DatePicker", "DatePickerModifier"],
+    "calendar": ["Calendar"],
+    "calendar_picker": ["CalendarPicker", "CalendarPickerModifier"],
+    "time_picker": ["TimePicker", "TimePickerModifier"],
+    "texttimer": ["TextTimer", "TextTimerModifier"],
+    "counter": ["Counter", "CounterModifier"],
+    "divider": ["Divider", "DividerModifier"],
+    "blank": ["Blank", "BlankModifier"],
+    "hyperlink": ["Hyperlink", "HyperlinkModifier"],
+    "side_bar": ["SideBarContainer", "SideBarContainerModifier"],
+    "linear_layout": ["Column", "Row", "ColumnModifier", "RowModifier"],
+    "flex": ["Flex", "FlexModifier"],
+    "stack": ["Stack", "StackModifier"],
+    "linear_split": ["ColumnSplit", "RowSplit", "ColumnSplitModifier", "RowSplitModifier"],
+    "stepper": ["Stepper", "StepperItem", "StepperModifier", "StepperItemModifier"],
+    "panel": ["Panel", "PanelModifier"],
+    "particle": ["Particle", "ParticleModifier"],
+    "menu": ["Menu", "MenuItem", "MenuItemGroup", "MenuModifier", "MenuItemModifier"],
+    "relative_container": ["RelativeContainer"],
+    "gesture": ["GestureGroup", "TapGesture", "LongPressGesture",
+                "PanGesture", "PinchGesture", "RotationGesture", "SwipeGesture"],
+    "xcomponent": ["XComponent", "XComponentController"],
+    "web": ["Web", "WebviewController", "RichText"],
+    "form": ["FormComponent", "FormLink"],
+    "folder_stack": ["FolderStack"],
+    "animator": ["Animator"],
+    "scroll_bar": ["ScrollBar"],
+    "toast": ["promptAction"],
+    "sheet": ["bindSheet", "SheetSize"],
+    "action_sheet": ["ActionSheet"],
+    "bubble": ["Popup", "bindPopup"],
+    "symbol": ["SymbolGlyph", "SymbolSpan", "SymbolSpanModifier"],
+    "security_component": ["LocationButton", "PasteButton", "SaveButton"],
+    "navrouter": ["NavRouter", "NavDestination"],
+    "navigator": ["Navigator"],
+    "toolbaritem": ["ToolBar", "ToolBarItem"],
+    "text_field": ["TextInput", "TextArea", "TextInputModifier", "TextAreaModifier"],
+    "scrollable": ["Scroll", "List", "Grid", "WaterFlow"],
+    "node_container": ["NodeContainer"],
+    "effect_component": ["EffectComponent"],
+    "form_link": ["FormLink"],
+    "grid_container": ["GridContainer"],
+    "swiper_indicator": ["Swiper", "SwiperModifier"],
+    "render_node": ["RenderNode", "FrameNode", "BuilderNode"],
+    "menuitem": ["MenuItem", "MenuItemModifier", "MenuItemAttribute",
+                  "MenuItemGroup", "MenuItemGroupModifier", "MenuItemGroupAttribute",
+                  "MenuItemOptions"]
   }
 }

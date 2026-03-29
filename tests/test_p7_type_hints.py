@@ -59,8 +59,9 @@ class P7TypeHintsTests(unittest.TestCase):
         self.assertEqual(signals["type_hints"], {"ContentModifier", "MenuItemConfiguration"})
 
     def test_build_query_signals_collects_type_hints_from_composite_mapping(self) -> None:
+        # After substring matching fix (Task 3), use exact key name to trigger.
         signals = build_query_signals(
-            "ContentModifier",
+            "content_modifier_helper_accessor",
             SdkIndex(),
             ContentModifierIndex(),
             MappingConfig(
@@ -116,7 +117,9 @@ class P7TypeHintsTests(unittest.TestCase):
 
         score, reasons = score_file(file_index, signals)
 
-        self.assertEqual(score, 8)
+        # constructor_match (+5) + import_match (+3) = 8, then soft penalty
+        # for unmatched method_hint "contentmodifier" (-2) = 6
+        self.assertEqual(score, 6)
         self.assertIn("constructs hinted type ContentModifier", reasons)
         self.assertIn("imports hinted type ContentModifier", reasons)
 

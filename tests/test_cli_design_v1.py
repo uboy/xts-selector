@@ -14,12 +14,15 @@ from arkui_xts_selector.cli import (
     AppConfig,
     ContentModifierIndex,
     MappingConfig,
+    PATTERN_ALIAS,
     SdkIndex,
     TestFileIndex,
     TestProjectIndex,
     candidate_bucket,
     classify_project_variant,
+    compact_token,
     coverage_signature,
+    default_cache_path,
     deduplicate_by_coverage_signature,
     emit_progress,
     filter_changed_files_for_xts,
@@ -150,8 +153,10 @@ class FancySliderModifier extends SliderModifier {}
         self.assertEqual(signals["method_hints"], {"contentModifier"})
 
     def test_build_query_signals_collects_method_hints_from_composite_mapping(self) -> None:
+        # After substring matching fix (Task 3), short queries no longer match
+        # multi-token composite keys. Use exact key name to trigger the mapping.
         signals = build_query_signals(
-            "ContentModifier",
+            "content_modifier_helper_accessor",
             SdkIndex(),
             ContentModifierIndex(),
             MappingConfig(
@@ -196,12 +201,15 @@ class FancySliderModifier extends SliderModifier {}
             "symbols": set(),
             "project_hints": set(),
             "method_hints": {"CalendarPickerDialog"},
+            "type_hints": {"CalendarPickerDialog"},
             "family_tokens": set(),
         }
 
         score, reasons = score_file(file_index, signals)
 
-        self.assertEqual(score, 8)
+        # constructor_match (+5) + import_match (+3) = 8, then soft penalty
+        # for unmatched method_hint (-2) = 6
+        self.assertEqual(score, 6)
         self.assertIn("constructs hinted type CalendarPickerDialog", reasons)
         self.assertIn("imports hinted type CalendarPickerDialog", reasons)
 
@@ -968,6 +976,226 @@ class FancySliderModifier extends SliderModifier {}
         self.assertEqual(candidate_bucket(11, True), "possible related")
         self.assertEqual(candidate_bucket(0, True), "possible related")
         self.assertEqual(candidate_bucket(100, False), "possible related")
+
+
+class PatternAliasCoverageTests(unittest.TestCase):
+    """Tests for Task 1: PATTERN_ALIAS expansion."""
+
+    def test_pattern_alias_covers_high_priority_patterns(self) -> None:
+        """All HIGH priority ace_engine patterns must be in PATTERN_ALIAS."""
+        required = {
+            "gesture", "xcomponent", "web", "form", "folder_stack",
+            "animator", "scroll_bar", "toast", "sheet", "action_sheet",
+            "bubble", "symbol", "security_component", "navrouter",
+            "navigator", "toolbaritem",
+        }
+        missing = required - set(PATTERN_ALIAS.keys())
+        self.assertEqual(missing, set(), f"Missing PATTERN_ALIAS entries: {missing}")
+
+    def test_pattern_alias_covers_medium_priority_patterns(self) -> None:
+        """MEDIUM priority patterns should also be present."""
+        required = {
+            "text_field", "scrollable", "node_container",
+            "effect_component", "form_link", "grid_container",
+            "swiper_indicator", "render_node",
+        }
+        missing = required - set(PATTERN_ALIAS.keys())
+        self.assertEqual(missing, set(), f"Missing PATTERN_ALIAS entries: {missing}")
+
+    def test_gesture_alias_has_expected_symbols(self) -> None:
+        """Gesture pattern alias must include major gesture types."""
+        gesture = PATTERN_ALIAS.get("gesture", [])
+        for expected in ["TapGesture", "PanGesture", "PinchGesture"]:
+            self.assertIn(expected, gesture)
+
+
+class MethodHintRequiredTests(unittest.TestCase):
+    """Tests for Task 2: method_hint_required negative correction."""
+
+    def _make_file_index(
+        self,
+        imports: list[str] | None = None,
+        imported_symbols: list[str] | None = None,
+        identifier_calls: list[str] | None = None,
+        member_calls: list[str] | None = None,
+    ) -> TestFileIndex:
+        return TestFileIndex(
+            relative_path="test/TestFile.ets",
+            imports=set(imports or []),
+            imported_symbols=set(imported_symbols or []),
+            identifier_calls=set(identifier_calls or []),
+            member_calls=set(member_calls or []),
+            type_member_calls=set(),
+            typed_modifier_bases=set(),
+            words=set(),
+        )
+
+    def test_method_hint_required_caps_score(self) -> None:
+        """When method_hint_required=True and method is missing, score is capped at 5."""
+        file_index = self._make_file_index(
+            imported_symbols=["Button", "Checkbox"],
+            identifier_calls=["Button", "Checkbox"],
+            member_calls=["borderColor", "width"],  # NO contentModifier
+        )
+        signals = {
+            "modules": set(),
+            "symbols": {"Button", "ContentModifier"},
+            "project_hints": {"button", "contentmodifier"},
+            "method_hints": {"contentModifier"},
+            "type_hints": set(),
+            "family_tokens": {"button"},
+            "method_hint_required": True,
+        }
+        score, reasons = score_file(file_index, signals)
+        self.assertLessEqual(score, 5)
+        self.assertTrue(any("capped" in r for r in reasons))
+
+    def test_method_hint_no_penalty_when_method_present(self) -> None:
+        """When method is present, no penalty applied."""
+        file_index = self._make_file_index(
+            imported_symbols=["Gauge"],
+            identifier_calls=["Gauge"],
+            member_calls=["contentModifier", "width"],  # HAS contentModifier
+        )
+        signals = {
+            "modules": set(),
+            "symbols": {"Gauge", "ContentModifier"},
+            "project_hints": {"gauge", "contentmodifier"},
+            "method_hints": {"contentModifier"},
+            "type_hints": set(),
+            "family_tokens": {"gauge"},
+            "method_hint_required": True,
+        }
+        score, reasons = score_file(file_index, signals)
+        self.assertGreater(score, 5)  # Not capped
+        self.assertFalse(any("capped" in r for r in reasons))
+
+    def test_soft_penalty_when_not_required(self) -> None:
+        """Soft penalty (-2 per missing method) when method_hint_required=False."""
+        file_index = self._make_file_index(
+            imported_symbols=["Button"],
+            identifier_calls=["Button"],
+            member_calls=["width"],  # NO contentModifier
+        )
+        signals = {
+            "modules": set(),
+            "symbols": {"Button"},
+            "project_hints": {"button"},
+            "method_hints": {"contentModifier"},
+            "type_hints": set(),
+            "family_tokens": {"button"},
+            "method_hint_required": False,
+        }
+        score_with, reasons_with = score_file(file_index, signals)
+
+        signals_no_hint = {
+            "modules": set(),
+            "symbols": {"Button"},
+            "project_hints": {"button"},
+            "method_hints": set(),
+            "type_hints": set(),
+            "family_tokens": {"button"},
+            "method_hint_required": False,
+        }
+        score_without, _ = score_file(file_index, signals_no_hint)
+        self.assertLess(score_with, score_without)
+        self.assertTrue(any("missing method hint" in r for r in reasons_with))
+
+
+class SubstringMatchingFixTests(unittest.TestCase):
+    """Tests for Task 3: substring matching fix in build_query_signals."""
+
+    def test_short_query_does_not_trigger_composite(self) -> None:
+        """Short query 'content' must NOT trigger content_modifier composite."""
+        sdk_index = SdkIndex()
+        content_index = ContentModifierIndex()
+        mapping_config = MappingConfig(
+            composite_mappings={
+                "content_modifier_helper_accessor": {
+                    "families": ["button", "gauge"],
+                    "project_hints": ["contentmodifier"],
+                    "symbols": ["ContentModifier"],
+                    "method_hints": ["contentModifier"],
+                    "type_hints": ["ContentModifier"],
+                    "method_hint_required": True,
+                },
+            },
+        )
+        signals = build_query_signals("content", sdk_index, content_index, mapping_config)
+        self.assertNotIn("contentModifier", signals["method_hints"])
+
+    def test_exact_key_still_triggers_composite(self) -> None:
+        """Exact composite key name must still trigger the mapping."""
+        sdk_index = SdkIndex()
+        content_index = ContentModifierIndex()
+        mapping_config = MappingConfig(
+            composite_mappings={
+                "content_modifier_helper_accessor": {
+                    "families": ["button", "gauge"],
+                    "project_hints": ["contentmodifier"],
+                    "symbols": ["ContentModifier"],
+                    "method_hints": ["contentModifier"],
+                    "type_hints": ["ContentModifier"],
+                },
+            },
+        )
+        signals = build_query_signals(
+            "content_modifier_helper_accessor",
+            sdk_index, content_index, mapping_config,
+        )
+        self.assertIn("contentModifier", signals["method_hints"])
+
+
+class CoverageSignaturePathCategoryTests(unittest.TestCase):
+    """Tests for Task 5: coverage_signature with path category."""
+
+    def _make_file_index(self, member_calls: list[str] | None = None) -> TestFileIndex:
+        return TestFileIndex(
+            relative_path="test/TestFile.ets",
+            member_calls=set(member_calls or ["width"]),
+        )
+
+    def test_signature_includes_path_category(self) -> None:
+        """Projects with different path categories must have different signatures."""
+        hits = [(10, self._make_file_index(), ["calls Button()"])]
+        sig1 = coverage_signature(hits, "ace_ets_component_common_seven_attrs_borderColor_static")
+        sig2 = coverage_signature(hits, "ace_ets_component_common_seven_attrs_backgroundColor_static")
+        self.assertNotEqual(sig1, sig2)
+
+    def test_signature_same_when_same_path_category(self) -> None:
+        """Same path category produces same signature."""
+        hits = [(10, self._make_file_index(), ["calls Button()"])]
+        sig1 = coverage_signature(hits, "ace_ets_component_common_seven_attrs_borderColor_static")
+        sig2 = coverage_signature(hits, "ace_ets_component_common_seven_attrs_borderColor_static")
+        self.assertEqual(sig1, sig2)
+
+    def test_signature_without_path_key_backward_compatible(self) -> None:
+        """Without project_path_key, signature works as before."""
+        hits = [(10, self._make_file_index(), ["calls Button()"])]
+        sig = coverage_signature(hits)
+        self.assertIsInstance(sig, frozenset)
+        self.assertFalse(any("_category:" in item for item in sig))
+
+
+class CacheIsolationTests(unittest.TestCase):
+    """Tests for Task 10: workspace-specific cache paths."""
+
+    def test_different_workspaces_different_cache_paths(self) -> None:
+        """Different xts_roots must produce different cache paths."""
+        path1 = default_cache_path(Path("/data/ws1/xts"))
+        path2 = default_cache_path(Path("/data/ws2/xts"))
+        self.assertNotEqual(path1, path2)
+
+    def test_same_workspace_same_cache_path(self) -> None:
+        """Same xts_root must produce the same cache path."""
+        path1 = default_cache_path(Path("/data/ws1/xts"))
+        path2 = default_cache_path(Path("/data/ws1/xts"))
+        self.assertEqual(path1, path2)
+
+    def test_cache_path_is_in_tmp(self) -> None:
+        """Cache path must be in /tmp/."""
+        path = default_cache_path(Path("/some/xts/root"))
+        self.assertTrue(str(path).startswith("/tmp/"))
 
 
 if __name__ == "__main__":
