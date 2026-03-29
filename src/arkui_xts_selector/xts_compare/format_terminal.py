@@ -21,6 +21,7 @@ from .models import (
     PerformanceChange,
     RootCauseCluster,
     RunMetadata,
+    SelectorChangedFileCorrelation,
     TestOutcome,
     TestTransition,
     TimelineReport,
@@ -511,6 +512,47 @@ def _filter_root_causes(
     return filtered
 
 
+def _format_selector_correlation_section(
+    correlations: list[SelectorChangedFileCorrelation],
+) -> str:
+    if not correlations:
+        return ""
+
+    buf = StringIO()
+    buf.write("\n  Selector Correlation\n")
+    buf.write(f"  {_SINGLE_LINE}\n")
+    for entry in correlations:
+        buf.write(f"  Changed: {entry.changed_file}\n")
+        if not entry.predicted_projects:
+            buf.write("    No selector predictions\n")
+            continue
+        for project in entry.predicted_projects:
+            matched = ", ".join(project.matched_modules) if project.matched_modules else "no compared module match"
+            buf.write(
+                f"    Predicted: {project.project} "
+                f"[score={project.score:.0f}, bucket={project.bucket or '-'}, confidence={project.confidence or '-'}]\n"
+            )
+            buf.write(f"      Modules: {matched}\n")
+            if project.regressions:
+                names = ", ".join(identity.case for identity in project.regressions[:4])
+                if len(project.regressions) > 4:
+                    names += ", ..."
+                buf.write(f"      Regressions: {names}\n")
+            if project.improvements:
+                names = ", ".join(identity.case for identity in project.improvements[:4])
+                if len(project.improvements) > 4:
+                    names += ", ..."
+                buf.write(f"      Improvements: {names}\n")
+            if project.predicted_but_no_change:
+                buf.write("      No changes in matched modules\n")
+        if entry.regression_not_predicted:
+            names = ", ".join(str(identity) for identity in entry.regression_not_predicted[:3])
+            if len(entry.regression_not_predicted) > 3:
+                names += ", ..."
+            buf.write(f"    Not predicted regressions: {names}\n")
+    return buf.getvalue()
+
+
 def format_report(
     report: ComparisonReport,
     show_stable: bool = False,
@@ -552,6 +594,8 @@ def format_report(
     root_causes = _filter_root_causes(report.root_causes, filters)
     if root_causes:
         buf.write(_format_root_cause_section(root_causes))
+    if report.selector_correlations:
+        buf.write(_format_selector_correlation_section(report.selector_correlations))
 
     # Always-shown sections.
     for kind in [

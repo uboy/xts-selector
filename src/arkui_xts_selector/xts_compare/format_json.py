@@ -16,6 +16,8 @@ from .models import (
     PerformanceChange,
     RootCauseCluster,
     RunMetadata,
+    SelectorChangedFileCorrelation,
+    SelectorProjectCorrelation,
     TaskInfoSummary,
     TestIdentity,
     TestOutcome,
@@ -165,6 +167,34 @@ def _performance_change_to_dict(change: PerformanceChange) -> dict:
     }
 
 
+def _selector_project_to_dict(project: SelectorProjectCorrelation) -> dict:
+    return {
+        "project": project.project,
+        "score": project.score,
+        "confidence": project.confidence,
+        "bucket": project.bucket,
+        "variant": project.variant,
+        "matched_modules": project.matched_modules,
+        "regressions": [_identity_to_dict(identity) for identity in project.regressions],
+        "improvements": [_identity_to_dict(identity) for identity in project.improvements],
+        "predicted_but_no_change": project.predicted_but_no_change,
+    }
+
+
+def _selector_changed_file_to_dict(entry: SelectorChangedFileCorrelation) -> dict:
+    return {
+        "changed_file": entry.changed_file,
+        "predicted_projects": [
+            _selector_project_to_dict(project)
+            for project in entry.predicted_projects
+        ],
+        "regression_not_predicted": [
+            _identity_to_dict(identity)
+            for identity in entry.regression_not_predicted
+        ],
+    }
+
+
 def report_to_dict(report: ComparisonReport) -> dict:
     """Convert a ComparisonReport to a JSON-serializable dict."""
     return {
@@ -181,6 +211,10 @@ def report_to_dict(report: ComparisonReport) -> dict:
         "performance_changes": [
             _performance_change_to_dict(change)
             for change in report.performance_changes
+        ],
+        "selector_correlations": [
+            _selector_changed_file_to_dict(entry)
+            for entry in report.selector_correlations
         ],
     }
 

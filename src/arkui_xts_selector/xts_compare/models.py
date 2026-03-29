@@ -180,6 +180,30 @@ class ComparisonSummary:
 
 
 @dataclass
+class SelectorProjectCorrelation:
+    """Correlation between one selector project prediction and compared modules."""
+
+    project: str
+    score: float = 0.0
+    confidence: str = ""
+    bucket: str = ""
+    variant: str = ""
+    matched_modules: list[str] = field(default_factory=list)
+    regressions: list[TestIdentity] = field(default_factory=list)
+    improvements: list[TestIdentity] = field(default_factory=list)
+    predicted_but_no_change: bool = False
+
+
+@dataclass
+class SelectorChangedFileCorrelation:
+    """Selector-vs-actual outcome summary for one changed file."""
+
+    changed_file: str
+    predicted_projects: list[SelectorProjectCorrelation] = field(default_factory=list)
+    regression_not_predicted: list[TestIdentity] = field(default_factory=list)
+
+
+@dataclass
 class ComparisonReport:
     base: RunMetadata
     target: RunMetadata
@@ -192,6 +216,7 @@ class ComparisonReport:
     disappeared: list[TestTransition] = field(default_factory=list)
     root_causes: list[RootCauseCluster] = field(default_factory=list)
     performance_changes: list[PerformanceChange] = field(default_factory=list)
+    selector_correlations: list[SelectorChangedFileCorrelation] = field(default_factory=list)
 
 
 @dataclass

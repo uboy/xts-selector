@@ -32,6 +32,7 @@ from .format_json import report_to_dict, timeline_to_dict, write_json
 from .format_terminal import format_report, format_timeline
 from .models import FailureType
 from .parse import load_run
+from .selector_integration import correlate_with_selector, load_selector_report
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -62,6 +63,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--target",
         metavar="PATH",
         help="Target run archive (ZIP) or result directory (required with --base).",
+    )
+    parser.add_argument(
+        "--selector-report",
+        metavar="FILE",
+        default=None,
+        dest="selector_report",
+        help="Optional selector JSON report to correlate predicted suites with actual regressions.",
     )
     parser.add_argument(
         "--labels",
@@ -247,6 +255,13 @@ def _run_compare(args: argparse.Namespace) -> int:
         min_time_delta_ms=args.min_time_delta,
         min_time_ratio=args.min_time_ratio,
     )
+    if args.selector_report:
+        try:
+            selector_report = load_selector_report(args.selector_report)
+        except (FileNotFoundError, ValueError, OSError) as exc:
+            print(f"error loading selector report: {exc}", file=sys.stderr)
+            return 2
+        report.selector_correlations = correlate_with_selector(report, selector_report)
 
     if args.json:
         data = report_to_dict(report)

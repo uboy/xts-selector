@@ -242,6 +242,12 @@ python3 -m arkui_xts_selector.xts_compare \
   --min-time-ratio 2.0
 ```
 
+```bash
+python3 -m arkui_xts_selector.xts_compare \
+  --base run1.zip --target run2.zip \
+  --selector-report arkui_xts_selector_report.json
+```
+
 Optional report inputs parsed by `load_run()` when present:
 - `summary_report.xml` for test-level outcomes
 - `summary.ini` for run metadata
@@ -258,9 +264,13 @@ Terminal compare reports now support:
 - `--failure-type` with comma-separated values such as `crash,timeout`
 - `--sort module|severity|time-delta`
 - `--min-time-delta` and `--min-time-ratio` for performance-change detection
+- `--selector-report` to correlate selector predictions with actual regressions
 
 When thresholds are met, the report also renders:
 - `Module Health`
 - `Performance Changes`
+
+When `--selector-report` is provided, the report also renders:
+- `Selector Correlation`
 
 If the optional files are absent or malformed, `xts_compare` falls back to the XML-based comparison pipeline.

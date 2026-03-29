@@ -71,6 +71,10 @@ from arkui_xts_selector.xts_compare.format_json import (
     write_json,
 )
 from arkui_xts_selector.xts_compare.cli import build_parser, _parse_failure_types, _parse_labels
+from arkui_xts_selector.xts_compare.selector_integration import (
+    correlate_with_selector,
+    load_selector_report,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -688,6 +692,71 @@ class TestPerformanceAndHealth(unittest.TestCase):
         self.assertAlmostEqual(compute_module_health(module), 42.0, places=1)
 
 
+class TestSelectorIntegration(unittest.TestCase):
+    def _make_selector_report(self) -> dict:
+        return {
+            "results": [
+                {
+                    "changed_file": "frameworks/core/components/button/button_pattern.cpp",
+                    "projects": [
+                        {
+                            "project": "test/xts/acts/arkui/ace_ets_component_button_static",
+                            "score": 28,
+                            "confidence": "high",
+                            "bucket": "must-run",
+                            "variant": "static",
+                            "test_json": "test/xts/acts/arkui/ace_ets_component_button_static/Test.json",
+                        }
+                    ],
+                }
+            ]
+        }
+
+    def _make_report(self):
+        base_results = [
+            _make_result("ActsButtonTest", "ButtonSuite", "testButtonRadius", TestOutcome.PASS),
+            _make_result("ActsFormTest", "FormSuite", "testFormButton", TestOutcome.PASS),
+        ]
+        target_results = [
+            TestResult(
+                identity=TestIdentity("ActsButtonTest", "ButtonSuite", "testButtonRadius"),
+                outcome=TestOutcome.FAIL,
+                message="App died",
+                failure_type=FailureType.CRASH,
+            ),
+            TestResult(
+                identity=TestIdentity("ActsFormTest", "FormSuite", "testFormButton"),
+                outcome=TestOutcome.FAIL,
+                message="expected 1 but got 0",
+                failure_type=FailureType.ASSERTION,
+            ),
+        ]
+        base_meta, base_d = _make_run(base_results)
+        target_meta, target_d = _make_run(target_results)
+        return compare_runs(base_meta, base_d, target_meta, target_d)
+
+    def test_load_selector_report(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            path = Path(tmp) / "selector.json"
+            path.write_text(json.dumps(self._make_selector_report()), encoding="utf-8")
+            loaded = load_selector_report(str(path))
+            self.assertIn("results", loaded)
+            self.assertEqual(loaded["results"][0]["changed_file"], "frameworks/core/components/button/button_pattern.cpp")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_correlate_with_selector_matches_module_and_unmatched_regression(self):
+        report = self._make_report()
+        correlations = correlate_with_selector(report, self._make_selector_report())
+        self.assertEqual(len(correlations), 1)
+        entry = correlations[0]
+        self.assertEqual(entry.changed_file, "frameworks/core/components/button/button_pattern.cpp")
+        self.assertEqual(entry.predicted_projects[0].matched_modules, ["ActsButtonTest"])
+        self.assertEqual(entry.predicted_projects[0].regressions[0].case, "testButtonRadius")
+        self.assertEqual(entry.regression_not_predicted[0].module, "ActsFormTest")
+
+
 # ---------------------------------------------------------------------------
 # build_timeline + _compute_trend
 # ---------------------------------------------------------------------------
@@ -882,6 +951,30 @@ class TestFormatReportAdvancedFeatures(unittest.TestCase):
         text = format_report(self.report, sort_key="time-delta")
         self.assertLess(text.index("testCrash"), text.index("testAssertion"))
 
+    def test_selector_correlation_section(self):
+        selector_report = {
+            "results": [
+                {
+                    "changed_file": "frameworks/core/components/button/button_pattern.cpp",
+                    "projects": [
+                        {
+                            "project": "test/xts/acts/arkui/ace_ets_component_button_static",
+                            "score": 28,
+                            "confidence": "high",
+                            "bucket": "must-run",
+                            "variant": "static",
+                            "test_json": "test/xts/acts/arkui/ace_ets_component_button_static/Test.json",
+                        }
+                    ],
+                }
+            ]
+        }
+        self.report.selector_correlations = correlate_with_selector(self.report, selector_report)
+        text = format_report(self.report)
+        self.assertIn("Selector Correlation", text)
+        self.assertIn("button_pattern.cpp", text)
+        self.assertIn("ace_ets_component_button_static", text)
+
 
 # ---------------------------------------------------------------------------
 # format_timeline (smoke)
@@ -1026,6 +1119,37 @@ class TestJsonSerialization(unittest.TestCase):
         self.assertEqual(d["performance_changes"][0]["identity"]["case"], "t1")
         self.assertEqual(d["performance_changes"][0]["ratio"], 4.0)
 
+    def test_report_to_dict_includes_selector_correlations(self):
+        report = self._make_report()
+        report.selector_correlations = [
+            correlate_with_selector(
+                report,
+                {
+                    "results": [
+                        {
+                            "changed_file": "button.cpp",
+                            "projects": [
+                                {
+                                    "project": "test/xts/acts/arkui/ace_ets_component_button_static",
+                                    "score": 28,
+                                    "confidence": "high",
+                                    "bucket": "must-run",
+                                    "variant": "static",
+                                    "test_json": "test/xts/acts/arkui/ace_ets_component_button_static/Test.json",
+                                }
+                            ],
+                        }
+                    ]
+                },
+            )[0]
+        ]
+        d = report_to_dict(report)
+        self.assertEqual(d["selector_correlations"][0]["changed_file"], "button.cpp")
+        self.assertEqual(
+            d["selector_correlations"][0]["predicted_projects"][0]["project"],
+            "test/xts/acts/arkui/ace_ets_component_button_static",
+        )
+
 
 # ---------------------------------------------------------------------------
 # CLI argument parsing
@@ -1091,6 +1215,10 @@ class TestCliParser(unittest.TestCase):
     def test_output(self):
         args = self.parser.parse_args(["--base", "a", "--target", "b", "--output", "out.json"])
         self.assertEqual(args.output, "out.json")
+
+    def test_selector_report_flag(self):
+        args = self.parser.parse_args(["--base", "a", "--target", "b", "--selector-report", "selector.json"])
+        self.assertEqual(args.selector_report, "selector.json")
 
     def test_base_and_timeline_mutually_exclusive(self):
         with self.assertRaises(SystemExit):
