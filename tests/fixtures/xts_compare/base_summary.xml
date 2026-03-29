@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="ActsButtonTest">
+  <testsuite name="ButtonStyleTest">
+    <testcase name="testButtonRadius" status="run" result="true" time="0.250" classname="ButtonStyleTest" level="0"/>
+    <testcase name="testButtonFontColor" status="run" result="true" time="0.180" classname="ButtonStyleTest" level="0"/>
+    <testcase name="testButtonWidth" status="run" result="true" time="0.210" classname="ButtonStyleTest" level="0"/>
+    <testcase name="testButtonHeight" status="run" result="false" time="0.130" classname="ButtonStyleTest" level="0">
+      <failure message="expected 100 but got 80">expected 100 but got 80</failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="ButtonEventTest">
+    <testcase name="testOnClick" status="run" result="true" time="0.320" classname="ButtonEventTest" level="0"/>
+    <testcase name="testOnLongPress" status="disable" result="" time="0.000" classname="ButtonEventTest" level="0"/>
+  </testsuite>
+</testsuites>

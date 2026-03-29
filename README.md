@@ -208,3 +208,39 @@ Typical progress messages include:
 - scoring changed files / symbol queries / code queries
 - writing JSON report
 - rendering human report
+
+## XTS Compare
+
+`xts_compare` compares two XTS result runs or builds a timeline across several runs.
+
+Basic usage:
+
+```bash
+python3 -m arkui_xts_selector.xts_compare \
+  --base /path/to/base.zip \
+  --target /path/to/target.zip
+```
+
+```bash
+python3 -m arkui_xts_selector.xts_compare \
+  --timeline run1.zip run2.zip run3.zip \
+  --labels "base,fix1,fix2"
+```
+
+```bash
+python3 -m arkui_xts_selector.xts_compare \
+  --base run1.zip --target run2.zip --json --output report.json
+```
+
+Optional report inputs parsed by `load_run()` when present:
+- `summary_report.xml` for test-level outcomes
+- `summary.ini` for run metadata
+- `task_info.record` for structured unsuccessful test entries
+- `static/data.js` for module-level error/timing metadata and log references
+- crash logs referenced from `data.js` such as `cppcrash-*.log`
+
+JSON reports include additive run metadata under:
+- `task_info`
+- `module_infos`
+
+If the optional files are absent or malformed, `xts_compare` falls back to the XML-based comparison pipeline.

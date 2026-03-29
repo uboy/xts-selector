@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="ActsButtonTest">
+  <testsuite name="ButtonStyleTest">
+    <testcase name="testButtonRadius" status="run" result="false" time="0.260" classname="ButtonStyleTest" level="0">
+      <failure message="expected 16 but got 0">expected 16 but got 0</failure>
+    </testcase>
+    <testcase name="testButtonFontColor" status="run" result="false" time="0.190" classname="ButtonStyleTest" level="0">
+      <failure message="color mismatch">color mismatch</failure>
+    </testcase>
+    <testcase name="testButtonWidth" status="run" result="true" time="0.200" classname="ButtonStyleTest" level="0"/>
+    <testcase name="testButtonHeight" status="run" result="true" time="0.140" classname="ButtonStyleTest" level="0"/>
+  </testsuite>
+  <testsuite name="ButtonEventTest">
+    <testcase name="testOnClick" status="run" result="false" time="0.330" classname="ButtonEventTest" level="0">
+      <failure message="timeout after 5000ms">timeout after 5000ms</failure>
+    </testcase>
+    <testcase name="testOnLongPress" status="disable" result="" time="0.000" classname="ButtonEventTest" level="0"/>
+    <testcase name="testOnDoubleClick" status="run" result="false" time="0.150" classname="ButtonEventTest" level="0">
+      <failure message="double click not triggered">double click not triggered</failure>
+    </testcase>
+  </testsuite>
+</testsuites>
