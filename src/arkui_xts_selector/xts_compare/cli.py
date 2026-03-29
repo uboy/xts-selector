@@ -28,6 +28,7 @@ import sys
 import traceback
 
 from .compare import compare_runs, build_timeline
+from .format_html import format_html
 from .format_json import report_to_dict, timeline_to_dict, write_json
 from .format_terminal import format_report, format_timeline
 from .models import FailureType
@@ -84,6 +85,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False,
         help="Emit JSON output instead of terminal text.",
+    )
+    parser.add_argument(
+        "--html",
+        action="store_true",
+        default=False,
+        help="Emit standalone HTML output instead of terminal text.",
     )
     parser.add_argument(
         "--output",
@@ -224,6 +231,9 @@ def _run_compare(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 2
+    if args.json and args.html:
+        print("error: --json and --html cannot be used together", file=sys.stderr)
+        return 2
 
     labels = _parse_labels(args.labels, 2)
     base_label = labels[0] or None
@@ -272,6 +282,9 @@ def _run_compare(args: argparse.Namespace) -> int:
             text = write_json(data)
             sys.stdout.write(text)
             sys.stdout.write("\n")
+    elif args.html:
+        text = format_html(report)
+        _emit(text, args.output)
     else:
         text = format_report(
             report,
@@ -290,6 +303,9 @@ def _run_compare(args: argparse.Namespace) -> int:
 
 
 def _run_timeline(args: argparse.Namespace) -> int:
+    if args.html:
+        print("error: --html is only supported in compare mode", file=sys.stderr)
+        return 2
     paths = args.timeline
     labels = _parse_labels(args.labels, len(paths))
 

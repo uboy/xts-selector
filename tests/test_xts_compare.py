@@ -21,6 +21,7 @@ import zipfile
 import io
 import tempfile
 import shutil
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,12 +66,19 @@ from arkui_xts_selector.xts_compare.format_terminal import (
     format_report,
     format_timeline,
 )
+from arkui_xts_selector.xts_compare.format_html import format_html
 from arkui_xts_selector.xts_compare.format_json import (
     report_to_dict,
     timeline_to_dict,
     write_json,
 )
-from arkui_xts_selector.xts_compare.cli import build_parser, _parse_failure_types, _parse_labels
+from arkui_xts_selector.xts_compare.cli import (
+    _parse_failure_types,
+    _parse_labels,
+    _run_compare,
+    _run_timeline,
+    build_parser,
+)
 from arkui_xts_selector.xts_compare.selector_integration import (
     correlate_with_selector,
     load_selector_report,
@@ -1000,6 +1008,103 @@ class TestFormatTimeline(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# format_html (smoke)
+# ---------------------------------------------------------------------------
+
+class TestFormatHtml(unittest.TestCase):
+    def setUp(self):
+        base_results = [
+            TestResult(
+                identity=TestIdentity("ActsTest", "SuiteCrash", "testCrash"),
+                outcome=TestOutcome.PASS,
+                time_ms=100.0,
+            ),
+            TestResult(
+                identity=TestIdentity("ActsTest", "SuiteAssert", "testAssertion"),
+                outcome=TestOutcome.PASS,
+                time_ms=100.0,
+            ),
+        ]
+        target_results = [
+            TestResult(
+                identity=TestIdentity("ActsTest", "SuiteCrash", "testCrash"),
+                outcome=TestOutcome.FAIL,
+                time_ms=5000.0,
+                message="App died",
+                failure_type=FailureType.CRASH,
+            ),
+            TestResult(
+                identity=TestIdentity("ActsTest", "SuiteAssert", "testAssertion"),
+                outcome=TestOutcome.FAIL,
+                time_ms=250.0,
+                message="expected 1 but got 0",
+                failure_type=FailureType.ASSERTION,
+            ),
+        ]
+        base_meta, base_d = _make_run(base_results)
+        base_meta.label = "base"
+        target_meta, target_d = _make_run(target_results)
+        target_meta.label = "target"
+        self.report = compare_runs(
+            base_meta,
+            base_d,
+            target_meta,
+            target_d,
+            min_time_delta_ms=100.0,
+            min_time_ratio=2.0,
+        )
+        selector_report = {
+            "results": [
+                {
+                    "changed_file": "frameworks/core/components/button/button_pattern.cpp",
+                    "projects": [
+                        {
+                            "project": "test/xts/acts/arkui/ace_ets_component_button_static",
+                            "score": 28,
+                            "confidence": "high",
+                            "bucket": "must-run",
+                            "variant": "static",
+                            "test_json": "test/xts/acts/arkui/ace_ets_component_button_static/Test.json",
+                        }
+                    ],
+                }
+            ]
+        }
+        self.report.selector_correlations = correlate_with_selector(self.report, selector_report)
+
+    def test_format_html_contains_document_shell(self):
+        text = format_html(self.report)
+        self.assertIn("<!doctype html>", text.lower())
+        self.assertIn("<title>XTS Compare: base vs target</title>", text)
+        self.assertIn("window.__xtsCompareReport = JSON.parse(", text)
+
+    def test_format_html_contains_key_sections(self):
+        text = format_html(self.report)
+        self.assertIn("Root Cause Analysis", text)
+        self.assertIn("Regressions", text)
+        self.assertIn("Module Health", text)
+        self.assertIn("Performance Changes", text)
+        self.assertIn("Selector Correlation", text)
+        self.assertIn("Full Transition List", text)
+
+    def test_format_html_escapes_failure_messages_in_tables(self):
+        identity = TestIdentity("ActsTest", "SuiteEscaped", "testEscaped")
+        self.report.regressions.append(
+            TestTransition(
+                identity=identity,
+                kind=TransitionKind.REGRESSION,
+                base_outcome=TestOutcome.PASS,
+                target_outcome=TestOutcome.FAIL,
+                target_message='</script><b>boom</b>',
+                target_failure_type=FailureType.CRASH,
+            )
+        )
+        text = format_html(self.report)
+        self.assertIn("&lt;/script&gt;&lt;b&gt;boom&lt;/b&gt;", text)
+        self.assertNotIn("</script><b>boom</b>", text)
+
+
+# ---------------------------------------------------------------------------
 # JSON round-trip
 # ---------------------------------------------------------------------------
 
@@ -1172,6 +1277,10 @@ class TestCliParser(unittest.TestCase):
         args = self.parser.parse_args(["--base", "a", "--target", "b", "--json"])
         self.assertTrue(args.json)
 
+    def test_html_flag(self):
+        args = self.parser.parse_args(["--base", "a", "--target", "b", "--html"])
+        self.assertTrue(args.html)
+
     def test_show_stable_flag(self):
         args = self.parser.parse_args(["--base", "a", "--target", "b", "--show-stable"])
         self.assertTrue(args.show_stable)
@@ -1251,6 +1360,20 @@ class TestCliParser(unittest.TestCase):
     def test_parse_failure_types_invalid(self):
         with self.assertRaises(ValueError):
             _parse_failure_types("bogus")
+
+    def test_run_compare_rejects_json_and_html_together(self):
+        args = self.parser.parse_args(["--base", "a", "--target", "b", "--json", "--html"])
+        with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
+            code = _run_compare(args)
+        self.assertEqual(code, 2)
+        self.assertIn("--json and --html cannot be used together", stderr.getvalue())
+
+    def test_run_timeline_rejects_html(self):
+        args = self.parser.parse_args(["--timeline", "a", "b", "--html"])
+        with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
+            code = _run_timeline(args)
+        self.assertEqual(code, 2)
+        self.assertIn("--html is only supported in compare mode", stderr.getvalue())
 
 
 # ---------------------------------------------------------------------------

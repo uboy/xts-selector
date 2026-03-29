@@ -234,6 +234,11 @@ python3 -m arkui_xts_selector.xts_compare \
 
 ```bash
 python3 -m arkui_xts_selector.xts_compare \
+  --base run1.zip --target run2.zip --html --output report.html
+```
+
+```bash
+python3 -m arkui_xts_selector.xts_compare \
   --base run1.zip --target run2.zip \
   --suite-filter "ButtonStyle*" \
   --failure-type crash,timeout \
@@ -264,6 +269,7 @@ Terminal compare reports now support:
 - `--failure-type` with comma-separated values such as `crash,timeout`
 - `--sort module|severity|time-delta`
 - `--min-time-delta` and `--min-time-ratio` for performance-change detection
+- `--html` for a standalone shareable report with embedded CSS and JS
 - `--selector-report` to correlate selector predictions with actual regressions
 
 When thresholds are met, the report also renders:
