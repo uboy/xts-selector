@@ -30,6 +30,7 @@ import traceback
 from .compare import compare_runs, build_timeline
 from .format_json import report_to_dict, timeline_to_dict, write_json
 from .format_terminal import format_report, format_timeline
+from .models import FailureType
 from .parse import load_run
 
 
@@ -93,6 +94,54 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--suite-filter",
+        metavar="GLOB",
+        default=None,
+        dest="suite_filter",
+        help="Restrict terminal output to suites matching this glob pattern.",
+    )
+    parser.add_argument(
+        "--case-filter",
+        metavar="GLOB",
+        default=None,
+        dest="case_filter",
+        help="Restrict terminal output to test cases matching this glob pattern.",
+    )
+    parser.add_argument(
+        "--failure-type",
+        metavar="TYPES",
+        default=None,
+        dest="failure_type",
+        help=(
+            "Comma-separated failure types for terminal filtering. "
+            "Supported: crash, timeout, assertion, cast, resource, unknown."
+        ),
+    )
+    parser.add_argument(
+        "--sort",
+        metavar="KEY",
+        default="module",
+        choices=("module", "severity", "time-delta"),
+        dest="sort_key",
+        help="Terminal sort key: module, severity, or time-delta.",
+    )
+    parser.add_argument(
+        "--min-time-delta",
+        metavar="MS",
+        default=1000.0,
+        type=float,
+        dest="min_time_delta",
+        help="Minimum absolute timing delta in milliseconds for performance changes.",
+    )
+    parser.add_argument(
+        "--min-time-ratio",
+        metavar="RATIO",
+        default=3.0,
+        type=float,
+        dest="min_time_ratio",
+        help="Minimum relative timing ratio for performance changes.",
+    )
+    parser.add_argument(
         "--show-stable",
         action="store_true",
         default=False,
@@ -107,6 +156,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="Include PERSISTENT_FAIL details section in terminal output.",
     )
     return parser
+
+
+def _parse_failure_types(raw: str | None) -> set[FailureType] | None:
+    """Parse a comma-separated list of failure types."""
+    if not raw:
+        return None
+
+    mapping = {
+        "crash": FailureType.CRASH,
+        "timeout": FailureType.TIMEOUT,
+        "assert": FailureType.ASSERTION,
+        "assertion": FailureType.ASSERTION,
+        "cast": FailureType.CAST_ERROR,
+        "cast_error": FailureType.CAST_ERROR,
+        "resource": FailureType.RESOURCE,
+        "unknown": FailureType.UNKNOWN_FAIL,
+    }
+    result: set[FailureType] = set()
+    invalid: list[str] = []
+    for chunk in raw.split(","):
+        token = chunk.strip().lower()
+        if not token:
+            continue
+        ftype = mapping.get(token)
+        if ftype is None:
+            invalid.append(chunk.strip())
+        else:
+            result.add(ftype)
+    if invalid:
+        raise ValueError(
+            "unknown failure type(s): " + ", ".join(invalid)
+        )
+    return result or None
 
 
 def _parse_labels(raw: str | None, count: int) -> list[str]:
@@ -138,6 +220,11 @@ def _run_compare(args: argparse.Namespace) -> int:
     labels = _parse_labels(args.labels, 2)
     base_label = labels[0] or None
     target_label = labels[1] or None
+    try:
+        failure_types = _parse_failure_types(args.failure_type)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
 
     try:
         base_meta, base_results = load_run(args.base, label=base_label or "")
@@ -152,7 +239,14 @@ def _run_compare(args: argparse.Namespace) -> int:
     if target_label:
         target_meta.label = target_label
 
-    report = compare_runs(base_meta, base_results, target_meta, target_results)
+    report = compare_runs(
+        base_meta,
+        base_results,
+        target_meta,
+        target_results,
+        min_time_delta_ms=args.min_time_delta,
+        min_time_ratio=args.min_time_ratio,
+    )
 
     if args.json:
         data = report_to_dict(report)
@@ -169,6 +263,10 @@ def _run_compare(args: argparse.Namespace) -> int:
             show_stable=args.show_stable,
             show_persistent=args.show_persistent,
             module_filter=args.module_filter,
+            suite_filter=args.suite_filter,
+            case_filter=args.case_filter,
+            failure_types=failure_types,
+            sort_key=args.sort_key,
         )
         _emit(text, args.output)
 

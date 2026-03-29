@@ -232,6 +232,16 @@ python3 -m arkui_xts_selector.xts_compare \
   --base run1.zip --target run2.zip --json --output report.json
 ```
 
+```bash
+python3 -m arkui_xts_selector.xts_compare \
+  --base run1.zip --target run2.zip \
+  --suite-filter "ButtonStyle*" \
+  --failure-type crash,timeout \
+  --sort severity \
+  --min-time-delta 250 \
+  --min-time-ratio 2.0
+```
+
 Optional report inputs parsed by `load_run()` when present:
 - `summary_report.xml` for test-level outcomes
 - `summary.ini` for run metadata
@@ -242,5 +252,15 @@ Optional report inputs parsed by `load_run()` when present:
 JSON reports include additive run metadata under:
 - `task_info`
 - `module_infos`
+
+Terminal compare reports now support:
+- `--suite-filter` and `--case-filter`
+- `--failure-type` with comma-separated values such as `crash,timeout`
+- `--sort module|severity|time-delta`
+- `--min-time-delta` and `--min-time-ratio` for performance-change detection
+
+When thresholds are met, the report also renders:
+- `Module Health`
+- `Performance Changes`
 
 If the optional files are absent or malformed, `xts_compare` falls back to the XML-based comparison pipeline.

@@ -31,7 +31,10 @@ FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "xts_compare"
 from arkui_xts_selector.xts_compare.models import (
     ComparisonSummary,
     CrashInfo,
+    FilterConfig,
     ModuleInfo,
+    ModuleComparison,
+    PerformanceChange,
     RunMetadata,
     TaskInfoSummary,
     TestIdentity,
@@ -54,6 +57,8 @@ from arkui_xts_selector.xts_compare.compare import (
     classify_transition,
     compare_runs,
     build_timeline,
+    compute_module_health,
+    detect_performance_regressions,
     _compute_trend,
 )
 from arkui_xts_selector.xts_compare.format_terminal import (
@@ -65,7 +70,7 @@ from arkui_xts_selector.xts_compare.format_json import (
     timeline_to_dict,
     write_json,
 )
-from arkui_xts_selector.xts_compare.cli import build_parser, _parse_labels
+from arkui_xts_selector.xts_compare.cli import build_parser, _parse_failure_types, _parse_labels
 
 
 # ---------------------------------------------------------------------------
@@ -625,6 +630,64 @@ class TestCompareRuns(unittest.TestCase):
         self.assertEqual(self.report.target.label, "target")
 
 
+class TestPerformanceAndHealth(unittest.TestCase):
+    def test_detect_performance_regressions_slowdown(self):
+        identity = TestIdentity("M", "S", "slow")
+        base = {
+            identity: TestResult(identity=identity, outcome=TestOutcome.PASS, time_ms=100.0),
+        }
+        target = {
+            identity: TestResult(identity=identity, outcome=TestOutcome.PASS, time_ms=5000.0),
+        }
+        changes = detect_performance_regressions(base, target, min_delta_ms=1000.0, min_ratio=3.0)
+        self.assertEqual(len(changes), 1)
+        self.assertAlmostEqual(changes[0].ratio, 50.0, places=1)
+        self.assertTrue(changes[0].outcome_stable)
+
+    def test_detect_performance_regressions_speedup(self):
+        identity = TestIdentity("M", "S", "fast")
+        base = {
+            identity: TestResult(identity=identity, outcome=TestOutcome.PASS, time_ms=5000.0),
+        }
+        target = {
+            identity: TestResult(identity=identity, outcome=TestOutcome.PASS, time_ms=200.0),
+        }
+        changes = detect_performance_regressions(base, target, min_delta_ms=1000.0, min_ratio=3.0)
+        self.assertEqual(len(changes), 1)
+        self.assertLess(changes[0].ratio, 1.0)
+
+    def test_compare_runs_populates_performance_changes(self):
+        identity = TestIdentity("M", "S", "slow")
+        base_results = {
+            identity: TestResult(identity=identity, outcome=TestOutcome.PASS, time_ms=100.0),
+        }
+        target_results = {
+            identity: TestResult(identity=identity, outcome=TestOutcome.PASS, time_ms=5000.0),
+        }
+        base_meta = RunMetadata(label="base", total_tests=1, pass_count=1)
+        target_meta = RunMetadata(label="target", total_tests=1, pass_count=1)
+        report = compare_runs(
+            base_meta,
+            base_results,
+            target_meta,
+            target_results,
+            min_time_delta_ms=1000.0,
+            min_time_ratio=3.0,
+        )
+        self.assertEqual(len(report.performance_changes), 1)
+        self.assertEqual(report.performance_changes[0].identity.case, "slow")
+
+    def test_compute_module_health_formula(self):
+        module = ModuleComparison(
+            module="M",
+            counts={
+                "REGRESSION": 1,
+                "IMPROVEMENT": 1,
+            },
+        )
+        self.assertAlmostEqual(compute_module_health(module), 42.0, places=1)
+
+
 # ---------------------------------------------------------------------------
 # build_timeline + _compute_trend
 # ---------------------------------------------------------------------------
@@ -754,6 +817,72 @@ class TestFormatReport(unittest.TestCase):
         self.assertIn("Total tests", text)
 
 
+class TestFormatReportAdvancedFeatures(unittest.TestCase):
+    def setUp(self):
+        base_results = [
+            TestResult(
+                identity=TestIdentity("ActsTest", "SuiteCrash", "testCrash"),
+                outcome=TestOutcome.PASS,
+                time_ms=100.0,
+            ),
+            TestResult(
+                identity=TestIdentity("ActsTest", "SuiteAssert", "testAssertion"),
+                outcome=TestOutcome.PASS,
+                time_ms=100.0,
+            ),
+        ]
+        target_results = [
+            TestResult(
+                identity=TestIdentity("ActsTest", "SuiteCrash", "testCrash"),
+                outcome=TestOutcome.FAIL,
+                time_ms=5000.0,
+                message="App died",
+                failure_type=FailureType.CRASH,
+            ),
+            TestResult(
+                identity=TestIdentity("ActsTest", "SuiteAssert", "testAssertion"),
+                outcome=TestOutcome.FAIL,
+                time_ms=250.0,
+                message="expected 1 but got 0",
+                failure_type=FailureType.ASSERTION,
+            ),
+        ]
+        base_meta, base_d = _make_run(base_results)
+        target_meta, target_d = _make_run(target_results)
+        self.report = compare_runs(
+            base_meta,
+            base_d,
+            target_meta,
+            target_d,
+            min_time_delta_ms=100.0,
+            min_time_ratio=2.0,
+        )
+
+    def test_report_contains_module_health_and_performance_sections(self):
+        text = format_report(self.report)
+        self.assertIn("Module Health", text)
+        self.assertIn("Performance Changes", text)
+
+    def test_suite_filter(self):
+        text = format_report(self.report, suite_filter="SuiteCrash")
+        self.assertIn("testCrash", text)
+        self.assertNotIn("testAssertion", text)
+
+    def test_case_filter(self):
+        text = format_report(self.report, case_filter="*Assertion")
+        self.assertIn("testAssertion", text)
+        self.assertNotIn("testCrash", text)
+
+    def test_failure_type_filter(self):
+        text = format_report(self.report, failure_types={FailureType.CRASH})
+        self.assertIn("testCrash", text)
+        self.assertNotIn("testAssertion", text)
+
+    def test_sort_time_delta(self):
+        text = format_report(self.report, sort_key="time-delta")
+        self.assertLess(text.index("testCrash"), text.index("testAssertion"))
+
+
 # ---------------------------------------------------------------------------
 # format_timeline (smoke)
 # ---------------------------------------------------------------------------
@@ -879,6 +1008,24 @@ class TestJsonSerialization(unittest.TestCase):
             "SIGSEGV(SEGV_MAPERR)",
         )
 
+    def test_report_to_dict_includes_performance_and_health(self):
+        report = self._make_report()
+        report.modules[0].health_score = 77.0
+        report.performance_changes = [
+            PerformanceChange(
+                identity=TestIdentity("M", "S", "t1"),
+                base_time_ms=100.0,
+                target_time_ms=400.0,
+                delta_ms=300.0,
+                ratio=4.0,
+                outcome_stable=False,
+            ),
+        ]
+        d = report_to_dict(report)
+        self.assertEqual(d["modules"][0]["health_score"], 77.0)
+        self.assertEqual(d["performance_changes"][0]["identity"]["case"], "t1")
+        self.assertEqual(d["performance_changes"][0]["ratio"], 4.0)
+
 
 # ---------------------------------------------------------------------------
 # CLI argument parsing
@@ -913,6 +1060,30 @@ class TestCliParser(unittest.TestCase):
         args = self.parser.parse_args(["--base", "a", "--target", "b", "--module-filter", "ActsButton*"])
         self.assertEqual(args.module_filter, "ActsButton*")
 
+    def test_suite_filter(self):
+        args = self.parser.parse_args(["--base", "a", "--target", "b", "--suite-filter", "ButtonStyle*"])
+        self.assertEqual(args.suite_filter, "ButtonStyle*")
+
+    def test_case_filter(self):
+        args = self.parser.parse_args(["--base", "a", "--target", "b", "--case-filter", "*modifier*"])
+        self.assertEqual(args.case_filter, "*modifier*")
+
+    def test_failure_type_filter(self):
+        args = self.parser.parse_args(["--base", "a", "--target", "b", "--failure-type", "crash,timeout"])
+        self.assertEqual(args.failure_type, "crash,timeout")
+
+    def test_sort_key(self):
+        args = self.parser.parse_args(["--base", "a", "--target", "b", "--sort", "severity"])
+        self.assertEqual(args.sort_key, "severity")
+
+    def test_min_time_delta(self):
+        args = self.parser.parse_args(["--base", "a", "--target", "b", "--min-time-delta", "250"])
+        self.assertEqual(args.min_time_delta, 250.0)
+
+    def test_min_time_ratio(self):
+        args = self.parser.parse_args(["--base", "a", "--target", "b", "--min-time-ratio", "4.5"])
+        self.assertEqual(args.min_time_ratio, 4.5)
+
     def test_labels(self):
         args = self.parser.parse_args(["--base", "a", "--target", "b", "--labels", "base,fix1"])
         self.assertEqual(args.labels, "base,fix1")
@@ -942,6 +1113,16 @@ class TestCliParser(unittest.TestCase):
 
     def test_parse_labels_none(self):
         self.assertEqual(_parse_labels(None, 2), ["", ""])
+
+    def test_parse_failure_types(self):
+        self.assertEqual(
+            _parse_failure_types("crash,timeout"),
+            {FailureType.CRASH, FailureType.TIMEOUT},
+        )
+
+    def test_parse_failure_types_invalid(self):
+        with self.assertRaises(ValueError):
+            _parse_failure_types("bogus")
 
 
 # ---------------------------------------------------------------------------

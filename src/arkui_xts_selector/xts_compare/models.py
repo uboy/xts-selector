@@ -133,10 +133,34 @@ class TestTransition:
 
 
 @dataclass
+class PerformanceChange:
+    """A test whose execution time changed significantly."""
+
+    identity: TestIdentity
+    base_time_ms: float
+    target_time_ms: float
+    delta_ms: float
+    ratio: float
+    outcome_stable: bool = False
+
+
+@dataclass
 class ModuleComparison:
     module: str
     suites: dict[str, list[TestTransition]] = field(default_factory=dict)
     counts: dict[str, int] = field(default_factory=dict)
+    health_score: float = 100.0
+
+
+@dataclass
+class FilterConfig:
+    """Terminal report filtering and sorting options."""
+
+    module_filter: str | None = None
+    suite_filter: str | None = None
+    case_filter: str | None = None
+    failure_types: set[FailureType] | None = None
+    sort_key: str = "module"
 
 
 @dataclass
@@ -167,6 +191,7 @@ class ComparisonReport:
     persistent_fails: list[TestTransition] = field(default_factory=list)
     disappeared: list[TestTransition] = field(default_factory=list)
     root_causes: list[RootCauseCluster] = field(default_factory=list)
+    performance_changes: list[PerformanceChange] = field(default_factory=list)
 
 
 @dataclass

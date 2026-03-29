@@ -13,6 +13,7 @@ from .models import (
     ComparisonReport,
     ModuleInfo,
     ModuleComparison,
+    PerformanceChange,
     RootCauseCluster,
     RunMetadata,
     TaskInfoSummary,
@@ -116,6 +117,7 @@ def _module_comparison_to_dict(mc: ModuleComparison) -> dict:
     return {
         "module": mc.module,
         "counts": mc.counts,
+        "health_score": mc.health_score,
         "suites": {
             suite: [_transition_to_dict(t) for t in transitions]
             for suite, transitions in mc.suites.items()
@@ -152,6 +154,17 @@ def _root_cause_to_dict(rc: RootCauseCluster) -> dict:
     }
 
 
+def _performance_change_to_dict(change: PerformanceChange) -> dict:
+    return {
+        "identity": _identity_to_dict(change.identity),
+        "base_time_ms": change.base_time_ms,
+        "target_time_ms": change.target_time_ms,
+        "delta_ms": change.delta_ms,
+        "ratio": change.ratio,
+        "outcome_stable": change.outcome_stable,
+    }
+
+
 def report_to_dict(report: ComparisonReport) -> dict:
     """Convert a ComparisonReport to a JSON-serializable dict."""
     return {
@@ -165,6 +178,10 @@ def report_to_dict(report: ComparisonReport) -> dict:
         "disappeared": [_transition_to_dict(t) for t in report.disappeared],
         "modules": [_module_comparison_to_dict(mc) for mc in report.modules],
         "root_causes": [_root_cause_to_dict(rc) for rc in report.root_causes],
+        "performance_changes": [
+            _performance_change_to_dict(change)
+            for change in report.performance_changes
+        ],
     }
 
 

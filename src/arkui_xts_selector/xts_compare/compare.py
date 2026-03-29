@@ -11,6 +11,7 @@ from .models import (
     ComparisonSummary,
     FailureType,
     ModuleComparison,
+    PerformanceChange,
     RunMetadata,
     TestIdentity,
     TestOutcome,
@@ -138,6 +139,8 @@ def compare_runs(
     base_results: dict[TestIdentity, TestResult],
     target_meta: RunMetadata,
     target_results: dict[TestIdentity, TestResult],
+    min_time_delta_ms: float = 1000.0,
+    min_time_ratio: float = 3.0,
 ) -> ComparisonReport:
     """
     Compare all tests between two runs.
@@ -195,10 +198,18 @@ def compare_runs(
 
     # Group transitions by module/suite.
     modules = _group_by_module(all_transitions)
+    for module in modules:
+        module.health_score = compute_module_health(module)
 
     # Cluster root causes across all failed transitions.
     all_failed = regressions + new_fails + persistent_fails
     root_causes = cluster_failures(all_failed)
+    performance_changes = detect_performance_regressions(
+        base_results,
+        target_results,
+        min_delta_ms=min_time_delta_ms,
+        min_ratio=min_time_ratio,
+    )
 
     return ComparisonReport(
         base=base_meta,
@@ -211,6 +222,7 @@ def compare_runs(
         persistent_fails=persistent_fails,
         disappeared=disappeared,
         root_causes=root_causes,
+        performance_changes=performance_changes,
     )
 
 
@@ -237,6 +249,82 @@ def _group_by_module(transitions: list[TestTransition]) -> list[ModuleComparison
         mc.counts = counts
 
     return sorted(module_map.values(), key=lambda m: m.module)
+
+
+def detect_performance_regressions(
+    base_results: dict[TestIdentity, TestResult],
+    target_results: dict[TestIdentity, TestResult],
+    min_delta_ms: float = 1000.0,
+    min_ratio: float = 3.0,
+) -> list[PerformanceChange]:
+    """
+    Find tests with significant execution time changes.
+
+    The detector flags both slowdowns and speedups when the absolute delta
+    passes the threshold and the relative change is large enough.
+    """
+    changes: list[PerformanceChange] = []
+    common = set(base_results) & set(target_results)
+
+    for identity in sorted(common, key=lambda i: (i.module, i.suite, i.case)):
+        base = base_results[identity]
+        target = target_results[identity]
+        if base.time_ms <= 0 or target.time_ms <= 0:
+            continue
+
+        delta = target.time_ms - base.time_ms
+        ratio = target.time_ms / base.time_ms
+        relative_change = ratio if ratio >= 1.0 else (1.0 / ratio)
+
+        if abs(delta) < min_delta_ms or relative_change < min_ratio:
+            continue
+
+        changes.append(
+            PerformanceChange(
+                identity=identity,
+                base_time_ms=base.time_ms,
+                target_time_ms=target.time_ms,
+                delta_ms=delta,
+                ratio=ratio,
+                outcome_stable=(base.outcome == target.outcome),
+            )
+        )
+
+    return sorted(
+        changes,
+        key=lambda change: (
+            -max(change.ratio, 1.0 / change.ratio if change.ratio else float("inf")),
+            -abs(change.delta_ms),
+            change.identity.module,
+            change.identity.suite,
+            change.identity.case,
+        ),
+    )
+
+
+def compute_module_health(mc: ModuleComparison) -> float:
+    """
+    Compute health score 0.0-100.0 for a module.
+
+    Uses the design-doc formula directly to keep scoring predictable.
+    """
+    total = sum(mc.counts.values())
+    if total == 0:
+        return 100.0
+
+    pass_count = (
+        mc.counts.get(TransitionKind.STABLE_PASS.value, 0)
+        + mc.counts.get(TransitionKind.IMPROVEMENT.value, 0)
+        + mc.counts.get(TransitionKind.NEW_PASS.value, 0)
+    )
+    base_score = (pass_count / total) * 100.0
+
+    regression_penalty = mc.counts.get(TransitionKind.REGRESSION.value, 0) * 10
+    new_fail_penalty = mc.counts.get(TransitionKind.NEW_FAIL.value, 0) * 5
+    improvement_bonus = mc.counts.get(TransitionKind.IMPROVEMENT.value, 0) * 2
+
+    score = base_score - regression_penalty - new_fail_penalty + improvement_bonus
+    return max(0.0, min(100.0, score))
 
 
 # ---------------------------------------------------------------------------

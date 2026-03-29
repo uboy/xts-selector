@@ -15,8 +15,10 @@ from io import StringIO
 
 from .models import (
     ComparisonReport,
+    FilterConfig,
     FailureType,
     ModuleComparison,
+    PerformanceChange,
     RootCauseCluster,
     RunMetadata,
     TestOutcome,
@@ -32,6 +34,28 @@ _FAILURE_TYPE_BADGE: dict[FailureType, str] = {
     FailureType.CAST_ERROR: "[CAST]",
     FailureType.RESOURCE: "[RESOURCE]",
     FailureType.UNKNOWN_FAIL: "",
+}
+
+_FAILURE_TYPE_SORT_ORDER: dict[FailureType, int] = {
+    FailureType.CRASH: 0,
+    FailureType.TIMEOUT: 1,
+    FailureType.ASSERTION: 2,
+    FailureType.CAST_ERROR: 3,
+    FailureType.RESOURCE: 4,
+    FailureType.UNKNOWN_FAIL: 5,
+}
+
+_TRANSITION_KIND_SORT_ORDER: dict[TransitionKind, int] = {
+    TransitionKind.REGRESSION: 0,
+    TransitionKind.NEW_FAIL: 1,
+    TransitionKind.PERSISTENT_FAIL: 2,
+    TransitionKind.NEW_BLOCKED: 3,
+    TransitionKind.DISAPPEARED: 4,
+    TransitionKind.STATUS_CHANGE: 5,
+    TransitionKind.UNBLOCKED: 6,
+    TransitionKind.IMPROVEMENT: 7,
+    TransitionKind.NEW_PASS: 8,
+    TransitionKind.STABLE_PASS: 9,
 }
 
 # Box-drawing constants.
@@ -180,9 +204,90 @@ def _apply_module_filter(
     ]
 
 
+def _transition_failure_type(transition: TestTransition) -> FailureType:
+    if transition.target_outcome in (TestOutcome.FAIL, TestOutcome.ERROR):
+        return transition.target_failure_type
+    if transition.base_outcome in (TestOutcome.FAIL, TestOutcome.ERROR):
+        return transition.base_failure_type
+    return FailureType.UNKNOWN_FAIL
+
+
+def _build_filter_config(
+    module_filter: str | None,
+    suite_filter: str | None,
+    case_filter: str | None,
+    failure_types: set[FailureType] | None,
+    sort_key: str,
+) -> FilterConfig:
+    return FilterConfig(
+        module_filter=module_filter,
+        suite_filter=suite_filter,
+        case_filter=case_filter,
+        failure_types=failure_types,
+        sort_key=sort_key,
+    )
+
+
+def _matches_filters(transition: TestTransition, filters: FilterConfig) -> bool:
+    if filters.module_filter and not fnmatch.fnmatch(transition.identity.module, filters.module_filter):
+        return False
+    if filters.suite_filter and not fnmatch.fnmatch(transition.identity.suite, filters.suite_filter):
+        return False
+    if filters.case_filter and not fnmatch.fnmatch(transition.identity.case, filters.case_filter):
+        return False
+    if filters.failure_types is not None:
+        if _transition_failure_type(transition) not in filters.failure_types:
+            return False
+    return True
+
+
+def _sort_transitions(
+    transitions: list[TestTransition],
+    filters: FilterConfig,
+) -> list[TestTransition]:
+    if filters.sort_key == "severity":
+        return sorted(
+            transitions,
+            key=lambda transition: (
+                _TRANSITION_KIND_SORT_ORDER.get(transition.kind, 99),
+                _FAILURE_TYPE_SORT_ORDER.get(_transition_failure_type(transition), 99),
+                transition.identity.module,
+                transition.identity.suite,
+                transition.identity.case,
+            ),
+        )
+    if filters.sort_key == "time-delta":
+        return sorted(
+            transitions,
+            key=lambda transition: (
+                -abs(transition.target_time_ms - transition.base_time_ms),
+                transition.identity.module,
+                transition.identity.suite,
+                transition.identity.case,
+            ),
+        )
+    return sorted(
+        transitions,
+        key=lambda transition: (
+            transition.identity.module,
+            transition.identity.suite,
+            transition.identity.case,
+        ),
+    )
+
+
+def _filter_and_sort_transitions(
+    transitions: list[TestTransition],
+    filters: FilterConfig,
+) -> list[TestTransition]:
+    filtered = [transition for transition in transitions if _matches_filters(transition, filters)]
+    return _sort_transitions(filtered, filters)
+
+
 def _format_transition_trees(
     transitions: list[TestTransition],
     kind: TransitionKind,
+    sort_key: str = "module",
 ) -> str:
     """Format a list of transitions as a tree grouped by module/suite."""
     if not transitions:
@@ -201,10 +306,10 @@ def _format_transition_trees(
             module_map[m][s] = []
         module_map[m][s].append(t)
 
-    modules = sorted(module_map.keys())
+    modules = sorted(module_map.keys()) if sort_key == "module" else list(module_map.keys())
     for m_idx, module in enumerate(modules):
         buf.write(f"\n  Module: {module}\n")
-        suites = sorted(module_map[module].keys())
+        suites = sorted(module_map[module].keys()) if sort_key == "module" else list(module_map[module].keys())
         for s_idx, suite in enumerate(suites):
             is_last_suite = (s_idx == len(suites) - 1)
             suite_prefix = "\u2514\u2500" if is_last_suite else "\u251C\u2500"
@@ -236,10 +341,10 @@ def _format_transition_trees(
 def _format_section(
     report: ComparisonReport,
     kind: TransitionKind,
-    module_filter: str | None,
+    filters: FilterConfig,
 ) -> str:
     transitions = _collect_transitions_for_kind(report, kind)
-    transitions = _apply_module_filter(transitions, module_filter)
+    transitions = _filter_and_sort_transitions(transitions, filters)
     if not transitions:
         return ""
 
@@ -250,7 +355,7 @@ def _format_section(
     buf.write(f"\n{_DOUBLE_LINE}\n")
     buf.write(f"  {label} ({count}) \u2014 {description}\n")
     buf.write(f"{_DOUBLE_LINE}\n")
-    buf.write(_format_transition_trees(transitions, kind))
+    buf.write(_format_transition_trees(transitions, kind, filters.sort_key))
     return buf.getvalue()
 
 
@@ -293,11 +398,128 @@ def _format_root_cause_section(clusters: list[RootCauseCluster]) -> str:
     return buf.getvalue()
 
 
+def _format_module_health_section(
+    modules: list[ModuleComparison],
+    filters: FilterConfig,
+) -> str:
+    if filters.suite_filter or filters.case_filter or filters.failure_types is not None:
+        return ""
+
+    visible_modules = modules
+    if filters.module_filter:
+        visible_modules = [
+            module for module in modules
+            if fnmatch.fnmatch(module.module, filters.module_filter)
+        ]
+    if not visible_modules:
+        return ""
+
+    visible_modules = sorted(
+        visible_modules,
+        key=lambda module: (module.health_score, module.module),
+    )
+
+    buf = StringIO()
+    buf.write("\n  Module Health\n")
+    buf.write(f"  {_SINGLE_LINE}\n")
+    buf.write(f"  {'Module':<40} {'Health':>7} {'Pass%':>6} {'Regr':>5} {'Impr':>5}\n")
+    for module in visible_modules:
+        total = sum(module.counts.values())
+        pass_count = (
+            module.counts.get(TransitionKind.STABLE_PASS.value, 0)
+            + module.counts.get(TransitionKind.IMPROVEMENT.value, 0)
+            + module.counts.get(TransitionKind.NEW_PASS.value, 0)
+        )
+        pass_rate = int(round((pass_count / total) * 100.0)) if total else 100
+        buf.write(
+            f"  {module.module:<40} "
+            f"{module.health_score:>7.1f} "
+            f"{pass_rate:>5}% "
+            f"{module.counts.get(TransitionKind.REGRESSION.value, 0):>5} "
+            f"{module.counts.get(TransitionKind.IMPROVEMENT.value, 0):>5}\n"
+        )
+    return buf.getvalue()
+
+
+def _format_performance_section(
+    report: ComparisonReport,
+    filters: FilterConfig,
+) -> str:
+    transitions_by_identity: dict[str, TestTransition] = {}
+    for module in report.modules:
+        for suite_transitions in module.suites.values():
+            for transition in suite_transitions:
+                transitions_by_identity[str(transition.identity)] = transition
+
+    visible_changes = []
+    for change in report.performance_changes:
+        if filters.module_filter and not fnmatch.fnmatch(change.identity.module, filters.module_filter):
+            continue
+        if filters.suite_filter and not fnmatch.fnmatch(change.identity.suite, filters.suite_filter):
+            continue
+        if filters.case_filter and not fnmatch.fnmatch(change.identity.case, filters.case_filter):
+            continue
+        if filters.failure_types is not None:
+            transition = transitions_by_identity.get(str(change.identity))
+            if transition is None or _transition_failure_type(transition) not in filters.failure_types:
+                continue
+        visible_changes.append(change)
+
+    if not visible_changes:
+        return ""
+
+    buf = StringIO()
+    buf.write("\n  Performance Changes\n")
+    buf.write(f"  {_SINGLE_LINE}\n")
+    buf.write(
+        f"  {'Test':<50} {'Base':>8} {'Target':>8} {'Delta':>9} {'Ratio':>7} {'Type':>10}\n"
+    )
+    for change in visible_changes:
+        identity = str(change.identity)
+        if len(identity) > 50:
+            identity = identity[:47] + "..."
+        direction = "SLOWDOWN" if change.delta_ms >= 0 else "SPEEDUP"
+        buf.write(
+            f"  {identity:<50} "
+            f"{change.base_time_ms:>7.0f}ms "
+            f"{change.target_time_ms:>7.0f}ms "
+            f"{change.delta_ms:>+8.0f}ms "
+            f"{change.ratio:>6.1f}x "
+            f"{direction:>10}\n"
+        )
+    return buf.getvalue()
+
+
+def _filter_root_causes(
+    clusters: list[RootCauseCluster],
+    filters: FilterConfig,
+) -> list[RootCauseCluster]:
+    if filters.suite_filter or filters.case_filter:
+        return []
+
+    filtered = clusters
+    if filters.module_filter:
+        filtered = [
+            cluster for cluster in filtered
+            if any(fnmatch.fnmatch(module, filters.module_filter) for module in cluster.modules_affected)
+        ]
+    if filters.failure_types is not None:
+        filtered = [
+            cluster for cluster in filtered
+            if cluster.failure_type in filters.failure_types
+        ]
+    return filtered
+
+
 def format_report(
     report: ComparisonReport,
     show_stable: bool = False,
     show_persistent: bool = False,
     module_filter: str | None = None,
+    suite_filter: str | None = None,
+    case_filter: str | None = None,
+    failure_types: set[FailureType] | None = None,
+    sort_key: str = "module",
 ) -> str:
     """
     Generate a full human-readable comparison report.
@@ -307,14 +529,29 @@ def format_report(
         show_stable: Include STABLE_PASS tests in output (very verbose).
         show_persistent: Include PERSISTENT_FAIL details section.
         module_filter: Optional glob pattern to restrict output to matching modules.
+        suite_filter: Optional glob pattern to restrict output to matching suites.
+        case_filter: Optional glob pattern to restrict output to matching test cases.
+        failure_types: Optional set of failure types for terminal filtering.
+        sort_key: Sort order for transition sections.
     """
+    filters = _build_filter_config(
+        module_filter=module_filter,
+        suite_filter=suite_filter,
+        case_filter=case_filter,
+        failure_types=failure_types,
+        sort_key=sort_key,
+    )
     buf = StringIO()
     buf.write(_format_header(report.base, report.target))
     buf.write("\n\n")
     buf.write(_format_summary_table(report))
 
-    if report.root_causes:
-        buf.write(_format_root_cause_section(report.root_causes))
+    buf.write(_format_module_health_section(report.modules, filters))
+    buf.write(_format_performance_section(report, filters))
+
+    root_causes = _filter_root_causes(report.root_causes, filters)
+    if root_causes:
+        buf.write(_format_root_cause_section(root_causes))
 
     # Always-shown sections.
     for kind in [
@@ -327,20 +564,20 @@ def format_report(
         TransitionKind.NEW_BLOCKED,
         TransitionKind.UNBLOCKED,
     ]:
-        buf.write(_format_section(report, kind, module_filter))
+        buf.write(_format_section(report, kind, filters))
 
     if show_persistent:
-        buf.write(_format_section(report, TransitionKind.PERSISTENT_FAIL, module_filter))
+        buf.write(_format_section(report, TransitionKind.PERSISTENT_FAIL, filters))
 
     if show_stable:
         stable = _collect_stable_pass(report)
-        stable = _apply_module_filter(stable, module_filter)
+        stable = _filter_and_sort_transitions(stable, filters)
         if stable:
             count = len(stable)
             buf.write(f"\n{_DOUBLE_LINE}\n")
             buf.write(f"  STABLE PASS ({count}) \u2014 Tests that PASS in both runs\n")
             buf.write(f"{_DOUBLE_LINE}\n")
-            buf.write(_format_transition_trees(stable, TransitionKind.STABLE_PASS))
+            buf.write(_format_transition_trees(stable, TransitionKind.STABLE_PASS, filters.sort_key))
 
     buf.write("\n")
     return buf.getvalue()
