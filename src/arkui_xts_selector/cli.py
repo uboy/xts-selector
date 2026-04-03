@@ -28,14 +28,15 @@ from pathlib import Path
 from typing import Iterable, Callable
 from urllib.parse import urlparse
 
-from .build_state import (
-    build_aa_test_command,
-    build_guidance,
-    build_runtest_command,
-    build_xdevice_command,
-    inspect_product_build,
-)
+from .build_state import build_guidance, inspect_product_build
 from .built_artifacts import inspect_built_artifacts, load_built_artifact_index
+from .execution import (
+    RUN_TOOL_CHOICES,
+    attach_execution_plan,
+    build_run_target_entry,
+    execute_planned_targets,
+    resolve_devices,
+)
 from .workspace import (
     default_acts_out_root,
     default_git_repo_root,
@@ -500,6 +501,7 @@ class AppConfig:
     git_remote: str
     git_base_branch: str
     device: str | None = None
+    devices: list[str] = field(default_factory=list)
     gitcode_api_url: str | None = None
     gitcode_token: str | None = None
     acts_out_root: Path | None = None
@@ -2002,6 +2004,8 @@ def format_report(
                 "test_json": project.test_json,
                 "bundle_name": project.bundle_name,
                 "driver_module_name": driver_module_name(project.test_json, repo_root=app_config.repo_root),
+                "xdevice_module_name": infer_xdevice_module_name(project.test_json, repo_root=app_config.repo_root),
+                "build_target": guess_build_target(project.relative_root),
                 "driver_type": driver_type(project.test_json, repo_root=app_config.repo_root),
                 "reasons": project_reasons,
                 "test_files": [
@@ -2035,35 +2039,12 @@ def format_report(
             "effective_variants_mode": effective_variants_mode,
             "projects": project_results[:top_projects],
             "run_targets": [
-                {
-                    "project": item["project"],
-                    "test_json": item["test_json"],
-                    "bundle_name": item["bundle_name"],
-                    "driver_module_name": item["driver_module_name"],
-                    "test_haps": parse_test_file_names(item["test_json"], repo_root=app_config.repo_root),
-                    "xdevice_module_name": infer_xdevice_module_name(item["test_json"], repo_root=app_config.repo_root),
-                    "build_target": guess_build_target(item["project"]),
-                    "driver_type": item["driver_type"],
-                    "confidence": item["confidence"],
-                    "bucket": item["bucket"],
-                    "variant": item["variant"],
-                    "aa_test_command": build_aa_test_command(
-                        bundle_name=item["bundle_name"],
-                        module_name=item["driver_module_name"],
-                        project_path=item["project"],
-                        device=device,
-                    ),
-                    "xdevice_command": build_xdevice_command(
-                        repo_root=REPO_ROOT,
-                        module_name=infer_xdevice_module_name(item["test_json"], repo_root=app_config.repo_root),
-                        device=device,
-                        acts_out_root=acts_out_root,
-                    ),
-                    "runtest_command": build_runtest_command(
-                        build_target=guess_build_target(item["project"]),
-                        device=device,
-                    ),
-                }
+                build_run_target_entry(
+                    item,
+                    repo_root=REPO_ROOT,
+                    acts_out_root=acts_out_root,
+                    device=device,
+                )
                 for item in project_results[:top_projects]
             ],
         }
@@ -2114,6 +2095,9 @@ def format_report(
                 "test_json": project.test_json,
                 "bundle_name": project.bundle_name,
                 "driver_module_name": driver_module_name(project.test_json, repo_root=app_config.repo_root),
+                "xdevice_module_name": infer_xdevice_module_name(project.test_json, repo_root=app_config.repo_root),
+                "build_target": guess_build_target(project.relative_root),
+                "driver_type": driver_type(project.test_json, repo_root=app_config.repo_root),
                 "test_haps": parse_test_file_names(project.test_json, repo_root=app_config.repo_root),
                 "test_files": [
                     {
@@ -2147,6 +2131,15 @@ def format_report(
             "code_search_evidence": explain_symbol_query_sources(query, xts_root),
             "effective_variants_mode": effective_variants_mode,
             "projects": project_results[:top_projects],
+            "run_targets": [
+                build_run_target_entry(
+                    item,
+                    repo_root=REPO_ROOT,
+                    acts_out_root=acts_out_root,
+                    device=device,
+                )
+                for item in project_results[:top_projects]
+            ],
         }
         if debug_trace:
             symbol_item["debug"] = {
@@ -2188,6 +2181,8 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
     print(f"git_repo_root: {report['git_repo_root']}")
     print(f"acts_out_root: {report['acts_out_root']}")
     print(f"variants_mode: {report.get('variants_mode', 'auto')}")
+    if report.get("requested_devices"):
+        print(f"requested_devices: {', '.join(report['requested_devices'])}")
     if json_report_path is not None:
         print(f"json_report: {json_report_path}")
     product_build = report["product_build"]
@@ -2231,6 +2226,25 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
     if cache_used is None:
         cache_used = bool(report.get("cache_used"))
     print(f"cache_used: {'yes' if cache_used else 'no'}")
+    if report.get("execution_overview"):
+        overview = report["execution_overview"]
+        print(
+            "execution_overview: "
+            f"tool={overview.get('run_tool', '-')}, "
+            f"unique_targets={overview.get('unique_target_count', 0)}, "
+            f"selected_targets={overview.get('selected_target_count', 0)}, "
+            f"executed={'yes' if overview.get('executed') else 'no'}"
+        )
+    if report.get("execution_summary"):
+        summary = report["execution_summary"]
+        print(
+            "execution_summary: "
+            f"planned={summary.get('planned_run_count', 0)}, "
+            f"passed={summary.get('passed', 0)}, "
+            f"failed={summary.get('failed', 0)}, "
+            f"timeout={summary.get('timeout', 0)}, "
+            f"unavailable={summary.get('unavailable', 0)}"
+        )
     timings = report.get("timings_ms", {})
     if timings:
         timing_parts = [f"{key}={value}" for key, value in timings.items()]
@@ -2241,6 +2255,43 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         for item in excluded_inputs:
             print(f"  {item['changed_file']}: {item['reason']} ({item.get('matched_prefix', '-')})")
     print()
+    def print_run_targets(targets: list[dict]) -> None:
+        print("  run_targets:")
+        for target in targets:
+            bundle = target["bundle_name"] or "-"
+            print(f"    {target['test_json']}  [bundle={bundle}, variant={target['variant']}, bucket={target['bucket']}, confidence={target['confidence']}]")
+            if target["test_haps"]:
+                print(f"      test_haps: {', '.join(target['test_haps'])}")
+            if target["aa_test_command"]:
+                print(f"      aa_test: {target['aa_test_command']}")
+            if target["xdevice_command"]:
+                print(f"      xdevice: {target['xdevice_command']}")
+            if target["runtest_command"]:
+                print(f"      runtest: {target['runtest_command']}")
+            if target.get("execution_sources"):
+                sources = ", ".join(f"{item['type']}={item['value']}" for item in target["execution_sources"])
+                print(f"      execution_sources: {sources}")
+            if target.get("execution_plan"):
+                print(f"      selected_for_execution: {'yes' if target.get('selected_for_execution') else 'no'}")
+                for plan in target["execution_plan"]:
+                    tool = plan.get("selected_tool") or "-"
+                    reason = f", reason={plan['reason']}" if plan.get("reason") else ""
+                    print(
+                        f"      plan[{plan['device_label']}]: "
+                        f"status={plan['status']}, tool={tool}, available={','.join(plan.get('available_tools', [])) or '-'}{reason}"
+                    )
+            if target.get("execution_results"):
+                for result in target["execution_results"]:
+                    rc = "-" if result.get("returncode") is None else result["returncode"]
+                    print(
+                        f"      result[{result['device_label']}]: "
+                        f"status={result['status']}, tool={result.get('selected_tool') or '-'}, rc={rc}"
+                    )
+                    if result.get("stderr_tail"):
+                        print(f"        stderr_tail: {result['stderr_tail'].splitlines()[-1]}")
+                    elif result.get("stdout_tail") and result["status"] != "passed":
+                        print(f"        stdout_tail: {result['stdout_tail'].splitlines()[-1]}")
+
     for item in report["results"]:
         print(f"changed_file: {item['changed_file']}")
         signals = item["signals"]
@@ -2262,18 +2313,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             print("  no candidate XTS projects found")
             print()
             continue
-        print("  run_targets:")
-        for target in item["run_targets"]:
-            bundle = target["bundle_name"] or "-"
-            print(f"    {target['test_json']}  [bundle={bundle}, variant={target['variant']}, bucket={target['bucket']}, confidence={target['confidence']}]")
-            if target["test_haps"]:
-                print(f"      test_haps: {', '.join(target['test_haps'])}")
-            if target["aa_test_command"]:
-                print(f"      aa_test: {target['aa_test_command']}")
-            if target["xdevice_command"]:
-                print(f"      xdevice: {target['xdevice_command']}")
-            if target["runtest_command"]:
-                print(f"      runtest: {target['runtest_command']}")
+        print_run_targets(item["run_targets"])
         for project in item["projects"]:
             bundle = project["bundle_name"] or "-"
             print(
@@ -2314,6 +2354,8 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             print("  no candidate XTS projects found")
             print()
             continue
+        if item.get("run_targets"):
+            print_run_targets(item["run_targets"])
         for project in item["projects"]:
             bundle = project["bundle_name"] or "-"
             print(
@@ -2366,9 +2408,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--composite-mappings-file", help="Optional JSON file with multi-component mapping rules.")
     parser.add_argument("--changed-file-exclusions-file", help="Optional JSON file with changed-file path prefixes to exclude from XTS analysis.")
     parser.add_argument("--device", help="Optional HDC device serial/IP:PORT for generated aa test commands.")
+    parser.add_argument("--devices", action="append", default=[], help="Comma-separated device serial list for command generation and execution.")
+    parser.add_argument("--devices-from", help="File with one device serial per line (comments with # are ignored).")
     parser.add_argument("--product-name", help="Product name for build guidance, for example rk3568 or m40.")
     parser.add_argument("--system-size", help="System size for build guidance. Default: standard.")
     parser.add_argument("--xts-suitetype", help="Optional xts_suitetype for build guidance, for example hap_static or hap_dynamic.")
+    parser.add_argument("--run-now", action="store_true", help="Immediately execute selected run targets after report generation.")
+    parser.add_argument("--run-tool", choices=RUN_TOOL_CHOICES, default="auto", help="Execution tool to use for --run-now. Default: auto.")
+    parser.add_argument("--run-top-targets", type=int, default=0, help="Execute at most N unique run targets. 0 = all.")
+    parser.add_argument("--run-timeout", type=float, default=0.0, help="Per-command timeout in seconds for --run-now. 0 = disabled.")
     parser.add_argument("--variants", choices=["auto", "static", "dynamic", "both"], default="auto", help="Filter returned candidates by variant. Default: auto.")
     parser.add_argument("--top-projects", type=int, default=12)
     parser.add_argument("--top-files", type=int, default=5)
@@ -2401,7 +2449,23 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
     git_repo_root = resolve_path(args.git_root or cfg.get("git_repo_root"), default_git_repo_root(repo_root), repo_root)
     git_remote = args.git_remote or cfg.get("git_remote") or "gitcode"
     git_base_branch = args.git_base_branch or cfg.get("git_base_branch") or "master"
-    device = args.device or cfg.get("device")
+    config_devices_raw = cfg.get("devices", [])
+    if isinstance(config_devices_raw, list):
+        config_devices = [str(item) for item in config_devices_raw]
+    elif isinstance(config_devices_raw, str):
+        config_devices = [config_devices_raw]
+    else:
+        config_devices = []
+    devices_from_value = args.devices_from or cfg.get("devices_from")
+    devices_from_path = resolve_path(devices_from_value, repo_root, repo_root) if devices_from_value else None
+    devices = resolve_devices(
+        cli_devices=args.devices,
+        cli_device=args.device,
+        devices_from_path=devices_from_path,
+        config_devices=config_devices,
+        config_device=cfg.get("device"),
+    )
+    device = devices[0] if devices else None
     product_name = args.product_name or cfg.get("product_name")
     system_size = args.system_size or cfg.get("system_size") or "standard"
     xts_suitetype = args.xts_suitetype or cfg.get("xts_suitetype")
@@ -2439,6 +2503,7 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         git_remote=git_remote,
         git_base_branch=git_base_branch,
         device=device,
+        devices=devices,
         gitcode_api_url=gitcode_api_url,
         gitcode_token=gitcode_token,
         acts_out_root=acts_out_root,
@@ -2455,6 +2520,12 @@ def main() -> int:
     global REPO_ROOT
     runtime_started = time.perf_counter()
     args = parse_args()
+    if args.run_top_targets < 0:
+        print("--run-top-targets must be >= 0", file=sys.stderr)
+        return 2
+    if args.run_timeout < 0:
+        print("--run-timeout must be >= 0", file=sys.stderr)
+        return 2
     app_config = load_app_config(args)
     REPO_ROOT = app_config.repo_root
     changed_inputs = list(args.changed_file)
@@ -2578,8 +2649,31 @@ def main() -> int:
     })
     report["timings_ms"]["total_runtime"] = round((time.perf_counter() - runtime_started) * 1000, 3)
     report["json_output_mode"] = "stdout" if json_to_stdout else "file"
+    report["requested_devices"] = list(app_config.devices)
     if json_output_path is not None:
         report["json_output_path"] = str(json_output_path)
+
+    emit_progress(progress_enabled, "planning target execution")
+    attach_execution_plan(
+        report,
+        repo_root=app_config.repo_root,
+        acts_out_root=app_config.acts_out_root,
+        devices=app_config.devices,
+        run_tool=args.run_tool,
+        run_top_targets=args.run_top_targets,
+    )
+    execution_summary = None
+    if args.run_now:
+        emit_progress(progress_enabled, "running selected targets")
+        execution_summary = execute_planned_targets(
+            report,
+            repo_root=app_config.repo_root,
+            acts_out_root=app_config.acts_out_root,
+            devices=app_config.devices,
+            run_tool=args.run_tool,
+            run_top_targets=args.run_top_targets,
+            run_timeout=args.run_timeout,
+        )
 
     emit_progress(progress_enabled, "writing JSON report")
     written_json_path = write_json_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)
@@ -2587,6 +2681,8 @@ def main() -> int:
     if not json_to_stdout:
         emit_progress(progress_enabled, "rendering human report")
         print_human(report, cache_used, written_json_path)
+    if args.run_now and execution_summary and execution_summary.get("has_failures"):
+        return 1
     return 0
 
 

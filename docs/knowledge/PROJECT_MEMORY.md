@@ -1,6 +1,6 @@
 # Project Memory
 
-Last updated: 2026-03-22T00:00:00Z
+Last updated: 2026-04-03T00:00:00Z
 
 ## Purpose
 
@@ -173,6 +173,42 @@ Tests:
 - `tests/test_cli_design_v1.py`: 22 unit tests (was 20).
 - `tests/test_benchmark_contract.py`: 15 integration tests (was 12), all passing.
 
+## Implemented v4 additions (2026-03-29 onward)
+
+Selector precision and execution:
+- typed modifier detection is implemented in `score_file` via parsed
+  `typed_modifier_bases` and a dedicated `typed modifier evidence` reason.
+- coverage dedup tuning is implemented via member-call- and path-category-aware
+  `coverage_signature(...)`.
+- method/type-level hints are implemented through:
+  - `method_hints`
+  - `type_hints`
+  - `type_member_calls`
+  and are exercised by focused unit tests.
+- dedicated benchmark suites now exist for:
+  - `Slider` changed-file mode
+  - `NavigationModifier` symbol-query mode
+  - `TextInputModifier` symbol-query mode
+- multi-device execution planning/runtime support is implemented in the top-level
+  selector CLI:
+  - `--devices`
+  - `--devices-from`
+  - `--run-now`
+  - `--run-tool`
+  - `--run-top-targets`
+  - `--run-timeout`
+
+`xts_compare`:
+- `docs/reports/DESIGN-xts-compare-v2.md` now tracks `XC-1` through `XC-10`
+  as implemented.
+- current compare functionality includes:
+  - failure typing and root-cause clustering
+  - `data.js` / `task_info.record` / crash-log enrichment
+  - performance and health reporting
+  - selector correlation
+  - standalone HTML output
+  - directory-scan, archive, and filtering improvements
+
 ## Backlog
 
 See `docs/BACKLOG.md` for full items with implementation notes.
@@ -180,24 +216,31 @@ See `docs/BACKLOG.md` for full items with implementation notes.
 Current status:
 - ✅ **P1** Multi-file convergence bonus — done
 - ✅ **P2** PATTERN_ALIAS expansion (53 components) — done
-- **P3** Typed modifier detection (`AttributeModifier<ButtonAttribute>`) in `score_file`
-- **P4** Fix 11 missing `possible related` must_have under `--keep-per-signature 2`
-- **P5** Benchmark for Slider, Navigation, TextInput (contentModifier done)
-- **P6** Integration test for `--keep-per-signature` dedup behaviour
-- **P7** Method/attribute/constructor-level signals — general fix for precision
-  problem demonstrated by contentModifier benchmark (rank 275 for dedicated suite
-  while generic tests dominate top-200)
+- ✅ **P3** Typed modifier detection (`AttributeModifier<ButtonAttribute>`) in `score_file`
+- ✅ **P4** `--keep-per-signature 2` dedup hardening for the previously-missing suites
+- ✅ **P5** Benchmark coverage for Slider, Navigation, TextInput
+- ✅ **P6** Integration coverage for `--keep-per-signature` behavior
+- ✅ **P7** Method/attribute/constructor-level signals and related type hints
 
-## Recommended next steps
+Current remaining work:
+- preserved batch analysis can now be rerun locally, but this repo ships a
+  fixture-sized XTS tree; a real full-workspace batch audit still needs a
+  larger ArkUI checkout to be meaningful.
+- the older candidate-prefilter experiment should stay retired; future
+  performance work needs a different design instead of reviving that attempt.
+- weak-domain validation for `web` and `security component` is still worth
+  doing on a real workspace, even though alias coverage and selector unit
+  coverage already exist locally.
 
-1. Implement **P7** (method-level signals) — highest precision impact; start by
-   adding `"method_hints": ["contentModifier"]` to `composite_mappings.json` and
-   scoring `.contentModifier()` callers +5 in `score_file`. Verify with
-   `ContentModifierChangedFileBenchmarkTests`: dedicated suites should reach top-50.
-2. Implement **P3** (typed modifier detection) — improves `--symbol-query FooModifier`
-   to find `class X implements AttributeModifier<FooAttribute>` patterns.
-3. Add **P5** benchmarks for Slider and Navigation once P7 is done
-   (method-level signals will make those results more meaningful).
+## Recommended next steps for future work
+
+1. Re-run the preserved batch analysis on a full ArkUI workspace instead of the
+   local fixture tree and record the top unresolved domains from real data.
+2. If runtime optimization is still needed, design a new batch-performance
+   approach instead of restoring the failed project-prefilter attempt.
+3. Add dedicated real-workspace regression fixtures for `web` and
+   `security component` if live ranking data shows noise that current alias
+   coverage does not catch.
 
 ## External coordination copies preserved locally
 

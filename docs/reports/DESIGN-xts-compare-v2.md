@@ -1,8 +1,28 @@
 # Design: xts_compare v2 — Deep Analysis & Extended Reporting
 
-**Date**: 2026-03-28
-**Status**: Ready for implementation
+**Date**: 2026-03-28 (updated 2026-03-29)
+**Status**: XC-1…XC-10 implemented; review findings documented
 **Depends on**: xts_compare v1 (implemented)
+
+### Статус задач (2026-03-29)
+
+| Задача | Статус | Коммит |
+|--------|--------|--------|
+| XC-1 FailureType | ✅ Done | `e7bc879` |
+| XC-2 Root Cause | ✅ Done | `e7bc879` |
+| XC-3 data.js | ✅ Done | `e7bc879` |
+| XC-4 task_info.record | ✅ Done | `e7bc879` |
+| XC-5 crash logs | ✅ Done | `e7bc879` |
+| XC-6 Performance | ✅ Done | post-commit |
+| XC-7 Health scoring | ✅ Done | post-commit |
+| XC-8 Selector integration | ✅ Done | post-commit |
+| XC-9 HTML report | ✅ Done | post-commit |
+| XC-10 Filtering | ✅ Done | post-commit |
+
+### Review (2026-03-29)
+
+Code review выявил 1 CRITICAL, 2 HIGH, 4 MEDIUM, 5 LOW + 11 UX-улучшений.
+Полный отчёт: `docs/reports/REVIEW-xts-compare-phase1.md`
 
 ---
 

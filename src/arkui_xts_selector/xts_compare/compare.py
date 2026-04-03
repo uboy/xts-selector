@@ -54,7 +54,7 @@ def classify_transition(
       FAIL   → (missing)     DISAPPEARED
       BLOCKED → PASS         UNBLOCKED (mapped to IMPROVEMENT)
       BLOCKED → FAIL         NEW_FAIL (previously blocked test now runs and fails)
-      BLOCKED → BLOCKED      STATUS_CHANGE (stable block)
+      BLOCKED → BLOCKED      STABLE_BLOCKED
       (missing) → PASS       NEW_PASS
       (missing) → FAIL       NEW_FAIL
       (missing) → BLOCKED    NEW_BLOCKED
@@ -96,6 +96,8 @@ def classify_transition(
     if b == _BLOCKED and t == _FAIL:
         # A previously blocked test now runs and fails — treat as new failure.
         return TransitionKind.NEW_FAIL
+    if b == _BLOCKED and t == _BLOCKED:
+        return TransitionKind.STABLE_BLOCKED
     if b == _FAIL and t == _BLOCKED:
         return TransitionKind.NEW_BLOCKED
     if b == _ERROR and t == _FAIL:
@@ -189,6 +191,8 @@ def compare_runs(
             disappeared.append(transition)
         elif kind == TransitionKind.STABLE_PASS:
             summary.stable_pass += 1
+        elif kind == TransitionKind.STABLE_BLOCKED:
+            summary.stable_blocked += 1
         elif kind == TransitionKind.STATUS_CHANGE:
             summary.status_change += 1
         elif kind == TransitionKind.NEW_BLOCKED:
@@ -316,6 +320,7 @@ def compute_module_health(mc: ModuleComparison) -> float:
         mc.counts.get(TransitionKind.STABLE_PASS.value, 0)
         + mc.counts.get(TransitionKind.IMPROVEMENT.value, 0)
         + mc.counts.get(TransitionKind.NEW_PASS.value, 0)
+        + mc.counts.get(TransitionKind.UNBLOCKED.value, 0)
     )
     base_score = (pass_count / total) * 100.0
 

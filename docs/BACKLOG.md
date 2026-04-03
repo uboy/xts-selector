@@ -81,6 +81,43 @@ Stepper, Panel, Menu/MenuItem. Also enriched existing text and navigation entrie
 
 ---
 
+## Selector Status Update (2026-04-03)
+
+The selector items below started as planning notes. Their current verified
+status is:
+
+- `P3` typed modifier detection — implemented.
+  Evidence: parsed `typed_modifier_bases`, typed modifier scoring in
+  `src/arkui_xts_selector/cli.py`, and focused tests in
+  `tests/test_cli_design_v1.py`.
+- `P4` `--keep-per-signature 2` dedup hardening — implemented.
+  Evidence: member-call-aware `coverage_signature(...)`, focused unit coverage
+  in `tests/test_p4_dedup_signature.py`, and benchmark regression coverage in
+  `tests/test_benchmark_button_modifier_keep2.py`.
+- `P5` benchmark expansion — implemented for `Slider`, `NavigationModifier`,
+  and `TextInputModifier`.
+  Evidence: dedicated suites
+  `tests/test_benchmark_slider_changed_file.py`,
+  `tests/test_benchmark_navigation_modifier.py`, and
+  `tests/test_benchmark_textinput_modifier.py`.
+- `P6` integration test for `--keep-per-signature` behavior — implemented.
+  Evidence: `tests/test_benchmark_button_modifier_keep2.py`.
+- `P7` method/attribute/constructor-level signals — implemented.
+  Evidence: `method_hints`, `type_hints`, and `type_member_calls` support in
+  `src/arkui_xts_selector/cli.py`, with focused tests in
+  `tests/test_p7_type_hints.py` and `tests/test_accessor_semantic_hints.py`.
+
+Remaining selector work is now narrower:
+
+- run batch analysis on a full real ArkUI workspace, not only the local
+  fixture-sized tree;
+- design any future batch-performance optimization as a new approach, because
+  the older candidate-prefilter experiment was rejected;
+- add broader real-workspace validation for weak domains such as `web` and
+  `security component` if live data still shows ranking noise.
+
+---
+
 ## P3 — Typed modifier detection in `score_file`
 
 **What:** For a `--symbol-query ButtonModifier` search, a file that contains
@@ -266,6 +303,186 @@ a developer who changed a focused piece of code.
 3. Add scoring logic in `score_file`
 4. Verify with `ContentModifierChangedFileBenchmarkTests`: dedicated suites
    should now appear in top-50 instead of top-300
+
+---
+
+## XTS Compare v2 — Deep Analysis & Extended Reporting
+
+**Design**: `docs/reports/DESIGN-xts-compare-v2.md` (полный дизайн с data structures, алгоритмами, примерами из реальных архивов)
+
+### XC-1 (P0) — Классификация типа ошибки (FailureType)
+
+**What**: Все FAIL сейчас одинаковые. Нужно разделить на CRASH, TIMEOUT, ASSERTION, CAST_ERROR, RESOURCE, UNKNOWN на основе паттернов в сообщениях.
+
+**Approach**: Новый enum `FailureType`, новый модуль `error_analysis.py` с regex-based классификацией. Паттерны из реальных данных: "App died" → CRASH, "ShellCommandUnresponsiveException" → TIMEOUT, "expected X but got Y" → ASSERTION, "cannot be cast to" → CAST_ERROR.
+
+**Files**: `models.py` (новые поля), `error_analysis.py` (новый), `parse.py`, `format_terminal.py`, `format_json.py`
+**Complexity**: 2-3ч
+**Impact**: High — разработчик сразу видит что чинить первым (crash важнее assertion)
+
+---
+
+### XC-2 (P0) — Кластеризация Root Cause
+
+**What**: "App died" встречается 47 раз в 12 модулях — это ОДНА проблема. Нужно группировать failure messages в кластеры.
+
+**Approach**: Normalize messages (убрать hex-адреса, PIDs, UUIDs), fingerprint SHA256, группировать по fingerprint. Новая модель `RootCauseCluster`. Секция "Root Cause Analysis" в terminal output.
+
+**Depends on**: XC-1
+**Files**: `error_analysis.py` (extend), `models.py`, `compare.py`, `format_terminal.py`
+**Complexity**: 2-3ч
+**Impact**: High — "47 failures" → "3 root causes" = actionable
+
+---
+
+### XC-3 (P1) — Парсинг data.js
+
+**What**: `static/data.js` (1MB) содержит module-level error type ("App died"), ссылки на crash-логи, timing, passing rate. Сейчас полностью игнорируется.
+
+**Approach**: Parse `window.reportData = {...}` JSON. Новая модель `ModuleInfo`. Enrichment TestResult.failure_type из module error field.
+
+**Depends on**: XC-1
+**Files**: `parse.py`, `models.py`
+**Complexity**: 2ч
+
+---
+
+### XC-4 (P1) — Парсинг task_info.record
+
+**What**: JSON с structured failed test lists (`"SuiteName#CaseName"` format), session metadata. Fallback когда XML неполный.
+
+**Files**: `parse.py`
+**Complexity**: 1ч
+
+---
+
+### XC-5 (P1) — Парсинг crash-логов (cppcrash)
+
+**What**: `log/<module>/crash_log_*/cppcrash-*.log` содержит signal (SIGSEGV), backtrace с function names. Для crashed модулей — показать top-5 stack frames.
+
+**Depends on**: XC-1, XC-3
+**Files**: `error_analysis.py`, `models.py` (новый `CrashInfo` dataclass)
+**Complexity**: 2ч
+
+---
+
+### XC-6 (P2) — Performance Regression Detection
+
+**What**: Тесты PASS→PASS но стали в 5x медленнее — это pre-regression. Сейчас невидимо.
+
+**Approach**: Сравнить time_ms base vs target. Флаги `--min-time-delta`, `--min-time-ratio`. Новая секция в отчёте.
+
+**Files**: `compare.py`, `models.py`, `format_terminal.py`, `cli.py`
+**Complexity**: 2-3ч
+
+---
+
+### XC-7 (P2) — Module Health Scoring
+
+**What**: Быстрый overview — здоровье каждого модуля 0-100% с учётом regressions, crashes, improvements.
+
+**Files**: `compare.py`, `models.py`, `format_terminal.py`
+**Complexity**: 1-2ч
+
+---
+
+### XC-8 (P1) — Интеграция с selector
+
+**What**: Связать "ты изменил button.cpp" (selector output) с "ActsButtonTest упал" (xts_compare output). CLI flag `--selector-report`.
+
+**Files**: `selector_integration.py` (новый), `cli.py`
+**Complexity**: 2-3ч
+
+---
+
+### XC-9 (P1) — HTML Report
+
+**What**: Single-file standalone HTML с встроенным CSS/JS. Фильтруемые таблицы, collapsible секции, module health bars. Zero CDN deps.
+
+**Depends on**: XC-1, XC-2, XC-6, XC-7
+**Files**: `format_html.py` (новый), `cli.py`
+**Complexity**: 3-4ч
+
+---
+
+### XC-10 (P2) — Улучшенная фильтрация
+
+**What**: Suite/case glob filters, `--failure-type crash,timeout`, `--sort severity|time-delta`.
+
+**Depends on**: XC-1
+**Files**: `cli.py`, `format_terminal.py`
+**Complexity**: 2ч
+
+---
+
+### XC порядок имплементации
+
+```
+XC-1 (FailureType)  →  XC-2 (Root Cause)  →  XC-4 (task_info)  →  XC-3 (data.js)
+    →  XC-5 (crash logs)  →  XC-6 (Performance)  →  XC-7 (Health)
+    →  XC-8 (Selector)  →  XC-10 (Filters)  →  XC-9 (HTML)
+```
+
+**Общая оценка**: ~20-25 часов работы
+
+---
+
+## XTS Compare — Review Findings & UX Improvements (2026-03-29)
+
+**Review document**: `docs/reports/REVIEW-xts-compare-phase1.md` (полный отчёт с воспроизведением, примерами кода и рекомендуемым порядком фиксов)
+
+### Баги и безопасность (фаза 1 — до feature work)
+
+| ID | Severity | Описание | Файл | Оценка |
+|----|----------|----------|------|--------|
+| CR-1 | CRITICAL | Path traversal через `log_refs` из data.js — `_resolve_report_path` не проверяет `../` | `parse.py:368` | 30мин |
+| HI-1 | HIGH | `UNBLOCKED` не считается в `compute_module_health` → score 0% для BLOCKED→PASS модулей | `compare.py:315` | 15мин |
+| HI-2 | HIGH | `predicted_but_no_change` false positive для UNBLOCKED-only модулей | `selector_integration.py:130` | 30мин |
+| MD-1 | MEDIUM | `xml.etree.ElementTree.ParseError` не ловится в CLI → raw traceback | `cli.py:250` | 10мин |
+| LO-3 | LOW | Нет тестов BLOCKED→FAIL и BLOCKED→BLOCKED transitions | `tests/` | 15мин |
+
+### UX P0 — минимальные параметры (фаза 2)
+
+| ID | Описание | Сейчас | Станет | Файл | Оценка |
+|----|----------|--------|--------|------|--------|
+| UX-1 | Positional args (2=compare, 3+=timeline) | `--base X --target Y` | `xts_compare A.zip B.zip` | `cli.py` | 1ч |
+| UX-2 | Auto-order base/target по timestamp | пользователь выбирает вручную | auto-detect из INI/filename | `cli.py`, `parse.py` | 1.5ч |
+| UX-3 | Format inference из расширения `--output` | `--html -o r.html` (оба флага) | `-o r.html` (html inferred) | `cli.py` | 15мин |
+| UX-9 | `-o` short flag для `--output` | только `--output` | `-o` | `cli.py` | 5мин |
+
+### UX P1 — удобство (фаза 3)
+
+| ID | Описание | Файл | Оценка |
+|----|----------|------|--------|
+| UX-4 | Directory-scan mode: `xts_compare /path/` → auto-discover archives | `cli.py`, `parse.py` | 2ч |
+| UX-5 | Auto-enable `--show-persistent` при 0 regressions | `cli.py` | 15мин |
+| UX-6 | Default sort=severity при regressions > 0 | `cli.py` | 15мин |
+| UX-7 | `.tar.gz` archive support в `open_archive()` | `parse.py` | 1ч |
+
+### Cleanup и UX P2 (фаза 4)
+
+| ID | Описание | Файл | Оценка |
+|----|----------|------|--------|
+| MD-2 | `NEW_FAIL` описание неточное (не учитывает BLOCKED→FAIL) | `format_terminal.py` | 5мин |
+| MD-3 | Удалить `_SECTION_ORDER` dead code (если осталось) | `format_terminal.py` | 5мин |
+| MD-4 | `BLOCKED→BLOCKED` = STATUS_CHANGE создаёт шум | `compare.py` | 1ч |
+| LO-1 | Misleading error для несуществующего пути | `parse.py` | 10мин |
+| LO-2 | `FailureType.UNKNOWN_FAIL` name/value inconsistency | `models.py` | 10мин |
+| LO-4 | Duplicate TestIdentity без warning | `parse.py` | 15мин |
+| LO-5 | `parse_summary_ini` DEFAULT ключи дважды | `parse.py` | 10мин |
+| UX-8 | Auto HTML output path при `--html` без `-o` | `cli.py` | 15мин |
+| UX-10 | `--regressions-only` для CI | `cli.py`, `format_terminal.py` | 30мин |
+| UX-11 | Advisory tips в terminal output | `format_terminal.py` | 30мин |
+
+### Рекомендуемый порядок
+
+```
+Фаза 1 (баги):     CR-1 → HI-1 → HI-2 → MD-1 → LO-3          ~2ч
+Фаза 2 (UX P0):    UX-9 → UX-3 → UX-1 → UX-2                  ~3ч
+Фаза 3 (UX P1):    UX-5 → UX-6 → UX-7 → UX-4                  ~3.5ч
+Фаза 4 (cleanup):  MD-2,3 → LO-1,2,4,5 → MD-4 → UX-8,10,11   ~3.5ч
+                                                          Итого: ~12ч
+```
 
 ---
 

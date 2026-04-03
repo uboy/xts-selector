@@ -14,5 +14,9 @@
   "gitcode_api_url": "https://gitcode.com",
   "gitcode_token": "",
   "cache_file": "/tmp/arkui_xts_impact_cache.json",
+  "devices": [
+    "R52W12345678",
+    "192.168.0.10:8710"
+  ],
   "device": "192.168.0.10:8710"
 }

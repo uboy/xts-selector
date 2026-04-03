@@ -12,11 +12,13 @@ from __future__ import annotations
 
 import fnmatch
 from io import StringIO
+from pathlib import Path
 
 from .models import (
     ComparisonReport,
     FilterConfig,
     FailureType,
+    InputOrderInfo,
     ModuleComparison,
     PerformanceChange,
     RootCauseCluster,
@@ -34,7 +36,7 @@ _FAILURE_TYPE_BADGE: dict[FailureType, str] = {
     FailureType.ASSERTION: "[ASSERT]",
     FailureType.CAST_ERROR: "[CAST]",
     FailureType.RESOURCE: "[RESOURCE]",
-    FailureType.UNKNOWN_FAIL: "",
+    FailureType.UNKNOWN: "",
 }
 
 _FAILURE_TYPE_SORT_ORDER: dict[FailureType, int] = {
@@ -43,7 +45,16 @@ _FAILURE_TYPE_SORT_ORDER: dict[FailureType, int] = {
     FailureType.ASSERTION: 2,
     FailureType.CAST_ERROR: 3,
     FailureType.RESOURCE: 4,
-    FailureType.UNKNOWN_FAIL: 5,
+    FailureType.UNKNOWN: 5,
+}
+
+_FAILURE_TYPE_CLI_TOKEN: dict[FailureType, str] = {
+    FailureType.CRASH: "crash",
+    FailureType.TIMEOUT: "timeout",
+    FailureType.ASSERTION: "assertion",
+    FailureType.CAST_ERROR: "cast",
+    FailureType.RESOURCE: "resource",
+    FailureType.UNKNOWN: "unknown",
 }
 
 _TRANSITION_KIND_SORT_ORDER: dict[TransitionKind, int] = {
@@ -53,10 +64,11 @@ _TRANSITION_KIND_SORT_ORDER: dict[TransitionKind, int] = {
     TransitionKind.NEW_BLOCKED: 3,
     TransitionKind.DISAPPEARED: 4,
     TransitionKind.STATUS_CHANGE: 5,
-    TransitionKind.UNBLOCKED: 6,
-    TransitionKind.IMPROVEMENT: 7,
-    TransitionKind.NEW_PASS: 8,
-    TransitionKind.STABLE_PASS: 9,
+    TransitionKind.STABLE_BLOCKED: 6,
+    TransitionKind.UNBLOCKED: 7,
+    TransitionKind.IMPROVEMENT: 8,
+    TransitionKind.NEW_PASS: 9,
+    TransitionKind.STABLE_PASS: 10,
 }
 
 # Box-drawing constants.
@@ -73,18 +85,6 @@ _OUTCOME_SYMBOL: dict[TestOutcome, str] = {
     TestOutcome.UNKNOWN: "?",
 }
 
-_SECTION_ORDER = [
-    TransitionKind.REGRESSION,
-    TransitionKind.IMPROVEMENT,
-    TransitionKind.NEW_FAIL,
-    TransitionKind.NEW_PASS,
-    TransitionKind.PERSISTENT_FAIL,
-    TransitionKind.DISAPPEARED,
-    TransitionKind.STATUS_CHANGE,
-    TransitionKind.NEW_BLOCKED,
-    TransitionKind.UNBLOCKED,
-]
-
 _SECTION_LABELS: dict[TransitionKind, str] = {
     TransitionKind.REGRESSION: "REGRESSIONS",
     TransitionKind.IMPROVEMENT: "IMPROVEMENTS",
@@ -93,6 +93,7 @@ _SECTION_LABELS: dict[TransitionKind, str] = {
     TransitionKind.PERSISTENT_FAIL: "PERSISTENT FAILURES",
     TransitionKind.DISAPPEARED: "DISAPPEARED",
     TransitionKind.STATUS_CHANGE: "STATUS CHANGES",
+    TransitionKind.STABLE_BLOCKED: "STABLE BLOCKED",
     TransitionKind.NEW_BLOCKED: "NEWLY BLOCKED",
     TransitionKind.UNBLOCKED: "UNBLOCKED",
 }
@@ -100,11 +101,12 @@ _SECTION_LABELS: dict[TransitionKind, str] = {
 _SECTION_DESCRIPTIONS: dict[TransitionKind, str] = {
     TransitionKind.REGRESSION: "Tests that were PASS, now FAIL",
     TransitionKind.IMPROVEMENT: "Tests that were FAIL, now PASS",
-    TransitionKind.NEW_FAIL: "Tests not present in base, now FAIL",
+    TransitionKind.NEW_FAIL: "Tests absent from base or previously BLOCKED, now FAIL",
     TransitionKind.NEW_PASS: "Tests not present in base, now PASS",
     TransitionKind.PERSISTENT_FAIL: "Tests that were FAIL in both runs",
     TransitionKind.DISAPPEARED: "Tests in base that are absent from target",
     TransitionKind.STATUS_CHANGE: "Tests with other status changes",
+    TransitionKind.STABLE_BLOCKED: "Tests that stayed BLOCKED in both runs",
     TransitionKind.NEW_BLOCKED: "Tests that became BLOCKED",
     TransitionKind.UNBLOCKED: "Tests that were BLOCKED, now run",
 }
@@ -136,6 +138,15 @@ def _format_header(base: RunMetadata, target: RunMetadata) -> str:
     return f"{border}\n  {title}\n{border}"
 
 
+def _format_single_run_header(meta: RunMetadata) -> str:
+    label = meta.label or meta.source_path or "run"
+    timestamp = f" ({meta.timestamp})" if meta.timestamp else ""
+    title = f"XTS Run Summary: {label}{timestamp}"
+    width = max(len(title) + 4, 56)
+    border = _DOUBLE_HORIZ * width
+    return f"{border}\n  {title}\n{border}"
+
+
 def _format_summary_table(report: ComparisonReport) -> str:
     buf = StringIO()
     s = report.summary
@@ -159,6 +170,7 @@ def _format_summary_table(report: ComparisonReport) -> str:
         ("NEW_PASS", s.new_pass, ""),
         ("PERSISTENT_FAIL", s.persistent_fail, ""),
         ("DISAPPEARED", s.disappeared, ""),
+        ("STABLE_BLOCKED", s.stable_blocked, ""),
         ("STATUS_CHANGE", s.status_change, ""),
         ("NEW_BLOCKED", s.new_blocked, ""),
         ("UNBLOCKED", s.unblocked, ""),
@@ -167,6 +179,73 @@ def _format_summary_table(report: ComparisonReport) -> str:
         buf.write(f"  {cat:<22} {count:>6}{note}\n")
 
     return buf.getvalue()
+
+
+def _format_single_run_summary(meta: RunMetadata) -> str:
+    buf = StringIO()
+    buf.write("  Summary\n")
+    buf.write(f"  {_SINGLE_LINE}\n")
+    buf.write(f"  Total tests:    {meta.total_tests:>6}\n")
+    buf.write(f"  PASS:           {meta.pass_count:>6}\n")
+    buf.write(f"  FAIL:           {meta.fail_count:>6}\n")
+    buf.write(f"  BLOCKED:        {meta.blocked_count:>6}\n")
+    if meta.device:
+        buf.write(f"  Device:         {meta.device}\n")
+    if meta.duration_s:
+        buf.write(f"  Duration:       {meta.duration_s:.1f}s\n")
+    if meta.modules_tested:
+        buf.write(f"  Modules:        {len(meta.modules_tested)}\n")
+    if meta.timestamp_source:
+        buf.write(f"  Timestamp src:  {meta.timestamp_source}\n")
+    if meta.archive_diagnostics.source_type:
+        buf.write(f"  Source type:    {meta.archive_diagnostics.source_type}\n")
+    return buf.getvalue()
+
+
+def _format_archive_notices(meta: RunMetadata, prefix: str) -> list[str]:
+    notices = meta.archive_diagnostics.skipped_entries
+    if not notices:
+        return []
+    items = ", ".join(f"{notice.reason}:{notice.path}" for notice in notices[:3])
+    if len(notices) > 3:
+        items += ", ..."
+    return [f"  {prefix} archive notices: skipped {len(notices)} entry(s) [{items}]"]
+
+
+def _format_input_order(info: InputOrderInfo) -> str:
+    if not info.mode:
+        return ""
+    auto_label = "auto" if info.auto_detected else "explicit"
+    buf = StringIO()
+    buf.write("  Inputs\n")
+    buf.write(f"  {_SINGLE_LINE}\n")
+    buf.write(f"  Mode:           {info.mode}\n")
+    buf.write(f"  Order:          {info.source or '-'} ({auto_label})\n")
+    if info.origin:
+        buf.write(f"  Origin:         {info.origin}\n")
+    if info.ordered_paths:
+        names = " -> ".join(Path(path).name for path in info.ordered_paths)
+        buf.write(f"  Paths:          {names}\n")
+    return buf.getvalue()
+
+
+def _format_compare_context(report: ComparisonReport) -> str:
+    lines: list[str] = []
+    order_block = _format_input_order(report.input_order)
+    if order_block:
+        lines.append(order_block.rstrip())
+    if report.base.timestamp_source or report.target.timestamp_source:
+        lines.append("  Timestamp Provenance")
+        lines.append(f"  {_SINGLE_LINE}")
+        if report.base.timestamp_source:
+            lines.append(f"  Base:           {report.base.timestamp_source}")
+        if report.target.timestamp_source:
+            lines.append(f"  Target:         {report.target.timestamp_source}")
+    lines.extend(_format_archive_notices(report.base, "Base"))
+    lines.extend(_format_archive_notices(report.target, "Target"))
+    if not lines:
+        return ""
+    return "\n".join(lines) + "\n"
 
 
 def _collect_transitions_for_kind(
@@ -210,7 +289,7 @@ def _transition_failure_type(transition: TestTransition) -> FailureType:
         return transition.target_failure_type
     if transition.base_outcome in (TestOutcome.FAIL, TestOutcome.ERROR):
         return transition.base_failure_type
-    return FailureType.UNKNOWN_FAIL
+    return FailureType.UNKNOWN
 
 
 def _build_filter_config(
@@ -553,15 +632,63 @@ def _format_selector_correlation_section(
     return buf.getvalue()
 
 
+def _format_advisory_tips(
+    report: ComparisonReport,
+    filters: FilterConfig,
+    show_stable_blocked: bool,
+) -> str:
+    if filters.failure_types is not None:
+        return ""
+
+    tips: list[str] = []
+    failed_transitions = report.regressions + report.new_fails + report.persistent_fails
+    failure_counts: dict[FailureType, int] = {}
+    for transition in failed_transitions:
+        failure_type = _transition_failure_type(transition)
+        if failure_type == FailureType.UNKNOWN:
+            continue
+        failure_counts[failure_type] = failure_counts.get(failure_type, 0) + 1
+
+    if failure_counts:
+        total = sum(failure_counts.values())
+        failure_type, count = max(
+            failure_counts.items(),
+            key=lambda item: (item[1], -_FAILURE_TYPE_SORT_ORDER.get(item[0], 99)),
+        )
+        if total > 0 and count * 100 >= total * 60:
+            tips.append(
+                f"Tip: {count}/{total} failures are {failure_type.value}. "
+                f"Use --failure-type {_FAILURE_TYPE_CLI_TOKEN[failure_type]} for focused view."
+            )
+
+    if report.summary.stable_blocked > 0 and not show_stable_blocked:
+        tips.append(
+            f"Tip: {report.summary.stable_blocked} tests stayed BLOCKED. "
+            "Use --show-stable-blocked to inspect them."
+        )
+
+    if not tips:
+        return ""
+
+    buf = StringIO()
+    buf.write("\n  Tips\n")
+    buf.write(f"  {_SINGLE_LINE}\n")
+    for tip in tips:
+        buf.write(f"  {tip}\n")
+    return buf.getvalue()
+
+
 def format_report(
     report: ComparisonReport,
     show_stable: bool = False,
+    show_stable_blocked: bool = False,
     show_persistent: bool = False,
     module_filter: str | None = None,
     suite_filter: str | None = None,
     case_filter: str | None = None,
     failure_types: set[FailureType] | None = None,
     sort_key: str = "module",
+    regressions_only: bool = False,
 ) -> str:
     """
     Generate a full human-readable comparison report.
@@ -587,7 +714,14 @@ def format_report(
     buf.write(_format_header(report.base, report.target))
     buf.write("\n\n")
     buf.write(_format_summary_table(report))
+    buf.write(_format_compare_context(report))
 
+    if regressions_only:
+        buf.write(_format_section(report, TransitionKind.REGRESSION, filters))
+        buf.write("\n")
+        return buf.getvalue()
+
+    buf.write(_format_advisory_tips(report, filters, show_stable_blocked))
     buf.write(_format_module_health_section(report.modules, filters))
     buf.write(_format_performance_section(report, filters))
 
@@ -623,6 +757,25 @@ def format_report(
             buf.write(f"{_DOUBLE_LINE}\n")
             buf.write(_format_transition_trees(stable, TransitionKind.STABLE_PASS, filters.sort_key))
 
+    if show_stable_blocked:
+        buf.write(_format_section(report, TransitionKind.STABLE_BLOCKED, filters))
+
+    buf.write("\n")
+    return buf.getvalue()
+
+
+def format_single_run(meta: RunMetadata) -> str:
+    """Render a compact summary for one XTS run."""
+    buf = StringIO()
+    buf.write(_format_single_run_header(meta))
+    buf.write("\n\n")
+    buf.write(_format_single_run_summary(meta))
+    notices = _format_archive_notices(meta, "Run")
+    if notices:
+        buf.write("\n")
+        for line in notices:
+            buf.write(line)
+            buf.write("\n")
     buf.write("\n")
     return buf.getvalue()
 
@@ -642,6 +795,10 @@ def format_timeline(report: TimelineReport) -> str:
 
     buf = StringIO()
     labels = [m.label or m.source_path or f"run{i}" for i, m in enumerate(report.runs)]
+    order_block = _format_input_order(report.input_order)
+    if order_block:
+        buf.write(order_block)
+        buf.write("\n")
 
     # Use only interesting rows; fall back to all if none.
     rows = report.interesting_rows if report.interesting_rows else report.rows

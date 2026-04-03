@@ -16,6 +16,7 @@ from .models import (
     SelectorChangedFileCorrelation,
     SelectorProjectCorrelation,
     TestIdentity,
+    TransitionKind,
 )
 
 _WORD_SPLIT_RE = re.compile(r"[^a-z0-9]+")
@@ -129,10 +130,16 @@ def correlate_with_selector(
     module_names = [module.module for module in comparison.modules]
     regressions_by_module: dict[str, list[TestIdentity]] = {}
     improvements_by_module: dict[str, list[TestIdentity]] = {}
+    unblocked_by_module: dict[str, list[TestIdentity]] = {}
     for transition in comparison.regressions:
         regressions_by_module.setdefault(transition.identity.module, []).append(transition.identity)
     for transition in comparison.improvements:
         improvements_by_module.setdefault(transition.identity.module, []).append(transition.identity)
+    for module in comparison.modules:
+        for transitions in module.suites.values():
+            for transition in transitions:
+                if transition.kind == TransitionKind.UNBLOCKED:
+                    unblocked_by_module.setdefault(transition.identity.module, []).append(transition.identity)
 
     correlations: list[SelectorChangedFileCorrelation] = []
     for item in result_items:
@@ -153,9 +160,11 @@ def correlate_with_selector(
 
             regressions: list[TestIdentity] = []
             improvements: list[TestIdentity] = []
+            unblocked: list[TestIdentity] = []
             for module_name in matched_modules:
                 regressions.extend(regressions_by_module.get(module_name, []))
                 improvements.extend(improvements_by_module.get(module_name, []))
+                unblocked.extend(unblocked_by_module.get(module_name, []))
 
             predicted_projects.append(
                 SelectorProjectCorrelation(
@@ -167,7 +176,10 @@ def correlate_with_selector(
                     matched_modules=matched_modules,
                     regressions=sorted(regressions, key=lambda identity: (identity.module, identity.suite, identity.case)),
                     improvements=sorted(improvements, key=lambda identity: (identity.module, identity.suite, identity.case)),
-                    predicted_but_no_change=bool(matched_modules) and not regressions and not improvements,
+                    predicted_but_no_change=bool(matched_modules)
+                    and not regressions
+                    and not improvements
+                    and not unblocked,
                 )
             )
 

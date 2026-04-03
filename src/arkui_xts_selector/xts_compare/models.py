@@ -23,6 +23,7 @@ class FailureType(enum.Enum):
     ASSERTION = "ASSERTION"
     CAST_ERROR = "CAST_ERROR"
     RESOURCE = "RESOURCE"
+    UNKNOWN = "UNKNOWN"
     UNKNOWN_FAIL = "UNKNOWN"
 
 
@@ -34,6 +35,7 @@ class TransitionKind(enum.Enum):
     PERSISTENT_FAIL = "PERSISTENT_FAIL"
     DISAPPEARED = "DISAPPEARED"
     STABLE_PASS = "STABLE_PASS"
+    STABLE_BLOCKED = "STABLE_BLOCKED"
     STATUS_CHANGE = "STATUS_CHANGE"
     NEW_BLOCKED = "NEW_BLOCKED"
     UNBLOCKED = "UNBLOCKED"
@@ -94,6 +96,18 @@ class ModuleInfo:
 
 
 @dataclass
+class ArchiveEntryNotice:
+    path: str
+    reason: str
+
+
+@dataclass
+class ArchiveDiagnostics:
+    source_type: str = ""
+    skipped_entries: list[ArchiveEntryNotice] = field(default_factory=list)
+
+
+@dataclass
 class TaskInfoSummary:
     """Structured task_info.record contents."""
 
@@ -115,6 +129,8 @@ class RunMetadata:
     modules_tested: list[str] = field(default_factory=list)
     task_info: TaskInfoSummary = field(default_factory=TaskInfoSummary)
     module_infos: dict[str, ModuleInfo] = field(default_factory=dict)
+    timestamp_source: str = ""
+    archive_diagnostics: ArchiveDiagnostics = field(default_factory=ArchiveDiagnostics)
 
 
 @dataclass
@@ -174,6 +190,7 @@ class ComparisonSummary:
     persistent_fail: int = 0
     disappeared: int = 0
     stable_pass: int = 0
+    stable_blocked: int = 0
     status_change: int = 0
     new_blocked: int = 0
     unblocked: int = 0
@@ -204,6 +221,17 @@ class SelectorChangedFileCorrelation:
 
 
 @dataclass
+class InputOrderInfo:
+    mode: str = ""
+    source: str = ""
+    auto_detected: bool = False
+    origin: str = ""
+    original_paths: list[str] = field(default_factory=list)
+    ordered_paths: list[str] = field(default_factory=list)
+    details: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
 class ComparisonReport:
     base: RunMetadata
     target: RunMetadata
@@ -217,6 +245,7 @@ class ComparisonReport:
     root_causes: list[RootCauseCluster] = field(default_factory=list)
     performance_changes: list[PerformanceChange] = field(default_factory=list)
     selector_correlations: list[SelectorChangedFileCorrelation] = field(default_factory=list)
+    input_order: InputOrderInfo = field(default_factory=InputOrderInfo)
 
 
 @dataclass
@@ -251,3 +280,4 @@ class TimelineReport:
     runs: list[RunMetadata] = field(default_factory=list)
     rows: list[TimelineRow] = field(default_factory=list)
     interesting_rows: list[TimelineRow] = field(default_factory=list)
+    input_order: InputOrderInfo = field(default_factory=InputOrderInfo)

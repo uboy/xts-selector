@@ -9,8 +9,11 @@ from __future__ import annotations
 import json
 
 from .models import (
+    ArchiveDiagnostics,
+    ArchiveEntryNotice,
     CrashInfo,
     ComparisonReport,
+    InputOrderInfo,
     ModuleInfo,
     ModuleComparison,
     PerformanceChange,
@@ -22,10 +25,37 @@ from .models import (
     TestIdentity,
     TestOutcome,
     TestTransition,
+    TestResult,
     TimelineReport,
     TimelineRow,
     TransitionKind,
 )
+
+
+def _archive_notice_to_dict(notice: ArchiveEntryNotice) -> dict:
+    return {
+        "path": notice.path,
+        "reason": notice.reason,
+    }
+
+
+def _archive_diagnostics_to_dict(info: ArchiveDiagnostics) -> dict:
+    return {
+        "source_type": info.source_type,
+        "skipped_entries": [_archive_notice_to_dict(notice) for notice in info.skipped_entries],
+    }
+
+
+def _input_order_to_dict(info: InputOrderInfo) -> dict:
+    return {
+        "mode": info.mode,
+        "source": info.source,
+        "auto_detected": info.auto_detected,
+        "origin": info.origin,
+        "original_paths": info.original_paths,
+        "ordered_paths": info.ordered_paths,
+        "details": info.details,
+    }
 
 
 def _crash_info_to_dict(info: CrashInfo | None) -> dict | None:
@@ -96,6 +126,8 @@ def _metadata_to_dict(meta: RunMetadata) -> dict:
             name: _module_info_to_dict(info)
             for name, info in meta.module_infos.items()
         },
+        "timestamp_source": meta.timestamp_source,
+        "archive_diagnostics": _archive_diagnostics_to_dict(meta.archive_diagnostics),
     }
 
 
@@ -138,6 +170,7 @@ def _summary_to_dict(s) -> dict:
         "persistent_fail": s.persistent_fail,
         "disappeared": s.disappeared,
         "stable_pass": s.stable_pass,
+        "stable_blocked": s.stable_blocked,
         "status_change": s.status_change,
         "new_blocked": s.new_blocked,
         "unblocked": s.unblocked,
@@ -216,6 +249,37 @@ def report_to_dict(report: ComparisonReport) -> dict:
             _selector_changed_file_to_dict(entry)
             for entry in report.selector_correlations
         ],
+        "input_order": _input_order_to_dict(report.input_order),
+    }
+
+
+def single_run_to_dict(meta: RunMetadata, results: dict[TestIdentity, TestResult]) -> dict:
+    """Convert a single run into a JSON-serializable dict."""
+    ordered_results = sorted(
+        results.values(),
+        key=lambda result: (result.identity.module, result.identity.suite, result.identity.case),
+    )
+    summary = {
+        "total_tests": meta.total_tests,
+        "pass_count": meta.pass_count,
+        "fail_count": meta.fail_count,
+        "blocked_count": meta.blocked_count,
+        "modules_tested": len(meta.modules_tested),
+    }
+    return {
+        "kind": "single_run",
+        "run": _metadata_to_dict(meta),
+        "summary": summary,
+        "results": [
+            {
+                "identity": _identity_to_dict(result.identity),
+                "outcome": result.outcome.value,
+                "time_ms": result.time_ms,
+                "message": result.message,
+                "failure_type": result.failure_type.value,
+            }
+            for result in ordered_results
+        ],
     }
 
 
@@ -242,6 +306,7 @@ def timeline_to_dict(report: TimelineReport) -> dict:
         "runs": [_metadata_to_dict(m) for m in report.runs],
         "interesting_rows": [_timeline_row_to_dict(r) for r in report.interesting_rows],
         "rows": [_timeline_row_to_dict(r) for r in report.rows],
+        "input_order": _input_order_to_dict(report.input_order),
     }
 
 
