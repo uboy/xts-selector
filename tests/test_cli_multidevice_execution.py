@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -211,6 +212,70 @@ class RunTargetPlanningTests(unittest.TestCase):
         results = report["results"][0]["run_targets"][0]["execution_results"]
         self.assertEqual([item["status"] for item in results], ["passed", "failed"])
 
+    def test_execute_planned_targets_marks_xdevice_case_failures_as_failed(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "repo"
+            acts_out_root = repo_root / "out/release/suites/acts"
+            acts_out_root.mkdir(parents=True, exist_ok=True)
+            target = build_run_target_entry(
+                {
+                    "project": "test/xts/acts/arkui/button_static",
+                    "test_json": "test/xts/acts/arkui/button_static/Test.json",
+                    "bundle_name": "com.example.button",
+                    "driver_module_name": "entry",
+                    "xdevice_module_name": "ActsButtonStaticTest",
+                    "build_target": "arkui_button",
+                    "driver_type": "JSUnitTest",
+                    "test_haps": ["ActsButtonStaticTest.hap"],
+                    "confidence": "high",
+                    "bucket": "must-run",
+                    "variant": "static",
+                },
+                repo_root=repo_root,
+                acts_out_root=acts_out_root,
+                device="SER1",
+            )
+            report = {
+                "results": [{"changed_file": "a.cpp", "run_targets": [target]}],
+                "symbol_queries": [],
+            }
+
+            def fake_run(command: str, **_kwargs):
+                match = re.search(r"-rp (?P<path>\S+)", command)
+                self.assertIsNotNone(match)
+                result_root = Path(match.group("path"))
+                result_root.mkdir(parents=True, exist_ok=True)
+                (result_root / "summary_report.xml").write_text(
+                    (
+                        '<testsuites name="ActsButtonStaticTest">'
+                        '<testsuite name="ButtonSuite">'
+                        '<testcase name="testPass" status="run" result="true" time="0.1" />'
+                        '<testcase name="testFail" status="run" result="false" time="0.1" />'
+                        "</testsuite>"
+                        "</testsuites>"
+                    ),
+                    encoding="utf-8",
+                )
+                return SimpleNamespace(returncode=0, stdout="ok\n", stderr="")
+
+            with mock.patch("arkui_xts_selector.execution.subprocess.run", side_effect=fake_run):
+                summary = execute_planned_targets(
+                    report,
+                    repo_root=repo_root,
+                    acts_out_root=acts_out_root,
+                    devices=["SER1"],
+                    run_tool="xdevice",
+                    xdevice_reports_root=Path(tmpdir) / "xdevice_reports",
+                )
+
+        self.assertEqual(summary["passed"], 0)
+        self.assertEqual(summary["failed"], 1)
+        self.assertTrue(summary["has_failures"])
+        result = report["results"][0]["run_targets"][0]["execution_results"][0]
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["case_summary"]["total_tests"], 2)
+        self.assertEqual(result["case_summary"]["fail_count"], 1)
+
 
 class MainExecutionExitTests(unittest.TestCase):
     def test_main_returns_nonzero_when_run_now_has_execution_failures(self) -> None:
@@ -285,6 +350,94 @@ class MainExecutionExitTests(unittest.TestCase):
         output = buffer.getvalue()
         self.assertIn("requested_devices: SER1, SER2", output)
         self.assertIn("execution_summary: planned=2, passed=1, failed=1", output)
+
+    def test_print_human_includes_case_summary(self) -> None:
+        report = {
+            "repo_root": "/tmp/repo",
+            "xts_root": "/tmp/repo/test/xts",
+            "sdk_api_root": "/tmp/repo/sdk",
+            "git_repo_root": "/tmp/repo/foundation/arkui/ace_engine",
+            "acts_out_root": "/tmp/repo/out/release/suites/acts",
+            "product_build": {"status": "present", "out_dir_exists": True, "build_log_exists": True, "error_log_exists": False, "error_log_size": 0},
+            "built_artifacts": {"status": "present", "testcases_dir_exists": True, "module_info_exists": True, "testcase_json_count": 1},
+            "built_artifact_index": {},
+            "cache_used": False,
+            "variants_mode": "auto",
+            "requested_devices": ["SER1"],
+            "execution_overview": {"run_tool": "xdevice", "unique_target_count": 1, "selected_target_count": 1, "executed": True},
+            "execution_summary": {"planned_run_count": 1, "passed": 0, "failed": 1, "timeout": 0, "unavailable": 0},
+            "excluded_inputs": [],
+            "results": [
+                {
+                    "changed_file": "a.cpp",
+                    "signals": {
+                        "modules": [],
+                        "symbols": [],
+                        "domains": [],
+                        "path_keywords": [],
+                        "project_hints": [],
+                        "family_tokens": [],
+                    },
+                    "projects": [
+                        {
+                            "project": "test/xts/acts/arkui/button_static",
+                            "score": 42,
+                            "bucket": "must-run",
+                            "variant": "static",
+                            "confidence": "high",
+                            "bundle_name": "com.example.button",
+                            "test_json": "test/xts/acts/arkui/button_static/Test.json",
+                            "reasons": [],
+                            "test_files": [],
+                        }
+                    ],
+                    "run_targets": [
+                        {
+                            "test_json": "test/xts/acts/arkui/button_static/Test.json",
+                            "bundle_name": "com.example.button",
+                            "variant": "static",
+                            "bucket": "must-run",
+                            "confidence": "high",
+                            "test_haps": [],
+                            "aa_test_command": "",
+                            "xdevice_command": "python3 -m xdevice ...",
+                            "runtest_command": "",
+                            "execution_sources": [],
+                            "execution_plan": [],
+                            "execution_results": [
+                                {
+                                    "device_label": "SER1",
+                                    "selected_tool": "xdevice",
+                                    "status": "failed",
+                                    "returncode": 0,
+                                    "result_path": "/tmp/result",
+                                    "case_summary": {
+                                        "total_tests": 2,
+                                        "pass_count": 1,
+                                        "fail_count": 1,
+                                        "blocked_count": 0,
+                                        "unknown_count": 0,
+                                    },
+                                    "stdout_tail": "",
+                                    "stderr_tail": "",
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            "symbol_queries": [],
+            "code_queries": [],
+            "unresolved_files": [],
+            "timings_ms": {},
+        }
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            print_human(report)
+
+        output = buffer.getvalue()
+        self.assertIn("case_summary: total=2, passed=1, failed=1, blocked=0, unknown=0", output)
 
 
 if __name__ == "__main__":

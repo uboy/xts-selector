@@ -13,10 +13,17 @@ This is not runtime coverage. It is a test selection helper.
 
 - analyze changed files directly
 - read changed files from Git diff or GitCode PR
+- auto-discover a full OHOS workspace from the current tree or a sibling checkout such as `ohos_master`
 - configurable XTS/SDK/git roots
+- optional daily-prebuilt ACTS reuse from official OpenHarmony full packages, so `xdevice` can run without a local XTS build
+- standalone daily artifact download for XTS, SDK, and dayu200 firmware packages
+- optional dayu200 firmware flashing through the same CLI using `hdc` + Rockchip `flash.py`
 - output `aa test`, `python -m xdevice`, and `runtest.sh` commands
 - multi-device execution planning for `aa_test`, `xdevice`, and `runtest`
+- device preflight before `--run-now`, including `hdc list targets` checks for connected devices
 - opt-in `--run-now` execution with per-device status in JSON and human output
+- optional labeled run storage under `.runs/<label>/<timestamp>/` for later audit and comparison
+- shard execution mode that can split selected unique targets across multiple devices
 - explicit `unresolved_files` block for files with weak or unreliable matches
 - product-build diagnostics via `out/<product>/build.log` and `error.log`
 - code-search evidence for symbol queries, useful for reconstructing manual XTS lists
@@ -32,7 +39,56 @@ cd arkui-xts-selector
 python3 -m pip install -e .
 ```
 
-## Basic Usage
+If you prefer to run directly from the repository checkout without installing the package, use:
+
+```bash
+PYTHONPATH=src python3 -m arkui_xts_selector --help
+PYTHONPATH=src python3 -m arkui_xts_selector.xts_compare --help
+```
+
+## Quick Start
+
+1. Inspect the available commands:
+
+```bash
+arkui-xts-selector --help
+python3 -m arkui_xts_selector.xts_compare --help
+```
+
+2. Run one selector query:
+
+```bash
+arkui-xts-selector --changed-file foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/content_modifier_helper_accessor.cpp
+```
+
+3. Plan or execute targets on a device:
+
+```bash
+arkui-xts-selector \
+  --symbol-query ButtonModifier \
+  --devices R52W12345678 \
+  --run-tool xdevice \
+  --run-now
+```
+
+4. Compare two labeled runs later:
+
+```bash
+python3 -m arkui_xts_selector.xts_compare \
+  --base-label baseline \
+  --target-label candidate
+```
+
+Use [docs/CLI_REFERENCE.md](docs/CLI_REFERENCE.md) for the full command reference, grouped flags, and extra examples.
+
+## Documentation
+
+- [docs/CLI_REFERENCE.md](docs/CLI_REFERENCE.md) - detailed CLI reference for `arkui-xts-selector` and `xts_compare`
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - project structure, indexes, and execution flow
+- [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) - scope and expected behavior
+- [docs/DESIGN.md](docs/DESIGN.md) - design notes and implementation direction
+
+## Common Examples
 
 ```bash
 arkui-xts-selector \
@@ -65,8 +121,48 @@ arkui-xts-selector \
 arkui-xts-selector \
   --symbol-query ButtonModifier \
   --devices R52W12345678,192.168.0.10:8710 \
+  --run-label baseline \
   --run-now \
-  --run-tool auto
+  --run-tool xdevice \
+  --shard-mode split
+```
+
+```bash
+arkui-xts-selector \
+  --symbol-query ButtonModifier \
+  --daily-build-tag 20260403_120242 \
+  --daily-component dayu200_Dyn_Sta_XTS \
+  --run-tool xdevice
+```
+
+```bash
+arkui-xts-selector \
+  --download-daily-tests \
+  --daily-build-tag 20260404_120510 \
+  --json
+```
+
+```bash
+arkui-xts-selector \
+  --download-daily-sdk \
+  --sdk-build-tag 20260404_120537 \
+  --sdk-component ohos-sdk-public \
+  --json
+```
+
+```bash
+arkui-xts-selector \
+  --flash-daily-firmware \
+  --firmware-build-tag 20260404_120244 \
+  --firmware-component dayu200 \
+  --device 150100424a544434520369864f628800 \
+  --flash-py-path /home/<user>/bin/linux/flash.py
+```
+
+```bash
+python3 -m arkui_xts_selector.xts_compare \
+  --base-label baseline \
+  --target-label v1
 ```
 
 ## Binary Packaging
@@ -113,10 +209,29 @@ The Windows build script:
 Example config is in [config/selector.example.json](config/selector.example.json).
 
 Recommended fields:
+- `repo_root`
 - `xts_root`
 - `sdk_api_root`
 - `git_repo_root`
 - `acts_out_root`
+- `run_store_root`
+- `daily_build_tag`
+- `daily_component`
+- `daily_branch`
+- `daily_date`
+- `daily_cache_root`
+- `sdk_build_tag`
+- `sdk_component`
+- `sdk_branch`
+- `sdk_date`
+- `sdk_cache_root`
+- `firmware_build_tag`
+- `firmware_component`
+- `firmware_branch`
+- `firmware_date`
+- `firmware_cache_root`
+- `flash_py_path`
+- `hdc_path`
 - `path_rules_file`
 - `composite_mappings_file`
 - `changed_file_exclusions_file`
@@ -207,10 +322,55 @@ Execution options:
 - `--devices SERIAL1,SERIAL2,...` supplies multiple device serials/IPs
 - `--devices-from <path>` loads device serials from a text file
 - `--device <serial>` is still supported as the single-device shortcut
+- `--daily-build-tag <tag>` resolves an official daily build and prepares prebuilt ACTS artifacts from its full package
+- `--daily-component <name>` selects the daily build component, for example `dayu200_Dyn_Sta_XTS`
+- `--daily-branch <name>` filters the daily build search by branch, default `master`
+- `--daily-date <YYYYMMDD>` constrains the daily build lookup when the date cannot be inferred from the tag
+- `--daily-cache-root <path>` controls where downloaded and extracted full packages are cached
+- `--download-daily-tests` downloads/extracts the XTS daily package described by `--daily-*` and exits
+- `--download-daily-sdk` downloads/extracts the SDK daily package described by `--sdk-*` and exits
+- `--download-daily-firmware` downloads/extracts the firmware image package described by `--firmware-*` and exits
+- `--flash-daily-firmware` downloads/extracts the firmware image package described by `--firmware-*`, flashes the board, and exits
+- `--sdk-build-tag <tag>` selects the SDK daily build tag
+- `--sdk-component <name>` selects the SDK daily component, default `ohos-sdk-public`
+- `--sdk-branch <name>` filters the SDK daily build search by branch, default `master`
+- `--sdk-date <YYYYMMDD>` constrains the SDK daily lookup when the date cannot be inferred from the tag
+- `--sdk-cache-root <path>` controls where downloaded/extracted SDK packages are cached
+- `--firmware-build-tag <tag>` selects the firmware daily build tag
+- `--firmware-component <name>` selects the firmware daily component, default `dayu200`
+- `--firmware-branch <name>` filters the firmware daily build search by branch, default `master`
+- `--firmware-date <YYYYMMDD>` constrains the firmware daily lookup when the date cannot be inferred from the tag
+- `--firmware-cache-root <path>` controls where downloaded/extracted firmware packages are cached
+- `--flash-py-path <path>` points to the Rockchip `flash.py` helper used for board flashing
+- `--hdc-path <path>` overrides the `hdc` binary used for bootloader switching before flashing
 - `--run-now` executes the selected run targets after report generation
+- `--run-label <label>` stores the planned or executed selector run under `.runs/<label>/<timestamp>/`
+- `--run-store-root <path>` overrides the default labeled-run storage location
 - `--run-tool auto|aa_test|xdevice|runtest` controls which launcher is used
+- `--shard-mode mirror|split` controls whether every device runs the same targets or the targets are sharded across devices
 - `--run-top-targets <N>` limits execution to the first N unique targets; `0` means all
 - `--run-timeout <seconds>` sets a per-command timeout for `--run-now`
+
+Run-label notes:
+- labeled runs are stored in the selector repo by default, not inside the OHOS workspace
+- compare-by-label is intended for xdevice-backed runs, because they produce result directories that `xts_compare` can load
+- `aa test` and `runtest` labeled runs are still stored for audit, but they are not guaranteed to be comparable later
+
+Daily-prebuilt notes:
+- the selector still analyzes source trees from `ohos_master`; prebuilt daily packages are only used as a source of ready ACTS artifacts for execution
+- the tool uses the full daily package (`obsPath`), not the image-only `*_img.tar.gz`
+- after extraction it heuristically discovers the best ACTS root by locating `testcases/module_info.list` and companion testcase JSON files
+
+Utility-mode notes:
+- utility-mode operations run before selector analysis and do not require `--changed-file`, `--symbol-query`, or `--code-query`
+- daily defaults currently track the real DCP `openharmony/master` components observed on 2026-04-04:
+  - tests: `dayu200_Dyn_Sta_XTS`
+  - SDK: `ohos-sdk-public`
+  - firmware: `dayu200`
+- firmware flashing currently targets the local Rockchip Linux flow that worked for dayu200:
+  - switch the board into bootloader through `hdc target boot -bootloader`
+  - wait for Rockchip `Loader`
+  - run `flash.py -a -i <image_bundle>`
 
 Progress options:
 - progress is on by default
@@ -243,9 +403,12 @@ Typical progress messages include:
 | Analyze a batch of changed files from a text list | `arkui-xts-selector --changed-files-from changed.txt` | Combined report for all listed files, unresolved items called out explicitly |
 | Analyze changes from git diff or PR | `arkui-xts-selector --git-diff HEAD~1..HEAD` or `--pr-url <url>` | Changed-file set resolved automatically, then normal ranking/build-guidance flow |
 | Run from a shared workspace config | `arkui-xts-selector --config config/selector.example.json --symbol-query ButtonModifier` | Same selection flow, but roots/product/device defaults come from config |
+| Reuse official daily prebuilt ACTS artifacts | `arkui-xts-selector --symbol-query ButtonModifier --daily-build-tag 20260403_120242 --daily-component dayu200_Dyn_Sta_XTS --run-tool xdevice` | Selector keeps using local source trees for analysis, but execution commands point at ACTS suites extracted from the downloaded full package |
 | Plan execution only for one or more devices | `arkui-xts-selector --symbol-query ButtonModifier --devices SER1,SER2` | Report includes per-device execution plan, but does not start tests |
-| Execute selected targets immediately through `hdc`/`xdevice`/`runtest` | `arkui-xts-selector --symbol-query ButtonModifier --devices SER1,SER2 --run-now --run-tool auto` | Per-device execution results in JSON/human output, non-zero exit if execution was requested and failures occurred |
+| Execute selected targets immediately through `hdc`/`xdevice`/`runtest` | `arkui-xts-selector --symbol-query ButtonModifier --devices SER1,SER2 --run-now --run-tool auto` | Per-device execution results in JSON/human output, with device/tool preflight before launch |
 | Limit blast radius of execution | `arkui-xts-selector --changed-file ... --run-now --run-top-targets 3 --run-timeout 600` | Only the first N unique targets are executed, with timeout-aware status reporting |
+| Keep a labeled baseline or versioned run | `arkui-xts-selector --symbol-query ButtonModifier --run-now --run-tool xdevice --run-label baseline` | Selector report plus run manifest are persisted under `.runs`, ready for later compare-by-label |
+| Distribute selected targets across multiple devices | `arkui-xts-selector --changed-file ... --devices SER1,SER2,SER3 --run-now --shard-mode split` | The execution plan assigns each unique target to one device instead of mirroring everything to all devices |
 
 ### `xts_compare`
 
@@ -254,6 +417,8 @@ Typical progress messages include:
 | Inspect one XTS run quickly | `python3 -m arkui_xts_selector.xts_compare /path/to/run.zip` | Single-run summary in terminal |
 | Export one XTS run as standalone HTML | `python3 -m arkui_xts_selector.xts_compare /path/to/run.zip --html -o single-run.html` | Shareable HTML summary for one run |
 | Compare base vs target run | `python3 -m arkui_xts_selector.xts_compare base.zip target.zip` | Compare report with regressions, improvements, health, performance, and provenance |
+| Export compare or single-run output as Markdown | `python3 -m arkui_xts_selector.xts_compare base.zip target.zip --markdown -o report.md` | Shareable Markdown artifact generated from the native compare models |
+| Compare two stored labeled runs | `python3 -m arkui_xts_selector.xts_compare --base-label baseline --target-label v1` | Resolves the latest comparable selector runs for each label, then renders the normal compare report |
 | Compare with explicit labels and machine-readable output | `python3 -m arkui_xts_selector.xts_compare --base base.zip --target target.zip --labels "base,fix" -o report.json` | JSON compare report with `input_order`, `timestamp_source`, `archive_diagnostics`, and transitions |
 | Build a timeline across several runs | `python3 -m arkui_xts_selector.xts_compare --timeline run1.zip run2.zip run3.zip` | Timeline report showing trends across runs |
 | Auto-discover archives from a results directory | `python3 -m arkui_xts_selector.xts_compare /path/to/results-dir/` | `1` archive -> single-run, `2` archives -> compare, `3+` archives -> timeline |
@@ -261,6 +426,17 @@ Typical progress messages include:
 | Triage only regressions for CI | `python3 -m arkui_xts_selector.xts_compare base.zip target.zip --regressions-only` | Summary plus the regression section only, exit `1` if regressions exist |
 | Inspect blocked noise or archive safety issues | `python3 -m arkui_xts_selector.xts_compare base.zip target.zip --show-stable-blocked` or `--strict-archive` | Either deeper blocked-case visibility or hard failure on skipped special archive entries |
 | Correlate compare output with selector predictions | `python3 -m arkui_xts_selector.xts_compare base.zip target.zip --selector-report arkui_xts_selector_report.json` | Added `Selector Correlation` block for predicted vs actual coverage |
+
+## Purpose And Boundaries
+
+`arkui-xts-selector` is still a selector-first tool.
+
+It is meant to:
+- map ArkUI changes to likely XTS targets;
+- help launch the selected targets;
+- preserve enough execution metadata to audit and compare those runs later.
+
+It is not meant to replace a full CI scheduler or device-lab orchestrator. The execution and compare features are there to close the loop around targeted validation, not to become a generic test farm.
 
 ## XTS Compare
 
@@ -349,6 +525,12 @@ python3 -m arkui_xts_selector.xts_compare \
   --selector-report arkui_xts_selector_report.json
 ```
 
+```bash
+python3 -m arkui_xts_selector.xts_compare \
+  --base run1.zip --target run2.zip \
+  --markdown -o report.md
+```
+
 Optional report inputs parsed by `load_run()` when present:
 - `summary_report.xml` for test-level outcomes
 - `summary.ini` for run metadata
@@ -378,6 +560,7 @@ Terminal compare reports now support:
 - `--sort module|severity|time-delta`
 - `--min-time-delta` and `--min-time-ratio` for performance-change detection
 - `--html` for a standalone shareable report with embedded CSS and JS
+- `--markdown` for a shareable Markdown report in compare or single-run mode
 - `--strict-archive` to reject archives containing skipped special entries
 - `--regressions-only` for CI-focused terminal output
 - `--show-stable-blocked` to inspect tests blocked in both runs

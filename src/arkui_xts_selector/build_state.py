@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import shlex
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +17,58 @@ def read_text(path: Path) -> str:
         return ""
 
 
+def _xdevice_bootstrap_dir(root: Path) -> Path:
+    digest = hashlib.sha256(str(root.resolve()).encode("utf-8")).hexdigest()[:12]
+    return (Path("/tmp") / "arkui_xts_selector_xdevice" / digest).resolve()
+
+
+def discover_bundled_xdevice_packages(root: Path) -> list[Path]:
+    candidates: list[Path] = []
+    seen: set[str] = set()
+    bases = [root, *list(root.parents[:4])]
+    for base in bases:
+        tools_dir = base / "tools"
+        if not tools_dir.is_dir():
+            continue
+        for package in sorted(tools_dir.glob("xdevice*.tar.gz")):
+            resolved = package.resolve()
+            key = str(resolved)
+            if key in seen:
+                continue
+            seen.add(key)
+            candidates.append(resolved)
+
+    def sort_key(path: Path) -> tuple[int, str]:
+        name = path.name.lower()
+        if name.startswith("xdevice-"):
+            return (0, name)
+        if "ohos" in name:
+            return (1, name)
+        if "devicetest" in name:
+            return (2, name)
+        return (3, name)
+
+    return sorted(candidates, key=sort_key)
+
+
+def build_bootstrap_xdevice_runner(root: Path) -> str | None:
+    packages = discover_bundled_xdevice_packages(root)
+    if not packages:
+        return None
+    bootstrap_dir = _xdevice_bootstrap_dir(root)
+    home_dir = bootstrap_dir / "home"
+    bootstrap_dir_q = shlex.quote(str(bootstrap_dir))
+    bootstrap_pkg_dir_q = shlex.quote(str(bootstrap_dir / "xdevice"))
+    home_dir_q = shlex.quote(str(home_dir))
+    package_args = " ".join(shlex.quote(str(path)) for path in packages)
+    return (
+        f"mkdir -p {bootstrap_dir_q} {home_dir_q} && "
+        f"if [ ! -d {bootstrap_pkg_dir_q} ]; then "
+        f"python3 -m pip install --no-deps --disable-pip-version-check --target {bootstrap_dir_q} {package_args}; "
+        f"fi && HOME={home_dir_q} PYTHONPATH={bootstrap_dir_q} python3 -m xdevice"
+    )
+
+
 def build_aa_test_command(bundle_name: str | None, module_name: str | None, project_path: str, device: str | None) -> str | None:
     if not bundle_name:
         return None
@@ -27,23 +81,38 @@ def build_aa_test_command(bundle_name: str | None, module_name: str | None, proj
     return f"{prefix}aa test -p {bundle_name} -b {bundle_name} -s unittest OpenHarmonyTestRunner"
 
 
-def build_xdevice_command(repo_root: Path, module_name: str | None, device: str | None, acts_out_root: Path | None) -> str | None:
+def build_xdevice_command(
+    repo_root: Path,
+    module_name: str | None,
+    device: str | None,
+    acts_out_root: Path | None,
+    report_path: Path | None = None,
+) -> str | None:
     if not module_name:
         return None
     root = acts_out_root or (repo_root / "out/release/suites/acts")
     tc_path = root / "testcases"
     res_path = root / "resource"
-    report_path = root / "xdevice_reports/<timestamp>"
+    report_path_value = report_path or (root / "xdevice_reports/<timestamp>")
     args = [
-        "run acts",
-        f"-tcpath {tc_path}",
-        f"-respath {res_path}",
-        f"-rp {report_path}",
-        f"-l {module_name}",
+        "run",
+        "acts",
+        "-tcpath",
+        str(tc_path),
+        "-rp",
+        str(report_path_value),
+        "-l",
+        module_name,
     ]
+    if res_path.exists():
+        args.extend(["-respath", str(res_path)])
     if device:
-        args.append(f"-sn {device}")
-    return f"cd {root} && python -m xdevice \"{' '.join(args)}\""
+        args.extend(["-sn", device])
+    runner = build_bootstrap_xdevice_runner(root) or "python3 -m xdevice"
+    if runner == "python3 -m xdevice" and (root / "run.sh").exists():
+        runner = "bash ./run.sh"
+    rendered_args = " ".join(shlex.quote(arg) for arg in args)
+    return f"cd {shlex.quote(str(root))} && {runner} {rendered_args}"
 
 
 def build_runtest_command(build_target: str, device: str | None) -> str | None:
@@ -122,12 +191,14 @@ def build_guidance(repo_root: Path, built_artifacts: dict, product_build: dict, 
     product_name = getattr(app_config, "product_name", None) or "<product_name>"
     system_size = getattr(app_config, "system_size", None) or "standard"
     xts_suitetype = getattr(app_config, "xts_suitetype", None)
+    prebuilt_ready = bool(getattr(app_config, "daily_prebuilt_ready", False))
+    prebuilt_note = getattr(app_config, "daily_prebuilt_note", "") or ""
     full_code_build_command = f"./build.sh --product-name {product_name} --ccache"
     acts_base = f"./test/xts/acts/build.sh product_name={product_name} system_size={system_size}"
     if xts_suitetype:
         acts_base = f"{acts_base} xts_suitetype={xts_suitetype}"
 
-    needs_code_build = product_build.get("status") in {"missing", "failed", "partial", "unknown"}
+    needs_code_build = product_build.get("status") in {"missing", "failed", "partial", "unknown"} and not prebuilt_ready
     needs_acts_build = not (built_artifacts["testcases_dir_exists"] and built_artifacts["module_info_exists"])
     if not needs_code_build and not needs_acts_build:
         return None
@@ -140,7 +211,10 @@ def build_guidance(repo_root: Path, built_artifacts: dict, product_build: dict, 
     if needs_code_build:
         reasons.append(product_build.get("reason", "Product build is missing or failed."))
     if needs_acts_build:
-        reasons.append("Built ACTS artifacts were not found under acts_out_root.")
+        if prebuilt_note:
+            reasons.append(prebuilt_note)
+        else:
+            reasons.append("Built ACTS artifacts were not found under acts_out_root.")
 
     return {
         "required": True,

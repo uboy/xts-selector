@@ -30,12 +30,33 @@ from urllib.parse import urlparse
 
 from .build_state import build_guidance, inspect_product_build
 from .built_artifacts import inspect_built_artifacts, load_built_artifact_index
+from .daily_prebuilt import (
+    DEFAULT_DAILY_COMPONENT,
+    DEFAULT_DAILY_CACHE_ROOT,
+    DEFAULT_FIRMWARE_COMPONENT,
+    DEFAULT_SDK_COMPONENT,
+    PreparedDailyArtifact,
+    PreparedDailyPrebuilt,
+    prepare_daily_prebuilt,
+    prepare_daily_firmware,
+    prepare_daily_sdk,
+    resolve_daily_build,
+)
 from .execution import (
     RUN_TOOL_CHOICES,
+    SHARD_MODE_CHOICES,
     attach_execution_plan,
     build_run_target_entry,
     execute_planned_targets,
+    preflight_execution,
     resolve_devices,
+)
+from .flashing import flash_image_bundle
+from .run_store import (
+    build_run_manifest,
+    create_run_session,
+    default_run_store_root,
+    write_run_artifacts,
 )
 from .workspace import (
     default_acts_out_root,
@@ -232,7 +253,7 @@ PATTERN_ALIAS = {
     "gesture":              ["GestureGroup", "TapGesture", "LongPressGesture",
                              "PanGesture", "PinchGesture", "RotationGesture", "SwipeGesture"],
     "xcomponent":           ["XComponent", "XComponentController"],
-    "web":                  ["Web", "WebviewController", "RichText"],
+    "web":                  ["Web", "WebviewController"],
     "form":                 ["FormComponent", "FormLink"],
     "folder_stack":         ["FolderStack"],
     "animator":             ["Animator"],
@@ -511,6 +532,30 @@ class AppConfig:
     product_name: str | None = None
     system_size: str = "standard"
     xts_suitetype: str | None = None
+    selector_repo_root: Path | None = None
+    run_label: str | None = None
+    run_store_root: Path | None = None
+    shard_mode: str = "mirror"
+    daily_build_tag: str | None = None
+    daily_component: str = DEFAULT_DAILY_COMPONENT
+    daily_branch: str = "master"
+    daily_date: str | None = None
+    daily_cache_root: Path | None = None
+    daily_prebuilt: PreparedDailyPrebuilt | None = None
+    daily_prebuilt_ready: bool = False
+    daily_prebuilt_note: str = ""
+    sdk_build_tag: str | None = None
+    sdk_component: str = DEFAULT_SDK_COMPONENT
+    sdk_branch: str = "master"
+    sdk_date: str | None = None
+    sdk_cache_root: Path | None = None
+    firmware_build_tag: str | None = None
+    firmware_component: str = DEFAULT_FIRMWARE_COMPONENT
+    firmware_branch: str = "master"
+    firmware_date: str | None = None
+    firmware_cache_root: Path | None = None
+    flash_py_path: Path | None = None
+    hdc_path: Path | None = None
 
 
 @dataclass
@@ -558,9 +603,22 @@ class TestProjectIndex:
     files: list[TestFileIndex] = field(default_factory=list)
     path_key: str = ""
     variant: str = "unknown"
+    search_summary_ready: bool = False
+    search_imports: set[str] = field(default_factory=set)
+    search_imported_symbols: set[str] = field(default_factory=set)
+    search_imported_symbol_tokens: set[str] = field(default_factory=set)
+    search_identifier_calls: set[str] = field(default_factory=set)
+    search_identifier_call_tokens: set[str] = field(default_factory=set)
+    search_member_call_tokens: set[str] = field(default_factory=set)
+    search_type_owner_tokens: set[str] = field(default_factory=set)
+    search_typed_modifier_bases: set[str] = field(default_factory=set)
+    search_words: set[str] = field(default_factory=set)
+    search_path_tokens: set[str] = field(default_factory=set)
+    search_project_path_compact: str = ""
+    search_file_path_compacts: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
-        return {
+        payload = {
             "relative_root": self.relative_root,
             "test_json": self.test_json,
             "bundle_name": self.bundle_name,
@@ -568,10 +626,26 @@ class TestProjectIndex:
             "variant": self.variant,
             "files": [item.to_dict() for item in self.files],
         }
+        if self.search_summary_ready:
+            payload["search_summary"] = {
+                "imports": sorted(self.search_imports),
+                "imported_symbols": sorted(self.search_imported_symbols),
+                "imported_symbol_tokens": sorted(self.search_imported_symbol_tokens),
+                "identifier_calls": sorted(self.search_identifier_calls),
+                "identifier_call_tokens": sorted(self.search_identifier_call_tokens),
+                "member_call_tokens": sorted(self.search_member_call_tokens),
+                "type_owner_tokens": sorted(self.search_type_owner_tokens),
+                "typed_modifier_bases": sorted(self.search_typed_modifier_bases),
+                "words": sorted(self.search_words),
+                "path_tokens": sorted(self.search_path_tokens),
+                "project_path_compact": self.search_project_path_compact,
+                "file_path_compacts": list(self.search_file_path_compacts),
+            }
+        return payload
 
     @classmethod
     def from_dict(cls, data: dict) -> "TestProjectIndex":
-        return cls(
+        project = cls(
             relative_root=data["relative_root"],
             test_json=data["test_json"],
             bundle_name=data.get("bundle_name"),
@@ -579,6 +653,22 @@ class TestProjectIndex:
             variant=data.get("variant", "unknown"),
             files=[TestFileIndex.from_dict(item) for item in data["files"]],
         )
+        summary = data.get("search_summary")
+        if isinstance(summary, dict):
+            project.search_summary_ready = True
+            project.search_imports = set(summary.get("imports", []))
+            project.search_imported_symbols = set(summary.get("imported_symbols", []))
+            project.search_imported_symbol_tokens = set(summary.get("imported_symbol_tokens", []))
+            project.search_identifier_calls = set(summary.get("identifier_calls", []))
+            project.search_identifier_call_tokens = set(summary.get("identifier_call_tokens", []))
+            project.search_member_call_tokens = set(summary.get("member_call_tokens", []))
+            project.search_type_owner_tokens = set(summary.get("type_owner_tokens", []))
+            project.search_typed_modifier_bases = set(summary.get("typed_modifier_bases", []))
+            project.search_words = set(summary.get("words", []))
+            project.search_path_tokens = set(summary.get("path_tokens", []))
+            project.search_project_path_compact = str(summary.get("project_path_compact", ""))
+            project.search_file_path_compacts = [str(item) for item in summary.get("file_path_compacts", [])]
+        return project
 
 
 
@@ -587,6 +677,127 @@ def repo_rel(path: Path) -> str:
         return str(path.resolve().relative_to(REPO_ROOT))
     except ValueError:
         return str(path)
+
+
+def ensure_project_search_summary(project: TestProjectIndex) -> TestProjectIndex:
+    if project.search_summary_ready:
+        return project
+
+    project_path_compact = compact_token(project.path_key)
+    path_tokens = {
+        compact_token(part)
+        for part in tokenize_path_parts(project.path_key.lower())
+        if compact_token(part)
+    }
+    path_tokens.update(path_component_tokens(project.path_key.lower()))
+
+    file_path_compacts: list[str] = []
+    for file_index in project.files:
+        file_path_compact = compact_token(file_index.relative_path)
+        if file_path_compact:
+            file_path_compacts.append(file_path_compact)
+        lower_relative_path = file_index.relative_path.lower()
+        path_tokens.update(
+            compact_token(part)
+            for part in tokenize_path_parts(lower_relative_path)
+            if compact_token(part)
+        )
+        path_tokens.update(path_component_tokens(lower_relative_path))
+        project.search_imports.update(file_index.imports)
+        project.search_imported_symbols.update(file_index.imported_symbols)
+        project.search_identifier_calls.update(file_index.identifier_calls)
+        project.search_imported_symbol_tokens.update(
+            compact_token(symbol)
+            for symbol in file_index.imported_symbols
+            if compact_token(symbol)
+        )
+        project.search_identifier_call_tokens.update(
+            compact_token(identifier)
+            for identifier in file_index.identifier_calls
+            if compact_token(identifier)
+        )
+        project.search_member_call_tokens.update(
+            compact_token(member)
+            for member in file_index.member_calls
+            if compact_token(member)
+        )
+        for entry in file_index.type_member_calls:
+            owner, _separator, _member = entry.partition(".")
+            owner_token = compact_token(owner)
+            if owner_token:
+                project.search_type_owner_tokens.add(owner_token)
+        project.search_typed_modifier_bases.update(file_index.typed_modifier_bases)
+        project.search_words.update(compact_token(word) for word in file_index.words if compact_token(word))
+
+    project.search_path_tokens = {token for token in path_tokens if token}
+    project.search_project_path_compact = project_path_compact
+    project.search_file_path_compacts = file_path_compacts
+    project.search_summary_ready = True
+    return project
+
+
+def project_might_match(project: TestProjectIndex, signals: dict[str, set[str]]) -> bool:
+    ensure_project_search_summary(project)
+
+    if signals["modules"] & project.search_imports:
+        return True
+
+    for token in signals.get("project_hints", set()):
+        if not token:
+            continue
+        if token in project.search_path_tokens or token in project.search_words:
+            return True
+        if token in project.search_project_path_compact:
+            return True
+        if any(token in file_path for file_path in project.search_file_path_compacts):
+            return True
+
+    for method in signals.get("method_hints", set()):
+        method_token = compact_token(method)
+        if method_token and method_token in project.search_member_call_tokens:
+            return True
+
+    for hint in signals.get("type_hints", set()):
+        hint_token = compact_token(hint)
+        if not hint_token:
+            continue
+        if (
+            hint_token in project.search_type_owner_tokens
+            or hint_token in project.search_imported_symbol_tokens
+            or hint_token in project.search_identifier_call_tokens
+        ):
+            return True
+
+    for symbol in signals.get("symbols", set()):
+        symbol_token = compact_token(symbol)
+        if symbol in project.search_imported_symbols or symbol in project.search_identifier_calls:
+            return True
+        if symbol_token and (
+            symbol_token in project.search_imported_symbol_tokens
+            or symbol_token in project.search_identifier_call_tokens
+            or symbol_token in project.search_member_call_tokens
+            or symbol_token in project.search_type_owner_tokens
+            or symbol_token in project.search_words
+        ):
+            return True
+        if symbol.endswith("Modifier"):
+            base_token = compact_token(symbol[:-8])
+            if base_token and base_token in project.search_typed_modifier_bases:
+                return True
+
+    return False
+
+
+def select_candidate_projects(
+    projects: list[TestProjectIndex],
+    signals: dict[str, set[str]],
+    variants_mode: str,
+) -> tuple[list[TestProjectIndex], list[TestProjectIndex]]:
+    variant_projects = [project for project in projects if variant_matches(project.variant, variants_mode)]
+    shortlisted = [project for project in variant_projects if project_might_match(project, signals)]
+    if not shortlisted:
+        return variant_projects, variant_projects
+    return variant_projects, shortlisted
 
 
 def normalize_changed_files(values: Iterable[str]) -> list[Path]:
@@ -1026,8 +1237,9 @@ def load_or_build_projects(xts_root: Path, cache_file: Path | None) -> tuple[lis
             # Cache hit
             try:
                 project = TestProjectIndex.from_dict(old_cache[rel_key]["data"])
+                ensure_project_search_summary(project)
                 projects.append(project)
-                new_cache[rel_key] = old_cache[rel_key]
+                new_cache[rel_key] = {"hash": proj_hash, "data": project.to_dict()}
                 cache_hits += 1
                 continue
             except (KeyError, TypeError):
@@ -1035,6 +1247,7 @@ def load_or_build_projects(xts_root: Path, cache_file: Path | None) -> tuple[lis
 
         # Cache miss — rebuild
         project = _build_single_project(test_json, root, xts_root)
+        ensure_project_search_summary(project)
         projects.append(project)
         new_cache[rel_key] = {"hash": proj_hash, "data": project.to_dict()}
 
@@ -1908,6 +2121,179 @@ def emit_progress(enabled: bool, message: str) -> None:
     print(f"phase: {message}", file=sys.stderr, flush=True)
 
 
+def prepare_daily_prebuilt_from_config(app_config: AppConfig) -> PreparedDailyPrebuilt | None:
+    if not app_config.daily_build_tag:
+        return None
+    build = resolve_daily_build(
+        component=app_config.daily_component,
+        build_tag=app_config.daily_build_tag,
+        branch=app_config.daily_branch,
+        build_date=app_config.daily_date,
+        component_role="xts",
+    )
+    prepared = prepare_daily_prebuilt(
+        build=build,
+        cache_root=app_config.daily_cache_root or DEFAULT_DAILY_CACHE_ROOT,
+    )
+    app_config.daily_prebuilt = prepared
+    if prepared.acts_out_root is not None:
+        app_config.acts_out_root = prepared.acts_out_root
+        app_config.daily_prebuilt_ready = True
+        app_config.daily_prebuilt_note = (
+            f"Using prebuilt ACTS artifacts from daily build {prepared.build.tag} "
+            f"({prepared.acts_out_root})."
+        )
+    else:
+        app_config.daily_prebuilt_ready = False
+        app_config.daily_prebuilt_note = (
+            f"Daily build {prepared.build.tag} was prepared, but no ACTS output root "
+            "could be discovered under the extracted package."
+        )
+    return prepared
+
+
+def prepare_daily_sdk_from_config(app_config: AppConfig) -> PreparedDailyArtifact:
+    if not app_config.sdk_build_tag:
+        raise ValueError("sdk build tag is required; provide --sdk-build-tag")
+    build = resolve_daily_build(
+        component=app_config.sdk_component,
+        build_tag=app_config.sdk_build_tag,
+        branch=app_config.sdk_branch,
+        build_date=app_config.sdk_date,
+        component_role="generic",
+    )
+    return prepare_daily_sdk(
+        build=build,
+        cache_root=app_config.sdk_cache_root or DEFAULT_DAILY_CACHE_ROOT,
+    )
+
+
+def prepare_daily_firmware_from_config(app_config: AppConfig) -> PreparedDailyArtifact:
+    if not app_config.firmware_build_tag:
+        raise ValueError("firmware build tag is required; provide --firmware-build-tag")
+    build = resolve_daily_build(
+        component=app_config.firmware_component,
+        build_tag=app_config.firmware_build_tag,
+        branch=app_config.firmware_branch,
+        build_date=app_config.firmware_date,
+        component_role="generic",
+    )
+    return prepare_daily_firmware(
+        build=build,
+        cache_root=app_config.firmware_cache_root or DEFAULT_DAILY_CACHE_ROOT,
+    )
+
+
+def utility_mode_requested(args: argparse.Namespace) -> bool:
+    return any(
+        (
+            args.download_daily_tests,
+            args.download_daily_sdk,
+            args.download_daily_firmware,
+            args.flash_daily_firmware,
+        )
+    )
+
+
+def write_and_render_utility_report(
+    report: dict[str, Any],
+    json_to_stdout: bool,
+    json_output_path: Path | None,
+) -> None:
+    written_json_path = write_json_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)
+    if json_to_stdout:
+        return
+    print("utility_mode: daily_artifacts")
+    operations = report.get("operations", {})
+    for name, payload in operations.items():
+        status = payload.get("status", "")
+        print(f"{name}: {status}")
+        for key in ("tag", "component", "role", "package_kind", "archive_path", "extracted_root", "primary_root"):
+            value = payload.get(key)
+            if value:
+                print(f"  {key}: {value}")
+        if payload.get("output_tail"):
+            print("  output_tail:")
+            for line in str(payload["output_tail"]).splitlines():
+                print(f"    {line}")
+    if written_json_path is not None:
+        print(f"json_output_path: {written_json_path}")
+
+
+def run_utility_mode(
+    args: argparse.Namespace,
+    app_config: AppConfig,
+    progress_enabled: bool,
+    json_to_stdout: bool,
+    json_output_path: Path | None,
+) -> int:
+    report: dict[str, Any] = {
+        "mode": "utility",
+        "requested_devices": list(app_config.devices),
+        "operations": {},
+    }
+    exit_code = 0
+
+    if args.download_daily_tests:
+        emit_progress(progress_enabled, f"downloading daily tests {app_config.daily_build_tag or ''}".strip())
+        try:
+            prepared = prepare_daily_prebuilt_from_config(app_config)
+            if prepared is None:
+                raise ValueError("daily build tag is required; provide --daily-build-tag")
+            report["operations"]["download_daily_tests"] = {
+                **prepared.to_dict(),
+                "role": "tests",
+                "package_kind": "full",
+                "status": "ready" if prepared.acts_out_root else "extracted",
+                "primary_root": str(prepared.acts_out_root) if prepared.acts_out_root else "",
+            }
+        except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
+            report["operations"]["download_daily_tests"] = {"status": "failed", "error": str(exc)}
+            exit_code = 2
+
+    firmware_prepared: PreparedDailyArtifact | None = None
+    if args.download_daily_sdk:
+        emit_progress(progress_enabled, f"downloading daily sdk {app_config.sdk_build_tag or ''}".strip())
+        try:
+            prepared_sdk = prepare_daily_sdk_from_config(app_config)
+            report["operations"]["download_daily_sdk"] = prepared_sdk.to_dict()
+        except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
+            report["operations"]["download_daily_sdk"] = {"status": "failed", "error": str(exc)}
+            exit_code = 2
+
+    if args.download_daily_firmware or args.flash_daily_firmware:
+        emit_progress(progress_enabled, f"downloading daily firmware {app_config.firmware_build_tag or ''}".strip())
+        try:
+            firmware_prepared = prepare_daily_firmware_from_config(app_config)
+            report["operations"]["download_daily_firmware"] = firmware_prepared.to_dict()
+        except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
+            report["operations"]["download_daily_firmware"] = {"status": "failed", "error": str(exc)}
+            exit_code = 2
+
+    if args.flash_daily_firmware:
+        emit_progress(progress_enabled, "flashing daily firmware")
+        try:
+            if firmware_prepared is None:
+                raise ValueError("firmware package is not prepared")
+            if firmware_prepared.primary_root is None:
+                raise ValueError("no flashable image root was discovered in the firmware package")
+            flash_result = flash_image_bundle(
+                image_root=firmware_prepared.primary_root,
+                flash_py_path=str(app_config.flash_py_path) if app_config.flash_py_path else None,
+                hdc_path=str(app_config.hdc_path) if app_config.hdc_path else None,
+                device=app_config.device,
+            )
+            report["operations"]["flash_daily_firmware"] = flash_result.to_dict()
+            if flash_result.status != "completed":
+                exit_code = max(exit_code, 1)
+        except (OSError, ValueError, FileNotFoundError, RuntimeError, subprocess.TimeoutExpired) as exc:
+            report["operations"]["flash_daily_firmware"] = {"status": "failed", "error": str(exc)}
+            exit_code = max(exit_code, 2)
+
+    write_and_render_utility_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)
+    return exit_code
+
+
 def resolve_json_output_path(path_value: str | None) -> Path:
     if not path_value:
         return (Path.cwd() / DEFAULT_REPORT_FILE).resolve()
@@ -1983,7 +2369,11 @@ def format_report(
         signals = infer_signals(changed_file, sdk_index, content_index, mapping_config)
         effective_variants_mode = resolve_variants_mode(variants_mode, changed_file)
         project_results = []
-        candidate_projects = [project for project in projects if variant_matches(project.variant, effective_variants_mode)]
+        all_variant_projects, candidate_projects = select_candidate_projects(
+            projects,
+            signals,
+            effective_variants_mode,
+        )
         for project in candidate_projects:
             score, project_reasons, file_hits = score_project(project, signals)
             if score <= 0:
@@ -2051,6 +2441,8 @@ def format_report(
         if debug_trace:
             result_item["debug"] = {
                 "candidate_project_count": len(candidate_projects),
+                "candidate_projects_before_prefilter": len(all_variant_projects),
+                "candidate_projects_after_prefilter": len(candidate_projects),
                 "matched_project_count": len(project_results),
             }
         selected_build_targets.extend(
@@ -2078,7 +2470,11 @@ def format_report(
         signals = build_query_signals(query, sdk_index, content_index, mapping_config)
         effective_variants_mode = resolve_variants_mode(variants_mode)
         project_results = []
-        candidate_projects = [project for project in projects if variant_matches(project.variant, effective_variants_mode)]
+        all_variant_projects, candidate_projects = select_candidate_projects(
+            projects,
+            signals,
+            effective_variants_mode,
+        )
         for project in candidate_projects:
             score, project_reasons, file_hits = score_project(project, signals)
             if score <= 0:
@@ -2144,6 +2540,8 @@ def format_report(
         if debug_trace:
             symbol_item["debug"] = {
                 "candidate_project_count": len(candidate_projects),
+                "candidate_projects_before_prefilter": len(all_variant_projects),
+                "candidate_projects_after_prefilter": len(candidate_projects),
                 "matched_project_count": len(project_results),
             }
         report["symbol_queries"].append(symbol_item)
@@ -2181,8 +2579,28 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
     print(f"git_repo_root: {report['git_repo_root']}")
     print(f"acts_out_root: {report['acts_out_root']}")
     print(f"variants_mode: {report.get('variants_mode', 'auto')}")
+    if report.get("selector_run"):
+        selector_run = report["selector_run"]
+        print(
+            "selector_run: "
+            f"label={selector_run.get('label', '-')}, "
+            f"status={selector_run.get('status', '-')}, "
+            f"run_dir={selector_run.get('run_dir', '-')}"
+        )
+        print(f"selector_run_manifest: {selector_run.get('manifest_path', '-')}")
     if report.get("requested_devices"):
         print(f"requested_devices: {', '.join(report['requested_devices'])}")
+    if report.get("daily_prebuilt"):
+        daily_prebuilt = report["daily_prebuilt"]
+        print(
+            "daily_prebuilt: "
+            f"status={daily_prebuilt.get('status', '-')}, "
+            f"tag={daily_prebuilt.get('tag', '-')}, "
+            f"component={daily_prebuilt.get('component', '-')}, "
+            f"acts_out_root={daily_prebuilt.get('acts_out_root', '-') or '-'}"
+        )
+        if daily_prebuilt.get("note"):
+            print(f"daily_prebuilt_note: {daily_prebuilt['note']}")
     if json_report_path is not None:
         print(f"json_report: {json_report_path}")
     product_build = report["product_build"]
@@ -2231,10 +2649,24 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         print(
             "execution_overview: "
             f"tool={overview.get('run_tool', '-')}, "
+            f"shard_mode={overview.get('shard_mode', 'mirror')}, "
             f"unique_targets={overview.get('unique_target_count', 0)}, "
             f"selected_targets={overview.get('selected_target_count', 0)}, "
             f"executed={'yes' if overview.get('executed') else 'no'}"
         )
+    if report.get("execution_preflight"):
+        preflight = report["execution_preflight"]
+        print(
+            "execution_preflight: "
+            f"status={preflight.get('status', '-')}, "
+            f"plans={preflight.get('plan_count', 0)}, "
+            f"tools={','.join(preflight.get('selected_tools', [])) or '-'}, "
+            f"connected_devices={','.join(preflight.get('connected_devices', [])) or '-'}"
+        )
+        for item in preflight.get("errors", [])[:5]:
+            print(f"  preflight_error: {item}")
+        for item in preflight.get("warnings", [])[:5]:
+            print(f"  preflight_warning: {item}")
     if report.get("execution_summary"):
         summary = report["execution_summary"]
         print(
@@ -2280,6 +2712,8 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         f"      plan[{plan['device_label']}]: "
                         f"status={plan['status']}, tool={tool}, available={','.join(plan.get('available_tools', [])) or '-'}{reason}"
                     )
+                    if plan.get("result_path"):
+                        print(f"        result_path: {plan['result_path']}")
             if target.get("execution_results"):
                 for result in target["execution_results"]:
                     rc = "-" if result.get("returncode") is None else result["returncode"]
@@ -2287,6 +2721,18 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         f"      result[{result['device_label']}]: "
                         f"status={result['status']}, tool={result.get('selected_tool') or '-'}, rc={rc}"
                     )
+                    if result.get("result_path"):
+                        print(f"        result_path: {result['result_path']}")
+                    case_summary = result.get("case_summary") or {}
+                    if case_summary:
+                        print(
+                            "        case_summary: "
+                            f"total={case_summary.get('total_tests', 0)}, "
+                            f"passed={case_summary.get('pass_count', 0)}, "
+                            f"failed={case_summary.get('fail_count', 0)}, "
+                            f"blocked={case_summary.get('blocked_count', 0)}, "
+                            f"unknown={case_summary.get('unknown_count', 0)}"
+                        )
                     if result.get("stderr_tail"):
                         print(f"        stderr_tail: {result['stderr_tail'].splitlines()[-1]}")
                     elif result.get("stdout_tail") and result["status"] != "passed":
@@ -2305,7 +2751,12 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             print(f"  unresolved: {item['unresolved_reason']}")
         if item.get("debug"):
             debug = item["debug"]
-            print(f"  debug: candidate_projects={debug['candidate_project_count']}, matched_projects={debug['matched_project_count']}")
+            before = debug.get("candidate_projects_before_prefilter", debug["candidate_project_count"])
+            after = debug.get("candidate_projects_after_prefilter", debug["candidate_project_count"])
+            print(
+                f"  debug: candidate_projects={debug['candidate_project_count']}, "
+                f"prefilter={before}->{after}, matched_projects={debug['matched_project_count']}"
+            )
         if report.get("debug_trace") and item.get("unresolved_debug"):
             debug = item["unresolved_debug"]
             print(f"  unresolved_debug: top_score={debug['top_score']}, broad_common_hits={debug['broad_common_hits']}")
@@ -2342,7 +2793,12 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         print(f"  type_hints: {', '.join(signals.get('type_hints', [])) or '-'}")
         if item.get("debug"):
             debug = item["debug"]
-            print(f"  debug: candidate_projects={debug['candidate_project_count']}, matched_projects={debug['matched_project_count']}")
+            before = debug.get("candidate_projects_before_prefilter", debug["candidate_project_count"])
+            after = debug.get("candidate_projects_after_prefilter", debug["candidate_project_count"])
+            print(
+                f"  debug: candidate_projects={debug['candidate_project_count']}, "
+                f"prefilter={before}->{after}, matched_projects={debug['matched_project_count']}"
+            )
         evidence = item.get("code_search_evidence", {})
         if evidence.get("exact_hits") or evidence.get("related_hits"):
             print("  code_search_evidence:")
@@ -2401,6 +2857,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gitcode-api-url", help="GitCode base URL for API mode, for example https://gitcode.com")
     parser.add_argument("--gitcode-token", help="GitCode access token for API mode.")
     parser.add_argument("--git-host-config", help="Path to gitee_util/config.ini with [gitcode] token/url.")
+    parser.add_argument("--repo-root", help="Explicit OHOS workspace root. By default the CLI auto-discovers the workspace, including sibling ohos_master trees.")
     parser.add_argument("--xts-root", help="Absolute or relative path to XTS root.")
     parser.add_argument("--sdk-api-root", help="Absolute or relative path to SDK api root.")
     parser.add_argument("--acts-out-root", help="Built ACTS output root, for xdevice command generation.")
@@ -2414,7 +2871,38 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--system-size", help="System size for build guidance. Default: standard.")
     parser.add_argument("--xts-suitetype", help="Optional xts_suitetype for build guidance, for example hap_static or hap_dynamic.")
     parser.add_argument("--run-now", action="store_true", help="Immediately execute selected run targets after report generation.")
+    parser.add_argument("--run-label", help="Optional label for storing this planned/executed selector run, for example baseline or v1.")
+    parser.add_argument("--run-store-root", help="Directory used to persist labeled selector runs. Default: <selector_repo>/.runs")
+    parser.add_argument("--daily-build-tag", help="Daily build tag for prebuilt suites, for example 20260403_120242.")
+    parser.add_argument(
+        "--daily-component",
+        help=(
+            "Daily build component name for prebuilt ACTS packages, for example "
+            f"{DEFAULT_DAILY_COMPONENT}. Plain board aliases such as dayu200 are "
+            "still accepted and will first try <board>_Dyn_Sta_XTS."
+        ),
+    )
+    parser.add_argument("--daily-branch", help="Daily build branch filter. Default: master.")
+    parser.add_argument("--daily-date", help="Daily build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --daily-build-tag.")
+    parser.add_argument("--daily-cache-root", help="Cache directory for downloaded/extracted daily full packages. Default: /tmp/arkui_xts_selector_daily_cache")
+    parser.add_argument("--download-daily-tests", action="store_true", help="Download and extract the daily XTS package described by --daily-* options, then exit.")
+    parser.add_argument("--download-daily-sdk", action="store_true", help="Download and extract the daily SDK package described by --sdk-* options, then exit.")
+    parser.add_argument("--download-daily-firmware", action="store_true", help="Download and extract the daily firmware image package described by --firmware-* options, then exit.")
+    parser.add_argument("--flash-daily-firmware", action="store_true", help="Download/extract the daily firmware image package described by --firmware-* options and flash it to the connected device, then exit.")
+    parser.add_argument("--sdk-build-tag", help="Daily SDK build tag, for example 20260404_120537.")
+    parser.add_argument("--sdk-component", help=f"Daily SDK component name. Default: {DEFAULT_SDK_COMPONENT}.")
+    parser.add_argument("--sdk-branch", help="Daily SDK branch filter. Default: master.")
+    parser.add_argument("--sdk-date", help="Daily SDK build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --sdk-build-tag.")
+    parser.add_argument("--sdk-cache-root", help="Cache directory for downloaded/extracted daily SDK packages. Default: --daily-cache-root")
+    parser.add_argument("--firmware-build-tag", help="Daily firmware build tag, for example 20260404_120244.")
+    parser.add_argument("--firmware-component", help=f"Daily firmware component name. Default: {DEFAULT_FIRMWARE_COMPONENT}.")
+    parser.add_argument("--firmware-branch", help="Daily firmware branch filter. Default: master.")
+    parser.add_argument("--firmware-date", help="Daily firmware build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --firmware-build-tag.")
+    parser.add_argument("--firmware-cache-root", help="Cache directory for downloaded/extracted daily firmware packages. Default: --daily-cache-root")
+    parser.add_argument("--flash-py-path", help="Path to the Rockchip flash.py helper used for board flashing.")
+    parser.add_argument("--hdc-path", help="Path to hdc used for switching a device into bootloader mode before flashing.")
     parser.add_argument("--run-tool", choices=RUN_TOOL_CHOICES, default="auto", help="Execution tool to use for --run-now. Default: auto.")
+    parser.add_argument("--shard-mode", choices=SHARD_MODE_CHOICES, default="mirror", help="Execution distribution mode. mirror = all selected targets on every device; split = shard unique targets across devices.")
     parser.add_argument("--run-top-targets", type=int, default=0, help="Execute at most N unique run targets. 0 = all.")
     parser.add_argument("--run-timeout", type=float, default=0.0, help="Per-command timeout in seconds for --run-now. 0 = disabled.")
     parser.add_argument("--variants", choices=["auto", "static", "dynamic", "both"], default="auto", help="Filter returned candidates by variant. Default: auto.")
@@ -2440,9 +2928,12 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_app_config(args: argparse.Namespace) -> AppConfig:
-    repo_root = discover_repo_root()
-    cfg = load_json_file(resolve_path(args.config, repo_root, repo_root)) if args.config else {}
-    repo_root = resolve_path(cfg.get("repo_root"), repo_root, repo_root) if cfg.get("repo_root") else repo_root
+    selector_repo_root = PROJECT_ROOT
+    cfg = load_json_file(resolve_path(args.config, selector_repo_root, selector_repo_root)) if args.config else {}
+    repo_root = discover_repo_root(
+        explicit_root=args.repo_root or cfg.get("repo_root"),
+        selector_repo_root=selector_repo_root,
+    )
     ini_url, ini_token = load_ini_gitcode_config(args.git_host_config or cfg.get("git_host_config"), repo_root)
     xts_root = resolve_path(args.xts_root or cfg.get("xts_root"), default_xts_root(repo_root), repo_root)
     sdk_api_root = resolve_path(args.sdk_api_root or cfg.get("sdk_api_root"), default_sdk_api_root(repo_root), repo_root)
@@ -2485,6 +2976,36 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         default_changed_file_exclusions_file() or repo_root,
         repo_root,
     ) if (args.changed_file_exclusions_file or cfg.get("changed_file_exclusions_file") or default_changed_file_exclusions_file()) else None
+    run_store_root = resolve_path(
+        args.run_store_root or cfg.get("run_store_root"),
+        default_run_store_root(selector_repo_root),
+        selector_repo_root,
+    )
+    daily_cache_root = resolve_path(
+        args.daily_cache_root or cfg.get("daily_cache_root"),
+        DEFAULT_DAILY_CACHE_ROOT,
+        selector_repo_root,
+    )
+    sdk_cache_root = resolve_path(
+        args.sdk_cache_root or cfg.get("sdk_cache_root") or str(daily_cache_root),
+        daily_cache_root,
+        selector_repo_root,
+    )
+    firmware_cache_root = resolve_path(
+        args.firmware_cache_root or cfg.get("firmware_cache_root") or str(daily_cache_root),
+        daily_cache_root,
+        selector_repo_root,
+    )
+    flash_py_path = resolve_path(
+        args.flash_py_path or cfg.get("flash_py_path"),
+        selector_repo_root,
+        selector_repo_root,
+    ) if (args.flash_py_path or cfg.get("flash_py_path")) else None
+    hdc_path = resolve_path(
+        args.hdc_path or cfg.get("hdc_path"),
+        selector_repo_root,
+        selector_repo_root,
+    ) if (args.hdc_path or cfg.get("hdc_path")) else None
     gitcode_api_url = args.gitcode_api_url or cfg.get("gitcode_api_url") or ini_url
     gitcode_token = args.gitcode_token or cfg.get("gitcode_token") or ini_token
     cache_value = None if args.no_cache else (args.cache_file or cfg.get("cache_file"))
@@ -2513,6 +3034,27 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         product_name=product_name,
         system_size=system_size,
         xts_suitetype=xts_suitetype,
+        selector_repo_root=selector_repo_root,
+        run_label=args.run_label or cfg.get("run_label"),
+        run_store_root=run_store_root,
+        shard_mode=args.shard_mode or cfg.get("shard_mode") or "mirror",
+        daily_build_tag=args.daily_build_tag or cfg.get("daily_build_tag"),
+        daily_component=args.daily_component or cfg.get("daily_component") or DEFAULT_DAILY_COMPONENT,
+        daily_branch=args.daily_branch or cfg.get("daily_branch") or "master",
+        daily_date=args.daily_date or cfg.get("daily_date"),
+        daily_cache_root=daily_cache_root,
+        sdk_build_tag=args.sdk_build_tag or cfg.get("sdk_build_tag"),
+        sdk_component=args.sdk_component or cfg.get("sdk_component") or DEFAULT_SDK_COMPONENT,
+        sdk_branch=args.sdk_branch or cfg.get("sdk_branch") or "master",
+        sdk_date=args.sdk_date or cfg.get("sdk_date"),
+        sdk_cache_root=sdk_cache_root,
+        firmware_build_tag=args.firmware_build_tag or cfg.get("firmware_build_tag"),
+        firmware_component=args.firmware_component or cfg.get("firmware_component") or DEFAULT_FIRMWARE_COMPONENT,
+        firmware_branch=args.firmware_branch or cfg.get("firmware_branch") or "master",
+        firmware_date=args.firmware_date or cfg.get("firmware_date"),
+        firmware_cache_root=firmware_cache_root,
+        flash_py_path=flash_py_path,
+        hdc_path=hdc_path,
     )
 
 
@@ -2520,6 +3062,9 @@ def main() -> int:
     global REPO_ROOT
     runtime_started = time.perf_counter()
     args = parse_args()
+    progress_enabled = not args.no_progress
+    json_to_stdout = bool(args.json)
+    json_output_path = None if json_to_stdout else resolve_json_output_path(args.json_out)
     if args.run_top_targets < 0:
         print("--run-top-targets must be >= 0", file=sys.stderr)
         return 2
@@ -2528,6 +3073,31 @@ def main() -> int:
         return 2
     app_config = load_app_config(args)
     REPO_ROOT = app_config.repo_root
+    if utility_mode_requested(args):
+        return run_utility_mode(
+            args=args,
+            app_config=app_config,
+            progress_enabled=progress_enabled,
+            json_to_stdout=json_to_stdout,
+            json_output_path=json_output_path,
+        )
+    if app_config.daily_build_tag:
+        emit_progress(progress_enabled, f"preparing daily prebuilt {app_config.daily_build_tag}")
+        try:
+            prepare_daily_prebuilt_from_config(app_config)
+        except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
+            print(f"daily prebuilt preparation failed: {exc}", file=sys.stderr)
+            return 2
+    run_session = (
+        create_run_session(
+            app_config.run_label,
+            run_store_root=app_config.run_store_root,
+            selector_repo_root=app_config.selector_repo_root,
+        )
+        if app_config.run_label
+        else None
+    )
+    xdevice_reports_root = (run_session.run_dir / "xdevice_reports") if run_session is not None else None
     changed_inputs = list(args.changed_file)
     symbol_queries = [item.strip() for item in args.symbol_query if item and item.strip()]
     code_queries = [item.strip() for item in args.code_query if item and item.strip()]
@@ -2590,10 +3160,7 @@ def main() -> int:
     )
     changed_file_filtering_ms = round((time.perf_counter() - exclusion_started) * 1000, 3)
 
-    progress_enabled = not args.no_progress
     progress_callback = (lambda message: emit_progress(progress_enabled, message)) if progress_enabled else None
-    json_to_stdout = bool(args.json)
-    json_output_path = None if json_to_stdout else resolve_json_output_path(args.json_out)
 
     emit_progress(progress_enabled, "loading XTS project index")
     load_started = time.perf_counter()
@@ -2638,6 +3205,7 @@ def main() -> int:
         debug_trace=args.debug_trace,
         progress_callback=progress_callback,
     )
+    report["acts_out_root"] = str(app_config.acts_out_root or (app_config.repo_root / "out/release/suites/acts"))
     report["excluded_inputs"] = excluded_inputs
     report["timings_ms"].update({
         "changed_file_filtering": changed_file_filtering_ms,
@@ -2650,8 +3218,24 @@ def main() -> int:
     report["timings_ms"]["total_runtime"] = round((time.perf_counter() - runtime_started) * 1000, 3)
     report["json_output_mode"] = "stdout" if json_to_stdout else "file"
     report["requested_devices"] = list(app_config.devices)
+    if app_config.daily_prebuilt is not None:
+        report["daily_prebuilt"] = {
+            **app_config.daily_prebuilt.to_dict(),
+            "note": app_config.daily_prebuilt_note,
+        }
     if json_output_path is not None:
         report["json_output_path"] = str(json_output_path)
+    if run_session is not None:
+        report["selector_run"] = {
+            "label": run_session.label,
+            "label_key": run_session.label_key,
+            "timestamp": run_session.timestamp,
+            "status": "planned",
+            "run_dir": str(run_session.run_dir),
+            "run_store_root": str((app_config.run_store_root or default_run_store_root(PROJECT_ROOT)).resolve()),
+            "selector_report_path": str(run_session.selector_report_path),
+            "manifest_path": str(run_session.manifest_path),
+        }
 
     emit_progress(progress_enabled, "planning target execution")
     attach_execution_plan(
@@ -2661,26 +3245,65 @@ def main() -> int:
         devices=app_config.devices,
         run_tool=args.run_tool,
         run_top_targets=args.run_top_targets,
+        shard_mode=app_config.shard_mode,
+        xdevice_reports_root=xdevice_reports_root,
     )
     execution_summary = None
+    execution_preflight = None
+    preflight_failed = False
     if args.run_now:
-        emit_progress(progress_enabled, "running selected targets")
-        execution_summary = execute_planned_targets(
+        emit_progress(progress_enabled, "preflighting execution")
+        execution_preflight = preflight_execution(
             report,
             repo_root=app_config.repo_root,
-            acts_out_root=app_config.acts_out_root,
             devices=app_config.devices,
-            run_tool=args.run_tool,
-            run_top_targets=args.run_top_targets,
-            run_timeout=args.run_timeout,
         )
+        report["execution_preflight"] = execution_preflight
+        if execution_preflight.get("status") != "passed":
+            preflight_failed = True
+        else:
+            emit_progress(progress_enabled, "running selected targets")
+            execution_summary = execute_planned_targets(
+                report,
+                repo_root=app_config.repo_root,
+                acts_out_root=app_config.acts_out_root,
+                devices=app_config.devices,
+                run_tool=args.run_tool,
+                run_top_targets=args.run_top_targets,
+                run_timeout=args.run_timeout,
+                shard_mode=app_config.shard_mode,
+                xdevice_reports_root=xdevice_reports_root,
+            )
+    else:
+        report["execution_preflight"] = {}
+
+    if run_session is not None:
+        status = "planned"
+        if preflight_failed:
+            status = "failed_preflight"
+        elif execution_summary is not None:
+            status = "completed_with_failures" if execution_summary.get("has_failures") else "completed"
+        report["selector_run"]["status"] = status
 
     emit_progress(progress_enabled, "writing JSON report")
     written_json_path = write_json_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)
+    if run_session is not None:
+        manifest = build_run_manifest(
+            report,
+            selector_repo_root=app_config.selector_repo_root or PROJECT_ROOT,
+            run_store_root=app_config.run_store_root or default_run_store_root(PROJECT_ROOT),
+            session=run_session,
+            status=report["selector_run"]["status"],
+            shard_mode=app_config.shard_mode,
+            preflight=execution_preflight,
+        )
+        write_run_artifacts(run_session, report, manifest)
 
     if not json_to_stdout:
         emit_progress(progress_enabled, "rendering human report")
         print_human(report, cache_used, written_json_path)
+    if args.run_now and preflight_failed:
+        return 2
     if args.run_now and execution_summary and execution_summary.get("has_failures"):
         return 1
     return 0

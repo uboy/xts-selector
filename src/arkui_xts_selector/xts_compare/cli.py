@@ -30,11 +30,13 @@ from datetime import datetime
 from pathlib import Path
 from xml.etree.ElementTree import ParseError as XmlParseError
 
+from ..run_store import default_run_store_root, resolve_labeled_run
 from .compare import compare_runs, build_timeline
 from .format_html import format_html, format_single_run_html
 from .format_json import report_to_dict, single_run_to_dict, timeline_to_dict, write_json
+from .format_markdown import format_markdown, format_single_run_markdown
 from .format_terminal import format_report, format_single_run, format_timeline
-from .models import FailureType, InputOrderInfo
+from .models import FailureType, InputOrderInfo, RunMetadata, TestIdentity, TestOutcome
 from .parse import discover_archives_with_metadata, find_summary_xml, load_run, sort_run_paths
 from .selector_integration import correlate_with_selector, load_selector_report
 
@@ -82,6 +84,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="Target run archive (ZIP) or result directory (required with --base).",
     )
     parser.add_argument(
+        "--base-label",
+        metavar="LABEL",
+        default=None,
+        dest="base_label",
+        help="Resolve the base run from the selector run store by label.",
+    )
+    parser.add_argument(
+        "--target-label",
+        metavar="LABEL",
+        default=None,
+        dest="target_label",
+        help="Resolve the target run from the selector run store by label.",
+    )
+    parser.add_argument(
+        "--label-root",
+        metavar="PATH",
+        default=None,
+        dest="label_root",
+        help="Optional selector run-store root used with --base-label/--target-label.",
+    )
+    parser.add_argument(
         "--selector-report",
         metavar="FILE",
         default=None,
@@ -107,6 +130,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False,
         help="Emit standalone HTML output instead of terminal text.",
+    )
+    parser.add_argument(
+        "--markdown",
+        action="store_true",
+        default=False,
+        help="Emit Markdown output instead of terminal text.",
     )
     parser.add_argument(
         "-o",
@@ -234,13 +263,23 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
-    explicit_mode = args.base is not None or args.timeline is not None
-    if args.base is not None and args.paths:
-        parser.error("positional paths are not allowed with --base")
+    has_base = args.base is not None or args.base_label is not None
+    has_target = args.target is not None or args.target_label is not None
+    explicit_mode = has_base or args.timeline is not None
+    if args.base is not None and args.base_label is not None:
+        parser.error("--base and --base-label cannot be used together")
+    if args.target is not None and args.target_label is not None:
+        parser.error("--target and --target-label cannot be used together")
+    if has_base and args.paths:
+        parser.error("positional paths are not allowed with --base or --base-label")
     if args.timeline is not None and args.paths:
         parser.error("positional paths are not allowed with --timeline")
-    if args.target is not None and args.base is None:
-        parser.error("--target requires --base")
+    if args.timeline is not None and (args.base_label is not None or args.target_label is not None):
+        parser.error("--base-label and --target-label are not supported with --timeline")
+    if has_target and not has_base:
+        parser.error("--target or --target-label requires --base or --base-label")
+    if has_base and not has_target:
+        parser.error("--target or --target-label is required when using --base or --base-label")
     if not explicit_mode and not args.paths:
         parser.error("one of the arguments --base, --timeline, or PATH is required")
     if args.scan_limit < 0:
@@ -248,17 +287,19 @@ def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
 
 
 def _infer_output_mode(args: argparse.Namespace) -> None:
-    if not args.output or args.json or args.html:
+    if not args.output or args.json or args.html or args.markdown:
         return
     suffix = Path(args.output).suffix.lower()
     if suffix == ".json":
         args.json = True
     elif suffix in (".html", ".htm"):
         args.html = True
+    elif suffix in (".md", ".markdown"):
+        args.markdown = True
 
 
 def _resolve_mode(args: argparse.Namespace) -> str:
-    if args.base is not None:
+    if args.base is not None or args.base_label is not None:
         return "compare"
     if args.timeline is not None:
         return "timeline"
@@ -299,15 +340,20 @@ def _set_input_order(
 
 
 def _prepare_compare_args(args: argparse.Namespace) -> None:
-    if args.base is not None:
+    if args.base is not None or args.base_label is not None:
+        base_ref = args.base if args.base is not None else f"label:{args.base_label}"
+        target_ref = args.target if args.target is not None else f"label:{args.target_label}"
         _set_input_order(
             args,
             mode="compare",
             source="explicit",
             auto_detected=False,
-            paths=[args.base, args.target] if args.target else [args.base],
+            paths=[base_ref, target_ref],
             origin="flags",
-            details={path: Path(path).name for path in [args.base, args.target] if path},
+            details={
+                base_ref: Path(args.base).name if args.base else f"label {args.base_label}",
+                target_ref: Path(args.target).name if args.target else f"label {args.target_label}",
+            },
         )
         return
 
@@ -413,6 +459,119 @@ def _parse_labels(raw: str | None, count: int) -> list[str]:
     return parts[:count]
 
 
+def _resolve_label_root(path_value: str | None) -> Path:
+    if path_value:
+        return Path(path_value).expanduser().resolve()
+    return default_run_store_root()
+
+
+def _build_merged_metadata(
+    runs: list[tuple[RunMetadata, dict[TestIdentity, object]]],
+    label: str,
+    source_path: str,
+) -> tuple[RunMetadata, dict[TestIdentity, object]]:
+    merged_results: dict[TestIdentity, object] = {}
+    modules_tested: set[str] = set()
+    module_infos: dict[str, object] = {}
+    devices: list[str] = []
+    timestamp = ""
+    duration_s = 0.0
+
+    for meta, results in runs:
+        if meta.device and meta.device not in devices:
+            devices.append(meta.device)
+        if meta.timestamp and meta.timestamp > timestamp:
+            timestamp = meta.timestamp
+        duration_s += meta.duration_s
+        modules_tested.update(meta.modules_tested)
+        for module_name, info in meta.module_infos.items():
+            if module_name not in module_infos:
+                module_infos[module_name] = info
+        for identity, result in results.items():
+            if identity in merged_results:
+                raise ValueError(
+                    f"Duplicate test identity encountered while merging labeled run shards: {identity}"
+                )
+            merged_results[identity] = result
+
+    pass_count = 0
+    fail_count = 0
+    blocked_count = 0
+    for result in merged_results.values():
+        outcome = getattr(result, "outcome", TestOutcome.UNKNOWN)
+        if outcome == TestOutcome.PASS:
+            pass_count += 1
+        elif outcome == TestOutcome.BLOCKED:
+            blocked_count += 1
+        elif outcome in {TestOutcome.FAIL, TestOutcome.ERROR}:
+            fail_count += 1
+
+    merged_meta = RunMetadata(
+        label=label,
+        source_path=source_path,
+        timestamp=timestamp,
+        device=", ".join(devices),
+        total_tests=len(merged_results),
+        pass_count=pass_count,
+        fail_count=fail_count,
+        blocked_count=blocked_count,
+        duration_s=duration_s,
+        modules_tested=sorted(modules_tested),
+        module_infos=dict(module_infos),
+        timestamp_source="selector-manifest",
+    )
+    return merged_meta, merged_results
+
+
+def _load_labeled_run(
+    label: str,
+    label_root: Path,
+    strict_archive: bool,
+) -> tuple[RunMetadata, dict[TestIdentity, object]]:
+    manifest = resolve_labeled_run(label_root, label)
+    resolved_paths = list(manifest.get("_resolved_result_paths", []))
+    if not resolved_paths:
+        raise ValueError(
+            f"Labeled selector run '{label}' does not have any comparable result paths in {label_root}"
+        )
+
+    runs: list[tuple[RunMetadata, dict[TestIdentity, object]]] = []
+    for path in resolved_paths:
+        meta, results = load_run(path, label=label, strict_archive=strict_archive)
+        runs.append((meta, results))
+
+    if len(runs) == 1:
+        meta, results = runs[0]
+        meta.label = label
+        meta.source_path = str(manifest.get("run_dir") or meta.source_path)
+        return meta, results
+
+    return _build_merged_metadata(
+        runs,
+        label=label,
+        source_path=str(manifest.get("run_dir") or label),
+    )
+
+
+def _load_compare_source(
+    path_value: str | None,
+    label_value: str | None,
+    display_label: str | None,
+    label_root: Path,
+    strict_archive: bool,
+) -> tuple[RunMetadata, dict[TestIdentity, object]]:
+    if label_value:
+        meta, results = _load_labeled_run(label_value, label_root=label_root, strict_archive=strict_archive)
+    elif path_value:
+        meta, results = load_run(path_value, label=display_label or "", strict_archive=strict_archive)
+    else:
+        raise ValueError("compare input is missing both path and label")
+
+    if display_label:
+        meta.label = display_label
+    return meta, results
+
+
 def _emit(text: str, output_path: str | None) -> None:
     if output_path:
         with open(output_path, "w", encoding="utf-8") as fh:
@@ -422,19 +581,15 @@ def _emit(text: str, output_path: str | None) -> None:
 
 
 def _run_compare(args: argparse.Namespace) -> int:
-    if not args.target:
-        print(
-            "error: --target is required when using --base",
-            file=sys.stderr,
-        )
-        return 2
-    if args.json and args.html:
-        print("error: --json and --html cannot be used together", file=sys.stderr)
+    selected_output_modes = sum(1 for enabled in (args.json, args.html, args.markdown) if enabled)
+    if selected_output_modes > 1:
+        print("error: --json, --html, and --markdown are mutually exclusive", file=sys.stderr)
         return 2
 
     labels = _parse_labels(args.labels, 2)
     base_label = labels[0] or None
     target_label = labels[1] or None
+    label_root = _resolve_label_root(args.label_root)
     try:
         failure_types = _parse_failure_types(args.failure_type)
     except ValueError as exc:
@@ -442,8 +597,20 @@ def _run_compare(args: argparse.Namespace) -> int:
         return 2
 
     try:
-        base_meta, base_results = load_run(args.base, label=base_label or "", strict_archive=args.strict_archive)
-        target_meta, target_results = load_run(args.target, label=target_label or "", strict_archive=args.strict_archive)
+        base_meta, base_results = _load_compare_source(
+            args.base,
+            args.base_label,
+            base_label,
+            label_root=label_root,
+            strict_archive=args.strict_archive,
+        )
+        target_meta, target_results = _load_compare_source(
+            args.target,
+            args.target_label,
+            target_label,
+            label_root=label_root,
+            strict_archive=args.strict_archive,
+        )
     except (FileNotFoundError, ValueError, OSError, XmlParseError) as exc:
         print(f"error loading run: {exc}", file=sys.stderr)
         return 2
@@ -490,6 +657,9 @@ def _run_compare(args: argparse.Namespace) -> int:
     elif args.html:
         text = format_html(report)
         _emit(text, args.output)
+    elif args.markdown:
+        text = format_markdown(report)
+        _emit(text, args.output)
     else:
         sort_key = args.sort_key
         if sort_key is None:
@@ -513,8 +683,8 @@ def _run_compare(args: argparse.Namespace) -> int:
 
 
 def _run_timeline(args: argparse.Namespace) -> int:
-    if args.html:
-        print("error: --html is only supported in compare mode", file=sys.stderr)
+    if args.html or args.markdown:
+        print("error: --html and --markdown are only supported in compare or single-run mode", file=sys.stderr)
         return 2
     paths = args.timeline
     labels = _parse_labels(args.labels, len(paths))
@@ -576,6 +746,10 @@ def _run_single(path: str, args: argparse.Namespace) -> int:
             args.output = f"xts_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
             print(f"HTML output requires a file. Writing to: {args.output}", file=sys.stderr)
         _emit(format_single_run_html(meta, results), args.output)
+        return 0
+
+    if args.markdown:
+        _emit(format_single_run_markdown(meta, results), args.output)
         return 0
 
     _emit(format_single_run(meta), args.output)

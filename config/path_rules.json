@@ -114,7 +114,7 @@
     "gesture": ["GestureGroup", "TapGesture", "LongPressGesture",
                 "PanGesture", "PinchGesture", "RotationGesture", "SwipeGesture"],
     "xcomponent": ["XComponent", "XComponentController"],
-    "web": ["Web", "WebviewController", "RichText"],
+    "web": ["Web", "WebviewController"],
     "form": ["FormComponent", "FormLink"],
     "folder_stack": ["FolderStack"],
     "animator": ["Animator"],
