@@ -206,6 +206,25 @@ def list_run_manifests(run_store_root: Path, label: str | None = None) -> list[d
     return manifests
 
 
+def _manifest_rank_key(manifest: dict[str, Any]) -> tuple[str, str]:
+    return (
+        str(manifest.get("timestamp", "")),
+        str(manifest.get("_manifest_path", "")),
+    )
+
+
+def resolve_latest_run(run_store_root: Path, label: str | None = None, completed_only: bool = False) -> dict[str, Any]:
+    manifests = list_run_manifests(run_store_root, label=label)
+    if completed_only:
+        manifests = [item for item in manifests if str(item.get("status", "")) in COMPLETED_RUN_STATUSES]
+    if not manifests:
+        target = f" for '{label}'" if label else ""
+        qualifier = " completed" if completed_only else ""
+        raise FileNotFoundError(f"No{qualifier} selector runs were found{target} in {run_store_root}")
+    manifests.sort(key=_manifest_rank_key, reverse=True)
+    return manifests[0]
+
+
 def resolve_labeled_run(run_store_root: Path, label: str) -> dict[str, Any]:
     manifests = list_run_manifests(run_store_root, label=label)
     if not manifests:

@@ -75,9 +75,12 @@ from .execution import (
 )
 from .flashing import flash_image_bundle
 from .run_store import (
+    RunSession,
     build_run_manifest,
     create_run_session,
     default_run_store_root,
+    normalize_run_label,
+    resolve_latest_run,
     write_run_artifacts,
 )
 from .runtime_history import (
@@ -3165,7 +3168,7 @@ def restrict_explicit_surface_projects(
 
 
 def diversify_symbol_query_projects(project_results: list[dict], top_projects: int) -> list[dict]:
-    shown = list(project_results[:top_projects])
+    shown = list(project_results if top_projects <= 0 else project_results[:top_projects])
     if len(shown) < 2:
         return shown
 
@@ -4289,6 +4292,65 @@ def write_json_report(report: dict, json_to_stdout: bool, json_output_path: Path
     return target
 
 
+def load_selector_report(path: Path) -> dict:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError) as exc:
+        raise ValueError(f"failed to load selector report {path}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"selector report {path} does not contain a JSON object")
+    return payload
+
+
+def resolve_selector_report_input(
+    from_report: str | None,
+    last_report: bool,
+    run_store_root: Path,
+) -> Path | None:
+    if from_report:
+        return resolve_json_output_path(from_report)
+    if not last_report:
+        return None
+    manifest = resolve_latest_run(run_store_root)
+    candidate = manifest.get("selector_report_path")
+    if candidate:
+        return Path(str(candidate)).expanduser().resolve()
+    manifest_path = manifest.get("_manifest_path")
+    if manifest_path:
+        return Path(str(manifest_path)).expanduser().resolve().with_name("selector_report.json")
+    raise FileNotFoundError(f"No selector report path was recorded in {run_store_root}")
+
+
+def run_session_from_report(report: dict, report_path: Path) -> RunSession | None:
+    selector_run = report.get("selector_run")
+    if not isinstance(selector_run, dict):
+        return None
+    label = str(selector_run.get("label") or "").strip()
+    if not label:
+        return None
+    label_key = str(selector_run.get("label_key") or normalize_run_label(label))
+    timestamp = str(selector_run.get("timestamp") or report_path.parent.name or "")
+    run_dir_value = selector_run.get("run_dir")
+    report_value = selector_run.get("selector_report_path")
+    manifest_value = selector_run.get("manifest_path")
+    run_dir = Path(str(run_dir_value)).expanduser().resolve() if run_dir_value else report_path.parent.resolve()
+    selector_report_path = Path(str(report_value)).expanduser().resolve() if report_value else report_path.resolve()
+    manifest_path = (
+        Path(str(manifest_value)).expanduser().resolve()
+        if manifest_value
+        else (run_dir / "run_manifest.json").resolve()
+    )
+    run_dir.mkdir(parents=True, exist_ok=True)
+    return RunSession(
+        label=label,
+        label_key=label_key,
+        timestamp=timestamp,
+        run_dir=run_dir,
+        selector_report_path=selector_report_path,
+        manifest_path=manifest_path,
+    )
+
+
 def format_report(
     changed_files: list[Path],
     symbol_queries: list[str],
@@ -4433,7 +4495,7 @@ def format_report(
         sort_project_results(project_results)
         project_results = deduplicate_by_coverage_signature(project_results, keep_per_signature)
         filtered_project_results, relevance_summary = filter_project_results_by_relevance(project_results, relevance_mode)
-        shown_project_results = filtered_project_results[:top_projects]
+        shown_project_results = filtered_project_results if top_projects <= 0 else filtered_project_results[:top_projects]
         coverage_source = make_coverage_source("changed_file", rel)
         coverage_candidates.extend(
             {
@@ -4582,7 +4644,7 @@ def format_report(
             query_surface_intent.requested_surface,
             explicit_surface_query=bool(query_surface_intent.reasons),
         )
-        shown_project_results = display_project_results[:top_projects]
+        shown_project_results = display_project_results if top_projects <= 0 else display_project_results[:top_projects]
         if effective_variants_mode == "both":
             shown_project_results = diversify_symbol_query_projects(display_project_results, top_projects)
         coverage_source = make_coverage_source("symbol_query", query)
@@ -4849,12 +4911,17 @@ def _showing_summary_text(relevance_summary: dict[str, object], shown_count: int
     total_after = int(relevance_summary.get("total_after", shown_count))
     total_before = int(relevance_summary.get("total_before", total_after))
     filtered_out = int(relevance_summary.get("filtered_out", max(total_before - total_after, 0)))
-    text = f"top {shown} of {total_after} matching tests"
+    if shown >= total_after:
+        text = f"all {shown} matching tests"
+    else:
+        text = f"top {shown} of {total_after} matching tests"
     if filtered_out > 0:
         text = f"{text}; {filtered_out} were filtered out by relevance"
     if total_before > total_after:
         text = f"{text}; {total_before} were seen before filtering"
-    return f"{text}. Increase --top-projects to see more."
+    if shown < total_after:
+        return f"{text}. Increase --top-projects to see more."
+    return text
 
 
 def _daily_selector_arg(flag: str, build_tag: str | None, build_date: str | None) -> list[str]:
@@ -4882,33 +4949,38 @@ def _preparation_summary(report: dict) -> str:
     return "missing"
 
 
-def _base_selector_run_command(app_config: AppConfig, args: argparse.Namespace) -> list[object]:
+def _base_selector_run_command(report: dict, app_config: AppConfig, args: argparse.Namespace) -> list[object]:
     command_name = "arkui-xts-selector"
     run_command: list[object] = [command_name, "--repo-root", app_config.repo_root]
-    for changed_file in args.changed_file:
-        run_command.extend(["--changed-file", changed_file])
-    for symbol_query in args.symbol_query:
-        run_command.extend(["--symbol-query", symbol_query])
-    for code_query in args.code_query:
-        run_command.extend(["--code-query", code_query])
-    if args.changed_files_from:
-        run_command.extend(["--changed-files-from", args.changed_files_from])
-    if args.git_diff:
-        run_command.extend(["--git-diff", args.git_diff])
-    if args.pr_url:
-        run_command.extend(["--pr-url", args.pr_url])
-    if args.pr_number:
-        run_command.extend(["--pr-number", args.pr_number])
-    if args.pr_source != "auto":
-        run_command.extend(["--pr-source", args.pr_source])
-    if args.git_host_config:
-        run_command.extend(["--git-host-config", args.git_host_config])
-    if args.gitcode_api_url:
-        run_command.extend(["--gitcode-api-url", args.gitcode_api_url])
-    run_command.extend(["--variants", args.variants, "--relevance-mode", args.relevance_mode])
-    run_command.extend(["--top-projects", args.top_projects])
-    if args.keep_per_signature:
-        run_command.extend(["--keep-per-signature", args.keep_per_signature])
+    selector_report_path = str(report.get("selector_run", {}).get("selector_report_path", "")).strip()
+    if selector_report_path:
+        run_command.extend(["--from-report", selector_report_path])
+    else:
+        for changed_file in args.changed_file:
+            run_command.extend(["--changed-file", changed_file])
+        for symbol_query in args.symbol_query:
+            run_command.extend(["--symbol-query", symbol_query])
+        for code_query in args.code_query:
+            run_command.extend(["--code-query", code_query])
+        if args.changed_files_from:
+            run_command.extend(["--changed-files-from", args.changed_files_from])
+        if args.git_diff:
+            run_command.extend(["--git-diff", args.git_diff])
+        if args.pr_url:
+            run_command.extend(["--pr-url", args.pr_url])
+        if args.pr_number:
+            run_command.extend(["--pr-number", args.pr_number])
+        if args.pr_source != "auto":
+            run_command.extend(["--pr-source", args.pr_source])
+        if args.git_host_config:
+            run_command.extend(["--git-host-config", args.git_host_config])
+        if args.gitcode_api_url:
+            run_command.extend(["--gitcode-api-url", args.gitcode_api_url])
+        run_command.extend(["--variants", args.variants, "--relevance-mode", args.relevance_mode])
+        if args.top_projects > 0:
+            run_command.extend(["--top-projects", args.top_projects])
+        if args.keep_per_signature:
+            run_command.extend(["--keep-per-signature", args.keep_per_signature])
     if app_config.runtime_state_root and app_config.runtime_state_root != default_runtime_state_root():
         run_command.extend(["--runtime-state-root", app_config.runtime_state_root])
     if float(app_config.device_lock_timeout or 0.0) != 30.0:
@@ -4940,8 +5012,11 @@ def build_coverage_run_commands(report: dict, app_config: AppConfig, args: argpa
         ("all", "Run full batch", "Includes duplicate fallback coverage."),
     ):
         target_count = _run_priority_target_count(coverage, priority)
-        command = _base_selector_run_command(app_config, args)
-        command.extend(["--run-now", "--run-tool", args.run_tool, "--run-priority", priority])
+        command = _base_selector_run_command(report, app_config, args)
+        command.append("--run-now")
+        if args.run_tool != "auto":
+            command.extend(["--run-tool", args.run_tool])
+        command.extend(["--run-priority", priority])
         if target_count > 0:
             command.extend(["--run-top-targets", target_count])
         if args.parallel_jobs > 1:
@@ -5093,8 +5168,11 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
         ("recommended", "Run recommended tests", recommended_target_count, f"{recommended_target_count} unique target(s) are ready to run."),
         ("all", "Run all coverage", _run_priority_target_count(coverage, "all"), f"{_run_priority_target_count(coverage, 'all')} total target(s), including duplicates, are ready to run."),
     ):
-        command = _base_selector_run_command(app_config, args)
-        command.extend(["--run-now", "--run-tool", args.run_tool, "--run-priority", priority])
+        command = _base_selector_run_command(report, app_config, args)
+        command.append("--run-now")
+        if args.run_tool != "auto":
+            command.extend(["--run-tool", args.run_tool])
+        command.extend(["--run-priority", priority])
         if count > 0:
             command.extend(["--run-top-targets", count])
         if args.parallel_jobs > 1:
@@ -5772,6 +5850,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--system-size", help="System size for build guidance. Default: standard.")
     parser.add_argument("--xts-suitetype", help="Optional xts_suitetype for build guidance, for example hap_static or hap_dynamic.")
     parser.add_argument("--run-now", action="store_true", help="Immediately execute selected run targets after report generation.")
+    parser.add_argument("--from-report", help="Reuse a previously saved selector JSON report instead of recomputing selection.")
+    parser.add_argument("--last-report", action="store_true", help="Reuse the latest saved selector JSON report from the run store.")
     parser.add_argument("--run-label", help="Optional label for storing this planned/executed selector run, for example baseline or v1.")
     parser.add_argument("--run-store-root", help="Directory used to persist labeled selector runs. Default: <selector_repo>/.runs")
     parser.add_argument("--runtime-state-root", help="Shared runtime state directory for device locks and runtime history. Default: /tmp/arkui_xts_selector_state")
@@ -5825,7 +5905,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run-timeout", type=float, default=0.0, help="Per-command timeout in seconds for --run-now. 0 = disabled.")
     parser.add_argument("--relevance-mode", choices=RELEVANCE_MODE_CHOICES, default="all", help="Filter ranked projects by relevance. all = current behavior, balanced = must-run + high-confidence, strict = must-run only.")
     parser.add_argument("--variants", choices=["auto", "static", "dynamic", "both"], default="auto", help="Filter returned candidates by variant. Default: auto.")
-    parser.add_argument("--top-projects", type=int, default=12)
+    parser.add_argument("--top-projects", type=int, default=12, help="Number of ranked suites to display per source. 0 = show all. Default: 12.")
     parser.add_argument("--top-files", type=int, default=5)
     parser.add_argument(
         "--keep-per-signature", type=int, default=0,
@@ -6003,7 +6083,7 @@ def main() -> int:
     args = parse_args()
     progress_enabled = not args.no_progress
     json_to_stdout = bool(args.json)
-    json_output_path = None if json_to_stdout else resolve_json_output_path(args.json_out)
+    json_output_path: Path | None = None
     if args.run_top_targets < 0:
         print("--run-top-targets must be >= 0", file=sys.stderr)
         return 2
@@ -6030,6 +6110,12 @@ def main() -> int:
         except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
             print(f"daily prebuilt preparation failed: {exc}", file=sys.stderr)
             return 2
+    source_report_path = resolve_selector_report_input(
+        args.from_report,
+        bool(args.last_report),
+        app_config.run_store_root or default_run_store_root(PROJECT_ROOT),
+    )
+    source_report = load_selector_report(source_report_path) if source_report_path is not None else None
     run_session = (
         create_run_session(
             app_config.run_label,
@@ -6037,8 +6123,17 @@ def main() -> int:
             selector_repo_root=app_config.selector_repo_root,
         )
         if app_config.run_label
-        else None
+        else (run_session_from_report(source_report, source_report_path) if source_report is not None and source_report_path is not None else None)
     )
+    if not json_to_stdout:
+        if args.json_out:
+            json_output_path = resolve_json_output_path(args.json_out)
+        elif run_session is not None:
+            json_output_path = run_session.selector_report_path
+        elif source_report_path is not None:
+            json_output_path = source_report_path
+        else:
+            json_output_path = resolve_json_output_path(None)
     xdevice_reports_root = (run_session.run_dir / "xdevice_reports") if run_session is not None else None
     changed_inputs = list(args.changed_file)
     symbol_queries = [item.strip() for item in args.symbol_query if item and item.strip()]
@@ -6046,6 +6141,118 @@ def main() -> int:
 
     if args.changed_files_from:
         changed_inputs.extend(read_text(resolve_path(args.changed_files_from, app_config.repo_root, app_config.repo_root)).splitlines())
+
+    if source_report is not None:
+        report = source_report
+        report["timings_ms"] = {}
+        report["json_output_mode"] = "stdout" if json_to_stdout else "file"
+        report["requested_devices"] = list(app_config.devices)
+        report["execution_summary"] = {}
+        if json_output_path is not None:
+            report["json_output_path"] = str(json_output_path)
+        if run_session is not None:
+            report["selector_run"] = {
+                "label": run_session.label,
+                "label_key": run_session.label_key,
+                "timestamp": run_session.timestamp,
+                "status": str(report.get("selector_run", {}).get("status", "planned")),
+                "run_dir": str(run_session.run_dir),
+                "run_store_root": str((app_config.run_store_root or default_run_store_root(PROJECT_ROOT)).resolve()),
+                "selector_report_path": str(run_session.selector_report_path),
+                "manifest_path": str(run_session.manifest_path),
+            }
+
+        emit_progress(progress_enabled, "planning target execution from saved report")
+        attach_execution_plan(
+            report,
+            repo_root=app_config.repo_root,
+            acts_out_root=app_config.acts_out_root,
+            devices=app_config.devices,
+            run_tool=args.run_tool,
+            run_top_targets=args.run_top_targets,
+            shard_mode=app_config.shard_mode,
+            xdevice_reports_root=xdevice_reports_root,
+            run_priority=args.run_priority,
+            parallel_jobs=args.parallel_jobs,
+            runtime_state_root=app_config.runtime_state_root,
+            device_lock_timeout=app_config.device_lock_timeout,
+        )
+        report["next_steps"] = build_next_steps(report, app_config, args)
+        execution_summary = None
+        execution_preflight = None
+        preflight_failed = False
+        if args.run_now:
+            emit_progress(progress_enabled, "preflighting execution")
+            execution_preflight = preflight_execution(
+                report,
+                repo_root=app_config.repo_root,
+                devices=app_config.devices,
+            )
+            report["execution_preflight"] = execution_preflight
+            if execution_preflight.get("status") != "passed":
+                preflight_failed = True
+            else:
+                emit_progress(progress_enabled, "running selected targets")
+                execution_summary = execute_planned_targets(
+                    report,
+                    repo_root=app_config.repo_root,
+                    acts_out_root=app_config.acts_out_root,
+                    devices=app_config.devices,
+                    run_tool=args.run_tool,
+                    run_top_targets=args.run_top_targets,
+                    run_timeout=args.run_timeout,
+                    shard_mode=app_config.shard_mode,
+                    xdevice_reports_root=xdevice_reports_root,
+                    run_priority=args.run_priority,
+                    parallel_jobs=args.parallel_jobs,
+                    runtime_state_root=app_config.runtime_state_root,
+                    device_lock_timeout=app_config.device_lock_timeout,
+                )
+        else:
+            report["execution_preflight"] = {}
+
+        if run_session is not None:
+            status = "planned"
+            if preflight_failed:
+                status = "failed_preflight"
+            elif execution_summary is not None:
+                status = "completed_with_failures" if execution_summary.get("has_failures") else "completed"
+            report["selector_run"]["status"] = status
+        if execution_summary is not None:
+            report["runtime_history_update"] = update_runtime_history(
+                default_runtime_history_file(app_config.runtime_state_root),
+                report,
+                run_label=str(report.get("selector_run", {}).get("label") or app_config.run_label or ""),
+            )
+        else:
+            report["runtime_history_update"] = {
+                "history_file": str(default_runtime_history_file(app_config.runtime_state_root)),
+                "updated_targets": 0,
+                "updated_samples": 0,
+                "significant_updates": 0,
+            }
+
+        emit_progress(progress_enabled, "writing JSON report")
+        written_json_path = write_json_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)
+        if run_session is not None:
+            manifest = build_run_manifest(
+                report,
+                selector_repo_root=app_config.selector_repo_root or PROJECT_ROOT,
+                run_store_root=app_config.run_store_root or default_run_store_root(PROJECT_ROOT),
+                session=run_session,
+                status=report["selector_run"]["status"],
+                shard_mode=app_config.shard_mode,
+                preflight=execution_preflight,
+            )
+            write_run_artifacts(run_session, report, manifest)
+        if not json_to_stdout:
+            emit_progress(progress_enabled, "rendering human report")
+            print_human(report, None, written_json_path)
+        if args.run_now and preflight_failed:
+            return 2
+        if args.run_now and execution_summary and execution_summary.get("has_failures"):
+            return 1
+        return 0
 
     changed_files = normalize_changed_files(changed_inputs, base_roots=[app_config.repo_root, app_config.git_repo_root])
     if args.git_diff:
