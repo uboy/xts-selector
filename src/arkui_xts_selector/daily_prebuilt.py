@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import json
+import re
+import sys
 import tarfile
+import time
 import urllib.request
 from dataclasses import asdict, dataclass, field
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +18,8 @@ DEFAULT_DAILY_CACHE_ROOT = Path("/tmp/arkui_xts_selector_daily_cache").resolve()
 DEFAULT_DAILY_COMPONENT = "dayu200_Dyn_Sta_XTS"
 DEFAULT_SDK_COMPONENT = "ohos-sdk-public"
 DEFAULT_FIRMWARE_COMPONENT = "dayu200"
+PLACEHOLDER_METADATA_VALUES = {"", "-", "--", "n/a", "none", "null", "unknown"}
+DOWNLOAD_PROGRESS_UPDATE_INTERVAL = 0.5
 
 
 @dataclass
@@ -346,9 +352,16 @@ def prepare_daily_package(
 
     root = cache_root.expanduser().resolve()
     build_root = root / build.component / build.tag
-    archive_name = Path(package_url).name or f"{build.tag}.tar.gz"
+    url_name = Path(package_url).name or "package.tar.gz"
+    # Ensure the tag appears in the archive filename for easy identification.
+    tag_token = re.sub(r"[^\w.-]", "_", build.tag)
+    archive_name = url_name if tag_token in url_name else f"{tag_token}_{url_name}"
     archive_path = build_root / archive_name
+    legacy_archive_path = build_root / url_name
     extracted_root = build_root / (extract_dir_name or ("image_bundle" if package_kind == "image" else "extracted"))
+
+    if archive_path != legacy_archive_path and not archive_path.exists() and legacy_archive_path.exists():
+        archive_path = legacy_archive_path
 
     if archive_path.exists() and archive_path.stat().st_size == 0:
         archive_path.unlink()
@@ -359,23 +372,166 @@ def prepare_daily_package(
     return archive_path, extracted_root
 
 
+def is_placeholder_metadata(value: str | None) -> bool:
+    normalized = str(value or "").strip().lower()
+    return normalized in PLACEHOLDER_METADATA_VALUES
+
+
+def _format_progress_bytes(value: float) -> str:
+    units = ["B", "KiB", "MiB", "GiB", "TiB"]
+    size = float(max(value, 0.0))
+    unit = units[0]
+    for unit in units:
+        if size < 1024.0 or unit == units[-1]:
+            break
+        size /= 1024.0
+    return f"{size:.1f} {unit}"
+
+
+def _format_progress_duration(seconds: float | None) -> str:
+    if seconds is None:
+        return "?"
+    total_seconds = max(0, int(round(seconds)))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours:
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
+
+
+def _response_header(response: Any, name: str) -> str:
+    headers = getattr(response, "headers", None)
+    if headers is None:
+        return ""
+    if hasattr(headers, "get"):
+        return str(headers.get(name, "") or "").strip()
+    return ""
+
+
+def _detect_download_total_size(response: Any, existing_size: int, resume_supported: bool) -> int | None:
+    content_range = _response_header(response, "Content-Range")
+    match = re.match(r"bytes\s+\d+-\d+/(\d+|\*)", content_range)
+    if match and match.group(1).isdigit():
+        return int(match.group(1))
+
+    content_length = _response_header(response, "Content-Length")
+    if content_length.isdigit():
+        length = int(content_length)
+        return existing_size + length if resume_supported else length
+    return None
+
+
+def _render_download_progress(
+    name: str,
+    downloaded_bytes: int,
+    total_bytes: int | None,
+    transferred_bytes: int,
+    elapsed_seconds: float,
+) -> str:
+    elapsed = max(elapsed_seconds, 0.001)
+    rate = transferred_bytes / elapsed
+    if total_bytes and total_bytes > 0:
+        progress = min(100.0, (downloaded_bytes / total_bytes) * 100.0)
+        remaining = max(total_bytes - downloaded_bytes, 0)
+        eta_seconds = (remaining / rate) if rate > 0 else None
+        return (
+            f"download {name}: {progress:5.1f}% "
+            f"{_format_progress_bytes(downloaded_bytes)}/{_format_progress_bytes(total_bytes)} "
+            f"{_format_progress_bytes(rate)}/s eta {_format_progress_duration(eta_seconds)}"
+        )
+    return (
+        f"download {name}: {_format_progress_bytes(downloaded_bytes)} transferred "
+        f"{_format_progress_bytes(rate)}/s elapsed {_format_progress_duration(elapsed)}"
+    )
+
+
+def _emit_download_progress(
+    name: str,
+    downloaded_bytes: int,
+    total_bytes: int | None,
+    transferred_bytes: int,
+    elapsed_seconds: float,
+    final: bool = False,
+) -> None:
+    line = _render_download_progress(
+        name=name,
+        downloaded_bytes=downloaded_bytes,
+        total_bytes=total_bytes,
+        transferred_bytes=transferred_bytes,
+        elapsed_seconds=elapsed_seconds,
+    )
+    if hasattr(sys.stderr, "isatty") and sys.stderr.isatty():
+        print(f"\r{line}", file=sys.stderr, end="\n" if final else "", flush=True)
+        return
+    print(line, file=sys.stderr, flush=True)
+
+
 def _download_file(url: str, target: Path, timeout: float = 120.0) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
-    request = urllib.request.Request(url, headers={"User-Agent": DEFAULT_DAILY_USER_AGENT})
     partial = target.with_name(target.name + ".part")
+    existing_size = partial.stat().st_size if partial.exists() else 0
+    headers: dict[str, str] = {"User-Agent": DEFAULT_DAILY_USER_AGENT}
+    if existing_size > 0:
+        print(
+            f"warning: found partial download for {target.name}; attempting resume from byte {existing_size}",
+            file=sys.stderr,
+        )
+        headers["Range"] = f"bytes={existing_size}-"
+    request = urllib.request.Request(url, headers=headers)
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response, partial.open("wb") as fh:
-            while True:
-                chunk = response.read(1024 * 1024)
-                if not chunk:
-                    break
-                fh.write(chunk)
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            status = getattr(response, "status", None)
+            if status is None:
+                try:
+                    status = response.getcode()
+                except Exception:
+                    status = 200
+            if existing_size > 0 and status != 206:
+                print(
+                    f"warning: server did not honor resume for {target.name}; restarting download from byte 0",
+                    file=sys.stderr,
+                )
+            resume_supported = existing_size > 0 and status == 206
+            write_mode = "ab" if resume_supported else "wb"
+            downloaded_bytes = existing_size if resume_supported else 0
+            transferred_bytes = 0
+            total_bytes = _detect_download_total_size(
+                response,
+                existing_size=downloaded_bytes,
+                resume_supported=resume_supported,
+            )
+            started_at = time.monotonic()
+            last_report = started_at
+            with partial.open(write_mode) as fh:
+                while True:
+                    chunk = response.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    fh.write(chunk)
+                    chunk_size = len(chunk)
+                    downloaded_bytes += chunk_size
+                    transferred_bytes += chunk_size
+                    now = time.monotonic()
+                    if now - last_report >= DOWNLOAD_PROGRESS_UPDATE_INTERVAL:
+                        _emit_download_progress(
+                            name=target.name,
+                            downloaded_bytes=downloaded_bytes,
+                            total_bytes=total_bytes,
+                            transferred_bytes=transferred_bytes,
+                            elapsed_seconds=now - started_at,
+                        )
+                        last_report = now
+            _emit_download_progress(
+                name=target.name,
+                downloaded_bytes=downloaded_bytes,
+                total_bytes=total_bytes,
+                transferred_bytes=transferred_bytes,
+                elapsed_seconds=time.monotonic() - started_at,
+                final=True,
+            )
         partial.replace(target)
     except Exception:
-        try:
-            partial.unlink()
-        except OSError:
-            pass
+        # Preserve the partial file so the next call can resume from where we left off.
         raise
 
 
@@ -454,3 +610,52 @@ def prepare_daily_firmware(
         primary_root=primary_root,
         candidate_roots=candidate_roots,
     )
+
+
+def _parse_date_token(value: str) -> date:
+    raw = normalize_daily_date(value)
+    return date(int(raw[:4]), int(raw[4:6]), int(raw[6:8]))
+
+
+def list_daily_tags(
+    component: str,
+    branch: str = "master",
+    count: int = 10,
+    after_date: str | None = None,
+    before_date: str | None = None,
+    lookback_days: int = 30,
+    api_url: str = DEFAULT_DAILY_API_URL,
+    timeout: float = 30.0,
+) -> list[DailyBuildInfo]:
+    """Return the most recent *count* daily build tags for *component*.
+
+    Iterates days backwards from *before_date* (default: today) until either
+    *after_date* or *lookback_days* ago, collecting successful builds.  The
+    result is sorted newest-first and truncated to *count* entries.
+    """
+    end = _parse_date_token(before_date) if before_date else date.today()
+    if after_date:
+        start = _parse_date_token(after_date)
+    else:
+        start = end - timedelta(days=lookback_days)
+
+    all_builds: list[DailyBuildInfo] = []
+    current = end
+    while current >= start:
+        try:
+            day_builds = fetch_daily_builds(
+                component=component,
+                branch=branch,
+                build_date=current.strftime("%Y%m%d"),
+                api_url=api_url,
+                timeout=timeout,
+            )
+            all_builds.extend(day_builds)
+        except (ValueError, OSError, Exception):
+            pass
+        current -= timedelta(days=1)
+        if len(all_builds) >= count * 3:
+            break
+
+    all_builds.sort(key=lambda b: b.tag, reverse=True)
+    return all_builds[:count]

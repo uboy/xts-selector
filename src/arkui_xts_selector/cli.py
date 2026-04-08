@@ -55,6 +55,9 @@ from .daily_prebuilt import (
     PreparedDailyArtifact,
     PreparedDailyPrebuilt,
     discover_image_bundle_roots,
+    derive_date_from_tag,
+    is_placeholder_metadata,
+    list_daily_tags,
     prepare_daily_prebuilt,
     prepare_daily_firmware,
     prepare_daily_sdk,
@@ -1752,7 +1755,7 @@ def parse_pr_number(pr_url: str) -> str:
     if pr_url.isdigit():
         return pr_url
     parsed = urlparse(pr_url)
-    match = re.search(r"/pulls?/(\d+)", parsed.path)
+    match = re.search(r"/(?:pulls?|merge_requests)/(\d+)", parsed.path)
     if not match:
         raise RuntimeError(f"could not parse PR number from URL: {pr_url}")
     return match.group(1)
@@ -1762,7 +1765,7 @@ def parse_owner_repo_from_pr(pr_ref: str) -> tuple[str, str] | None:
     if pr_ref.isdigit():
         return None
     parsed = urlparse(pr_ref)
-    match = re.search(r"/([^/]+)/([^/]+)/pulls?/\d+", parsed.path)
+    match = re.search(r"/([^/]+)/([^/]+)/(?:pulls?|merge_requests)/\d+", parsed.path)
     if not match:
         return None
     return match.group(1), match.group(2)
@@ -3995,13 +3998,34 @@ def prepare_daily_sdk_from_config(app_config: AppConfig) -> PreparedDailyArtifac
 def prepare_daily_firmware_from_config(app_config: AppConfig) -> PreparedDailyArtifact:
     if not app_config.firmware_build_tag and not app_config.firmware_date:
         raise ValueError("firmware build tag or firmware date is required; provide --firmware-build-tag or --firmware-date")
-    build = resolve_daily_build(
-        component=app_config.firmware_component,
-        build_tag=app_config.firmware_build_tag,
-        branch=app_config.firmware_branch,
-        build_date=app_config.firmware_date,
-        component_role="generic",
-    )
+    try:
+        build = resolve_daily_build(
+            component=app_config.firmware_component,
+            build_tag=app_config.firmware_build_tag,
+            branch=app_config.firmware_branch,
+            build_date=app_config.firmware_date,
+            component_role="generic",
+        )
+    except FileNotFoundError as exc:
+        build_date = app_config.firmware_date or derive_date_from_tag(app_config.firmware_build_tag)
+        hint = (
+            f"Run `ohos download firmware` to list recent firmware tags, or "
+            f"`ohos download list-tags firmware --list-tags-count 20` for a longer list."
+        )
+        try:
+            recent = list_daily_tags(
+                component=app_config.firmware_component,
+                branch=app_config.firmware_branch,
+                count=5,
+                before_date=build_date or None,
+                lookback_days=14,
+            )
+        except Exception:
+            recent = []
+        if recent:
+            recent_tags = ", ".join(build.tag for build in recent)
+            raise FileNotFoundError(f"{exc}. Recent firmware tags: {recent_tags}. {hint}") from exc
+        raise FileNotFoundError(f"{exc}. {hint}") from exc
     return prepare_daily_firmware(
         build=build,
         cache_root=app_config.firmware_cache_root or DEFAULT_DAILY_CACHE_ROOT,
@@ -4026,6 +4050,58 @@ def resolve_local_firmware_root(path_value: Path) -> Path:
     raise ValueError(
         "firmware path must point to an unpacked image bundle root or a directory containing one"
     )
+
+
+def run_list_tags_mode(args: argparse.Namespace, app_config: "AppConfig") -> int:
+    tag_type = (args.list_daily_tags or "tests").lower().strip()
+    if tag_type == "sdk":
+        component = app_config.sdk_component
+        branch = app_config.sdk_branch
+        label = "SDK"
+    elif tag_type == "firmware":
+        component = app_config.firmware_component
+        branch = app_config.firmware_branch
+        label = "firmware"
+    else:
+        component = app_config.daily_component
+        branch = app_config.daily_branch
+        label = "XTS tests"
+
+    count = max(1, args.list_tags_count)
+    after_date = args.list_tags_after or None
+    before_date = args.list_tags_before or None
+    lookback = max(1, args.list_tags_lookback)
+
+    date_range_note = ""
+    if after_date or before_date:
+        date_range_note = f", date filter: {after_date or '...'} – {before_date or 'today'}"
+    print(f"Listing {count} most recent {label} tags (component={component}, branch={branch}{date_range_note}):")
+    try:
+        builds = list_daily_tags(
+            component=component,
+            branch=branch,
+            count=count,
+            after_date=after_date,
+            before_date=before_date,
+            lookback_days=lookback,
+        )
+    except Exception as exc:
+        print(f"error: failed to fetch tag list: {exc}", file=sys.stderr)
+        return 2
+
+    if not builds:
+        print("  (no builds found in the specified date range)")
+        return 0
+
+    for build in builds:
+        extra = []
+        if not is_placeholder_metadata(build.version_name):
+            extra.append(build.version_name)
+        if not is_placeholder_metadata(build.hardware_board):
+            extra.append(build.hardware_board)
+        suffix = f"  [{', '.join(extra)}]" if extra else ""
+        print(f"  {build.tag}{suffix}")
+    return 0
 
 
 def utility_mode_requested(args: argparse.Namespace) -> bool:
@@ -4053,6 +4129,8 @@ def write_and_render_utility_report(
     for name, payload in operations.items():
         status = payload.get("status", "")
         print(f"{name}: {status}")
+        if payload.get("error"):
+            print(f"  error: {payload['error']}")
         for key in ("tag", "component", "role", "package_kind", "archive_path", "extracted_root", "primary_root"):
             value = payload.get(key)
             if value:
@@ -5527,6 +5605,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--firmware-date", help="Daily firmware build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --firmware-build-tag.")
     parser.add_argument("--firmware-cache-root", help="Cache directory for downloaded/extracted daily firmware packages. Default: --daily-cache-root")
     parser.add_argument("--flash-firmware-path", help="Path to an unpacked local firmware image bundle root, or a parent directory containing one, to flash directly.")
+    parser.add_argument(
+        "--list-daily-tags", metavar="TYPE",
+        help="List recent daily build tags and exit. TYPE: tests (default), sdk, firmware.",
+    )
+    parser.add_argument("--list-tags-count", type=int, default=10, metavar="N",
+        help="Number of tags to show with --list-daily-tags. Default: 10.")
+    parser.add_argument("--list-tags-after", metavar="DATE",
+        help="Only list tags on or after this date (YYYYMMDD or YYYY-MM-DD).")
+    parser.add_argument("--list-tags-before", metavar="DATE",
+        help="Only list tags on or before this date (YYYYMMDD or YYYY-MM-DD). Default: today.")
+    parser.add_argument("--list-tags-lookback", type=int, default=30, metavar="DAYS",
+        help="How many days back to search when listing tags. Default: 30.")
     parser.add_argument("--flash-py-path", help="Path to the Rockchip flash.py helper used for board flashing.")
     parser.add_argument("--hdc-path", help="Path to hdc used for switching a device into bootloader mode before flashing.")
     parser.add_argument("--run-tool", choices=RUN_TOOL_CHOICES, default="auto", help="Execution tool to use for --run-now. Default: auto.")
@@ -5715,6 +5805,8 @@ def main() -> int:
     app_config = load_app_config(args)
     apply_ranking_rules_config(load_ranking_rules_config(app_config.ranking_rules_file))
     REPO_ROOT = app_config.repo_root
+    if args.list_daily_tags is not None:
+        return run_list_tags_mode(args, app_config)
     if utility_mode_requested(args):
         return run_utility_mode(
             args=args,

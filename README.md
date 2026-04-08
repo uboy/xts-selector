@@ -167,6 +167,14 @@ arkui-xts-selector \
 ```
 
 ```bash
+ohos download firmware
+```
+
+```bash
+ohos download firmware 20260408_120247
+```
+
+```bash
 python3 -m arkui_xts_selector.xts_compare \
   --base-label baseline \
   --target-label v1
@@ -384,6 +392,8 @@ Utility-mode notes:
   - tests: `dayu200_Dyn_Sta_XTS`
   - SDK: `ohos-sdk-public`
   - firmware: `dayu200`
+- `ohos download sdk` and `ohos download firmware` without a tag show recent available tags instead of failing immediately
+- if a requested firmware tag does not exist, the CLI now prints the failure reason directly in the terminal and suggests recent valid firmware tags
 - firmware flashing currently targets the local Rockchip Linux flow that worked for dayu200:
   - switch the board into bootloader through `hdc target boot -bootloader`
   - wait for Rockchip `Loader`

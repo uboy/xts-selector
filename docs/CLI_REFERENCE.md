@@ -236,8 +236,10 @@ CLI flags take precedence over values loaded from `--config`.
   Cache directory for downloaded and extracted firmware packages.
 - `--download-daily-firmware`
   Download and extract the daily firmware package, then exit.
+  When invoked through `ohos download firmware` without a tag, the wrapper lists recent available firmware tags and shows the next command to run.
 - `--flash-daily-firmware`
   Download and extract the daily firmware package, flash the connected device, then exit.
+  If the requested firmware tag does not exist, the CLI reports the error in the terminal and suggests recent valid firmware tags.
 - `--flash-py-path PATH`
   Path to the Rockchip `flash.py` helper.
 - `--hdc-path PATH`
@@ -327,6 +329,18 @@ arkui-xts-selector \
   --firmware-component dayu200 \
   --device 150100424a544434520369864f628800 \
   --flash-py-path /home/<user>/bin/linux/flash.py
+```
+
+List recent firmware tags through the `ohos` wrapper:
+
+```bash
+ohos download firmware
+```
+
+Download a firmware package with a positional tag:
+
+```bash
+ohos download firmware 20260408_120247
 ```
 
 ## `xts_compare`

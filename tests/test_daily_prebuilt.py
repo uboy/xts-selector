@@ -21,7 +21,10 @@ from arkui_xts_selector.daily_prebuilt import (
     DailyBuildInfo,
     PreparedDailyArtifact,
     PreparedDailyPrebuilt,
+    _download_file,
+    _render_download_progress,
     discover_acts_out_roots,
+    is_placeholder_metadata,
     prepare_daily_prebuilt,
     prepare_daily_firmware,
     prepare_daily_sdk,
@@ -307,6 +310,112 @@ class DailyPrebuiltPreparationTests(unittest.TestCase):
         self.assertIsNotNone(prepared.primary_root)
         self.assertTrue(str(prepared.primary_root).endswith("payload"))
 
+    def test_render_download_progress_includes_percent_speed_and_eta(self) -> None:
+        line = _render_download_progress(
+            name="artifact.tar.gz",
+            downloaded_bytes=5 * 1024 * 1024,
+            total_bytes=10 * 1024 * 1024,
+            transferred_bytes=5 * 1024 * 1024,
+            elapsed_seconds=2.0,
+        )
+
+        self.assertIn("download artifact.tar.gz:", line)
+        self.assertIn("50.0%", line)
+        self.assertIn("/s eta", line)
+
+    def test_download_file_resumes_from_partial_archive_with_warning(self) -> None:
+        class FakeResponse:
+            def __init__(self, payload: bytes, status: int, headers: dict[str, str] | None = None) -> None:
+                self._payload = io.BytesIO(payload)
+                self.status = status
+                self.headers = headers or {}
+
+            def read(self, size: int = -1) -> bytes:
+                return self._payload.read(size)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+        with TemporaryDirectory() as tmpdir:
+            target = Path(tmpdir) / "artifact.tar.gz"
+            partial = target.with_name(target.name + ".part")
+            partial.write_bytes(b"abc")
+
+            stderr = io.StringIO()
+            with mock.patch("urllib.request.urlopen", return_value=FakeResponse(b"def", 206)):
+                with redirect_stderr(stderr):
+                    _download_file("https://example.invalid/artifact.tar.gz", target)
+
+            self.assertEqual(target.read_bytes(), b"abcdef")
+            self.assertFalse(partial.exists())
+            self.assertIn("attempting resume", stderr.getvalue())
+
+    def test_download_file_restarts_when_server_ignores_range_request(self) -> None:
+        class FakeResponse:
+            def __init__(self, payload: bytes, status: int, headers: dict[str, str] | None = None) -> None:
+                self._payload = io.BytesIO(payload)
+                self.status = status
+                self.headers = headers or {}
+
+            def read(self, size: int = -1) -> bytes:
+                return self._payload.read(size)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+        with TemporaryDirectory() as tmpdir:
+            target = Path(tmpdir) / "artifact.tar.gz"
+            partial = target.with_name(target.name + ".part")
+            partial.write_bytes(b"old-bytes")
+
+            stderr = io.StringIO()
+            with mock.patch("urllib.request.urlopen", return_value=FakeResponse(b"fresh-bytes", 200)):
+                with redirect_stderr(stderr):
+                    _download_file("https://example.invalid/artifact.tar.gz", target)
+
+            self.assertEqual(target.read_bytes(), b"fresh-bytes")
+            self.assertFalse(partial.exists())
+            self.assertIn("restarting download", stderr.getvalue())
+
+    def test_download_file_prints_progress_line(self) -> None:
+        class FakeResponse:
+            def __init__(self, payload: bytes, status: int, headers: dict[str, str] | None = None) -> None:
+                self._payload = io.BytesIO(payload)
+                self.status = status
+                self.headers = headers or {}
+
+            def read(self, size: int = -1) -> bytes:
+                return self._payload.read(size)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+        payload = b"x" * (2 * 1024 * 1024)
+        with TemporaryDirectory() as tmpdir:
+            target = Path(tmpdir) / "artifact.tar.gz"
+            stderr = io.StringIO()
+            with mock.patch(
+                "urllib.request.urlopen",
+                return_value=FakeResponse(payload, 200, headers={"Content-Length": str(len(payload))}),
+            ):
+                with redirect_stderr(stderr):
+                    _download_file("https://example.invalid/artifact.tar.gz", target)
+
+            output = stderr.getvalue()
+            self.assertEqual(target.read_bytes(), payload)
+            self.assertIn("download artifact.tar.gz:", output)
+            self.assertIn("%", output)
+            self.assertIn("/s eta", output)
+
 
 class DailyPrebuiltCliTests(unittest.TestCase):
     def test_main_records_daily_prebuilt_in_run_manifest(self) -> None:
@@ -451,6 +560,38 @@ class DailyPrebuiltCliTests(unittest.TestCase):
         self.assertEqual(payload["mode"], "utility")
         self.assertEqual(payload["operations"]["flash_local_firmware"]["requested_path"], str(firmware_root))
         mocked_projects.assert_not_called()
+
+    def test_list_tags_output_omits_placeholder_metadata(self) -> None:
+        build = DailyBuildInfo(
+            tag="20260408_180752",
+            component=DEFAULT_SDK_COMPONENT,
+            branch="master",
+            version_type="Daily_Version",
+            version_name="OpenHarmony_7.0.0.20",
+            hardware_board="-",
+            full_package_url="https://example.invalid/version-sdk.tar.gz",
+        )
+        argv = [
+            "arkui-xts-selector",
+            "--list-daily-tags",
+            "sdk",
+            "--json-out",
+            "/tmp/ignored.json",
+        ]
+        with mock.patch.object(sys, "argv", argv):
+            with mock.patch("arkui_xts_selector.cli.list_daily_tags", return_value=[build]):
+                with redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()):
+                    code = main()
+
+        self.assertEqual(code, 0)
+        output = stdout.getvalue()
+        self.assertIn("20260408_180752  [OpenHarmony_7.0.0.20]", output)
+        self.assertNotIn("[OpenHarmony_7.0.0.20, -]", output)
+
+    def test_placeholder_metadata_helper_treats_dash_as_empty(self) -> None:
+        self.assertTrue(is_placeholder_metadata("-"))
+        self.assertTrue(is_placeholder_metadata("unknown"))
+        self.assertFalse(is_placeholder_metadata("OpenHarmony_7.0.0.20"))
 
 
 if __name__ == "__main__":
