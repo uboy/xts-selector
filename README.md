@@ -20,6 +20,9 @@ This is not runtime coverage. It is a test selection helper.
 - optional dayu200 firmware flashing through the same CLI using `hdc` + Rockchip `flash.py`
 - output `aa test`, `python -m xdevice`, and `runtest.sh` commands
 - multi-device execution planning for `aa_test`, `xdevice`, and `runtest`
+- estimated execution time for selected suites and batches before the run starts
+- shared runtime history database that learns from completed selector-driven runs
+- crash-safe per-device locking, so concurrent users do not start conflicting runs on the same device queue
 - device preflight before `--run-now`, including `hdc list targets` checks for connected devices
 - opt-in `--run-now` execution with per-device status in JSON and human output
 - optional labeled run storage under `.runs/<label>/<timestamp>/` for later audit and comparison
@@ -68,6 +71,8 @@ arkui-xts-selector \
   --symbol-query ButtonModifier \
   --devices R52W12345678 \
   --run-tool xdevice \
+  --run-priority required \
+  --parallel-jobs 2 \
   --run-now
 ```
 
@@ -80,6 +85,14 @@ python3 -m arkui_xts_selector.xts_compare \
 ```
 
 Use [docs/CLI_REFERENCE.md](docs/CLI_REFERENCE.md) for the full command reference, grouped flags, and extra examples.
+
+Execution timing and locking notes:
+
+- the selector stores runtime history under `/tmp/arkui_xts_selector_state/runtime_history.json` by default
+- future reports use that history to estimate `required`, `recommended`, and `full` batch duration
+- per-device execution uses crash-safe file locks under `/tmp/arkui_xts_selector_state/device-locks/`
+- use `--runtime-state-root` to move the shared state elsewhere
+- use `--device-lock-timeout` to control how long a run waits before a busy device queue is marked `blocked`
 
 ## Documentation
 

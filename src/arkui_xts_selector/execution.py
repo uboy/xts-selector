@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import re
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 from xml.etree.ElementTree import iterparse
@@ -12,12 +14,23 @@ from .build_state import (
     build_runtest_command,
     build_xdevice_command,
 )
+from .runtime_state import (
+    InterprocessLockTimeout,
+    acquire_device_lock,
+)
 
 
 RUN_TOOL_CHOICES = ("auto", "aa_test", "xdevice", "runtest")
 SHARD_MODE_CHOICES = ("mirror", "split")
+RUN_PRIORITY_CHOICES = ("required", "recommended", "all")
 _RUN_TOOL_ORDER = ("aa_test", "xdevice", "runtest")
 _OHOS_RELEASE_RE = re.compile(r"openharmony[-_ ]?(\d+)\.(\d+)", re.I)
+
+
+def _utc_now() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def normalize_device_tokens(values: list[str]) -> list[str]:
@@ -303,6 +316,24 @@ def collect_unique_run_targets(report: dict[str, Any]) -> list[dict[str, Any]]:
     return list(groups.values())
 
 
+def select_target_keys_for_priority(
+    coverage_recommendations: dict[str, Any],
+    run_priority: str,
+) -> list[str]:
+    required = [str(item) for item in coverage_recommendations.get("required_target_keys", []) if str(item)]
+    recommended = [str(item) for item in coverage_recommendations.get("recommended_target_keys", []) if str(item)]
+    additional = [str(item) for item in coverage_recommendations.get("recommended_additional_target_keys", []) if str(item)]
+    optional = [str(item) for item in coverage_recommendations.get("optional_target_keys", []) if str(item)]
+    ordered = [str(item) for item in coverage_recommendations.get("ordered_target_keys", []) if str(item)]
+    if run_priority == "required":
+        return required
+    if run_priority == "recommended":
+        return recommended or (required + additional)
+    if run_priority == "all":
+        return ordered or (required + additional + optional)
+    return recommended or (required + additional)
+
+
 def attach_execution_plan(
     report: dict[str, Any],
     repo_root: Path,
@@ -312,12 +343,33 @@ def attach_execution_plan(
     run_top_targets: int = 0,
     shard_mode: str = "mirror",
     xdevice_reports_root: Path | None = None,
+    run_priority: str = "recommended",
+    parallel_jobs: int = 1,
+    runtime_state_root: Path | None = None,
+    device_lock_timeout: float = 30.0,
 ) -> None:
     groups = collect_unique_run_targets(report)
     coverage_recommendations = report.get("coverage_recommendations", {})
+    required_keys = set(coverage_recommendations.get("required_target_keys", []))
     recommended_keys = set(coverage_recommendations.get("recommended_target_keys", []))
+    recommended_additional_keys = set(coverage_recommendations.get("recommended_additional_target_keys", []))
     optional_keys = set(coverage_recommendations.get("optional_target_keys", []))
-    default_groups = [group for group in groups if group["key"] in recommended_keys] if recommended_keys else list(groups)
+    has_explicit_coverage_plan = bool(
+        required_keys
+        or recommended_keys
+        or recommended_additional_keys
+        or optional_keys
+        or coverage_recommendations.get("ordered_target_keys")
+        or coverage_recommendations.get("source_count")
+        or coverage_recommendations.get("candidate_count")
+    )
+    priority_keys = set(select_target_keys_for_priority(coverage_recommendations, run_priority))
+    if priority_keys:
+        default_groups = [group for group in groups if group["key"] in priority_keys]
+    elif has_explicit_coverage_plan:
+        default_groups = []
+    else:
+        default_groups = list(groups)
     if run_top_targets <= 0:
         selected_groups = default_groups
     else:
@@ -342,10 +394,15 @@ def attach_execution_plan(
     report["requested_devices"] = list(devices)
     report["execution_overview"] = {
         "run_tool": run_tool,
+        "run_priority": run_priority,
+        "parallel_jobs": max(1, int(parallel_jobs or 1)),
+        "device_lock_timeout_s": float(device_lock_timeout or 0.0),
         "shard_mode": shard_mode,
         "requested_devices": list(devices),
         "unique_target_count": len(groups),
-        "recommended_target_count": len(recommended_keys) if recommended_keys else len(default_groups),
+        "required_target_count": len(required_keys),
+        "recommended_target_count": len(recommended_keys) if has_explicit_coverage_plan else len(default_groups),
+        "recommended_additional_target_count": len(recommended_additional_keys),
         "optional_target_count": len(optional_keys),
         "selected_target_count": len(selected_groups),
         "selected_target_keys": [group["key"] for group in selected_groups],
@@ -387,6 +444,73 @@ def _classify_xdevice_case(status: str, result: str) -> str:
     if normalized_status == "error":
         return "fail"
     return "unknown"
+
+
+def _execute_plan_item(item: dict[str, Any], timeout_value: float | None) -> tuple[dict[str, Any], dict[str, int] | None]:
+    started_at = _utc_now()
+    started_monotonic = time.monotonic()
+    try:
+        completed = subprocess.run(
+            item["command"],
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=timeout_value,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        duration_s = round(time.monotonic() - started_monotonic, 3)
+        outcome = {
+            **item,
+            "status": "timeout",
+            "returncode": None,
+            "timed_out": True,
+            "stdout_tail": _tail_text(exc.stdout),
+            "stderr_tail": _tail_text(exc.stderr),
+            "case_summary": {},
+            "started_at": started_at,
+            "finished_at": _utc_now(),
+            "duration_s": duration_s,
+        }
+        return outcome, None
+
+    case_summary = None
+    if item.get("selected_tool") == "xdevice":
+        case_summary = _load_xdevice_case_summary(item.get("result_path"))
+    status = "passed" if completed.returncode == 0 else "failed"
+    if (
+        status == "passed"
+        and case_summary is not None
+        and (case_summary["fail_count"] or case_summary["blocked_count"] or case_summary["unknown_count"])
+    ):
+        status = "failed"
+    outcome = {
+        **item,
+        "status": status,
+        "returncode": completed.returncode,
+        "timed_out": False,
+        "stdout_tail": _tail_text(completed.stdout),
+        "stderr_tail": _tail_text(completed.stderr),
+        "case_summary": case_summary or {},
+        "started_at": started_at,
+        "finished_at": _utc_now(),
+        "duration_s": round(time.monotonic() - started_monotonic, 3),
+    }
+    return outcome, case_summary
+
+
+def _merge_outcome_into_summary(summary: dict[str, Any], outcome: dict[str, Any]) -> None:
+    status = str(outcome.get("status") or "")
+    if status == "passed":
+        summary["passed"] += 1
+    elif status == "blocked":
+        summary["blocked"] += 1
+    elif status == "timeout":
+        summary["timeout"] += 1
+    elif status == "unavailable":
+        summary["unavailable"] += 1
+    else:
+        summary["failed"] += 1
 
 
 def _load_xdevice_case_summary(result_path: str | None) -> dict[str, int] | None:
@@ -571,6 +695,10 @@ def execute_planned_targets(
     run_timeout: float = 0.0,
     shard_mode: str = "mirror",
     xdevice_reports_root: Path | None = None,
+    run_priority: str = "recommended",
+    parallel_jobs: int = 1,
+    runtime_state_root: Path | None = None,
+    device_lock_timeout: float = 30.0,
 ) -> dict[str, Any]:
     attach_execution_plan(
         report,
@@ -581,6 +709,10 @@ def execute_planned_targets(
         run_top_targets=run_top_targets,
         shard_mode=shard_mode,
         xdevice_reports_root=xdevice_reports_root,
+        run_priority=run_priority,
+        parallel_jobs=parallel_jobs,
+        runtime_state_root=runtime_state_root,
+        device_lock_timeout=device_lock_timeout,
     )
     groups = collect_unique_run_targets(report)
     selected_keys = set(report.get("execution_overview", {}).get("selected_target_keys", []))
@@ -589,17 +721,21 @@ def execute_planned_targets(
         "planned_run_count": 0,
         "passed": 0,
         "failed": 0,
+        "blocked": 0,
         "timeout": 0,
         "unavailable": 0,
     }
 
     timeout_value = run_timeout if run_timeout and run_timeout > 0 else None
+    group_results: dict[str, list[tuple[int, dict[str, Any]]]] = {}
+    pending_queues: dict[str, list[tuple[str, int, dict[str, Any]]]] = {}
     for group in groups:
         if group["key"] not in selected_keys:
             continue
-        plan = group["representative"].get("execution_plan", [])
-        results: list[dict[str, Any]] = []
-        for item in plan:
+        group_key = str(group["key"])
+        group_results[group_key] = []
+        plan = list(group["representative"].get("execution_plan", []))
+        for item_index, item in enumerate(plan):
             summary["planned_run_count"] += 1
             if item["status"] != "pending":
                 outcome = {
@@ -609,60 +745,82 @@ def execute_planned_targets(
                     "timed_out": False,
                     "stdout_tail": "",
                     "stderr_tail": "",
-                }
-                summary["unavailable"] += 1
-                results.append(outcome)
-                continue
-
-            try:
-                completed = subprocess.run(
-                    item["command"],
-                    shell=True,
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout_value,
-                    check=False,
-                )
-                case_summary = None
-                if item.get("selected_tool") == "xdevice":
-                    case_summary = _load_xdevice_case_summary(item.get("result_path"))
-                status = "passed" if completed.returncode == 0 else "failed"
-                if (
-                    status == "passed"
-                    and case_summary is not None
-                    and (case_summary["fail_count"] or case_summary["blocked_count"] or case_summary["unknown_count"])
-                ):
-                    status = "failed"
-                if status == "passed":
-                    summary["passed"] += 1
-                else:
-                    summary["failed"] += 1
-                outcome = {
-                    **item,
-                    "status": status,
-                    "returncode": completed.returncode,
-                    "timed_out": False,
-                    "stdout_tail": _tail_text(completed.stdout),
-                    "stderr_tail": _tail_text(completed.stderr),
-                    "case_summary": case_summary or {},
-                }
-            except subprocess.TimeoutExpired as exc:
-                summary["timeout"] += 1
-                outcome = {
-                    **item,
-                    "status": "timeout",
-                    "returncode": None,
-                    "timed_out": True,
-                    "stdout_tail": _tail_text(exc.stdout),
-                    "stderr_tail": _tail_text(exc.stderr),
                     "case_summary": {},
+                    "started_at": "",
+                    "finished_at": "",
+                    "duration_s": 0.0,
                 }
-            results.append(outcome)
+                group_results[group_key].append((item_index, outcome))
+                _merge_outcome_into_summary(summary, outcome)
+                continue
+            queue_key = str(item.get("device_label") or item.get("device") or "default")
+            pending_queues.setdefault(queue_key, []).append((group_key, item_index, dict(item)))
 
+    run_label = str(report.get("selector_run", {}).get("label") or "")
+
+    def _run_device_queue(
+        queue_label: str,
+        queue_items: list[tuple[str, int, dict[str, Any]]],
+    ) -> list[tuple[str, int, dict[str, Any]]]:
+        outcomes: list[tuple[str, int, dict[str, Any]]] = []
+        try:
+            lock = acquire_device_lock(
+                runtime_state_root,
+                queue_label,
+                timeout_s=device_lock_timeout,
+                run_label=run_label or None,
+                extra={"queue_length": len(queue_items)},
+            )
+        except InterprocessLockTimeout as exc:
+            for group_key, item_index, item in queue_items:
+                outcome = {
+                    **item,
+                    "status": "blocked",
+                    "returncode": None,
+                    "timed_out": False,
+                    "stdout_tail": "",
+                    "stderr_tail": str(exc),
+                    "case_summary": {},
+                    "reason": str(exc),
+                    "started_at": "",
+                    "finished_at": "",
+                    "duration_s": 0.0,
+                }
+                outcomes.append((group_key, item_index, outcome))
+            return outcomes
+        with lock:
+            for group_key, item_index, item in queue_items:
+                outcome, _ = _execute_plan_item(item, timeout_value)
+                outcomes.append((group_key, item_index, outcome))
+        return outcomes
+
+    queue_items = list(pending_queues.items())
+    if parallel_jobs > 1 and len(queue_items) > 1:
+        max_workers = max(1, min(parallel_jobs, len(queue_items)))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(_run_device_queue, queue_label, items) for queue_label, items in queue_items]
+            for future in futures:
+                for group_key, item_index, outcome in future.result():
+                    group_results.setdefault(group_key, []).append((item_index, outcome))
+                    _merge_outcome_into_summary(summary, outcome)
+    else:
+        for queue_label, items in queue_items:
+            for group_key, item_index, outcome in _run_device_queue(queue_label, items):
+                group_results.setdefault(group_key, []).append((item_index, outcome))
+                _merge_outcome_into_summary(summary, outcome)
+
+    for group in groups:
+        group_key = str(group["key"])
+        if group_key not in selected_keys:
+            continue
+        ordered_results = [
+            dict(outcome)
+            for _, outcome in sorted(group_results.get(group_key, []), key=lambda item: item[0])
+        ]
         for target in group["targets"]:
-            target["execution_results"] = [dict(item) for item in results]
+            target["execution_results"] = ordered_results
 
-    summary["has_failures"] = bool(summary["failed"] or summary["timeout"] or summary["unavailable"])
+    summary["has_failures"] = bool(summary["failed"] or summary["blocked"] or summary["timeout"] or summary["unavailable"])
     report["execution_summary"] = summary
     overview = report.get("execution_overview", {})
     overview["executed"] = True

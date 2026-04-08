@@ -34,6 +34,9 @@ It can also:
 
 - prepare runnable `aa test`, `xdevice`, and `runtest` commands
 - execute selected targets with `--run-now`
+- estimate suite and batch duration before execution
+- learn from completed runs via a shared runtime-history database
+- prevent conflicting runs on the same device queue with crash-safe locks
 - download daily test, SDK, and firmware artifacts
 - flash supported firmware packages
 - store labeled runs under `.runs/<label>/<timestamp>/`
@@ -104,7 +107,9 @@ arkui-xts-selector \
   --symbol-query ButtonModifier \
   --devices SER1,SER2 \
   --run-now \
-  --run-tool xdevice
+  --run-tool xdevice \
+  --run-priority required \
+  --parallel-jobs 2
 ```
 
 ### Option Reference
@@ -183,9 +188,16 @@ CLI flags take precedence over values loaded from `--config`.
   Execute selected targets immediately after report generation.
 - `--run-tool auto|aa_test|xdevice|runtest`
   Select the runtime launcher. Default: `auto`.
+- `--run-priority required|recommended|all`
+  Choose which coverage tier to execute.
+  `required` runs only the strongest unique coverage.
+  `recommended` runs `required` plus additional unique coverage.
+  `all` also includes duplicate fallback coverage.
 - `--shard-mode mirror|split`
   `mirror` runs the same selected targets on every device.
   `split` shards unique selected targets across devices.
+- `--parallel-jobs N`
+  Maximum number of device queues to execute concurrently. Targets inside the same device queue still run sequentially.
 - `--run-top-targets N`
   Execute at most `N` unique run targets. `0` means no limit.
 - `--run-timeout SECONDS`
@@ -194,6 +206,12 @@ CLI flags take precedence over values loaded from `--config`.
   Persist the planned or executed run under `.runs/<label>/<timestamp>/`.
 - `--run-store-root PATH`
   Override the labeled run-store root. Default: `<selector_repo>/.runs`.
+- `--runtime-state-root PATH`
+  Override the shared runtime-state directory. By default the selector uses `/tmp/arkui_xts_selector_state` for runtime history and per-device lock files.
+- `--device-lock-timeout SECONDS`
+  How long `--run-now` waits for a busy device queue before the queue is marked `blocked`.
+
+Runtime estimates are built without executing tests first. The selector uses observed durations from previous selector-driven runs when available, then falls back to capability-level, family-level, and tool-default estimates. The runtime history database is updated after successful `--run-now` executions, and large timing deviations are tracked as significant updates in the report summary.
 
 #### Daily Prebuilt Tests, SDK, And Firmware
 

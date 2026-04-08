@@ -64,6 +64,7 @@ from .daily_prebuilt import (
     resolve_daily_build,
 )
 from .execution import (
+    RUN_PRIORITY_CHOICES,
     RUN_TOOL_CHOICES,
     SHARD_MODE_CHOICES,
     attach_execution_plan,
@@ -78,6 +79,16 @@ from .run_store import (
     create_run_session,
     default_run_store_root,
     write_run_artifacts,
+)
+from .runtime_history import (
+    RuntimeHistoryIndex,
+    annotate_report_runtime_estimates,
+    build_runtime_history_index,
+    update_runtime_history,
+)
+from .runtime_state import (
+    default_runtime_history_file,
+    default_runtime_state_root,
 )
 from .workspace import (
     default_acts_out_root,
@@ -102,6 +113,7 @@ def default_cache_path(xts_root: Path) -> Path:
 DEFAULT_REPORT_FILE = "arkui_xts_selector_report.json"
 RELEVANCE_MODE_CHOICES = ("all", "balanced", "strict")
 PR_SOURCE_CHOICES = ("auto", "api", "git")
+HUMAN_OPTIONAL_DUPLICATE_DISPLAY_LIMIT = 20
 DEFAULT_CHANGED_FILE_EXCLUSION_RULES = {
     "path_prefixes": [
         "test/unittest/",
@@ -1363,7 +1375,9 @@ class AppConfig:
     selector_repo_root: Path | None = None
     run_label: str | None = None
     run_store_root: Path | None = None
+    runtime_state_root: Path | None = None
     shard_mode: str = "mirror"
+    device_lock_timeout: float = 30.0
     daily_build_tag: str | None = None
     daily_component: str = DEFAULT_DAILY_COMPONENT
     daily_branch: str = "master"
@@ -3673,20 +3687,30 @@ def build_global_coverage_recommendations(
                 new_sources.append(normalized)
         target["new_sources"] = new_sources
         target["execution_sources"] = covered_sources
-        target["coverage_status"] = "recommended" if new_keys else "optional"
-        target["coverage_reason"] = (
-            f"adds {len(new_keys)} new functional area(s)"
-            if new_keys
-            else "covers only functionality already covered by earlier recommended suites"
-        )
         target["coverage_source_reasons"] = {
             key: candidate["source_reasons"].get(key, [])
             for key in sorted(source_keys)
         }
         ordered_candidates.append(target)
 
-    recommended = [target for target in ordered_candidates if int(target.get("new_coverage_count", 0)) > 0]
+    required: list[dict[str, object]] = []
+    recommended_additional: list[dict[str, object]] = []
     optional_duplicates = [target for target in ordered_candidates if int(target.get("new_coverage_count", 0)) <= 0]
+    for target in ordered_candidates:
+        new_coverage_count = int(target.get("new_coverage_count", 0) or 0)
+        if new_coverage_count <= 0:
+            target["coverage_status"] = "optional"
+            target["coverage_reason"] = "covers only functionality already covered by earlier selected suites"
+            continue
+        if str(target.get("bucket") or "") == "must-run":
+            target["coverage_status"] = "required"
+            target["coverage_reason"] = f"adds {new_coverage_count} new functional area(s) with strong direct coverage"
+            required.append(target)
+        else:
+            target["coverage_status"] = "recommended"
+            target["coverage_reason"] = f"adds {new_coverage_count} new functional area(s) but with weaker evidence"
+            recommended_additional.append(target)
+    recommended = required + recommended_additional
     covered_unit_keys = sorted(
         {
             key
@@ -3706,10 +3730,14 @@ def build_global_coverage_recommendations(
     return {
         "source_count": len(all_units),
         "candidate_count": len(ordered_candidates),
+        "required": required,
         "recommended": recommended,
+        "recommended_additional": recommended_additional,
         "optional_duplicates": optional_duplicates,
         "ordered_targets": ordered_candidates,
+        "required_target_keys": [str(target.get("target_key") or "") for target in required],
         "recommended_target_keys": [str(target.get("target_key") or "") for target in recommended],
+        "recommended_additional_target_keys": [str(target.get("target_key") or "") for target in recommended_additional],
         "optional_target_keys": [str(target.get("target_key") or "") for target in optional_duplicates],
         "ordered_target_keys": [str(target.get("target_key") or "") for target in ordered_candidates],
         "covered_source_keys": covered_unit_keys,
@@ -4282,6 +4310,8 @@ def format_report(
     keep_per_signature: int = 0,
     cache_used: bool = False,
     debug_trace: bool = False,
+    runtime_history_index: RuntimeHistoryIndex | None = None,
+    requested_run_tool: str = "auto",
     progress_callback: Callable[[str], None] | None = None,
 ) -> dict:
     setup_started = time.perf_counter()
@@ -4296,6 +4326,8 @@ def format_report(
         "acts_out_root": str(acts_out_root or (REPO_ROOT / "out/release/suites/acts")),
         "cache_file": str(app_config.cache_file) if app_config.cache_file else None,
         "ranking_rules_file": str(app_config.ranking_rules_file) if app_config.ranking_rules_file else None,
+        "runtime_state_root": str(app_config.runtime_state_root) if app_config.runtime_state_root else None,
+        "runtime_history_file": str(default_runtime_history_file(app_config.runtime_state_root)),
         "built_artifacts": built_artifacts,
         "built_artifact_index": built_artifact_index,
         "product_build": product_build,
@@ -4622,6 +4654,8 @@ def format_report(
         acts_out_root=acts_out_root,
         device=device,
     )
+    if runtime_history_index is not None:
+        annotate_report_runtime_estimates(report, runtime_history_index, requested_tool=requested_run_tool)
     if progress_callback:
         progress_callback("assembling build guidance")
     guidance_started = time.perf_counter()
@@ -4751,6 +4785,38 @@ def _tail_hint(result: dict) -> str:
     return "-"
 
 
+def _format_duration_seconds(value: object) -> str:
+    try:
+        seconds = float(value)
+    except (TypeError, ValueError):
+        return "-"
+    if seconds <= 0:
+        return "-"
+    rounded = int(round(seconds))
+    hours, remainder = divmod(rounded, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours > 0:
+        return f"~{hours}h {minutes:02d}m"
+    if minutes > 0:
+        return f"~{minutes}m {secs:02d}s"
+    return f"~{secs}s"
+
+
+def _format_estimate_label(entry: dict[str, object]) -> str:
+    base = _format_duration_seconds(entry.get("estimated_duration_s"))
+    if base == "-":
+        return "-"
+    source = str(entry.get("estimate_source") or "")
+    source_label = {
+        "exact_target_tool": "observed",
+        "exact_target_any_tool": "observed",
+        "capability_tool": "capability",
+        "family_tool": "family",
+        "tool_default": "default",
+    }.get(source, source or "estimated")
+    return f"{base} ({source_label})"
+
+
 def _shell_join(parts: Iterable[object]) -> str:
     return " ".join(shlex.quote(str(part)) for part in parts if str(part))
 
@@ -4816,17 +4882,107 @@ def _preparation_summary(report: dict) -> str:
     return "missing"
 
 
+def _base_selector_run_command(app_config: AppConfig, args: argparse.Namespace) -> list[object]:
+    command_name = "arkui-xts-selector"
+    run_command: list[object] = [command_name, "--repo-root", app_config.repo_root]
+    for changed_file in args.changed_file:
+        run_command.extend(["--changed-file", changed_file])
+    for symbol_query in args.symbol_query:
+        run_command.extend(["--symbol-query", symbol_query])
+    for code_query in args.code_query:
+        run_command.extend(["--code-query", code_query])
+    if args.changed_files_from:
+        run_command.extend(["--changed-files-from", args.changed_files_from])
+    if args.git_diff:
+        run_command.extend(["--git-diff", args.git_diff])
+    if args.pr_url:
+        run_command.extend(["--pr-url", args.pr_url])
+    if args.pr_number:
+        run_command.extend(["--pr-number", args.pr_number])
+    if args.pr_source != "auto":
+        run_command.extend(["--pr-source", args.pr_source])
+    if args.git_host_config:
+        run_command.extend(["--git-host-config", args.git_host_config])
+    if args.gitcode_api_url:
+        run_command.extend(["--gitcode-api-url", args.gitcode_api_url])
+    run_command.extend(["--variants", args.variants, "--relevance-mode", args.relevance_mode])
+    run_command.extend(["--top-projects", args.top_projects])
+    if args.keep_per_signature:
+        run_command.extend(["--keep-per-signature", args.keep_per_signature])
+    if app_config.runtime_state_root and app_config.runtime_state_root != default_runtime_state_root():
+        run_command.extend(["--runtime-state-root", app_config.runtime_state_root])
+    if float(app_config.device_lock_timeout or 0.0) != 30.0:
+        run_command.extend(["--device-lock-timeout", app_config.device_lock_timeout])
+    if app_config.devices:
+        run_command.extend(["--devices", ",".join(app_config.devices)])
+    if args.show_source_evidence:
+        run_command.append("--show-source-evidence")
+    return run_command
+
+
+def _run_priority_target_count(coverage: dict[str, object], priority: str) -> int:
+    required_count = len(coverage.get("required_target_keys", []))
+    recommended_count = len(coverage.get("recommended_target_keys", []))
+    optional_count = len(coverage.get("optional_target_keys", []))
+    if priority == "required":
+        return required_count
+    if priority == "recommended":
+        return recommended_count
+    return recommended_count + optional_count
+
+
+def build_coverage_run_commands(report: dict, app_config: AppConfig, args: argparse.Namespace) -> list[dict[str, str]]:
+    coverage = report.get("coverage_recommendations", {})
+    commands: list[dict[str, str]] = []
+    for priority, label, why in (
+        ("required", "Run required batch", "Only strongest unique coverage."),
+        ("recommended", "Run recommended batch", "Strong plus additional unique coverage."),
+        ("all", "Run full batch", "Includes duplicate fallback coverage."),
+    ):
+        target_count = _run_priority_target_count(coverage, priority)
+        command = _base_selector_run_command(app_config, args)
+        command.extend(["--run-now", "--run-tool", args.run_tool, "--run-priority", priority])
+        if target_count > 0:
+            command.extend(["--run-top-targets", target_count])
+        if args.parallel_jobs > 1:
+            command.extend(["--parallel-jobs", args.parallel_jobs])
+        if app_config.shard_mode != "mirror":
+            command.extend(["--shard-mode", app_config.shard_mode])
+        if args.run_timeout > 0:
+            command.extend(["--run-timeout", args.run_timeout])
+        if priority == "required":
+            estimated_duration_s = coverage.get("estimated_required_duration_s", 0.0)
+        elif priority == "recommended":
+            estimated_duration_s = coverage.get("estimated_recommended_duration_s", 0.0)
+        else:
+            estimated_duration_s = coverage.get("estimated_all_duration_s", 0.0)
+        commands.append(
+            {
+                "label": label,
+                "priority": priority,
+                "count": str(target_count),
+                "why": why,
+                "estimated_duration": _format_duration_seconds(estimated_duration_s),
+                "command": _shell_join(command),
+            }
+        )
+    return commands
+
+
 def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespace) -> list[dict[str, str]]:
     command_name = "arkui-xts-selector"
     sdk_root_exists = Path(str(report.get("sdk_api_root") or "")).exists()
     built_artifacts = report.get("built_artifacts", {})
     has_acts_artifacts = bool(built_artifacts.get("testcases_dir_exists")) and bool(built_artifacts.get("module_info_exists"))
     daily_prebuilt_ready = bool(getattr(app_config, "daily_prebuilt_ready", False))
+    coverage = report.get("coverage_recommendations", {})
+    required_target_count = len(coverage.get("required_target_keys", []))
+    recommended_target_count = len(coverage.get("recommended_target_keys", []))
     selected_targets = int(report.get("execution_overview", {}).get("selected_target_count", 0))
-    run_blocked = selected_targets <= 0 or (not has_acts_artifacts and not daily_prebuilt_ready)
+    run_blocked = recommended_target_count <= 0 or (not has_acts_artifacts and not daily_prebuilt_ready)
     run_block_reason = (
         "No runnable targets were selected."
-        if selected_targets <= 0
+        if recommended_target_count <= 0
         else "ACTS artifacts are missing; download tests or prepare build artifacts first."
     )
 
@@ -4932,56 +5088,48 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
         }
     )
 
-    run_command: list[object] = [command_name, "--repo-root", app_config.repo_root]
-    for changed_file in args.changed_file:
-        run_command.extend(["--changed-file", changed_file])
-    for symbol_query in args.symbol_query:
-        run_command.extend(["--symbol-query", symbol_query])
-    for code_query in args.code_query:
-        run_command.extend(["--code-query", code_query])
-    if args.changed_files_from:
-        run_command.extend(["--changed-files-from", args.changed_files_from])
-    if args.git_diff:
-        run_command.extend(["--git-diff", args.git_diff])
-    if args.pr_url:
-        run_command.extend(["--pr-url", args.pr_url])
-    if args.pr_number:
-        run_command.extend(["--pr-number", args.pr_number])
-    if args.pr_source != "auto":
-        run_command.extend(["--pr-source", args.pr_source])
-    if args.git_host_config:
-        run_command.extend(["--git-host-config", args.git_host_config])
-    if args.gitcode_api_url:
-        run_command.extend(["--gitcode-api-url", args.gitcode_api_url])
-    run_command.extend(["--variants", args.variants])
-    run_command.extend(["--relevance-mode", args.relevance_mode])
-    run_command.extend(["--top-projects", args.top_projects])
-    if args.keep_per_signature:
-        run_command.extend(["--keep-per-signature", args.keep_per_signature])
-    if app_config.devices:
-        run_command.extend(["--devices", ",".join(app_config.devices)])
-    run_command.extend(["--run-now", "--run-tool", args.run_tool])
-    if selected_targets > 0:
-        run_command.extend(["--run-top-targets", selected_targets])
-    if args.run_timeout > 0:
-        run_command.extend(["--run-timeout", args.run_timeout])
-    steps.append(
-        {
-            "step": "Run selected tests",
-            "status": "blocked" if run_blocked else "ready",
-            "why": run_block_reason if run_blocked else f"{selected_targets} selected target(s) are ready to run.",
-            "command": _shell_join(run_command),
-        }
-    )
+    for priority, label, count, why in (
+        ("required", "Run required tests", required_target_count, f"{required_target_count} strongest unique target(s) are ready to run."),
+        ("recommended", "Run recommended tests", recommended_target_count, f"{recommended_target_count} unique target(s) are ready to run."),
+        ("all", "Run all coverage", _run_priority_target_count(coverage, "all"), f"{_run_priority_target_count(coverage, 'all')} total target(s), including duplicates, are ready to run."),
+    ):
+        command = _base_selector_run_command(app_config, args)
+        command.extend(["--run-now", "--run-tool", args.run_tool, "--run-priority", priority])
+        if count > 0:
+            command.extend(["--run-top-targets", count])
+        if args.parallel_jobs > 1:
+            command.extend(["--parallel-jobs", args.parallel_jobs])
+        if app_config.shard_mode != "mirror":
+            command.extend(["--shard-mode", app_config.shard_mode])
+        if args.run_timeout > 0:
+            command.extend(["--run-timeout", args.run_timeout])
+        steps.append(
+            {
+                "step": label,
+                "status": "blocked" if run_blocked or count <= 0 else "ready",
+                "why": run_block_reason if run_blocked else (why if count > 0 else "No targets available in this priority tier."),
+                "command": _shell_join(command),
+            }
+        )
     return steps
 
 
 def print_human(report: dict, cache_used: bool | None = None, json_report_path: Path | None = None) -> None:
     def print_coverage_recommendations(recommendations: dict[str, object]) -> None:
         ordered_targets = list(recommendations.get("ordered_targets", []))
+        required_targets = list(recommendations.get("required", []))
         recommended_targets = list(recommendations.get("recommended", []))
+        recommended_additional_targets = list(recommendations.get("recommended_additional", []))
         optional_targets = list(recommendations.get("optional_duplicates", []))
-        if not ordered_targets and not recommended_targets and not optional_targets:
+        source_count = int(recommendations.get("source_count", 0) or 0)
+        candidate_count = int(recommendations.get("candidate_count", 0) or 0)
+        if (
+            not ordered_targets
+            and not recommended_targets
+            and not optional_targets
+            and source_count <= 0
+            and candidate_count <= 0
+        ):
             return
 
         def _coverage_label_items(target: dict[str, object], primary_only: bool) -> list[str]:
@@ -4999,10 +5147,14 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             ]
 
         coverage_rows: list[tuple[object, object]] = [
-            ("Changed Areas", recommendations.get("source_count", 0)),
-            ("Candidate Suites", recommendations.get("candidate_count", 0)),
-            ("Recommended", len(recommended_targets)),
+            ("Changed Areas", source_count),
+            ("Candidate Suites", candidate_count),
+            ("Required", len(required_targets)),
+            ("Recommended", len(recommended_additional_targets)),
             ("Optional Duplicates", len(optional_targets)),
+            ("Est. Required", _format_duration_seconds(recommendations.get("estimated_required_duration_s"))),
+            ("Est. Recommended", _format_duration_seconds(recommendations.get("estimated_recommended_duration_s"))),
+            ("Est. Full", _format_duration_seconds(recommendations.get("estimated_all_duration_s"))),
         ]
         uncovered_sources = recommendations.get("uncovered_sources", [])
         if uncovered_sources:
@@ -5016,13 +5168,32 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                 )
             )
         _print_key_value_section("Coverage Recommendations", coverage_rows)
+        batch_run_commands = list(report.get("coverage_run_commands", []))
+        if batch_run_commands:
+            print("Batch Run Commands")
+            _print_human_table(
+                ["#", "Mode", "Targets", "Est. Time", "Why", "Command"],
+                [
+                    [index, item.get("label", "-"), item.get("count", "-"), item.get("estimated_duration", "-"), item.get("why", "-"), item.get("command", "-")]
+                    for index, item in enumerate(batch_run_commands, start=1)
+                ],
+                indent=2,
+            )
+            print()
 
-        def _print_coverage_group(title: str, targets: list[dict[str, object]]) -> None:
+        def _print_coverage_group(
+            title: str,
+            targets: list[dict[str, object]],
+            *,
+            display_limit: int | None = None,
+            overflow_note: str | None = None,
+        ) -> None:
             if not targets:
                 return
             print(title)
             rows: list[list[object]] = []
-            for index, target in enumerate(targets, start=1):
+            display_targets = targets[:display_limit] if display_limit and display_limit > 0 else targets
+            for index, target in enumerate(display_targets, start=1):
                 rows.append(
                     [
                         index,
@@ -5032,43 +5203,36 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         target.get("scope_tier", "-"),
                         target.get("variant") or target.get("surface") or "-",
                         target.get("bucket", "-"),
+                        _format_estimate_label(target),
                         _human_preview(_coverage_label_items(target, primary_only=True), limit=4),
                         target.get("coverage_reason", "-"),
                     ]
                 )
             _print_human_table(
-                ["#", "Suite", "New Coverage", "Total Coverage", "Scope", "Surface", "Priority", "Covers", "Why First"],
+                ["#", "Suite", "New Coverage", "Total Coverage", "Scope", "Surface", "Priority", "Est.", "Covers", "Why First"],
                 rows,
                 indent=2,
             )
+            if display_limit and len(targets) > display_limit:
+                note = overflow_note or (
+                    f"showing first {display_limit} of {len(targets)} entries; full list remains in JSON output"
+                )
+                _print_key_value_section(
+                    f"{title} Note",
+                    [
+                        ("Visible", f"{display_limit} of {len(targets)}"),
+                        ("Note", note),
+                    ],
+                )
             print()
-            print("How To Run")
-            command_rows: list[list[object]] = []
-            command_index = 1
-            for target in targets:
-                for tool_name, command_key in (
-                    ("aa_test", "aa_test_command"),
-                    ("xdevice", "xdevice_command"),
-                    ("runtest", "runtest_command"),
-                ):
-                    command = target.get(command_key)
-                    if not command:
-                        continue
-                    command_rows.append(
-                        [
-                            command_index,
-                            _suite_label(target),
-                            tool_name,
-                            _run_tool_purpose(tool_name),
-                            command,
-                        ]
-                    )
-                    command_index += 1
-            _print_human_table(["#", "Suite", "Tool", "What It Does", "Command"], command_rows, indent=2)
-            print()
-
-        _print_coverage_group("Recommended Run Order", recommended_targets)
-        _print_coverage_group("Optional Duplicate Coverage", optional_targets)
+        _print_coverage_group("Required Run Order", required_targets)
+        _print_coverage_group("Recommended Additional Coverage", recommended_additional_targets)
+        _print_coverage_group(
+            "Optional Duplicate Coverage",
+            optional_targets,
+            display_limit=HUMAN_OPTIONAL_DUPLICATE_DISPLAY_LIMIT,
+            overflow_note="showing only the top duplicate fallbacks; the full duplicate tail remains in JSON output",
+        )
 
     def print_run_targets(targets: list[dict], relevance_summary: dict[str, object] | None = None) -> None:
         if not targets:
@@ -5090,6 +5254,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         target.get("scope_tier", "-"),
                         target.get("variant", "-"),
                         target.get("bucket", "-"),
+                        _format_estimate_label(target),
                         _human_preview(target.get("scope_reasons", []), limit=2),
                         target.get("project") or target.get("test_json") or "-",
                     ]
@@ -5113,6 +5278,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                             result.get("device_label", "-"),
                             result.get("status", "-"),
                             result.get("selected_tool") or "-",
+                            _format_duration_seconds(result.get("duration_s")),
                             "-" if result.get("returncode") is None else result.get("returncode"),
                             _format_case_summary(result.get("case_summary")),
                             _tail_hint(result),
@@ -5120,7 +5286,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         ]
                     )
             _print_human_table(
-                ["#", "Suite", "Scope", "Surface", "Priority", "Why First", "Project"],
+                ["#", "Suite", "Scope", "Surface", "Priority", "Est.", "Why First", "Project"],
                 target_rows,
                 indent=2,
             )
@@ -5156,7 +5322,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                 print()
             if result_rows:
                 print("Execution Results")
-                _print_human_table(["#", "Device", "Status", "Tool", "RC", "Case Summary", "Hint", "Result Path"], result_rows, indent=2)
+                _print_human_table(["#", "Device", "Status", "Tool", "Duration", "RC", "Case Summary", "Hint", "Result Path"], result_rows, indent=2)
                 print()
 
         if primary_targets:
@@ -5209,6 +5375,10 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
     ]
     if report.get("ranking_rules_file"):
         summary_rows.append(("Ranking Rules", report.get("ranking_rules_file")))
+    if report.get("runtime_state_root"):
+        summary_rows.append(("Runtime State", report.get("runtime_state_root")))
+    if report.get("runtime_history_file"):
+        summary_rows.append(("Runtime History", report.get("runtime_history_file")))
     if report.get("selector_run"):
         selector_run = report["selector_run"]
         summary_rows.extend(
@@ -5338,8 +5508,12 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                 "execution_overview",
                 (
                     f"tool={overview.get('run_tool', '-')}, "
+                    f"run_priority={overview.get('run_priority', 'recommended')}, "
+                    f"parallel_jobs={overview.get('parallel_jobs', 1)}, "
+                    f"device_lock_timeout={overview.get('device_lock_timeout_s', '-')}, "
                     f"shard_mode={overview.get('shard_mode', 'mirror')}, "
                     f"unique_targets={overview.get('unique_target_count', 0)}, "
+                    f"required_targets={overview.get('required_target_count', 0)}, "
                     f"recommended_targets={overview.get('recommended_target_count', 0)}, "
                     f"optional_targets={overview.get('optional_target_count', 0)}, "
                     f"selected_targets={overview.get('selected_target_count', 0)}, "
@@ -5373,8 +5547,22 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                     f"planned={summary.get('planned_run_count', 0)}, "
                     f"passed={summary.get('passed', 0)}, "
                     f"failed={summary.get('failed', 0)}, "
+                    f"blocked={summary.get('blocked', 0)}, "
                     f"timeout={summary.get('timeout', 0)}, "
                     f"unavailable={summary.get('unavailable', 0)}"
+                ),
+            )
+        )
+    if report.get("runtime_history_update"):
+        history_update = report["runtime_history_update"]
+        execution_rows.append(
+            (
+                "runtime_history",
+                (
+                    f"file={history_update.get('history_file', '-')}, "
+                    f"updated_targets={history_update.get('updated_targets', 0)}, "
+                    f"updated_samples={history_update.get('updated_samples', 0)}, "
+                    f"significant_updates={history_update.get('significant_updates', 0)}"
                 ),
             )
         )
@@ -5403,7 +5591,15 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         )
         print()
 
+    show_source_evidence = bool(report.get("show_source_evidence", len(report.get("results", [])) <= 1))
+    if report["results"] and not show_source_evidence and len(report["results"]) > 1:
+        _print_key_value_section(
+            "Source Evidence",
+            [("Visibility", "hidden in multi-source mode; use --show-source-evidence to inspect per-file evidence")],
+        )
     for item in report["results"]:
+        if not show_source_evidence:
+            continue
         signals = item["signals"]
         relevance_summary = item.get("relevance_summary", {})
         primary_projects, broader_projects = split_scope_groups(item.get("projects", []))
@@ -5578,6 +5774,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run-now", action="store_true", help="Immediately execute selected run targets after report generation.")
     parser.add_argument("--run-label", help="Optional label for storing this planned/executed selector run, for example baseline or v1.")
     parser.add_argument("--run-store-root", help="Directory used to persist labeled selector runs. Default: <selector_repo>/.runs")
+    parser.add_argument("--runtime-state-root", help="Shared runtime state directory for device locks and runtime history. Default: /tmp/arkui_xts_selector_state")
     parser.add_argument("--daily-build-tag", help="Daily build tag for prebuilt suites, for example 20260403_120242.")
     parser.add_argument(
         "--daily-component",
@@ -5620,7 +5817,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--flash-py-path", help="Path to the Rockchip flash.py helper used for board flashing.")
     parser.add_argument("--hdc-path", help="Path to hdc used for switching a device into bootloader mode before flashing.")
     parser.add_argument("--run-tool", choices=RUN_TOOL_CHOICES, default="auto", help="Execution tool to use for --run-now. Default: auto.")
+    parser.add_argument("--run-priority", choices=RUN_PRIORITY_CHOICES, default="recommended", help="Execution priority for --run-now. required = strongest unique coverage, recommended = required plus additional unique coverage, all = include duplicate fallback coverage.")
     parser.add_argument("--shard-mode", choices=SHARD_MODE_CHOICES, default="mirror", help="Execution distribution mode. mirror = all selected targets on every device; split = shard unique targets across devices.")
+    parser.add_argument("--parallel-jobs", type=int, default=1, help="Maximum number of device queues to execute in parallel for --run-now. Same-device commands stay sequential.")
+    parser.add_argument("--device-lock-timeout", type=float, default=30.0, help="Wait up to N seconds for an exclusive device lock before blocking that device queue. Default: 30.")
     parser.add_argument("--run-top-targets", type=int, default=0, help="Execute at most N unique run targets. 0 = all.")
     parser.add_argument("--run-timeout", type=float, default=0.0, help="Per-command timeout in seconds for --run-now. 0 = disabled.")
     parser.add_argument("--relevance-mode", choices=RELEVANCE_MODE_CHOICES, default="all", help="Filter ranked projects by relevance. all = current behavior, balanced = must-run + high-confidence, strict = must-run only.")
@@ -5638,6 +5838,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--cache-file", default=str(DEFAULT_CACHE_FILE))
     parser.add_argument("--debug-trace", action="store_true", help="Include timing metadata and extra ranking diagnostics in the report.")
+    parser.add_argument("--show-source-evidence", action="store_true", help="Show per-source Changed File evidence blocks even in combined multi-source PR/MR reports.")
     progress_group.add_argument("--progress", action="store_true", help="Explicitly enable phase-progress messages (default behavior).")
     progress_group.add_argument("--no-progress", action="store_true", help="Disable phase-progress messages.")
     parser.add_argument("--no-cache", action="store_true")
@@ -5705,6 +5906,11 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         default_run_store_root(selector_repo_root),
         selector_repo_root,
     )
+    runtime_state_root = resolve_path(
+        args.runtime_state_root or cfg.get("runtime_state_root"),
+        default_runtime_state_root(selector_repo_root),
+        selector_repo_root,
+    )
     daily_cache_root = resolve_path(
         args.daily_cache_root or cfg.get("daily_cache_root"),
         DEFAULT_DAILY_CACHE_ROOT,
@@ -5767,7 +5973,9 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         selector_repo_root=selector_repo_root,
         run_label=args.run_label or cfg.get("run_label"),
         run_store_root=run_store_root,
+        runtime_state_root=runtime_state_root,
         shard_mode=args.shard_mode or cfg.get("shard_mode") or "mirror",
+        device_lock_timeout=float(args.device_lock_timeout if args.device_lock_timeout is not None else (cfg.get("device_lock_timeout") or 30.0)),
         daily_build_tag=args.daily_build_tag or cfg.get("daily_build_tag"),
         daily_component=args.daily_component or cfg.get("daily_component") or DEFAULT_DAILY_COMPONENT,
         daily_branch=args.daily_branch or cfg.get("daily_branch") or "master",
@@ -5896,6 +6104,10 @@ def main() -> int:
         composite_mappings_file=app_config.composite_mappings_file,
     )
     load_mapping_config_ms = round((time.perf_counter() - mapping_started) * 1000, 3)
+    emit_progress(progress_enabled, "loading runtime history")
+    runtime_history_started = time.perf_counter()
+    runtime_history_index = build_runtime_history_index(default_runtime_history_file(app_config.runtime_state_root))
+    load_runtime_history_ms = round((time.perf_counter() - runtime_history_started) * 1000, 3)
     emit_progress(progress_enabled, "building report")
     report_started = time.perf_counter()
     report = format_report(
@@ -5919,6 +6131,8 @@ def main() -> int:
         keep_per_signature=args.keep_per_signature,
         cache_used=cache_used,
         debug_trace=args.debug_trace,
+        runtime_history_index=runtime_history_index,
+        requested_run_tool=args.run_tool,
         progress_callback=progress_callback,
     )
     report["acts_out_root"] = str(app_config.acts_out_root or (app_config.repo_root / "out/release/suites/acts"))
@@ -5929,6 +6143,7 @@ def main() -> int:
         "load_sdk_index": load_sdk_index_ms,
         "build_content_modifier_index": build_content_modifier_index_ms,
         "load_mapping_config": load_mapping_config_ms,
+        "load_runtime_history": load_runtime_history_ms,
         "main_report_call": round((time.perf_counter() - report_started) * 1000, 3),
     })
     report["timings_ms"]["total_runtime"] = round((time.perf_counter() - runtime_started) * 1000, 3)
@@ -5963,7 +6178,13 @@ def main() -> int:
         run_top_targets=args.run_top_targets,
         shard_mode=app_config.shard_mode,
         xdevice_reports_root=xdevice_reports_root,
+        run_priority=args.run_priority,
+        parallel_jobs=args.parallel_jobs,
+        runtime_state_root=app_config.runtime_state_root,
+        device_lock_timeout=app_config.device_lock_timeout,
     )
+    report["show_source_evidence"] = bool(args.show_source_evidence or args.debug_trace or len(report.get("results", [])) <= 1)
+    report["coverage_run_commands"] = build_coverage_run_commands(report, app_config, args)
     report["next_steps"] = build_next_steps(report, app_config, args)
     execution_summary = None
     execution_preflight = None
@@ -5990,6 +6211,10 @@ def main() -> int:
                 run_timeout=args.run_timeout,
                 shard_mode=app_config.shard_mode,
                 xdevice_reports_root=xdevice_reports_root,
+                run_priority=args.run_priority,
+                parallel_jobs=args.parallel_jobs,
+                runtime_state_root=app_config.runtime_state_root,
+                device_lock_timeout=app_config.device_lock_timeout,
             )
     else:
         report["execution_preflight"] = {}
@@ -6001,6 +6226,19 @@ def main() -> int:
         elif execution_summary is not None:
             status = "completed_with_failures" if execution_summary.get("has_failures") else "completed"
         report["selector_run"]["status"] = status
+    if execution_summary is not None:
+        report["runtime_history_update"] = update_runtime_history(
+            default_runtime_history_file(app_config.runtime_state_root),
+            report,
+            run_label=app_config.run_label,
+        )
+    else:
+        report["runtime_history_update"] = {
+            "history_file": str(default_runtime_history_file(app_config.runtime_state_root)),
+            "updated_targets": 0,
+            "updated_samples": 0,
+            "significant_updates": 0,
+        }
 
     emit_progress(progress_enabled, "writing JSON report")
     written_json_path = write_json_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)

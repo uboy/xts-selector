@@ -30,8 +30,10 @@ from arkui_xts_selector.execution import (
     attach_execution_plan,
     build_run_target_entry,
     execute_planned_targets,
+    select_target_keys_for_priority,
     resolve_devices,
 )
+from arkui_xts_selector.runtime_state import InterprocessLockTimeout
 
 
 class DeviceResolutionTests(unittest.TestCase):
@@ -220,7 +222,9 @@ class RunTargetPlanningTests(unittest.TestCase):
             "symbol_queries": [],
             "coverage_recommendations": {
                 "ordered_targets": [dict(recommended_target), dict(duplicate_target)],
+                "required_target_keys": [recommended_target["target_key"]],
                 "recommended_target_keys": [recommended_target["target_key"]],
+                "recommended_additional_target_keys": [],
                 "optional_target_keys": [duplicate_target["target_key"]],
                 "ordered_target_keys": [recommended_target["target_key"], duplicate_target["target_key"]],
             },
@@ -239,8 +243,68 @@ class RunTargetPlanningTests(unittest.TestCase):
         self.assertTrue(recommended["selected_for_execution"])
         self.assertFalse(duplicate["selected_for_execution"])
         self.assertEqual(report["execution_overview"]["selected_target_count"], 1)
+        self.assertEqual(report["execution_overview"]["required_target_count"], 1)
         self.assertEqual(report["execution_overview"]["recommended_target_count"], 1)
         self.assertEqual(report["execution_overview"]["optional_target_count"], 1)
+
+    def test_attach_execution_plan_does_not_fallback_to_results_when_coverage_plan_is_explicitly_empty(self) -> None:
+        repo_root = Path("/tmp/repo")
+        target = build_run_target_entry(
+            {
+                "project": "test/xts/acts/arkui/module_empty_plan",
+                "test_json": "test/xts/acts/arkui/module_empty_plan/Test.json",
+                "bundle_name": "com.example.empty",
+                "driver_module_name": "entry",
+                "xdevice_module_name": "empty",
+                "build_target": "module_empty_plan",
+                "driver_type": "JSUnitTest",
+                "confidence": "high",
+                "bucket": "must-run",
+                "variant": "dynamic",
+            },
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            device="SER1",
+        )
+        report = {
+            "results": [{"changed_file": "a.cpp", "run_targets": [target]}],
+            "symbol_queries": [],
+            "coverage_recommendations": {
+                "source_count": 1,
+                "candidate_count": 0,
+                "required_target_keys": [],
+                "recommended_target_keys": [],
+                "recommended_additional_target_keys": [],
+                "optional_target_keys": [],
+                "ordered_target_keys": [],
+            },
+        }
+
+        attach_execution_plan(
+            report,
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            devices=["SER1"],
+            run_tool="auto",
+            run_top_targets=0,
+        )
+
+        self.assertFalse(report["results"][0]["run_targets"][0]["selected_for_execution"])
+        self.assertEqual(report["execution_overview"]["selected_target_count"], 0)
+        self.assertEqual(report["execution_overview"]["recommended_target_count"], 0)
+        self.assertEqual(report["execution_overview"]["selected_target_keys"], [])
+
+    def test_select_target_keys_for_priority_splits_required_recommended_and_all(self) -> None:
+        coverage = {
+            "required_target_keys": ["req"],
+            "recommended_target_keys": ["req", "rec"],
+            "recommended_additional_target_keys": ["rec"],
+            "optional_target_keys": ["opt"],
+            "ordered_target_keys": ["req", "rec", "opt"],
+        }
+        self.assertEqual(select_target_keys_for_priority(coverage, "required"), ["req"])
+        self.assertEqual(select_target_keys_for_priority(coverage, "recommended"), ["req", "rec"])
+        self.assertEqual(select_target_keys_for_priority(coverage, "all"), ["req", "rec", "opt"])
 
     def test_execute_planned_targets_records_pass_and_fail(self) -> None:
         repo_root = Path("/tmp/repo")
@@ -286,6 +350,118 @@ class RunTargetPlanningTests(unittest.TestCase):
         self.assertTrue(summary["has_failures"])
         results = report["results"][0]["run_targets"][0]["execution_results"]
         self.assertEqual([item["status"] for item in results], ["passed", "failed"])
+
+    def test_execute_planned_targets_parallelizes_across_device_queues_only(self) -> None:
+        repo_root = Path("/tmp/repo")
+        target_a = build_run_target_entry(
+            {
+                "project": "test/xts/acts/arkui/a",
+                "test_json": "test/xts/acts/arkui/a/Test.json",
+                "bundle_name": "com.example.a",
+                "driver_module_name": "entry",
+                "xdevice_module_name": "a",
+                "build_target": "suite_a",
+                "driver_type": "JSUnitTest",
+                "confidence": "high",
+                "bucket": "must-run",
+                "variant": "dynamic",
+            },
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            device="SER1",
+        )
+        target_b = build_run_target_entry(
+            {
+                "project": "test/xts/acts/arkui/b",
+                "test_json": "test/xts/acts/arkui/b/Test.json",
+                "bundle_name": "com.example.b",
+                "driver_module_name": "entry",
+                "xdevice_module_name": "b",
+                "build_target": "suite_b",
+                "driver_type": "JSUnitTest",
+                "confidence": "high",
+                "bucket": "must-run",
+                "variant": "dynamic",
+            },
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            device="SER2",
+        )
+        report = {
+            "results": [{"changed_file": "a.cpp", "run_targets": [target_a, target_b]}],
+            "symbol_queries": [],
+            "coverage_recommendations": {
+                "ordered_targets": [dict(target_a), dict(target_b)],
+                "required_target_keys": [target_a["target_key"], target_b["target_key"]],
+                "recommended_target_keys": [target_a["target_key"], target_b["target_key"]],
+                "recommended_additional_target_keys": [],
+                "optional_target_keys": [],
+                "ordered_target_keys": [target_a["target_key"], target_b["target_key"]],
+            },
+        }
+
+        calls: list[str] = []
+
+        def fake_run(command: str, **_kwargs):
+            calls.append(command)
+            return SimpleNamespace(returncode=0, stdout="ok\n", stderr="")
+
+        with mock.patch("arkui_xts_selector.execution.subprocess.run", side_effect=fake_run):
+            summary = execute_planned_targets(
+                report,
+                repo_root=repo_root,
+                acts_out_root=repo_root / "out/release/suites/acts",
+                devices=["SER1", "SER2"],
+                run_tool="aa_test",
+                shard_mode="split",
+                parallel_jobs=2,
+            )
+
+        self.assertEqual(summary["passed"], 2)
+        self.assertEqual(len(calls), 2)
+
+    def test_execute_planned_targets_marks_queue_blocked_when_device_lock_is_busy(self) -> None:
+        repo_root = Path("/tmp/repo")
+        target = build_run_target_entry(
+            {
+                "project": "test/xts/acts/arkui/locked",
+                "test_json": "test/xts/acts/arkui/locked/Test.json",
+                "bundle_name": "com.example.locked",
+                "driver_module_name": "entry",
+                "xdevice_module_name": "locked",
+                "build_target": "locked_suite",
+                "driver_type": "JSUnitTest",
+                "confidence": "high",
+                "bucket": "must-run",
+                "variant": "dynamic",
+            },
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            device="SER1",
+        )
+        report = {
+            "results": [{"changed_file": "a.cpp", "run_targets": [target]}],
+            "symbol_queries": [],
+        }
+
+        with mock.patch(
+            "arkui_xts_selector.execution.acquire_device_lock",
+            side_effect=InterprocessLockTimeout(Path("/tmp/device.lock"), 1.0, {"owner": "other"}),
+        ):
+            summary = execute_planned_targets(
+                report,
+                repo_root=repo_root,
+                acts_out_root=repo_root / "out/release/suites/acts",
+                devices=["SER1"],
+                run_tool="aa_test",
+            )
+
+        self.assertEqual(summary["blocked"], 1)
+        self.assertTrue(summary["has_failures"])
+        results = report["results"][0]["run_targets"][0]["execution_results"]
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["status"], "blocked")
+        self.assertIn("timed out waiting", results[0]["reason"])
 
     def test_execute_planned_targets_marks_xdevice_case_failures_as_failed(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -517,7 +693,8 @@ class MainExecutionExitTests(unittest.TestCase):
         output = buffer.getvalue()
         self.assertIn("Execution Results", output)
         self.assertIn("total=2, passed=1, failed=1,", output)
-        self.assertIn("blocked=0, unknown=0", output)
+        self.assertIn("blocked=0", output)
+        self.assertIn("unknown=0", output)
 
 
 if __name__ == "__main__":

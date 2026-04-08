@@ -22,6 +22,7 @@ from arkui_xts_selector.cli import (
     TestFileIndex,
     TestProjectIndex,
     apply_ranking_rules_config,
+    build_coverage_run_commands,
     build_global_coverage_recommendations,
     candidate_bucket,
     classify_project_variant,
@@ -1654,6 +1655,26 @@ class FancySliderModifier extends SliderModifier {}
         self.assertIn('Timings (ms)', output)
 
     def test_print_human_shows_coverage_recommendations_and_optional_duplicates(self) -> None:
+        optional_duplicates = []
+        for index in range(25):
+            optional_duplicates.append(
+                {
+                    'target_key': f'suite/optional_{index}/Test.json',
+                    'build_target': f'suite_optional_{index}',
+                    'project': f'suite/optional_{index}',
+                    'bucket': 'must-run',
+                    'variant': 'dynamic',
+                    'scope_tier': 'focused',
+                    'new_coverage_count': 0,
+                    'total_coverage_count': 1,
+                    'new_families': [],
+                    'covered_families': ['navigation_stack'],
+                    'new_sources': [],
+                    'covered_sources': [{'type': 'changed_file', 'value': 'a.cpp'}],
+                    'coverage_reason': 'covers only functionality already covered by earlier selected suites',
+                    'aa_test_command': f'hdc shell aa test -p com.example.optional{index} -b com.example.optional{index} -s unittest OpenHarmonyTestRunner',
+                }
+            )
         report = {
             'repo_root': '/tmp/repo',
             'xts_root': '/tmp/repo/test/xts',
@@ -1667,6 +1688,14 @@ class FancySliderModifier extends SliderModifier {}
             'cache_file': '/tmp/cache.json',
             'variants_mode': 'auto',
             'excluded_inputs': [],
+            'coverage_run_commands': [
+                {
+                    'label': 'Run required batch',
+                    'count': '1',
+                    'why': 'Only strongest unique coverage.',
+                    'command': 'arkui-xts-selector --run-now --run-priority required',
+                }
+            ],
             'results': [],
             'symbol_queries': [],
             'code_queries': [],
@@ -1675,6 +1704,24 @@ class FancySliderModifier extends SliderModifier {}
             'coverage_recommendations': {
                 'source_count': 2,
                 'candidate_count': 2,
+                'required': [
+                    {
+                        'target_key': 'suite/recommended/Test.json',
+                        'build_target': 'suite_recommended',
+                        'project': 'suite/recommended',
+                        'bucket': 'must-run',
+                        'variant': 'dynamic',
+                        'scope_tier': 'direct',
+                        'new_coverage_count': 2,
+                        'total_coverage_count': 2,
+                        'new_families': ['navigation_stack', 'web'],
+                        'covered_families': ['navigation_stack', 'web'],
+                        'new_sources': [{'type': 'changed_file', 'value': 'a.cpp'}, {'type': 'changed_file', 'value': 'b.cpp'}],
+                        'covered_sources': [{'type': 'changed_file', 'value': 'a.cpp'}, {'type': 'changed_file', 'value': 'b.cpp'}],
+                        'coverage_reason': 'adds 2 new functional area(s) with strong direct coverage',
+                        'aa_test_command': 'hdc shell aa test -p com.example.recommended -b com.example.recommended -s unittest OpenHarmonyTestRunner',
+                    }
+                ],
                 'recommended': [
                     {
                         'target_key': 'suite/recommended/Test.json',
@@ -1689,28 +1736,12 @@ class FancySliderModifier extends SliderModifier {}
                         'covered_families': ['navigation_stack', 'web'],
                         'new_sources': [{'type': 'changed_file', 'value': 'a.cpp'}, {'type': 'changed_file', 'value': 'b.cpp'}],
                         'covered_sources': [{'type': 'changed_file', 'value': 'a.cpp'}, {'type': 'changed_file', 'value': 'b.cpp'}],
-                        'coverage_reason': 'adds 2 new coverage area(s)',
+                        'coverage_reason': 'adds 2 new functional area(s) with strong direct coverage',
                         'aa_test_command': 'hdc shell aa test -p com.example.recommended -b com.example.recommended -s unittest OpenHarmonyTestRunner',
                     }
                 ],
-                'optional_duplicates': [
-                    {
-                        'target_key': 'suite/optional/Test.json',
-                        'build_target': 'suite_optional',
-                        'project': 'suite/optional',
-                        'bucket': 'must-run',
-                        'variant': 'dynamic',
-                        'scope_tier': 'focused',
-                        'new_coverage_count': 0,
-                        'total_coverage_count': 1,
-                        'new_families': [],
-                        'covered_families': ['navigation_stack'],
-                        'new_sources': [],
-                        'covered_sources': [{'type': 'changed_file', 'value': 'a.cpp'}],
-                        'coverage_reason': 'covers only functionality already covered by earlier recommended suites',
-                        'aa_test_command': 'hdc shell aa test -p com.example.optional -b com.example.optional -s unittest OpenHarmonyTestRunner',
-                    }
-                ],
+                'recommended_additional': [],
+                'optional_duplicates': optional_duplicates,
                 'ordered_targets': [],
             },
         }
@@ -1720,14 +1751,153 @@ class FancySliderModifier extends SliderModifier {}
             print_human(report)
         output = buffer.getvalue()
         self.assertIn('Coverage Recommendations', output)
-        self.assertIn('Recommended Run Order', output)
+        self.assertIn('Required Run Order', output)
         self.assertIn('Optional Duplicate Coverage', output)
+        self.assertIn('Batch Run Commands', output)
         self.assertIn('adds 2 new', output)
         self.assertIn('coverage', output)
         self.assertIn('already', output)
-        self.assertIn('recommended', output)
+        self.assertIn('Optional Duplicate Coverage Note', output)
+        self.assertIn('20 of 25', output)
+        self.assertIn('required', output)
         normalized_output = re.sub(r'[\s│├┤┬┴┼╭╮╰╯─]+', '', output)
-        self.assertRegex(normalized_output, r'navigation_sta.*ck,web')
+        self.assertIn('navigation_', normalized_output)
+        self.assertIn('web', normalized_output)
+
+    def test_build_coverage_run_commands_preserve_runtime_state_settings(self) -> None:
+        app_config = AppConfig(
+            repo_root=Path('/tmp/repo'),
+            xts_root=Path('/tmp/repo/test/xts'),
+            sdk_api_root=Path('/tmp/repo/sdk'),
+            cache_file=None,
+            git_repo_root=Path('/tmp/repo/foundation/arkui/ace_engine'),
+            git_remote='origin',
+            git_base_branch='master',
+            runtime_state_root=Path('/tmp/custom_runtime_state'),
+            device_lock_timeout=75.0,
+            devices=['SER1'],
+        )
+        args = SimpleNamespace(
+            changed_file=[],
+            symbol_query=['ButtonModifier'],
+            code_query=[],
+            changed_files_from=None,
+            git_diff=None,
+            pr_url=None,
+            pr_number=None,
+            pr_source='auto',
+            git_host_config=None,
+            gitcode_api_url=None,
+            variants='auto',
+            relevance_mode='all',
+            top_projects=3,
+            keep_per_signature=2,
+            show_source_evidence=False,
+            run_tool='xdevice',
+            parallel_jobs=2,
+            run_timeout=0.0,
+        )
+        report = {
+            'coverage_recommendations': {
+                'required_target_keys': ['a'],
+                'recommended_target_keys': ['a', 'b'],
+                'optional_target_keys': ['c'],
+                'estimated_required_duration_s': 10.0,
+                'estimated_recommended_duration_s': 20.0,
+                'estimated_all_duration_s': 30.0,
+            }
+        }
+
+        commands = build_coverage_run_commands(report, app_config, args)
+
+        required_command = commands[0]['command']
+        self.assertIn('--runtime-state-root /tmp/custom_runtime_state', required_command)
+        self.assertIn('--device-lock-timeout 75.0', required_command)
+        self.assertIn('--parallel-jobs 2', required_command)
+
+    def test_print_human_hides_multi_source_changed_file_blocks_by_default(self) -> None:
+        report = {
+            'repo_root': '/tmp/repo',
+            'xts_root': '/tmp/repo/test/xts',
+            'sdk_api_root': '/tmp/repo/sdk',
+            'git_repo_root': '/tmp/repo/foundation/arkui/ace_engine',
+            'acts_out_root': '/tmp/repo/out/release/suites/acts',
+            'product_build': {'status': 'missing', 'out_dir_exists': False, 'build_log_exists': False, 'error_log_exists': False, 'error_log_size': 0},
+            'built_artifacts': {'status': 'missing', 'testcases_dir_exists': False, 'module_info_exists': False, 'testcase_json_count': 0},
+            'built_artifact_index': {},
+            'cache_used': False,
+            'variants_mode': 'auto',
+            'excluded_inputs': [],
+            'show_source_evidence': False,
+            'coverage_run_commands': [],
+            'results': [
+                {'changed_file': 'a.cpp', 'signals': {'modules': [], 'symbols': [], 'project_hints': [], 'method_hints': [], 'type_hints': [], 'family_tokens': []}, 'projects': [], 'run_targets': [], 'coverage_families': [], 'coverage_capabilities': [], 'relevance_summary': {}},
+                {'changed_file': 'b.cpp', 'signals': {'modules': [], 'symbols': [], 'project_hints': [], 'method_hints': [], 'type_hints': [], 'family_tokens': []}, 'projects': [], 'run_targets': [], 'coverage_families': [], 'coverage_capabilities': [], 'relevance_summary': {}},
+            ],
+            'symbol_queries': [],
+            'code_queries': [],
+            'unresolved_files': [],
+            'timings_ms': {},
+            'coverage_recommendations': {'source_count': 2, 'candidate_count': 0, 'required': [], 'recommended': [], 'recommended_additional': [], 'optional_duplicates': [], 'ordered_targets': []},
+        }
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            from arkui_xts_selector.cli import print_human
+            print_human(report)
+        output = buffer.getvalue()
+        self.assertIn('Source Evidence', output)
+        self.assertIn('hidden in multi-source mode', output)
+        self.assertNotIn('Changed File: a.cpp', output)
+
+    def test_print_human_shows_zero_coverage_recommendations_for_multi_source_reports(self) -> None:
+        report = {
+            'repo_root': '/tmp/repo',
+            'xts_root': '/tmp/repo/test/xts',
+            'sdk_api_root': '/tmp/repo/sdk',
+            'git_repo_root': '/tmp/repo/foundation/arkui/ace_engine',
+            'acts_out_root': '/tmp/repo/out/release/suites/acts',
+            'product_build': {'status': 'missing', 'out_dir_exists': False, 'build_log_exists': False, 'error_log_exists': False, 'error_log_size': 0},
+            'built_artifacts': {'status': 'missing', 'testcases_dir_exists': False, 'module_info_exists': False, 'testcase_json_count': 0},
+            'built_artifact_index': {},
+            'cache_used': False,
+            'variants_mode': 'auto',
+            'excluded_inputs': [],
+            'show_source_evidence': False,
+            'coverage_run_commands': [
+                {
+                    'label': 'Run required batch',
+                    'count': '0',
+                    'why': 'Only strongest unique coverage.',
+                    'command': 'arkui-xts-selector --run-now --run-priority required',
+                }
+            ],
+            'results': [
+                {'changed_file': 'a.cpp', 'signals': {'modules': [], 'symbols': [], 'project_hints': [], 'method_hints': [], 'type_hints': [], 'family_tokens': []}, 'projects': [], 'run_targets': [], 'coverage_families': [], 'coverage_capabilities': [], 'relevance_summary': {}},
+                {'changed_file': 'b.cpp', 'signals': {'modules': [], 'symbols': [], 'project_hints': [], 'method_hints': [], 'type_hints': [], 'family_tokens': []}, 'projects': [], 'run_targets': [], 'coverage_families': [], 'coverage_capabilities': [], 'relevance_summary': {}},
+            ],
+            'symbol_queries': [],
+            'code_queries': [],
+            'unresolved_files': [],
+            'timings_ms': {},
+            'coverage_recommendations': {
+                'source_count': 2,
+                'candidate_count': 0,
+                'required': [],
+                'recommended': [],
+                'recommended_additional': [],
+                'optional_duplicates': [],
+                'ordered_targets': [],
+            },
+        }
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            from arkui_xts_selector.cli import print_human
+            print_human(report)
+        output = buffer.getvalue()
+        self.assertIn('Coverage Recommendations', output)
+        self.assertIn('Candidate Suites', output)
+        self.assertIn('Batch Run Commands', output)
+        self.assertIn('0', output)
 
     def test_build_guidance_defaults_product_name_to_rk3568(self) -> None:
         from arkui_xts_selector.build_state import build_guidance
