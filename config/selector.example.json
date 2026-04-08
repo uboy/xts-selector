@@ -24,6 +24,7 @@
   "hdc_path": "/home/<user>/bin/hdc",
   "path_rules_file": "config/path_rules.json",
   "composite_mappings_file": "config/composite_mappings.json",
+  "ranking_rules_file": "config/ranking_rules.json",
   "product_name": "rk3568",
   "system_size": "standard",
   "xts_suitetype": "hap_dynamic",

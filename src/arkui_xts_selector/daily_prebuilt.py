@@ -214,19 +214,21 @@ def fetch_daily_builds(
 
 def resolve_daily_build(
     component: str,
-    build_tag: str,
+    build_tag: str | None = None,
     branch: str = "master",
     build_date: str | None = None,
     api_url: str = DEFAULT_DAILY_API_URL,
     timeout: float = 30.0,
     component_role: str = "xts",
 ) -> DailyBuildInfo:
-    date_token = normalize_daily_date(build_date) or derive_date_from_tag(build_tag)
+    requested_tag = str(build_tag or "").strip()
+    date_token = normalize_daily_date(build_date) or derive_date_from_tag(requested_tag)
     if not date_token:
         raise ValueError("daily build date could not be derived; provide --daily-date")
     components = daily_component_candidates(component, component_role=component_role)
     if not components:
         raise ValueError("daily component is required")
+    discovered: list[DailyBuildInfo] = []
     for candidate in components:
         builds = fetch_daily_builds(
             component=candidate,
@@ -235,15 +237,20 @@ def resolve_daily_build(
             api_url=api_url,
             timeout=timeout,
         )
-        for build in builds:
-            if build.tag == build_tag:
-                return build
+        if requested_tag:
+            for build in builds:
+                if build.tag == requested_tag:
+                    return build
+        else:
+            discovered.extend(builds)
+    if not requested_tag and discovered:
+        return sorted(discovered, key=lambda item: item.tag, reverse=True)[0]
     if len(components) == 1:
         raise FileNotFoundError(
-            f"Daily build tag '{build_tag}' was not found for component '{components[0]}' on {date_token}"
+            f"Daily build tag '{requested_tag}' was not found for component '{components[0]}' on {date_token}"
         )
     raise FileNotFoundError(
-        f"Daily build tag '{build_tag}' was not found for components {components} on {date_token}"
+        f"Daily build tag '{requested_tag}' was not found for components {components} on {date_token}"
     )
 
 

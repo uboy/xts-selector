@@ -12,7 +12,9 @@ authors = [
   { name = "OpenHarmony Tools" }
 ]
 license = { file = "LICENSE" }
-dependencies = []
+dependencies = [
+  "rich>=13",
+]
 
 [project.scripts]
 arkui-xts-selector = "arkui_xts_selector.cli:main_entry"

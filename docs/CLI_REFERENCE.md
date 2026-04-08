@@ -157,6 +157,8 @@ arkui-xts-selector \
   Override the JSON file with path and alias mapping rules.
 - `--composite-mappings-file PATH`
   Override the JSON file with multi-component mapping rules.
+- `--ranking-rules-file PATH`
+  Override the JSON file with family-group, generic-token, umbrella, and planner ranking rules.
 - `--changed-file-exclusions-file PATH`
   Override the JSON file with extra changed-file exclusion prefixes.
 - `--product-name NAME`

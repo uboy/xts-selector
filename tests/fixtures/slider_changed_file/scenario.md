@@ -15,7 +15,7 @@ component tests.
 ## Variant expectation
 
 This file is under `components_ng/pattern/` and not under `/bridge/`.
-Expected effective_variants_mode: `static`.
+Expected effective_variants_mode: `both`.
 
 ## Must-have
 

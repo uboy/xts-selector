@@ -86,9 +86,11 @@ class RunTargetPlanningTests(unittest.TestCase):
                     files=[
                         TestFileIndex(
                             relative_path="button_static/pages/index.ets",
+                            surface="static",
                             imported_symbols={"ButtonModifier"},
                         )
                     ],
+                    supported_surfaces={"static"},
                 )
             ]
 
@@ -166,6 +168,79 @@ class RunTargetPlanningTests(unittest.TestCase):
         self.assertTrue(changed_target["selected_for_execution"])
         self.assertEqual(len(changed_target["execution_plan"]), 2)
         self.assertEqual(changed_target["execution_sources"], symbol_target["execution_sources"])
+
+    def test_attach_execution_plan_prefers_recommended_targets_over_duplicate_only(self) -> None:
+        repo_root = Path("/tmp/repo")
+        recommended_target = build_run_target_entry(
+            {
+                "project": "test/xts/acts/arkui/recommended",
+                "test_json": "test/xts/acts/arkui/recommended/Test.json",
+                "bundle_name": "com.example.recommended",
+                "driver_module_name": "entry",
+                "xdevice_module_name": "recommended",
+                "build_target": "recommended_suite",
+                "driver_type": "JSUnitTest",
+                "confidence": "high",
+                "bucket": "must-run",
+                "variant": "dynamic",
+                "scope_tier": "direct",
+                "specificity_score": 10,
+                "score": 40,
+            },
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            device="SER1",
+        )
+        recommended_target["covered_sources"] = [{"type": "changed_file", "value": "a.cpp"}]
+        duplicate_target = build_run_target_entry(
+            {
+                "project": "test/xts/acts/arkui/duplicate",
+                "test_json": "test/xts/acts/arkui/duplicate/Test.json",
+                "bundle_name": "com.example.duplicate",
+                "driver_module_name": "entry",
+                "xdevice_module_name": "duplicate",
+                "build_target": "duplicate_suite",
+                "driver_type": "JSUnitTest",
+                "confidence": "high",
+                "bucket": "must-run",
+                "variant": "dynamic",
+                "scope_tier": "focused",
+                "specificity_score": 7,
+                "score": 30,
+            },
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            device="SER1",
+        )
+        duplicate_target["covered_sources"] = [{"type": "changed_file", "value": "a.cpp"}]
+        report = {
+            "results": [
+                {"changed_file": "a.cpp", "run_targets": [dict(recommended_target), dict(duplicate_target)]}
+            ],
+            "symbol_queries": [],
+            "coverage_recommendations": {
+                "ordered_targets": [dict(recommended_target), dict(duplicate_target)],
+                "recommended_target_keys": [recommended_target["target_key"]],
+                "optional_target_keys": [duplicate_target["target_key"]],
+                "ordered_target_keys": [recommended_target["target_key"], duplicate_target["target_key"]],
+            },
+        }
+
+        attach_execution_plan(
+            report,
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            devices=["SER1"],
+            run_tool="auto",
+            run_top_targets=0,
+        )
+
+        recommended, duplicate = report["results"][0]["run_targets"]
+        self.assertTrue(recommended["selected_for_execution"])
+        self.assertFalse(duplicate["selected_for_execution"])
+        self.assertEqual(report["execution_overview"]["selected_target_count"], 1)
+        self.assertEqual(report["execution_overview"]["recommended_target_count"], 1)
+        self.assertEqual(report["execution_overview"]["optional_target_count"], 1)
 
     def test_execute_planned_targets_records_pass_and_fail(self) -> None:
         repo_root = Path("/tmp/repo")
@@ -348,8 +423,11 @@ class MainExecutionExitTests(unittest.TestCase):
             print_human(report)
 
         output = buffer.getvalue()
-        self.assertIn("requested_devices: SER1, SER2", output)
-        self.assertIn("execution_summary: planned=2, passed=1, failed=1", output)
+        self.assertIn("Report Summary", output)
+        self.assertIn("Devices", output)
+        self.assertIn("SER1, SER2", output)
+        self.assertIn("Execution", output)
+        self.assertIn("planned=2, passed=1, failed=1", output)
 
     def test_print_human_includes_case_summary(self) -> None:
         report = {
@@ -437,7 +515,9 @@ class MainExecutionExitTests(unittest.TestCase):
             print_human(report)
 
         output = buffer.getvalue()
-        self.assertIn("case_summary: total=2, passed=1, failed=1, blocked=0, unknown=0", output)
+        self.assertIn("Execution Results", output)
+        self.assertIn("total=2, passed=1, failed=1,", output)
+        self.assertIn("blocked=0, unknown=0", output)
 
 
 if __name__ == "__main__":

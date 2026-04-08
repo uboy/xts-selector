@@ -16,7 +16,7 @@ by name in any XTS test file. The selector must resolve it via indirect mapping:
 ## Variant expectation
 
 This file is under components_ng/pattern/ and NOT under /bridge/.
-Expected effective_variants_mode: static
+Expected effective_variants_mode: both
 
 ## Must-have
 

@@ -119,6 +119,13 @@ arkui-xts-selector \
 
 ```bash
 arkui-xts-selector \
+  --pr-url https://gitcode.com/openharmony/arkui_ace_engine/pull/82225 \
+  --pr-source api \
+  --git-host-config ../gitee_util/config.ini
+```
+
+```bash
+arkui-xts-selector \
   --symbol-query ButtonModifier \
   --devices R52W12345678,192.168.0.10:8710 \
   --run-label baseline \
@@ -234,6 +241,7 @@ Recommended fields:
 - `hdc_path`
 - `path_rules_file`
 - `composite_mappings_file`
+- `ranking_rules_file`
 - `changed_file_exclusions_file`
 - `product_name`
 - `system_size`
@@ -255,6 +263,15 @@ Special mapping rules are stored outside Python code where possible:
   - helpers/accessors covering multiple components
   - shared/common-component mappings
   - cross-component bridge rules
+
+- [config/ranking_rules.json](config/ranking_rules.json)
+  - family-group normalization for coverage planning
+  - generic and umbrella markers used by ranking
+  - scope/bucket/quality/planner coefficients
+
+- [config/README.md](config/README.md)
+  - explains what each config file controls
+  - describes how to add or remove ranking rules safely
 
 - [config/changed_file_exclusions.json](config/changed_file_exclusions.json)
   - changed-file path prefixes that should be skipped for XTS analysis
@@ -393,22 +410,48 @@ Typical progress messages include:
 
 ## User Flow Scenarios
 
+In practice, a user can use the tool to:
+- choose likely XTS suites by changed ArkUI files
+- choose likely XTS suites by component, modifier, or attribute name such as `ButtonModifier`
+- search the indexed codebase without launching tests
+- analyze a git diff, a PR, or a text file with changed paths
+- run with a shared JSON config instead of repeating workspace paths on every command
+- prepare daily prebuilt test artifacts and point execution at them
+- plan device-targeted execution without launching it yet
+- run selected targets immediately through `aa test`, `xdevice`, or `runtest`
+- distribute selected targets across several devices with `--shard-mode split`
+- store labeled runs under `.runs/` and compare them later with `xts_compare`
+- download daily SDK or firmware artifacts as standalone utility actions
+- flash a supported device image bundle through the same CLI
+- export JSON, HTML, or Markdown artifacts for automation and reporting
+
+Current limitation:
+- multi-device distribution is supported, but the README intentionally does not describe it as true parallel execution. `--shard-mode split` assigns work across devices; it is not the new parallel scheduler design that is still being discussed separately.
+
 ### Selector CLI
 
 | Scenario | Typical command | Expected output |
 | --- | --- | --- |
 | Analyze one changed ArkUI file and get suggested XTS targets | `arkui-xts-selector --changed-file foundation/arkui/ace_engine/.../button_pattern.cpp` | Human report on stdout, JSON report on disk, `run_targets` with `aa_test`/`xdevice`/`runtest` commands |
 | Reconstruct likely suites from a component or modifier name | `arkui-xts-selector --symbol-query ButtonModifier` | Ranked XTS projects, code-search evidence, and runnable targets for that symbol |
+| Reconstruct likely suites from an attribute or API name | `arkui-xts-selector --symbol-query ButtonAttribute` | Ranked XTS projects for the requested API surface, including evidence and runnable targets |
 | Search codebase only, without test selection | `arkui-xts-selector --code-query ButtonModifier` | Matching code files in the report, no direct runtime execution required |
 | Analyze a batch of changed files from a text list | `arkui-xts-selector --changed-files-from changed.txt` | Combined report for all listed files, unresolved items called out explicitly |
 | Analyze changes from git diff or PR | `arkui-xts-selector --git-diff HEAD~1..HEAD` or `--pr-url <url>` | Changed-file set resolved automatically, then normal ranking/build-guidance flow |
+| Force PR resolution through GitCode API | `arkui-xts-selector --pr-url <url> --pr-source api --git-host-config ../gitee_util/config.ini` | PR file list comes from GitCode API instead of git fetch, useful when local refs are stale or the PR is already merged |
 | Run from a shared workspace config | `arkui-xts-selector --config config/selector.example.json --symbol-query ButtonModifier` | Same selection flow, but roots/product/device defaults come from config |
 | Reuse official daily prebuilt ACTS artifacts | `arkui-xts-selector --symbol-query ButtonModifier --daily-build-tag 20260403_120242 --daily-component dayu200_Dyn_Sta_XTS --run-tool xdevice` | Selector keeps using local source trees for analysis, but execution commands point at ACTS suites extracted from the downloaded full package |
+| Download a daily test package without running selector analysis | `arkui-xts-selector --download-daily-tests --daily-build-tag 20260404_120510` | Utility-mode download/extract flow only, then exit |
+| Download a daily SDK package for local workspace reuse | `arkui-xts-selector --download-daily-sdk --sdk-build-tag 20260404_120537` | Utility-mode SDK download/extract flow only, then exit |
+| Download a daily firmware package without flashing | `arkui-xts-selector --download-daily-firmware --firmware-build-tag 20260404_120244` | Utility-mode firmware download/extract flow only, then exit |
+| Flash a board from the daily firmware bundle | `arkui-xts-selector --flash-daily-firmware --firmware-build-tag 20260404_120244 --firmware-component dayu200 --device <serial> --flash-py-path /path/to/flash.py` | Download, extract, switch to bootloader, and run the local Rockchip flashing flow |
 | Plan execution only for one or more devices | `arkui-xts-selector --symbol-query ButtonModifier --devices SER1,SER2` | Report includes per-device execution plan, but does not start tests |
 | Execute selected targets immediately through `hdc`/`xdevice`/`runtest` | `arkui-xts-selector --symbol-query ButtonModifier --devices SER1,SER2 --run-now --run-tool auto` | Per-device execution results in JSON/human output, with device/tool preflight before launch |
 | Limit blast radius of execution | `arkui-xts-selector --changed-file ... --run-now --run-top-targets 3 --run-timeout 600` | Only the first N unique targets are executed, with timeout-aware status reporting |
 | Keep a labeled baseline or versioned run | `arkui-xts-selector --symbol-query ButtonModifier --run-now --run-tool xdevice --run-label baseline` | Selector report plus run manifest are persisted under `.runs`, ready for later compare-by-label |
-| Distribute selected targets across multiple devices | `arkui-xts-selector --changed-file ... --devices SER1,SER2,SER3 --run-now --shard-mode split` | The execution plan assigns each unique target to one device instead of mirroring everything to all devices |
+| Distribute selected targets across multiple devices | `arkui-xts-selector --changed-file ... --devices SER1,SER2,SER3 --run-now --shard-mode split` | The execution plan assigns each unique target to one device instead of mirroring everything to all devices; this is device distribution, not a separate documented parallel scheduler mode |
+| Emit machine-readable output for automation | `arkui-xts-selector --symbol-query ButtonModifier --json-out reports/button.json` | Human output still goes to stdout, while JSON is written to a specific file |
+| Inspect ranking details when selection looks suspicious | `arkui-xts-selector --symbol-query ButtonModifier --json --debug-trace` | JSON includes timings, cache usage, and extra ranking diagnostics |
 
 ### `xts_compare`
 

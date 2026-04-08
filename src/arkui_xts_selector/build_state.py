@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import shlex
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -81,6 +82,13 @@ def build_aa_test_command(bundle_name: str | None, module_name: str | None, proj
     return f"{prefix}aa test -p {bundle_name} -b {bundle_name} -s unittest OpenHarmonyTestRunner"
 
 
+def _safe_report_fragment(value: str | None) -> str:
+    raw = str(value or "").strip().lower()
+    compact = "".join(ch if ch.isalnum() else "-" for ch in raw)
+    compact = "-".join(part for part in compact.split("-") if part)
+    return compact or "report"
+
+
 def build_xdevice_command(
     repo_root: Path,
     module_name: str | None,
@@ -93,7 +101,11 @@ def build_xdevice_command(
     root = acts_out_root or (repo_root / "out/release/suites/acts")
     tc_path = root / "testcases"
     res_path = root / "resource"
-    report_path_value = report_path or (root / "xdevice_reports/<timestamp>")
+    if report_path is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_path_value = root / "xdevice_reports" / f"{timestamp}_{_safe_report_fragment(module_name)}"
+    else:
+        report_path_value = report_path
     args = [
         "run",
         "acts",
@@ -188,7 +200,7 @@ def inspect_product_build(repo_root: Path, product_name: str | None, acts_out_ro
 
 
 def build_guidance(repo_root: Path, built_artifacts: dict, product_build: dict, app_config: Any, selected_build_targets: list[str]) -> dict | None:
-    product_name = getattr(app_config, "product_name", None) or "<product_name>"
+    product_name = getattr(app_config, "product_name", None) or "rk3568"
     system_size = getattr(app_config, "system_size", None) or "standard"
     xts_suitetype = getattr(app_config, "xts_suitetype", None)
     prebuilt_ready = bool(getattr(app_config, "daily_prebuilt_ready", False))
@@ -219,6 +231,7 @@ def build_guidance(repo_root: Path, built_artifacts: dict, product_build: dict, 
     return {
         "required": True,
         "reason": " ".join(reasons),
+        "preparation_required": needs_code_build or needs_acts_build,
         "code_build_required": needs_code_build,
         "acts_build_required": needs_acts_build,
         "full_code_build_command": full_code_build_command,

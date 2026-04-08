@@ -1,11 +1,14 @@
 import io
 import json
 import os
+import re
 import sys
 import unittest
+from unittest import mock
 from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -18,26 +21,55 @@ from arkui_xts_selector.cli import (
     SdkIndex,
     TestFileIndex,
     TestProjectIndex,
+    apply_ranking_rules_config,
+    build_global_coverage_recommendations,
     candidate_bucket,
     classify_project_variant,
     compact_token,
+    coverage_capability_key,
+    coverage_family_key,
+    coverage_rank_weight,
     coverage_signature,
     default_cache_path,
+    default_composite_mappings_file,
+    default_path_rules_file,
+    default_ranking_rules_file,
     deduplicate_by_coverage_signature,
+    diversify_symbol_query_projects,
     emit_progress,
+    build_source_profile,
+    fetch_pr_changed_files_via_api,
+    filter_project_results_by_relevance,
     filter_changed_files_for_xts,
     load_changed_file_exclusion_config,
+    load_ini_gitcode_config,
+    load_mapping_config,
     match_changed_file_exclusion,
+    classify_project_scope,
+    load_ranking_rules_config,
     parse_test_file,
+    parse_pr_number,
+    parse_owner_repo_from_pr,
+    parse_owner_repo_from_remote_url,
     resolve_json_output_path,
+    resolve_pr_changed_files,
+    restrict_explicit_surface_projects,
     write_json_report,
     family_tokens_from_path,
     format_report,
     infer_signals,
+    infer_project_family_profile,
     build_query_signals,
+    normalize_changed_files,
     resolve_variants_mode,
     score_file,
     score_project,
+    sort_project_results,
+    split_scope_groups,
+    suite_source_family_gains,
+    suite_source_capability_gains,
+    suite_source_capability_representative_scores,
+    suite_source_family_representative_scores,
     symbol_score,
     build_unresolved_analysis,
     unresolved_reason,
@@ -46,6 +78,202 @@ from arkui_xts_selector.cli import (
 
 
 class CliDesignV1Tests(unittest.TestCase):
+    def test_parse_pr_number_supports_pull_and_pulls_urls(self) -> None:
+        self.assertEqual(parse_pr_number("https://gitcode.com/openharmony/arkui_ace_engine/pull/83145"), "83145")
+        self.assertEqual(parse_pr_number("https://gitcode.com/openharmony/arkui_ace_engine/pulls/83145"), "83145")
+
+    def test_parse_owner_repo_helpers_support_pulls_and_remote_urls(self) -> None:
+        self.assertEqual(
+            parse_owner_repo_from_pr("https://gitcode.com/openharmony/arkui_ace_engine/pulls/83145"),
+            ("openharmony", "arkui_ace_engine"),
+        )
+        self.assertEqual(
+            parse_owner_repo_from_remote_url("https://gitcode.com/openharmony/arkui_ace_engine.git"),
+            ("openharmony", "arkui_ace_engine"),
+        )
+        self.assertEqual(
+            parse_owner_repo_from_remote_url("git@gitcode.com:openharmony/arkui_ace_engine.git"),
+            ("openharmony", "arkui_ace_engine"),
+        )
+
+    def test_load_ini_gitcode_config_supports_bom(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            ini_path = Path(tmpdir) / "config.ini"
+            ini_path.write_text(
+                "\ufeff[gitcode]\n"
+                "gitcode-url = https://gitcode.com/\n"
+                "token = secret-token\n",
+                encoding="utf-8",
+            )
+            url, token = load_ini_gitcode_config(str(ini_path), Path(tmpdir))
+
+        self.assertEqual(url, "https://gitcode.com/")
+        self.assertEqual(token, "secret-token")
+
+    def test_apply_ranking_rules_config_reloads_family_groups_and_rank_weight(self) -> None:
+        original_config = load_ranking_rules_config(default_ranking_rules_file())
+        with TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "ranking_rules.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "generic_tokens": {
+                            "path": ["ace"],
+                            "scope": ["common"],
+                            "low_signal_specificity": ["helper"],
+                            "coverage_extra": ["apilack"],
+                        },
+                        "coverage_family_groups": {
+                            "matrix2d": "matrix_custom",
+                        },
+                        "coverage_capability_groups": {
+                            "tabcontent": "navigation_stack.tabs",
+                        },
+                        "scope_gain_multiplier": {
+                            "direct": 1.0,
+                            "focused": 1.0,
+                            "broad": 0.2,
+                        },
+                        "bucket_gain_multiplier": {
+                            "must-run": 1.0,
+                            "high-confidence related": 0.8,
+                            "possible related": 0.5,
+                        },
+                        "umbrella_penalties": {
+                            "markers": {"apilack": 0.3},
+                            "family_count_threshold": 3,
+                            "family_count_penalty": 0.1,
+                            "family_count_penalty_cap": 0.2,
+                            "penalty_cap": 0.7,
+                            "minimum_factor": 0.2,
+                        },
+                        "family_quality": {
+                            "project_tokens": 0.3,
+                            "related_file_path": 0.1,
+                            "direct_file_path": 0.2,
+                            "direct_reason_tokens": 0.25,
+                            "direct_single_family_bonus": 0.2,
+                            "direct_small_family_bonus": 0.1,
+                            "maximum_quality": 3.0,
+                            "direct_gain_base": 1.0,
+                            "related_gain_base": 0.4,
+                            "minimum_direct_quality": 0.5,
+                            "minimum_related_quality": 0.4,
+                        },
+                        "planner": {
+                            "fallback_no_family_gain": 0.2,
+                            "rank_weight_power": 2.0,
+                            "rank_weight_floor": 1,
+                        },
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            custom_config = load_ranking_rules_config(config_path)
+        try:
+            apply_ranking_rules_config(custom_config)
+            self.assertEqual(coverage_family_key("Matrix2D"), "matrix_custom")
+            self.assertEqual(coverage_capability_key("TabContent"), "navigation_stack.tabs")
+            self.assertAlmostEqual(coverage_rank_weight(3), 1.0 / 9.0)
+            self.assertEqual(coverage_family_key("apilack"), "")
+        finally:
+            apply_ranking_rules_config(original_config)
+
+    def test_default_path_rules_include_mixed_checkboxgroup_aliases(self) -> None:
+        mapping = load_mapping_config(
+            path_rules_file=default_path_rules_file(),
+            composite_mappings_file=default_composite_mappings_file(),
+        )
+
+        self.assertIn('CheckBoxGroup', mapping.pattern_alias['checkboxgroup'])
+        self.assertIn('CheckBoxGroupConfiguration', mapping.pattern_alias['checkboxgroup'])
+        self.assertIn('Tabs', mapping.pattern_alias['navigation'])
+        self.assertIn('TabContent', mapping.pattern_alias['navigation'])
+
+    def test_fetch_pr_changed_files_via_api_accepts_wrapped_files_payload(self) -> None:
+        class _Response:
+            def __init__(self, payload: object) -> None:
+                self._payload = payload
+
+            def read(self) -> bytes:
+                return json.dumps(self._payload).encode("utf-8")
+
+            def __enter__(self) -> "_Response":
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+        with mock.patch(
+            "arkui_xts_selector.cli.urllib.request.urlopen",
+            return_value=_Response({"files": [{"filename": "frameworks/core/components_ng/pattern/button/button_pattern.cpp"}]}),
+        ):
+            changed = fetch_pr_changed_files_via_api(
+                api_url="https://gitcode.com",
+                token="secret",
+                owner="openharmony",
+                repo="arkui_ace_engine",
+                pr_ref="https://gitcode.com/openharmony/arkui_ace_engine/pull/83145",
+                repo_root=ROOT / "src",
+            )
+
+        self.assertEqual(len(changed), 1)
+        self.assertTrue(str(changed[0]).endswith("frameworks/core/components_ng/pattern/button/button_pattern.cpp"))
+
+    def test_resolve_pr_changed_files_prefers_api_when_requested(self) -> None:
+        app_config = AppConfig(
+            repo_root=Path("/repo"),
+            xts_root=Path("/repo/test/xts/acts/arkui"),
+            sdk_api_root=Path("/repo/interface/sdk-js/api"),
+            cache_file=None,
+            git_repo_root=Path("/repo/foundation/arkui/ace_engine"),
+            git_remote="gitcode",
+            git_base_branch="master",
+            gitcode_api_url="https://gitcode.com",
+            gitcode_token="secret",
+        )
+        expected = [Path("frameworks/core/components_ng/pattern/button/button_pattern.cpp")]
+        with mock.patch("arkui_xts_selector.cli.resolve_pr_owner_repo", return_value=("openharmony", "arkui_ace_engine")), \
+                mock.patch("arkui_xts_selector.cli.fetch_pr_metadata_via_api", return_value={"number": 83145}), \
+                mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files_via_api", return_value=expected) as api_fetch, \
+                mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files") as git_fetch:
+            resolved = resolve_pr_changed_files(
+                app_config,
+                "https://gitcode.com/openharmony/arkui_ace_engine/pull/83145",
+                "api",
+            )
+
+        self.assertEqual(resolved, expected)
+        api_fetch.assert_called_once()
+        git_fetch.assert_not_called()
+
+    def test_resolve_pr_changed_files_auto_falls_back_to_git_when_api_fails(self) -> None:
+        app_config = AppConfig(
+            repo_root=Path("/repo"),
+            xts_root=Path("/repo/test/xts/acts/arkui"),
+            sdk_api_root=Path("/repo/interface/sdk-js/api"),
+            cache_file=None,
+            git_repo_root=Path("/repo/foundation/arkui/ace_engine"),
+            git_remote="gitcode",
+            git_base_branch="master",
+            gitcode_api_url="https://gitcode.com",
+            gitcode_token="secret",
+        )
+        expected = [Path("frameworks/core/components_ng/pattern/button/button_pattern.cpp")]
+        with mock.patch("arkui_xts_selector.cli.resolve_pr_owner_repo", return_value=("openharmony", "arkui_ace_engine")), \
+                mock.patch("arkui_xts_selector.cli.fetch_pr_metadata_via_api", side_effect=RuntimeError("401 Unauthorized")), \
+                mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files", return_value=expected) as git_fetch:
+            resolved = resolve_pr_changed_files(
+                app_config,
+                "https://gitcode.com/openharmony/arkui_ace_engine/pull/83145",
+                "auto",
+            )
+
+        self.assertEqual(resolved, expected)
+        git_fetch.assert_called_once()
+
     def test_emit_progress_prints_phase_line_when_enabled(self) -> None:
         buffer = io.StringIO()
         with redirect_stderr(buffer):
@@ -82,6 +310,21 @@ class CliDesignV1Tests(unittest.TestCase):
             written = write_json_report({"ok": True}, json_to_stdout=True, json_output_path=None)
         self.assertIsNone(written)
         self.assertEqual(buffer.getvalue().strip(), json.dumps({"ok": True}, ensure_ascii=False, indent=2))
+
+    def test_normalize_changed_files_prefers_existing_git_repo_relative_path(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            workspace_root = Path(tmpdir) / "ohos_master"
+            git_repo_root = workspace_root / "foundation/arkui/ace_engine"
+            target = git_repo_root / "frameworks/core/interfaces/native/implementation/flow_item_modifier.cpp"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("// test", encoding="utf-8")
+
+            changed = normalize_changed_files(
+                ["frameworks/core/interfaces/native/implementation/flow_item_modifier.cpp"],
+                base_roots=[workspace_root, git_repo_root],
+            )
+
+        self.assertEqual(changed, [target.resolve()])
 
     def test_parse_test_file_collects_typed_modifier_bases(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -151,6 +394,84 @@ class FancySliderModifier extends SliderModifier {}
         )
 
         self.assertEqual(signals["method_hints"], {"contentModifier"})
+
+    def test_infer_signals_adds_canonical_alias_symbols_for_tabcontent_and_xcomponent_paths(self) -> None:
+        mapping = MappingConfig(
+            pattern_alias={
+                "tabs": ["Tabs", "TabContent", "TabsModifier"],
+                "xcomponent": ["XComponent", "XComponentController"],
+            }
+        )
+
+        tabcontent_signals = infer_signals(
+            Path("generated/component/tabContent.ets"),
+            SdkIndex(),
+            ContentModifierIndex(),
+            mapping,
+        )
+        xcomponent_signals = infer_signals(
+            Path("generated/component/xcomponent.ets"),
+            SdkIndex(),
+            ContentModifierIndex(),
+            mapping,
+        )
+
+        self.assertIn("TabContent", tabcontent_signals["symbols"])
+        self.assertIn("Tabs", tabcontent_signals["symbols"])
+        self.assertIn("tabs", tabcontent_signals["project_hints"])
+        self.assertIn("XComponent", xcomponent_signals["symbols"])
+        self.assertIn("XComponentController", xcomponent_signals["symbols"])
+
+    def test_infer_signals_reads_generated_ets_exported_types_and_public_methods(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "generated" / "component" / "matrix2d.ets"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                """
+                export class Matrix2D {
+                  public identity(): Matrix2D { return this; }
+                  public rotate(degree: number): Matrix2D { return this; }
+                }
+                """,
+                encoding="utf-8",
+            )
+            signals = infer_signals(
+                path,
+                SdkIndex(),
+                ContentModifierIndex(),
+                MappingConfig(),
+            )
+
+        self.assertIn("Matrix2D", signals["symbols"])
+        self.assertIn("Matrix2D", signals["type_hints"])
+        self.assertIn("identity", signals["method_hints"])
+        self.assertIn("rotate", signals["method_hints"])
+
+    def test_infer_signals_reads_generated_ets_imported_types_and_ohos_modules(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "generated" / "component" / "uiExtensionComponent.ets"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                """
+                import Want from '@ohos.app.ability.Want'
+                import UIExtensionComponentModifier from './../UIExtensionComponentModifier'
+                export interface UIExtensionProxy {
+                  sendSync(data: object): object
+                }
+                """,
+                encoding="utf-8",
+            )
+            signals = infer_signals(
+                path,
+                SdkIndex(),
+                ContentModifierIndex(),
+                MappingConfig(),
+            )
+
+        self.assertIn("@ohos.app.ability.Want", signals["modules"])
+        self.assertIn("UIExtensionProxy", signals["symbols"])
+        self.assertIn("UIExtensionProxy", signals["type_hints"])
+        self.assertIn("UIExtensionComponentModifier", signals["symbols"])
 
     def test_build_query_signals_collects_method_hints_from_composite_mapping(self) -> None:
         # After substring matching fix (Task 3), short queries no longer match
@@ -303,8 +624,1125 @@ class FancySliderModifier extends SliderModifier {}
             from arkui_xts_selector.cli import print_human
             print_human(report)
         output = buffer.getvalue()
-        self.assertIn('excluded_inputs: 1', output)
+        self.assertIn('Excluded Inputs', output)
         self.assertIn('excluded_from_xts_analysis', output)
+        self.assertIn('test/unittest/', output)
+
+    def test_print_human_shows_effective_variants_mode_for_changed_file(self) -> None:
+        report = {
+            'repo_root': '/tmp/repo',
+            'xts_root': '/tmp/repo/test/xts',
+            'sdk_api_root': '/tmp/repo/sdk',
+            'git_repo_root': '/tmp/repo/foundation/arkui/ace_engine',
+            'acts_out_root': '/tmp/repo/out/release/suites/acts',
+            'product_build': {'status': 'missing', 'out_dir_exists': False, 'build_log_exists': False, 'error_log_exists': False, 'error_log_size': 0},
+            'built_artifacts': {'status': 'missing', 'testcases_dir_exists': False, 'module_info_exists': False, 'testcase_json_count': 0},
+            'built_artifact_index': {},
+            'cache_used': False,
+            'variants_mode': 'auto',
+            'excluded_inputs': [],
+            'results': [
+                {
+                    'changed_file': 'foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/content_modifier_helper_accessor.cpp',
+                    'effective_variants_mode': 'both',
+                    'signals': {
+                        'modules': [],
+                        'symbols': ['ButtonModifier', 'ContentModifier'],
+                        'project_hints': ['button', 'contentmodifier'],
+                        'method_hints': ['contentModifier'],
+                        'type_hints': ['ContentModifierHelper'],
+                        'family_tokens': ['button', 'contentmodifier'],
+                    },
+                    'projects': [],
+                    'run_targets': [],
+                }
+            ],
+            'symbol_queries': [],
+            'code_queries': [],
+            'unresolved_files': [],
+            'timings_ms': {},
+        }
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            from arkui_xts_selector.cli import print_human
+            print_human(report)
+        output = buffer.getvalue()
+        self.assertIn('Changed File: foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/content_modifier_helper_accessor.cpp', output)
+        self.assertIn('Surface', output)
+        self.assertIn('both', output)
+
+    def test_print_human_includes_next_steps_with_full_command(self) -> None:
+        report = {
+            'repo_root': '/tmp/repo',
+            'xts_root': '/tmp/repo/test/xts',
+            'sdk_api_root': '/tmp/repo/sdk',
+            'git_repo_root': '/tmp/repo/foundation/arkui/ace_engine',
+            'acts_out_root': '/tmp/repo/out/release/suites/acts',
+            'product_build': {'status': 'missing', 'out_dir_exists': False, 'build_log_exists': False, 'error_log_exists': False, 'error_log_size': 0},
+            'built_artifacts': {'status': 'missing', 'testcases_dir_exists': False, 'module_info_exists': False, 'testcase_json_count': 0},
+            'built_artifact_index': {},
+            'cache_used': False,
+            'variants_mode': 'auto',
+            'excluded_inputs': [],
+            'results': [],
+            'symbol_queries': [],
+            'code_queries': [],
+            'unresolved_files': [],
+            'timings_ms': {},
+            'next_steps': [
+                {
+                    'step': 'Download SDK',
+                    'status': 'optional',
+                    'why': 'SDK root already exists; use this to switch to another SDK build by tag or date.',
+                    'command': 'arkui-xts-selector --download-daily-sdk --sdk-component ohos-sdk-public --sdk-branch master --sdk-date 20260406',
+                }
+            ],
+        }
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            from arkui_xts_selector.cli import print_human
+            print_human(report)
+        output = buffer.getvalue()
+        self.assertIn('Next Steps', output)
+        self.assertIn('--download-daily-sdk', output)
+        self.assertIn('--sdk-component ohos-sdk-public', output)
+        self.assertIn('--sdk-branch master', output)
+        self.assertIn('--sdk-date 20260406', output)
+        self.assertIn('Preparation', output)
+
+    def test_print_human_uses_rich_box_drawing_tables(self) -> None:
+        report = {
+            'repo_root': '/tmp/repo',
+            'xts_root': '/tmp/repo/test/xts',
+            'sdk_api_root': '/tmp/repo/sdk',
+            'git_repo_root': '/tmp/repo/foundation/arkui/ace_engine',
+            'acts_out_root': '/tmp/repo/out/release/suites/acts',
+            'product_build': {'status': 'missing', 'out_dir_exists': False, 'build_log_exists': False, 'error_log_exists': False, 'error_log_size': 0},
+            'built_artifacts': {'status': 'missing', 'testcases_dir_exists': False, 'module_info_exists': False, 'testcase_json_count': 0},
+            'built_artifact_index': {},
+            'cache_used': False,
+            'variants_mode': 'auto',
+            'excluded_inputs': [],
+            'results': [],
+            'symbol_queries': [],
+            'code_queries': [],
+            'unresolved_files': [],
+            'timings_ms': {},
+        }
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            from arkui_xts_selector.cli import print_human
+            print_human(report)
+        output = buffer.getvalue()
+        self.assertIn('╭', output)
+        self.assertIn('╰', output)
+
+    def test_print_human_hides_timings_without_debug_trace(self) -> None:
+        report = {
+            'repo_root': '/tmp/repo',
+            'xts_root': '/tmp/repo/test/xts',
+            'sdk_api_root': '/tmp/repo/sdk',
+            'git_repo_root': '/tmp/repo/foundation/arkui/ace_engine',
+            'acts_out_root': '/tmp/repo/out/release/suites/acts',
+            'product_build': {'status': 'missing', 'out_dir_exists': False, 'build_log_exists': False, 'error_log_exists': False, 'error_log_size': 0},
+            'built_artifacts': {'status': 'missing', 'testcases_dir_exists': False, 'module_info_exists': False, 'testcase_json_count': 0},
+            'built_artifact_index': {},
+            'cache_used': False,
+            'cache_file': '/tmp/cache.json',
+            'variants_mode': 'auto',
+            'excluded_inputs': [],
+            'results': [],
+            'symbol_queries': [],
+            'code_queries': [],
+            'unresolved_files': [],
+            'timings_ms': {'report_setup': 1.23},
+            'debug_trace': False,
+        }
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            from arkui_xts_selector.cli import print_human
+            print_human(report)
+        output = buffer.getvalue()
+        self.assertNotIn('Timings (ms)', output)
+        self.assertIn('Index Cache', output)
+
+    def test_print_human_how_to_run_uses_unique_command_rows_and_explains_tools(self) -> None:
+        report = {
+            'repo_root': '/tmp/repo',
+            'xts_root': '/tmp/repo/test/xts',
+            'sdk_api_root': '/tmp/repo/sdk',
+            'git_repo_root': '/tmp/repo/foundation/arkui/ace_engine',
+            'acts_out_root': '/tmp/repo/out/release/suites/acts',
+            'product_build': {'status': 'present', 'out_dir_exists': True, 'build_log_exists': True, 'error_log_exists': False, 'error_log_size': 0},
+            'built_artifacts': {'status': 'present', 'testcases_dir_exists': True, 'module_info_exists': True, 'testcase_json_count': 1},
+            'built_artifact_index': {},
+            'cache_used': False,
+            'variants_mode': 'auto',
+            'excluded_inputs': [],
+            'results': [],
+            'symbol_queries': [
+                {
+                    'query': 'Button',
+                    'signals': {'modules': [], 'symbols': [], 'project_hints': [], 'method_hints': [], 'type_hints': [], 'family_tokens': []},
+                    'effective_variants_mode': 'both',
+                    'relevance_summary': {'mode': 'all', 'shown': 2, 'total_after': 10, 'total_before': 10, 'filtered_out': 0},
+                    'projects': [
+                        {'project': 'test/xts/acts/arkui/ace_ets_module_modifier_static'},
+                        {'project': 'test/xts/acts/arkui/ace_ets_module_modifier'},
+                    ],
+                    'run_targets': [
+                        {
+                            'project': 'test/xts/acts/arkui/ace_ets_module_modifier_static',
+                            'test_json': 'test/xts/acts/arkui/ace_ets_module_modifier_static/Test.json',
+                            'build_target': 'ace_ets_module_modifier_static',
+                            'variant': 'static',
+                            'bucket': 'must-run',
+                            'scope_tier': 'focused',
+                            'scope_reasons': ['top matching files stay in target API paths: button'],
+                            'aa_test_command': 'hdc shell aa test -b com.example.static -m entry -s unittest OpenHarmonyTestRunner',
+                            'xdevice_command': 'python3 -m xdevice run acts -rp /tmp/report_static',
+                            'runtest_command': './test/xts/acts/runtest.sh device=SER1 module=ace_ets_module_modifier_static runonly=TRUE',
+                            'execution_plan': [],
+                            'execution_results': [],
+                        },
+                        {
+                            'project': 'test/xts/acts/arkui/ace_ets_module_modifier',
+                            'test_json': 'test/xts/acts/arkui/ace_ets_module_modifier/Test.json',
+                            'build_target': 'ace_ets_module_modifier',
+                            'variant': 'dynamic',
+                            'bucket': 'must-run',
+                            'scope_tier': 'broad',
+                            'scope_reasons': ['project path looks broad or umbrella-like: modifier'],
+                            'aa_test_command': 'hdc shell aa test -p com.example.dynamic -b com.example.dynamic -s unittest OpenHarmonyTestRunner',
+                            'xdevice_command': 'python3 -m xdevice run acts -rp /tmp/report_dynamic',
+                            'runtest_command': './test/xts/acts/runtest.sh device=SER1 module=ace_ets_module_modifier runonly=TRUE',
+                            'execution_plan': [],
+                            'execution_results': [],
+                        },
+                    ],
+                }
+            ],
+            'code_queries': [],
+            'unresolved_files': [],
+            'timings_ms': {},
+        }
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            from arkui_xts_selector.cli import print_human
+            print_human(report)
+        output = buffer.getvalue()
+        self.assertIn('Primary Tests', output)
+        self.assertIn('Broader Coverage', output)
+        self.assertIn('How To Run', output)
+        self.assertIn('ace_ets_module_modifier_static', output)
+        self.assertIn('ace_ets_module_modifier', output)
+        self.assertIn('XDevice run with reports and', output)
+        self.assertIn('Increase --top-projects to see more.', output)
+        self.assertNotIn('<timestamp>', output)
+
+    def test_sort_project_results_prefers_scope_tier_before_raw_score(self) -> None:
+        ranked = [
+            {
+                'project': 'broad/project',
+                'scope_tier': 'broad',
+                'bucket': 'must-run',
+                'specificity_score': 1,
+                'score': 90,
+            },
+            {
+                'project': 'focused/project',
+                'scope_tier': 'focused',
+                'bucket': 'must-run',
+                'specificity_score': 8,
+                'score': 30,
+            },
+        ]
+
+        sort_project_results(ranked)
+
+        self.assertEqual([item['project'] for item in ranked], ['focused/project', 'broad/project'])
+
+    def test_split_scope_groups_separates_primary_from_broad(self) -> None:
+        primary, broader = split_scope_groups(
+            [
+                {'project': 'direct/project', 'scope_tier': 'direct'},
+                {'project': 'focused/project', 'scope_tier': 'focused'},
+                {'project': 'broad/project', 'scope_tier': 'broad'},
+            ]
+        )
+
+        self.assertEqual([item['project'] for item in primary], ['direct/project', 'focused/project'])
+        self.assertEqual([item['project'] for item in broader], ['broad/project'])
+
+    def test_build_global_coverage_recommendations_prefers_new_coverage_then_marks_duplicates_optional(self) -> None:
+        recommendations = build_global_coverage_recommendations(
+            [
+                {
+                    'source': {'key': 'changed_file:a.cpp', 'type': 'changed_file', 'value': 'a.cpp'},
+                    'project_entry': {
+                        'project': 'proj/suite_union',
+                        'test_json': 'proj/suite_union/Test.json',
+                        'build_target': 'suite_union',
+                        'bundle_name': 'com.example.union',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'SuiteUnionTest',
+                        'bucket': 'must-run',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'direct',
+                        'specificity_score': 12,
+                        'score': 40,
+                        'scope_reasons': ['direct api coverage'],
+                    },
+                },
+                {
+                    'source': {'key': 'changed_file:b.cpp', 'type': 'changed_file', 'value': 'b.cpp'},
+                    'project_entry': {
+                        'project': 'proj/suite_union',
+                        'test_json': 'proj/suite_union/Test.json',
+                        'build_target': 'suite_union',
+                        'bundle_name': 'com.example.union',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'SuiteUnionTest',
+                        'bucket': 'must-run',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'direct',
+                        'specificity_score': 12,
+                        'score': 40,
+                        'scope_reasons': ['direct api coverage'],
+                    },
+                },
+                {
+                    'source': {'key': 'changed_file:c.cpp', 'type': 'changed_file', 'value': 'c.cpp'},
+                    'project_entry': {
+                        'project': 'proj/suite_c_only',
+                        'test_json': 'proj/suite_c_only/Test.json',
+                        'build_target': 'suite_c_only',
+                        'bundle_name': 'com.example.c',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'SuiteCOnlyTest',
+                        'bucket': 'must-run',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'focused',
+                        'specificity_score': 8,
+                        'score': 22,
+                        'scope_reasons': ['focused api coverage'],
+                    },
+                },
+                {
+                    'source': {'key': 'changed_file:a.cpp', 'type': 'changed_file', 'value': 'a.cpp'},
+                    'project_entry': {
+                        'project': 'proj/suite_a_duplicate',
+                        'test_json': 'proj/suite_a_duplicate/Test.json',
+                        'build_target': 'suite_a_duplicate',
+                        'bundle_name': 'com.example.a',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'SuiteADuplicateTest',
+                        'bucket': 'must-run',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'focused',
+                        'specificity_score': 9,
+                        'score': 30,
+                        'scope_reasons': ['duplicate api coverage'],
+                    },
+                },
+            ],
+            repo_root=Path('/tmp/repo'),
+            acts_out_root=Path('/tmp/repo/out/release/suites/acts'),
+            device='SER1',
+        )
+
+        self.assertEqual(
+            recommendations['recommended_target_keys'],
+            ['proj/suite_union/Test.json', 'proj/suite_c_only/Test.json'],
+        )
+        self.assertEqual(
+            recommendations['optional_target_keys'],
+            ['proj/suite_a_duplicate/Test.json'],
+        )
+        self.assertEqual(recommendations['recommended'][0]['new_coverage_count'], 2)
+        self.assertEqual(recommendations['recommended'][1]['new_coverage_count'], 1)
+        self.assertEqual(recommendations['optional_duplicates'][0]['new_coverage_count'], 0)
+
+    def test_build_source_profile_groups_navigation_related_tokens_into_single_family(self) -> None:
+        profile = build_source_profile(
+            'changed_file',
+            'frameworks/bridge/declarative_frontend/engine/jsi/components/arkts_native_navigation.ets',
+            {
+                'modules': set(),
+                'symbols': {'Navigation', 'NavDestination', 'TabContent'},
+                'project_hints': {'navigation', 'navdestination', 'tabcontent'},
+                'method_hints': set(),
+                'type_hints': set(),
+                'family_tokens': {'navigation', 'navdestination', 'tabcontent'},
+            },
+            raw_path=Path('/tmp/repo/frameworks/bridge/declarative_frontend/engine/jsi/components/arkts_native_navigation.ets'),
+        )
+
+        self.assertEqual(profile['family_keys'], ['navigation_stack'])
+        self.assertFalse(profile['fallback_only'])
+        self.assertIn('navigation', profile['focus_tokens'])
+        self.assertIn('navdestination', profile['focus_tokens'])
+        self.assertIn('tabcontent', profile['focus_tokens'])
+
+    def test_infer_project_family_profile_extracts_direct_web_family(self) -> None:
+        project = TestProjectIndex(
+            relative_root='test/xts/acts/arkui/ace_ets_module_noui/ace_ets_module_global/ace_ets_module_global_api11',
+            test_json='test/xts/acts/arkui/ace_ets_module_noui/ace_ets_module_global/ace_ets_module_global_api11/Test.json',
+            bundle_name=None,
+            path_key='ace_ets_module_noui/ace_ets_module_global/ace_ets_module_global_api11',
+        )
+        profile = infer_project_family_profile(
+            project,
+            ['best file score 42'],
+            [
+                (
+                    42,
+                    TestFileIndex(relative_path='entry/src/main/ets/MainAbility/pages/web/web.ets'),
+                    ['imports symbol Web', 'calls Web()', 'mentions web'],
+                ),
+            ],
+        )
+
+        self.assertIn('web', profile['family_keys'])
+        self.assertIn('web', profile['direct_family_keys'])
+        self.assertLess(profile['umbrella_penalty'], 0.5)
+        self.assertGreater(profile['family_quality']['web'], 1.0)
+        self.assertIn('web', profile['focus_token_counts'])
+        self.assertGreater(profile['family_representative_quality']['web'], profile['family_quality']['web'])
+
+    def test_infer_project_family_profile_penalizes_apilack_as_umbrella(self) -> None:
+        project = TestProjectIndex(
+            relative_root='test/xts/acts/arkui/ace_ets_component_apilack',
+            test_json='test/xts/acts/arkui/ace_ets_component_apilack/Test.json',
+            bundle_name=None,
+            path_key='ace_ets_component_apilack',
+        )
+        profile = infer_project_family_profile(
+            project,
+            ['best file score 12'],
+            [
+                (
+                    12,
+                    TestFileIndex(relative_path='entry/src/main/ets/MainAbility/pages/conponentadd/web.ets'),
+                    ['calls Web()', 'mentions web', 'path matches web'],
+                ),
+            ],
+        )
+
+        self.assertIn('apilack', profile['generic_markers'])
+        self.assertGreater(profile['umbrella_penalty'], 0.0)
+
+    def test_suite_source_family_gains_rewards_direct_overlap_and_penalizes_umbrella(self) -> None:
+        direct_gain = suite_source_family_gains(
+            {
+                'family_keys': ['web', 'xcomponent'],
+                'direct_family_keys': ['web'],
+                'family_quality': {'web': 1.4},
+                'scope_tier': 'direct',
+                'bucket': 'must-run',
+                'umbrella_penalty': 0.0,
+            },
+            {'family_keys': ['web']},
+        )
+        broad_gain = suite_source_family_gains(
+            {
+                'family_keys': ['web', 'xcomponent', 'gesture', 'draw_canvas'],
+                'direct_family_keys': [],
+                'family_quality': {'web': 1.0},
+                'scope_tier': 'broad',
+                'bucket': 'possible related',
+                'umbrella_penalty': 0.6,
+            },
+            {'family_keys': ['web']},
+        )
+
+        self.assertGreater(direct_gain['web'], 1.0)
+        self.assertGreater(direct_gain['web'], broad_gain['web'])
+
+    def test_suite_source_family_representative_scores_reward_source_token_overlap(self) -> None:
+        narrow_scores = suite_source_family_representative_scores(
+            {
+                'family_keys': ['navigation_stack'],
+                'direct_family_keys': ['navigation_stack'],
+                'family_representative_quality': {'navigation_stack': 2.2},
+                'focus_token_counts': {'navigation': 1, 'navdestination': 2, 'tabcontent': 2},
+            },
+            {
+                'family_keys': ['navigation_stack'],
+                'focus_tokens': ['navigation', 'navdestination', 'tabcontent'],
+            },
+        )
+        broad_scores = suite_source_family_representative_scores(
+            {
+                'family_keys': ['navigation_stack'],
+                'direct_family_keys': ['navigation_stack'],
+                'family_representative_quality': {'navigation_stack': 2.2},
+                'focus_token_counts': {'navigation': 2},
+            },
+            {
+                'family_keys': ['navigation_stack'],
+                'focus_tokens': ['navigation', 'navdestination', 'tabcontent'],
+            },
+        )
+
+        self.assertGreater(narrow_scores['navigation_stack'], broad_scores['navigation_stack'])
+
+    def test_build_source_profile_extracts_navigation_tabs_capability(self) -> None:
+        profile = build_source_profile(
+            "changed_file",
+            "frameworks/bridge/declarative_frontend/engine/jsi/components/arkts_native_tab_content_bridge.ets",
+            {
+                "family_tokens": {"TabContent"},
+                "project_hints": set(),
+                "symbols": {"TabContent"},
+            },
+            raw_path=Path("/tmp/TabContent.ets"),
+        )
+
+        self.assertIn("navigation_stack.tabs", profile["capability_keys"])
+        self.assertIn("navigation_stack", profile["family_keys"])
+
+    def test_suite_source_capability_scores_prefer_exact_capability_owner(self) -> None:
+        direct_gains = suite_source_capability_gains(
+            {
+                "capability_keys": ["navigation_stack.tabs"],
+                "direct_capability_keys": ["navigation_stack.tabs"],
+                "capability_quality": {"navigation_stack.tabs": 2.0},
+                "scope_tier": "focused",
+                "bucket": "high-confidence related",
+                "umbrella_penalty": 0.0,
+            },
+            {
+                "capability_keys": ["navigation_stack.tabs"],
+            },
+        )
+        unrelated_gains = suite_source_capability_gains(
+            {
+                "capability_keys": ["navigation_stack.navigation", "navigation_stack.destination"],
+                "direct_capability_keys": ["navigation_stack.navigation"],
+                "capability_quality": {"navigation_stack.navigation": 2.0},
+                "scope_tier": "focused",
+                "bucket": "high-confidence related",
+                "umbrella_penalty": 0.0,
+            },
+            {
+                "capability_keys": ["navigation_stack.tabs"],
+            },
+        )
+        direct_scores = suite_source_capability_representative_scores(
+            {
+                "capability_keys": ["navigation_stack.tabs"],
+                "direct_capability_keys": ["navigation_stack.tabs"],
+                "capability_representative_quality": {"navigation_stack.tabs": 2.5},
+                "focus_token_counts": {"tabcontent": 3, "tabs": 2},
+            },
+            {
+                "capability_keys": ["navigation_stack.tabs"],
+                "focus_tokens": ["tabcontent", "tabs"],
+            },
+        )
+
+        self.assertGreater(direct_gains["navigation_stack.tabs"], 1.0)
+        self.assertEqual(unrelated_gains, {})
+        self.assertGreater(direct_scores["navigation_stack.tabs"], 2.5)
+
+    def test_build_global_coverage_recommendations_prefers_direct_family_owner_over_umbrella_candidate(self) -> None:
+        recommendations = build_global_coverage_recommendations(
+            [
+                {
+                    'source': {'key': 'changed_file:web.ets', 'type': 'changed_file', 'value': 'web.ets'},
+                    'source_profile': {'key': 'changed_file:web.ets', 'type': 'changed_file', 'value': 'web.ets', 'family_keys': ['web']},
+                    'project_entry': {
+                        'project': 'proj/apilack',
+                        'test_json': 'proj/apilack/Test.json',
+                        'build_target': 'apilack_suite',
+                        'bundle_name': 'com.example.apilack',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'ApiLackTest',
+                        'bucket': 'high-confidence related',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'focused',
+                        'specificity_score': 5,
+                        'score': 12,
+                        'family_keys': ['web', 'xcomponent'],
+                        'direct_family_keys': ['web'],
+                        'family_quality': {'web': 1.0},
+                        'umbrella_penalty': 0.4,
+                        'scope_reasons': ['broad umbrella suite'],
+                    },
+                    'source_rank': 1,
+                },
+                {
+                    'source': {'key': 'changed_file:web.ets', 'type': 'changed_file', 'value': 'web.ets'},
+                    'source_profile': {'key': 'changed_file:web.ets', 'type': 'changed_file', 'value': 'web.ets', 'family_keys': ['web']},
+                    'project_entry': {
+                        'project': 'proj/global_web',
+                        'test_json': 'proj/global_web/Test.json',
+                        'build_target': 'global_web_suite',
+                        'bundle_name': 'com.example.web',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'GlobalWebTest',
+                        'bucket': 'high-confidence related',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'focused',
+                        'specificity_score': 5,
+                        'score': 12,
+                        'family_keys': ['web'],
+                        'direct_family_keys': ['web'],
+                        'family_quality': {'web': 1.8},
+                        'umbrella_penalty': 0.0,
+                        'scope_reasons': ['direct web suite'],
+                    },
+                    'source_rank': 2,
+                },
+            ],
+            repo_root=Path('/tmp/repo'),
+            acts_out_root=Path('/tmp/repo/out/release/suites/acts'),
+            device='SER1',
+        )
+
+        self.assertEqual(recommendations['recommended_target_keys'], ['proj/global_web/Test.json'])
+
+    def test_build_global_coverage_recommendations_prefers_exact_source_token_owner_inside_family(self) -> None:
+        recommendations = build_global_coverage_recommendations(
+            [
+                {
+                    'source': {'key': 'changed_file:tabcontent.ets', 'type': 'changed_file', 'value': 'tabcontent.ets'},
+                    'source_profile': {
+                        'key': 'changed_file:tabcontent.ets',
+                        'type': 'changed_file',
+                        'value': 'tabcontent.ets',
+                        'family_keys': ['navigation_stack'],
+                        'focus_tokens': ['navigation', 'navdestination', 'tabcontent'],
+                    },
+                    'project_entry': {
+                        'project': 'proj/navigation3',
+                        'test_json': 'proj/navigation3/Test.json',
+                        'build_target': 'navigation3',
+                        'bundle_name': 'com.example.navigation3',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'Navigation3Test',
+                        'bucket': 'high-confidence related',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'focused',
+                        'specificity_score': 8,
+                        'score': 18,
+                        'family_keys': ['navigation_stack'],
+                        'direct_family_keys': ['navigation_stack'],
+                        'family_quality': {'navigation_stack': 2.4},
+                        'family_representative_quality': {'navigation_stack': 2.3},
+                        'focus_token_counts': {'navigation': 2, 'navdestination': 1},
+                        'umbrella_penalty': 0.0,
+                        'scope_reasons': ['navigation family coverage'],
+                    },
+                    'source_rank': 1,
+                },
+                {
+                    'source': {'key': 'changed_file:tabcontent.ets', 'type': 'changed_file', 'value': 'tabcontent.ets'},
+                    'source_profile': {
+                        'key': 'changed_file:tabcontent.ets',
+                        'type': 'changed_file',
+                        'value': 'tabcontent.ets',
+                        'family_keys': ['navigation_stack'],
+                        'focus_tokens': ['navigation', 'navdestination', 'tabcontent'],
+                    },
+                    'project_entry': {
+                        'project': 'proj/navigation4',
+                        'test_json': 'proj/navigation4/Test.json',
+                        'build_target': 'navigation4',
+                        'bundle_name': 'com.example.navigation4',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'Navigation4Test',
+                        'bucket': 'high-confidence related',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'focused',
+                        'specificity_score': 7,
+                        'score': 15,
+                        'family_keys': ['navigation_stack'],
+                        'direct_family_keys': ['navigation_stack'],
+                        'family_quality': {'navigation_stack': 2.4},
+                        'family_representative_quality': {'navigation_stack': 2.3},
+                        'focus_token_counts': {'navigation': 1, 'navdestination': 2, 'tabcontent': 3},
+                        'umbrella_penalty': 0.0,
+                        'scope_reasons': ['tabcontent specific coverage'],
+                    },
+                    'source_rank': 2,
+                },
+            ],
+            repo_root=Path('/tmp/repo'),
+            acts_out_root=Path('/tmp/repo/out/release/suites/acts'),
+            device='SER1',
+        )
+
+        self.assertEqual(recommendations['recommended_target_keys'], ['proj/navigation4/Test.json'])
+
+    def test_build_global_coverage_recommendations_prefers_exact_capability_owner_inside_family(self) -> None:
+        recommendations = build_global_coverage_recommendations(
+            [
+                {
+                    'source': {'key': 'changed_file:tabcontent.ets', 'type': 'changed_file', 'value': 'tabcontent.ets'},
+                    'source_profile': {
+                        'key': 'changed_file:tabcontent.ets',
+                        'type': 'changed_file',
+                        'value': 'tabcontent.ets',
+                        'family_keys': ['navigation_stack'],
+                        'capability_keys': ['navigation_stack.tabs'],
+                        'focus_tokens': ['tabcontent', 'tabs'],
+                    },
+                    'project_entry': {
+                        'project': 'proj/navigation2',
+                        'test_json': 'proj/navigation2/Test.json',
+                        'build_target': 'navigation2',
+                        'bundle_name': 'com.example.navigation2',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'Navigation2Test',
+                        'bucket': 'must-run',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'direct',
+                        'specificity_score': 12,
+                        'score': 40,
+                        'family_keys': ['navigation_stack'],
+                        'direct_family_keys': ['navigation_stack'],
+                        'capability_keys': ['navigation_stack.navigation', 'navigation_stack.destination'],
+                        'direct_capability_keys': ['navigation_stack.navigation'],
+                        'capability_quality': {
+                            'navigation_stack.navigation': 2.4,
+                            'navigation_stack.destination': 2.1,
+                        },
+                        'capability_representative_quality': {
+                            'navigation_stack.navigation': 3.4,
+                            'navigation_stack.destination': 3.0,
+                        },
+                        'focus_token_counts': {'navigation': 3, 'navdestination': 2},
+                        'umbrella_penalty': 0.0,
+                        'scope_reasons': ['navigation stack coverage'],
+                    },
+                    'source_rank': 1,
+                },
+                {
+                    'source': {'key': 'changed_file:tabcontent.ets', 'type': 'changed_file', 'value': 'tabcontent.ets'},
+                    'source_profile': {
+                        'key': 'changed_file:tabcontent.ets',
+                        'type': 'changed_file',
+                        'value': 'tabcontent.ets',
+                        'family_keys': ['navigation_stack'],
+                        'capability_keys': ['navigation_stack.tabs'],
+                        'focus_tokens': ['tabcontent', 'tabs'],
+                    },
+                    'project_entry': {
+                        'project': 'proj/tabs',
+                        'test_json': 'proj/tabs/Test.json',
+                        'build_target': 'tabs',
+                        'bundle_name': 'com.example.tabs',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'TabsTest',
+                        'bucket': 'high-confidence related',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'focused',
+                        'specificity_score': 10,
+                        'score': 26,
+                        'family_keys': ['navigation_stack'],
+                        'direct_family_keys': ['navigation_stack'],
+                        'capability_keys': ['navigation_stack.tabs'],
+                        'direct_capability_keys': ['navigation_stack.tabs'],
+                        'capability_quality': {'navigation_stack.tabs': 2.4},
+                        'capability_representative_quality': {'navigation_stack.tabs': 3.6},
+                        'focus_token_counts': {'tabcontent': 4, 'tabs': 4},
+                        'umbrella_penalty': 0.0,
+                        'scope_reasons': ['tabs specific coverage'],
+                    },
+                    'source_rank': 2,
+                },
+            ],
+            repo_root=Path('/tmp/repo'),
+            acts_out_root=Path('/tmp/repo/out/release/suites/acts'),
+            device='SER1',
+        )
+
+        self.assertEqual(recommendations['recommended_target_keys'], ['proj/tabs/Test.json'])
+
+    def test_build_global_coverage_recommendations_breaks_representative_ties_by_umbrella_penalty(self) -> None:
+        recommendations = build_global_coverage_recommendations(
+            [
+                {
+                    'source': {'key': 'changed_file:web.ets', 'type': 'changed_file', 'value': 'web.ets'},
+                    'source_profile': {
+                        'key': 'changed_file:web.ets',
+                        'type': 'changed_file',
+                        'value': 'web.ets',
+                        'family_keys': ['web'],
+                        'focus_tokens': ['web'],
+                    },
+                    'project_entry': {
+                        'project': 'proj/apilack',
+                        'test_json': 'proj/apilack/Test.json',
+                        'build_target': 'apilack',
+                        'bundle_name': 'com.example.apilack',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'ApiLackTest',
+                        'bucket': 'high-confidence related',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'focused',
+                        'specificity_score': 5,
+                        'score': 12,
+                        'family_keys': ['web', 'xcomponent'],
+                        'direct_family_keys': ['web'],
+                        'family_quality': {'web': 2.0},
+                        'family_representative_quality': {'web': 3.6},
+                        'focus_token_counts': {'web': 5},
+                        'umbrella_penalty': 0.4,
+                        'scope_reasons': ['umbrella web coverage'],
+                    },
+                    'source_rank': 1,
+                },
+                {
+                    'source': {'key': 'changed_file:web.ets', 'type': 'changed_file', 'value': 'web.ets'},
+                    'source_profile': {
+                        'key': 'changed_file:web.ets',
+                        'type': 'changed_file',
+                        'value': 'web.ets',
+                        'family_keys': ['web'],
+                        'focus_tokens': ['web'],
+                    },
+                    'project_entry': {
+                        'project': 'proj/global_web',
+                        'test_json': 'proj/global_web/Test.json',
+                        'build_target': 'global_web',
+                        'bundle_name': 'com.example.web',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'GlobalWebTest',
+                        'bucket': 'high-confidence related',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'focused',
+                        'specificity_score': 5,
+                        'score': 12,
+                        'family_keys': ['web'],
+                        'direct_family_keys': ['web'],
+                        'family_quality': {'web': 2.0},
+                        'family_representative_quality': {'web': 3.6},
+                        'focus_token_counts': {'web': 5},
+                        'umbrella_penalty': 0.0,
+                        'scope_reasons': ['narrow web coverage'],
+                    },
+                    'source_rank': 1,
+                },
+            ],
+            repo_root=Path('/tmp/repo'),
+            acts_out_root=Path('/tmp/repo/out/release/suites/acts'),
+            device='SER1',
+        )
+
+        self.assertEqual(recommendations['recommended_target_keys'], ['proj/global_web/Test.json'])
+
+    def test_build_global_coverage_recommendations_collapses_same_family_changed_files(self) -> None:
+        recommendations = build_global_coverage_recommendations(
+            [
+                {
+                    'source': {'key': 'changed_file:navigation.ets', 'type': 'changed_file', 'value': 'navigation.ets'},
+                    'source_profile': {'key': 'changed_file:navigation.ets', 'type': 'changed_file', 'value': 'navigation.ets', 'family_keys': ['navigation_stack']},
+                    'project_entry': {
+                        'project': 'proj/navigation_direct',
+                        'test_json': 'proj/navigation_direct/Test.json',
+                        'build_target': 'navigation_direct',
+                        'bundle_name': 'com.example.navigation',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'NavigationDirectTest',
+                        'bucket': 'must-run',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'direct',
+                        'specificity_score': 12,
+                        'score': 40,
+                        'family_keys': ['navigation_stack'],
+                        'direct_family_keys': ['navigation_stack'],
+                        'umbrella_penalty': 0.0,
+                        'scope_reasons': ['direct api coverage'],
+                    },
+                    'source_rank': 1,
+                },
+                {
+                    'source': {'key': 'changed_file:tabContent.ets', 'type': 'changed_file', 'value': 'tabContent.ets'},
+                    'source_profile': {'key': 'changed_file:tabContent.ets', 'type': 'changed_file', 'value': 'tabContent.ets', 'family_keys': ['navigation_stack']},
+                    'project_entry': {
+                        'project': 'proj/navigation_direct',
+                        'test_json': 'proj/navigation_direct/Test.json',
+                        'build_target': 'navigation_direct',
+                        'bundle_name': 'com.example.navigation',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'NavigationDirectTest',
+                        'bucket': 'must-run',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'direct',
+                        'specificity_score': 12,
+                        'score': 40,
+                        'family_keys': ['navigation_stack'],
+                        'direct_family_keys': ['navigation_stack'],
+                        'umbrella_penalty': 0.0,
+                        'scope_reasons': ['direct api coverage'],
+                    },
+                    'source_rank': 1,
+                },
+                {
+                    'source': {'key': 'changed_file:web.ets', 'type': 'changed_file', 'value': 'web.ets'},
+                    'source_profile': {'key': 'changed_file:web.ets', 'type': 'changed_file', 'value': 'web.ets', 'family_keys': ['web']},
+                    'project_entry': {
+                        'project': 'proj/web_direct',
+                        'test_json': 'proj/web_direct/Test.json',
+                        'build_target': 'web_direct',
+                        'bundle_name': 'com.example.web',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'WebDirectTest',
+                        'bucket': 'must-run',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'direct',
+                        'specificity_score': 10,
+                        'score': 34,
+                        'family_keys': ['web'],
+                        'direct_family_keys': ['web'],
+                        'umbrella_penalty': 0.0,
+                        'scope_reasons': ['direct web coverage'],
+                    },
+                    'source_rank': 1,
+                },
+                {
+                    'source': {'key': 'changed_file:navigation.ets', 'type': 'changed_file', 'value': 'navigation.ets'},
+                    'source_profile': {'key': 'changed_file:navigation.ets', 'type': 'changed_file', 'value': 'navigation.ets', 'family_keys': ['navigation_stack']},
+                    'project_entry': {
+                        'project': 'proj/navigation_duplicate',
+                        'test_json': 'proj/navigation_duplicate/Test.json',
+                        'build_target': 'navigation_duplicate',
+                        'bundle_name': 'com.example.navigation.dup',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'NavigationDuplicateTest',
+                        'bucket': 'must-run',
+                        'variant': 'dynamic',
+                        'surface': 'dynamic',
+                        'scope_tier': 'focused',
+                        'specificity_score': 8,
+                        'score': 28,
+                        'family_keys': ['navigation_stack'],
+                        'direct_family_keys': ['navigation_stack'],
+                        'umbrella_penalty': 0.0,
+                        'scope_reasons': ['duplicate navigation coverage'],
+                    },
+                    'source_rank': 2,
+                },
+            ],
+            repo_root=Path('/tmp/repo'),
+            acts_out_root=Path('/tmp/repo/out/release/suites/acts'),
+            device='SER1',
+        )
+
+        self.assertEqual(
+            recommendations['recommended_target_keys'],
+            ['proj/navigation_direct/Test.json', 'proj/web_direct/Test.json'],
+        )
+        self.assertEqual(recommendations['recommended'][0]['new_coverage_count'], 1)
+        self.assertEqual(recommendations['recommended'][0]['new_families'], ['navigation_stack'])
+        self.assertEqual(recommendations['recommended'][1]['new_families'], ['web'])
+        self.assertEqual(recommendations['optional_duplicates'][0]['new_coverage_count'], 0)
+
+    def test_classify_project_scope_marks_generic_common_attrs_suite_as_broad(self) -> None:
+        project = TestProjectIndex(
+            relative_root='test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_commonAttrsEvents/ace_ets_module_commonAttrsEvents_focusControl',
+            test_json='test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_commonAttrsEvents/ace_ets_module_commonAttrsEvents_focusControl/Test.json',
+            bundle_name=None,
+            path_key='ace_ets_module_ui/ace_ets_module_commonAttrsEvents/ace_ets_module_commonAttrsEvents_focusControl',
+        )
+        file_hits = [
+            (
+                24,
+                TestFileIndex(relative_path='entry/src/main/ets/MainAbility/pages/focusControl/FocusControl.ets'),
+                ['calls Button()', 'mentions button'],
+            ),
+            (
+                10,
+                TestFileIndex(relative_path='entry/src/main/ets/MainAbility/pages/index/index.ets'),
+                ['mentions button'],
+            ),
+        ]
+        scope_tier, specificity_score, scope_reasons = classify_project_scope(
+            project,
+            {'project_hints': {'button'}, 'family_tokens': {'button'}, 'symbols': {'Button'}},
+            ['best file score 24', 'convergence +1 (2 files)'],
+            file_hits,
+        )
+
+        self.assertEqual(scope_tier, 'broad')
+        self.assertGreaterEqual(specificity_score, 0)
+        self.assertTrue(scope_reasons)
+
+    def test_classify_project_scope_marks_button_specific_suite_as_primary(self) -> None:
+        project = TestProjectIndex(
+            relative_root='test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_button/ace_ets_module_button_static',
+            test_json='test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_button/ace_ets_module_button_static/Test.json',
+            bundle_name=None,
+            path_key='ace_ets_module_ui/ace_ets_module_button/ace_ets_module_button_static',
+        )
+        file_hits = [
+            (
+                32,
+                TestFileIndex(relative_path='entry/src/main/ets/MainAbility/pages/button/ButtonApi.ets'),
+                ['imports symbol Button', 'calls Button()', 'mentions button'],
+            ),
+        ]
+        scope_tier, specificity_score, _scope_reasons = classify_project_scope(
+            project,
+            {'project_hints': {'button'}, 'family_tokens': {'button'}, 'symbols': {'Button'}},
+            ['path matches button', 'best file score 32'],
+            file_hits,
+        )
+
+        self.assertIn(scope_tier, {'direct', 'focused'})
+        self.assertGreater(specificity_score, 0)
+
+    def test_build_xdevice_command_uses_ready_report_path_without_placeholder(self) -> None:
+        from arkui_xts_selector.build_state import build_xdevice_command
+
+        command = build_xdevice_command(
+            repo_root=Path('/tmp/repo'),
+            module_name='ActsAceEtsModuleModifierTest',
+            device=None,
+            acts_out_root=Path('/tmp/repo/out/release/suites/acts'),
+        )
+
+        self.assertIsNotNone(command)
+        self.assertIn('ActsAceEtsModuleModifierTest', command)
+        self.assertIn('xdevice_reports', command)
+        self.assertNotIn('<timestamp>', command)
+
+    def test_print_human_shows_timings_with_debug_trace(self) -> None:
+        report = {
+            'repo_root': '/tmp/repo',
+            'xts_root': '/tmp/repo/test/xts',
+            'sdk_api_root': '/tmp/repo/sdk',
+            'git_repo_root': '/tmp/repo/foundation/arkui/ace_engine',
+            'acts_out_root': '/tmp/repo/out/release/suites/acts',
+            'product_build': {'status': 'missing', 'out_dir_exists': False, 'build_log_exists': False, 'error_log_exists': False, 'error_log_size': 0},
+            'built_artifacts': {'status': 'missing', 'testcases_dir_exists': False, 'module_info_exists': False, 'testcase_json_count': 0},
+            'built_artifact_index': {},
+            'cache_used': False,
+            'cache_file': '/tmp/cache.json',
+            'variants_mode': 'auto',
+            'excluded_inputs': [],
+            'results': [],
+            'symbol_queries': [],
+            'code_queries': [],
+            'unresolved_files': [],
+            'timings_ms': {'report_setup': 1.23},
+            'debug_trace': True,
+        }
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            from arkui_xts_selector.cli import print_human
+            print_human(report)
+        output = buffer.getvalue()
+        self.assertIn('Timings (ms)', output)
+
+    def test_print_human_shows_coverage_recommendations_and_optional_duplicates(self) -> None:
+        report = {
+            'repo_root': '/tmp/repo',
+            'xts_root': '/tmp/repo/test/xts',
+            'sdk_api_root': '/tmp/repo/sdk',
+            'git_repo_root': '/tmp/repo/foundation/arkui/ace_engine',
+            'acts_out_root': '/tmp/repo/out/release/suites/acts',
+            'product_build': {'status': 'missing', 'out_dir_exists': False, 'build_log_exists': False, 'error_log_exists': False, 'error_log_size': 0},
+            'built_artifacts': {'status': 'missing', 'testcases_dir_exists': False, 'module_info_exists': False, 'testcase_json_count': 0},
+            'built_artifact_index': {},
+            'cache_used': False,
+            'cache_file': '/tmp/cache.json',
+            'variants_mode': 'auto',
+            'excluded_inputs': [],
+            'results': [],
+            'symbol_queries': [],
+            'code_queries': [],
+            'unresolved_files': [],
+            'timings_ms': {},
+            'coverage_recommendations': {
+                'source_count': 2,
+                'candidate_count': 2,
+                'recommended': [
+                    {
+                        'target_key': 'suite/recommended/Test.json',
+                        'build_target': 'suite_recommended',
+                        'project': 'suite/recommended',
+                        'bucket': 'must-run',
+                        'variant': 'dynamic',
+                        'scope_tier': 'direct',
+                        'new_coverage_count': 2,
+                        'total_coverage_count': 2,
+                        'new_families': ['navigation_stack', 'web'],
+                        'covered_families': ['navigation_stack', 'web'],
+                        'new_sources': [{'type': 'changed_file', 'value': 'a.cpp'}, {'type': 'changed_file', 'value': 'b.cpp'}],
+                        'covered_sources': [{'type': 'changed_file', 'value': 'a.cpp'}, {'type': 'changed_file', 'value': 'b.cpp'}],
+                        'coverage_reason': 'adds 2 new coverage area(s)',
+                        'aa_test_command': 'hdc shell aa test -p com.example.recommended -b com.example.recommended -s unittest OpenHarmonyTestRunner',
+                    }
+                ],
+                'optional_duplicates': [
+                    {
+                        'target_key': 'suite/optional/Test.json',
+                        'build_target': 'suite_optional',
+                        'project': 'suite/optional',
+                        'bucket': 'must-run',
+                        'variant': 'dynamic',
+                        'scope_tier': 'focused',
+                        'new_coverage_count': 0,
+                        'total_coverage_count': 1,
+                        'new_families': [],
+                        'covered_families': ['navigation_stack'],
+                        'new_sources': [],
+                        'covered_sources': [{'type': 'changed_file', 'value': 'a.cpp'}],
+                        'coverage_reason': 'covers only functionality already covered by earlier recommended suites',
+                        'aa_test_command': 'hdc shell aa test -p com.example.optional -b com.example.optional -s unittest OpenHarmonyTestRunner',
+                    }
+                ],
+                'ordered_targets': [],
+            },
+        }
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            from arkui_xts_selector.cli import print_human
+            print_human(report)
+        output = buffer.getvalue()
+        self.assertIn('Coverage Recommendations', output)
+        self.assertIn('Recommended Run Order', output)
+        self.assertIn('Optional Duplicate Coverage', output)
+        self.assertIn('adds 2 new', output)
+        self.assertIn('coverage', output)
+        self.assertIn('already', output)
+        self.assertIn('recommended', output)
+        normalized_output = re.sub(r'[\s│├┤┬┴┼╭╮╰╯─]+', '', output)
+        self.assertRegex(normalized_output, r'navigation_sta.*ck,web')
+
+    def test_build_guidance_defaults_product_name_to_rk3568(self) -> None:
+        from arkui_xts_selector.build_state import build_guidance
+
+        guidance = build_guidance(
+            Path('/tmp/repo'),
+            {'testcases_dir_exists': False, 'module_info_exists': False},
+            {'status': 'missing', 'reason': 'missing'},
+            SimpleNamespace(product_name=None, system_size='standard', xts_suitetype=None, daily_prebuilt_ready=False, daily_prebuilt_note=''),
+            ['ace_ets_module_modifier_static'],
+        )
+
+        self.assertIsNotNone(guidance)
+        self.assertIn('--product-name rk3568', guidance['full_code_build_command'])
+        self.assertIn('product_name=rk3568', guidance['full_acts_build_command'])
 
     def test_classify_project_variant_from_static_hap(self) -> None:
         variant = classify_project_variant("ace_ets_component/foo", ["ActsFooStaticTest.hap"])
@@ -314,6 +1752,20 @@ class FancySliderModifier extends SliderModifier {}
         self.assertTrue(variant_matches("both", "static"))
         self.assertTrue(variant_matches("both", "dynamic"))
         self.assertFalse(variant_matches("dynamic", "static"))
+
+    def test_filter_project_results_by_relevance_modes(self) -> None:
+        ranked = [
+            {"project": "must", "bucket": "must-run", "score": 30},
+            {"project": "high", "bucket": "high-confidence related", "score": 18},
+            {"project": "possible", "bucket": "possible related", "score": 5},
+        ]
+        balanced, balanced_summary = filter_project_results_by_relevance(ranked, "balanced")
+        strict, strict_summary = filter_project_results_by_relevance(ranked, "strict")
+
+        self.assertEqual([item["project"] for item in balanced], ["must", "high"])
+        self.assertEqual([item["project"] for item in strict], ["must"])
+        self.assertEqual(balanced_summary["filtered_out"], 1)
+        self.assertEqual(strict_summary["filtered_out"], 2)
 
     def test_candidate_bucket_requires_non_lexical_evidence_for_must_run(self) -> None:
         self.assertEqual(candidate_bucket(30, False), "possible related")
@@ -349,9 +1801,11 @@ class FancySliderModifier extends SliderModifier {}
                     files=[
                         TestFileIndex(
                             relative_path="button_static/pages/index.ets",
+                            surface="static",
                             imported_symbols={"ButtonModifier"},
                         )
                     ],
+                    supported_surfaces={"static"},
                 ),
                 TestProjectIndex(
                     relative_root="test/xts/acts/arkui/button_dynamic",
@@ -362,9 +1816,11 @@ class FancySliderModifier extends SliderModifier {}
                     files=[
                         TestFileIndex(
                             relative_path="button_dynamic/pages/index.ets",
+                            surface="dynamic",
                             imported_symbols={"ButtonModifier"},
                         )
                     ],
+                    supported_surfaces={"dynamic"},
                 ),
             ]
 
@@ -489,6 +1945,7 @@ class FancySliderModifier extends SliderModifier {}
 
             rich_file = TestFileIndex(
                 relative_path="test/xts/acts/arkui/button_static/pages/index.ets",
+                surface="static",
                 imported_symbols={"ButtonModifier"},
                 identifier_calls={"ButtonModifier"},
                 words={"buttonmodifier"},
@@ -501,6 +1958,7 @@ class FancySliderModifier extends SliderModifier {}
                     variant="static",
                     path_key="acts/arkui/button_static",
                     files=[rich_file],
+                    supported_surfaces={"static"},
                 )
             ]
 
@@ -596,6 +2054,24 @@ class FancySliderModifier extends SliderModifier {}
             Path("foundation/arkui/ace_engine/frameworks/bridge/common/dom/dom_button.cpp"),
         )
         self.assertEqual(mode, "dynamic")
+
+    def test_resolve_variants_mode_auto_uses_semantics_for_native_implementation_file(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            source = Path(tmpdir) / "frameworks/core/interfaces/native/implementation/helper.cpp"
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_text(
+                """
+#include "toggle_model_static.h"
+void Foo()
+{
+    DynamicModuleHelper::GetDynamicModule("Slider");
+    ToggleModelStatic::TriggerChange(frameNode, true);
+}
+""".strip(),
+                encoding="utf-8",
+            )
+            mode = resolve_variants_mode("auto", source)
+        self.assertEqual(mode, "static")
 
     def test_build_unresolved_analysis_exposes_reasoning_fields(self) -> None:
         analysis = build_unresolved_analysis(
@@ -707,36 +2183,155 @@ class FancySliderModifier extends SliderModifier {}
     # Variant resolution: pattern files prefer static
     # ------------------------------------------------------------------
 
-    def test_resolve_variants_mode_auto_prefers_static_for_pattern_files(self) -> None:
-        """components_ng/pattern files (not in /bridge/) should resolve to static."""
+    def test_resolve_variants_mode_auto_keeps_both_for_pattern_backend_files(self) -> None:
+        """components_ng/pattern backend files are common and should keep both surfaces."""
         mode = resolve_variants_mode(
             "auto",
             Path("foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/menu/menu_item/menu_item_pattern.cpp"),
         )
         self.assertEqual(
             mode,
-            "static",
-            "components_ng/pattern files not in /bridge/ should resolve to static, not both",
+            "both",
+            "components_ng/pattern backend files should resolve to both surfaces",
         )
 
     # ------------------------------------------------------------------
     # candidate_bucket boundary checks
     # ------------------------------------------------------------------
 
-    def test_variant_matches_includes_unknown_in_any_mode(self) -> None:
-        """
-        unknown variant must be included in static, dynamic, and both modes.
+    def test_variant_matches_excludes_unknown_from_specific_modes(self) -> None:
+        self.assertFalse(variant_matches("unknown", "static"))
+        self.assertFalse(variant_matches("unknown", "dynamic"))
+        self.assertTrue(variant_matches("unknown", "both"))
+        self.assertTrue(variant_matches("unknown", "auto"))
 
-        'unknown' means no variant marker was detected — it is NOT 'wrong variant'.
-        Silently dropping unknown-variant suites would cause recall failures because
-        many XTS projects lack _static/_dynamic suffix conventions.
-        """
-        for mode in ("static", "dynamic", "both", "auto"):
-            result = variant_matches("unknown", mode)
-            self.assertTrue(
-                result,
-                f"variant_matches('unknown', '{mode}') must be True for high-recall — got False",
-            )
+    def test_build_query_signals_enriches_button_attribute_query(self) -> None:
+        sdk_index = SdkIndex(component_file_bases={"button": "Button"})
+        signals = build_query_signals(
+            "Button attribute",
+            sdk_index,
+            ContentModifierIndex(),
+            MappingConfig(),
+        )
+        self.assertIn("attributeModifier", signals["method_hints"])
+        self.assertIn("getButtonAttribute", signals["method_hints"])
+        self.assertIn("ButtonAttribute", signals["type_hints"])
+
+    def test_diversify_symbol_query_projects_injects_dynamic_exclusive_candidate(self) -> None:
+        project_results = [
+            {
+                "project": "static-1",
+                "variant": "static",
+                "surface": "static",
+                "supported_surfaces": ["static"],
+                "matched_surfaces": ["static"],
+            },
+            {
+                "project": "static-2",
+                "variant": "static",
+                "surface": "static",
+                "supported_surfaces": ["static"],
+                "matched_surfaces": ["static"],
+            },
+            {
+                "project": "mixed-1",
+                "variant": "both",
+                "surface": "mixed",
+                "supported_surfaces": ["dynamic", "static"],
+                "matched_surfaces": ["dynamic", "static"],
+            },
+            {
+                "project": "dynamic-1",
+                "variant": "dynamic",
+                "surface": "dynamic",
+                "supported_surfaces": ["dynamic"],
+                "matched_surfaces": ["dynamic"],
+            },
+        ]
+
+        shown = diversify_symbol_query_projects(project_results, top_projects=3)
+
+        self.assertIn("dynamic-1", [item["project"] for item in shown])
+
+    def test_diversify_symbol_query_projects_injects_both_exclusive_surfaces(self) -> None:
+        project_results = [
+            {
+                "project": "mixed-1",
+                "variant": "both",
+                "surface": "mixed",
+                "supported_surfaces": ["dynamic", "static"],
+                "matched_surfaces": ["dynamic", "static"],
+            },
+            {
+                "project": "mixed-2",
+                "variant": "both",
+                "surface": "mixed",
+                "supported_surfaces": ["dynamic", "static"],
+                "matched_surfaces": ["dynamic", "static"],
+            },
+            {
+                "project": "static-1",
+                "variant": "static",
+                "surface": "static",
+                "supported_surfaces": ["static"],
+                "matched_surfaces": ["static"],
+            },
+            {
+                "project": "dynamic-1",
+                "variant": "dynamic",
+                "surface": "dynamic",
+                "supported_surfaces": ["dynamic"],
+                "matched_surfaces": ["dynamic"],
+            },
+        ]
+
+        shown = diversify_symbol_query_projects(project_results, top_projects=2)
+
+        self.assertEqual({item["project"] for item in shown}, {"static-1", "dynamic-1"})
+
+    def test_restrict_explicit_surface_projects_prefers_exclusive_surface(self) -> None:
+        project_results = [
+            {
+                "project": "dynamic-1",
+                "variant": "dynamic",
+                "surface": "dynamic",
+                "supported_surfaces": ["dynamic"],
+                "matched_surfaces": ["dynamic"],
+            },
+            {
+                "project": "both-1",
+                "variant": "both",
+                "surface": "mixed",
+                "supported_surfaces": ["dynamic", "static"],
+                "matched_surfaces": ["dynamic", "static"],
+            },
+        ]
+
+        shown = restrict_explicit_surface_projects(project_results, "dynamic", explicit_surface_query=True)
+
+        self.assertEqual([item["project"] for item in shown], ["dynamic-1"])
+
+    def test_restrict_explicit_surface_projects_falls_back_to_supporting_projects(self) -> None:
+        project_results = [
+            {
+                "project": "both-1",
+                "variant": "both",
+                "surface": "mixed",
+                "supported_surfaces": ["dynamic", "static"],
+                "matched_surfaces": ["dynamic", "static"],
+            },
+            {
+                "project": "static-1",
+                "variant": "static",
+                "surface": "static",
+                "supported_surfaces": ["static"],
+                "matched_surfaces": ["static"],
+            },
+        ]
+
+        shown = restrict_explicit_surface_projects(project_results, "dynamic", explicit_surface_query=True)
+
+        self.assertEqual([item["project"] for item in shown], ["both-1"])
 
     def test_variant_matches_explicit_dynamic_excluded_from_static(self) -> None:
         """An explicitly dynamic project must NOT match --variants static."""

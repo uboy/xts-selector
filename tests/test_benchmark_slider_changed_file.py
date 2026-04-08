@@ -20,7 +20,7 @@ class SliderChangedFileBenchmarkTests(WorkspaceAwareTestCase):
     PRIMARY METRIC: RECALL — conservative Slider-specific suites must appear
     within top-300.
     SECONDARY METRIC: core Slider suites should remain in must-run bucket.
-    VARIANT: effective_variants_mode must resolve to 'static'.
+    VARIANT: effective_variants_mode must resolve to 'both'.
     """
 
     FIXTURE_DIR = FIXTURES / 'slider_changed_file'
@@ -50,13 +50,13 @@ class SliderChangedFileBenchmarkTests(WorkspaceAwareTestCase):
         report = self._get_report()
         self.assertIn('results', report)
 
-    def test_effective_variants_mode_is_static(self) -> None:
+    def test_effective_variants_mode_is_both(self) -> None:
         report = self._get_report()
         for result in report.get('results', []):
             self.assertEqual(
                 result.get('effective_variants_mode'),
-                'static',
-                f"Expected static variant for slider pattern file, got {result.get('effective_variants_mode')!r}",
+                'both',
+                f"Expected both variants for slider pattern backend file, got {result.get('effective_variants_mode')!r}",
             )
 
     def test_recall_must_have(self) -> None:

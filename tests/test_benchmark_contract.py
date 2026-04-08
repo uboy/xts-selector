@@ -345,7 +345,7 @@ class MenuItemChangedFileBenchmarkTests(WorkspaceAwareTestCase):
 
     PRIMARY METRIC: RECALL — menu-item-specific suites must appear.
     SECONDARY METRIC: RANKING — must_not_have suites must not dominate top-5.
-    VARIANT: effective_variants_mode must be 'static' (pattern file, not bridge).
+    VARIANT: effective_variants_mode must be 'both' (pattern backend is shared, not bridge-only).
     """
 
     FIXTURE_DIR = FIXTURES / "menu_item_changed_file"
@@ -377,18 +377,18 @@ class MenuItemChangedFileBenchmarkTests(WorkspaceAwareTestCase):
         report = self._get_report()
         self.assertIn("results", report)
 
-    def test_effective_variants_mode_is_static(self) -> None:
+    def test_effective_variants_mode_is_both(self) -> None:
         """
-        components_ng/pattern/ file not in /bridge/ → must resolve to 'static'.
-        Running both variants for a pattern file wastes developer time.
+        components_ng/pattern/ backend file not in /bridge/ is shared framework code.
+        It must keep both surfaces available instead of forcing static-only.
         """
         report = self._get_report()
         for result in report.get("results", []):
             mode = result.get("effective_variants_mode")
             self.assertEqual(
                 mode,
-                "static",
-                f"Expected static variant for pattern file, got {mode!r}",
+                "both",
+                f"Expected both variants for pattern backend file, got {mode!r}",
             )
 
     def test_recall_must_have(self) -> None:

@@ -128,6 +128,36 @@ class DailyBuildResolutionTests(unittest.TestCase):
             timeout=mock.ANY,
         )
 
+    def test_resolve_daily_build_selects_latest_available_build_for_date_without_tag(self) -> None:
+        older = DailyBuildInfo(
+            tag="20260404_120100",
+            component=DEFAULT_SDK_COMPONENT,
+            branch="master",
+            version_type="Daily_Version",
+            version_name="OpenHarmony_7.0.0.18",
+            full_package_url="https://example.invalid/older.tar.gz",
+        )
+        newer = DailyBuildInfo(
+            tag="20260404_120537",
+            component=DEFAULT_SDK_COMPONENT,
+            branch="master",
+            version_type="Daily_Version",
+            version_name="OpenHarmony_7.0.0.19",
+            full_package_url="https://example.invalid/newer.tar.gz",
+        )
+        with mock.patch(
+            "arkui_xts_selector.daily_prebuilt.fetch_daily_builds",
+            return_value=[older, newer],
+        ):
+            resolved = resolve_daily_build(
+                component=DEFAULT_SDK_COMPONENT,
+                build_tag=None,
+                build_date="20260404",
+                component_role="generic",
+            )
+
+        self.assertEqual(resolved.tag, newer.tag)
+
 
 class DailyPrebuiltPreparationTests(unittest.TestCase):
     def test_prepare_daily_prebuilt_uses_cached_archive_and_discovers_acts_root(self) -> None:
@@ -390,6 +420,36 @@ class DailyPrebuiltCliTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(payload["mode"], "utility")
         self.assertEqual(payload["operations"]["download_daily_sdk"]["component"], DEFAULT_SDK_COMPONENT)
+        mocked_projects.assert_not_called()
+
+    def test_main_supports_flash_local_firmware_utility_mode(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            firmware_root = Path(tmpdir) / "image_bundle"
+            firmware_root.mkdir()
+            argv = [
+                "arkui-xts-selector",
+                "--flash-firmware-path",
+                str(firmware_root),
+                "--json",
+            ]
+            flash_result = mock.Mock()
+            flash_result.status = "completed"
+            flash_result.to_dict.return_value = {
+                "status": "completed",
+                "image_root": str(firmware_root),
+                "command": ["python3", "flash.py"],
+            }
+            with mock.patch.object(sys, "argv", argv):
+                with mock.patch("arkui_xts_selector.cli.resolve_local_firmware_root", return_value=firmware_root), \
+                     mock.patch("arkui_xts_selector.cli.flash_image_bundle", return_value=flash_result), \
+                     mock.patch("arkui_xts_selector.cli.load_or_build_projects") as mocked_projects, \
+                     redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()):
+                    code = main()
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(code, 0)
+        self.assertEqual(payload["mode"], "utility")
+        self.assertEqual(payload["operations"]["flash_local_firmware"]["requested_path"], str(firmware_root))
         mocked_projects.assert_not_called()
 
 

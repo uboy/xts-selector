@@ -89,6 +89,16 @@ def build_run_target_entry(
         "confidence": item.get("confidence", ""),
         "bucket": item.get("bucket", ""),
         "variant": item.get("variant", ""),
+        "surface": item.get("surface", ""),
+        "score": item.get("score", 0),
+        "scope_tier": item.get("scope_tier", ""),
+        "specificity_score": item.get("specificity_score", 0),
+        "scope_reasons": item.get("scope_reasons", []),
+        "family_keys": item.get("family_keys", []),
+        "direct_family_keys": item.get("direct_family_keys", []),
+        "capability_keys": item.get("capability_keys", []),
+        "direct_capability_keys": item.get("direct_capability_keys", []),
+        "umbrella_penalty": item.get("umbrella_penalty", 0.0),
         "aa_test_command": build_aa_test_command(
             bundle_name=item.get("bundle_name"),
             module_name=item.get("driver_module_name"),
@@ -243,6 +253,20 @@ def build_execution_plan(
 
 def collect_unique_run_targets(report: dict[str, Any]) -> list[dict[str, Any]]:
     groups: dict[str, dict[str, Any]] = {}
+    coverage_recommendations = report.get("coverage_recommendations", {})
+    for target in coverage_recommendations.get("ordered_targets", []):
+        key = target.get("target_key") or target.get("test_json") or target.get("project") or ""
+        if not key:
+            continue
+        groups.setdefault(
+            key,
+            {
+                "key": key,
+                "representative": target,
+                "targets": [target],
+                "sources": list(target.get("covered_sources", [])),
+            },
+        )
     sections = (
         ("results", "changed_file", "changed_file"),
         ("symbol_queries", "symbol_query", "query"),
@@ -261,10 +285,21 @@ def collect_unique_run_targets(report: dict[str, Any]) -> list[dict[str, Any]]:
                         "sources": [],
                     },
                 )
-                group["targets"].append(target)
+                if not any(existing is target for existing in group["targets"]):
+                    group["targets"].append(target)
                 source_entry = {"type": source_type, "value": source_value}
                 if source_entry not in group["sources"]:
                     group["sources"].append(source_entry)
+    ordered_keys = coverage_recommendations.get("ordered_target_keys", [])
+    if ordered_keys:
+        order = {key: index for index, key in enumerate(ordered_keys)}
+        return sorted(
+            groups.values(),
+            key=lambda item: (
+                order.get(item["key"], len(order)),
+                str(item["key"]),
+            ),
+        )
     return list(groups.values())
 
 
@@ -279,7 +314,14 @@ def attach_execution_plan(
     xdevice_reports_root: Path | None = None,
 ) -> None:
     groups = collect_unique_run_targets(report)
-    selected_groups = groups if run_top_targets <= 0 else groups[:run_top_targets]
+    coverage_recommendations = report.get("coverage_recommendations", {})
+    recommended_keys = set(coverage_recommendations.get("recommended_target_keys", []))
+    optional_keys = set(coverage_recommendations.get("optional_target_keys", []))
+    default_groups = [group for group in groups if group["key"] in recommended_keys] if recommended_keys else list(groups)
+    if run_top_targets <= 0:
+        selected_groups = default_groups
+    else:
+        selected_groups = default_groups[:run_top_targets]
     selected_keys = {group["key"] for group in selected_groups}
     for group_index, group in enumerate(groups):
         plan_devices = _plan_devices_for_group(devices, group_index, shard_mode)
@@ -303,6 +345,8 @@ def attach_execution_plan(
         "shard_mode": shard_mode,
         "requested_devices": list(devices),
         "unique_target_count": len(groups),
+        "recommended_target_count": len(recommended_keys) if recommended_keys else len(default_groups),
+        "optional_target_count": len(optional_keys),
         "selected_target_count": len(selected_groups),
         "selected_target_keys": [group["key"] for group in selected_groups],
         "executed": False,
