@@ -72,11 +72,17 @@ class FlashingTests(unittest.TestCase):
             flash_tool.write_text("", encoding="utf-8")
             hdc = root / "hdc"
             hdc.write_text("", encoding="utf-8")
+            toolchains = root / "toolchains"
+            toolchains.mkdir()
+            (toolchains / "libusb_shared.so").write_text("", encoding="utf-8")
 
             commands: list[list[str]] = []
+            hdc_envs: list[dict[str, str]] = []
 
-            def fake_run(command: list[str], timeout: float | None = None):
+            def fake_run(command: list[str], timeout: float | None = None, env: dict[str, str] | None = None):
                 commands.append(list(command))
+                if command and command[0] == str(hdc):
+                    hdc_envs.append(dict(env or {}))
                 if command == [str(flash_tool), "LD"]:
                     if sum(1 for item in commands if item == [str(flash_tool), "LD"]) == 1:
                         return SimpleNamespace(returncode=255, stdout="failed to init libusb!\n", stderr="")
@@ -99,6 +105,11 @@ class FlashingTests(unittest.TestCase):
             with mock.patch("arkui_xts_selector.flashing.resolve_flash_py_path", return_value=flash_py), \
                  mock.patch("arkui_xts_selector.flashing.resolve_hdc_path", return_value=hdc), \
                  mock.patch("arkui_xts_selector.flashing.infer_flash_tool_path", return_value=flash_tool), \
+                 mock.patch.dict(
+                     os.environ,
+                     {"ARKUI_XTS_SELECTOR_HDC_LIBRARY_PATH": str(toolchains)},
+                     clear=False,
+                 ), \
                  mock.patch("arkui_xts_selector.flashing._run_command", side_effect=fake_run), \
                  mock.patch("arkui_xts_selector.flashing.time.sleep", return_value=None):
                 result = flash_image_bundle(
@@ -113,6 +124,8 @@ class FlashingTests(unittest.TestCase):
         self.assertEqual(result.loader_device.location_id, "143")
         self.assertIn([str(hdc), "-t", "SER1", "target", "boot", "-bootloader"], commands)
         self.assertIn([sys.executable, str(flash_py), "-a", "-i", str(image_root)], commands)
+        self.assertTrue(hdc_envs)
+        self.assertEqual(hdc_envs[0]["LD_LIBRARY_PATH"].split(":")[0], str(toolchains.resolve()))
 
 
 if __name__ == "__main__":

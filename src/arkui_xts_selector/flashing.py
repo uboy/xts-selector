@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from .hdc_transport import build_hdc_env
 
 @dataclass
 class RockchipDevice:
@@ -96,7 +97,11 @@ def infer_flash_tool_path(flash_py_path: Path) -> Path:
     raise FileNotFoundError(f"could not locate flash tool next to {flash_py_path}")
 
 
-def _run_command(command: list[str], timeout: float | None = None) -> subprocess.CompletedProcess[str]:
+def _run_command(
+    command: list[str],
+    timeout: float | None = None,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         command,
         stdout=subprocess.PIPE,
@@ -104,6 +109,7 @@ def _run_command(command: list[str], timeout: float | None = None) -> subprocess
         text=True,
         timeout=timeout,
         check=False,
+        env=env,
     )
 
 
@@ -140,7 +146,11 @@ def list_rockchip_devices(flash_tool_path: Path) -> list[RockchipDevice]:
 
 
 def list_hdc_targets(hdc_path: Path) -> list[str]:
-    completed = _run_command([str(hdc_path), "list", "targets"], timeout=10.0)
+    completed = _run_command(
+        [str(hdc_path), "list", "targets"],
+        timeout=10.0,
+        env=build_hdc_env(hdc_path),
+    )
     output = (completed.stdout or "") + (completed.stderr or "")
     if completed.returncode != 0:
         raise RuntimeError(output.strip() or f"{hdc_path} list targets failed")
@@ -175,7 +185,11 @@ def ensure_loader_device(
             raise RuntimeError("no hdc targets available for bootloader switch")
         boot_command = [str(hdc_path), "target", "boot", "-bootloader"]
 
-    boot_result = _run_command(boot_command, timeout=15.0)
+    boot_result = _run_command(
+        boot_command,
+        timeout=15.0,
+        env=build_hdc_env(hdc_path),
+    )
     boot_output = (boot_result.stdout or "") + (boot_result.stderr or "")
     if boot_result.returncode != 0:
         raise RuntimeError(boot_output.strip() or "failed to switch the device into bootloader")

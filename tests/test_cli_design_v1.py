@@ -858,7 +858,7 @@ class FancySliderModifier extends SliderModifier {}
         self.assertIn('--sdk-component ohos-sdk-public', output)
         self.assertIn('--sdk-branch master', output)
         self.assertIn('--sdk-date 20260406', output)
-        self.assertIn('Copyable Next Steps', output)
+        self.assertIn('Commands', output)
         self.assertIn(
             'arkui-xts-selector --download-daily-sdk --sdk-component ohos-sdk-public --sdk-branch master --sdk-date 20260406  # Download SDK [optional] | SDK root already exists; use this to switch to another SDK build by tag or date.',
             output,
@@ -961,6 +961,50 @@ class FancySliderModifier extends SliderModifier {}
         self.assertIn("--daily-date 20260405", step_commands["Download tests"])
         self.assertIn("--firmware-build-tag 20260404_081500", step_commands["Download firmware"])
         self.assertIn("--firmware-date 20260404", step_commands["Download firmware"])
+
+    def test_build_next_steps_use_ohos_wrapper_subcommands_when_configured(self) -> None:
+        app_config = AppConfig(
+            repo_root=Path("/tmp/repo"),
+            xts_root=Path("/tmp/repo/test/xts"),
+            sdk_api_root=Path("/tmp/repo/sdk"),
+            cache_file=None,
+            git_repo_root=Path("/tmp/repo/foundation/arkui/ace_engine"),
+            git_remote="origin",
+            git_base_branch="master",
+            sdk_build_tag="20260406_204500",
+            sdk_component="ohos-sdk-public",
+            sdk_branch="master",
+            daily_build_tag="20260405_193000",
+            daily_component="dayu200_Dyn_Sta_XTS",
+            daily_branch="master",
+            firmware_build_tag="20260404_081500",
+            firmware_component="dayu200",
+            firmware_branch="master",
+        )
+        report = {
+            "sdk_api_root": "/tmp/missing-sdk",
+            "built_artifacts": {"testcases_dir_exists": False, "module_info_exists": False},
+            "coverage_recommendations": {"required_target_keys": [], "recommended_target_keys": []},
+            "execution_overview": {"selected_target_count": 0},
+            "selector_run": {"selector_report_path": "/tmp/report.json"},
+        }
+        with mock.patch.dict(
+            os.environ,
+            {
+                "ARKUI_XTS_SELECTOR_COMMAND_PREFIX": "ohos xts",
+                "ARKUI_XTS_SELECTOR_COMMAND_MODE": "wrapper",
+            },
+            clear=False,
+        ):
+            steps = build_next_steps(report, app_config, self._build_next_steps_args())
+
+        step_commands = {step["step"]: step["command"] for step in steps}
+        self.assertTrue(step_commands["Download SDK"].startswith("ohos xts sdk "))
+        self.assertTrue(step_commands["Download tests"].startswith("ohos xts tests "))
+        self.assertTrue(step_commands["Download firmware"].startswith("ohos xts firmware "))
+        self.assertTrue(step_commands["Flash daily firmware"].startswith("ohos xts flash "))
+        self.assertTrue(step_commands["Run required tests"].startswith("ohos xts run "))
+        self.assertNotIn("--run-now", step_commands["Run required tests"])
 
     def test_print_human_uses_rich_box_drawing_tables(self) -> None:
         report = {
@@ -1089,7 +1133,7 @@ class FancySliderModifier extends SliderModifier {}
         self.assertIn('ace_ets_module_modifier_static', output)
         self.assertIn('ace_ets_module_modifier', output)
         self.assertIn('XDevice run with reports and', output)
-        self.assertIn('Copyable Commands', output)
+        self.assertIn('Commands', output)
         self.assertIn(
             'hdc shell aa test -b com.example.static -m entry -s unittest OpenHarmonyTestRunner  # ace_ets_module_modifier_static [aa_test] | Direct device run via hdc and OpenHarmonyTestRunner.',
             output,
@@ -2083,7 +2127,7 @@ class FancySliderModifier extends SliderModifier {}
         self.assertIn('Required Run Order', output)
         self.assertIn('Optional Duplicate Coverage', output)
         self.assertIn('Batch Run Commands', output)
-        self.assertIn('Copyable Batch Run Commands', output)
+        self.assertIn('Run Commands', output)
         self.assertIn(
             'arkui-xts-selector --run-now --run-priority required  # Run required batch | Only strongest unique coverage.',
             output,
@@ -2148,6 +2192,60 @@ class FancySliderModifier extends SliderModifier {}
         self.assertIn('--runtime-state-root /tmp/custom_runtime_state', required_command)
         self.assertIn('--device-lock-timeout 75.0', required_command)
         self.assertIn('--parallel-jobs 2', required_command)
+
+    def test_build_coverage_run_commands_use_ohos_wrapper_when_configured(self) -> None:
+        report = {
+            "coverage_recommendations": {
+                "required_target_keys": ["suite_required"],
+                "recommended_target_keys": ["suite_required", "suite_recommended"],
+                "optional_target_keys": [],
+                "estimated_required_duration_s": 10.0,
+                "estimated_recommended_duration_s": 20.0,
+                "estimated_all_duration_s": 20.0,
+            },
+            "selector_run": {"selector_report_path": "/tmp/report.json"},
+        }
+        app_config = AppConfig(
+            repo_root=Path("/tmp/repo"),
+            xts_root=Path("/tmp/repo/test/xts"),
+            sdk_api_root=Path("/tmp/repo/sdk"),
+            cache_file=None,
+            git_repo_root=Path("/tmp/repo/foundation/arkui/ace_engine"),
+            git_remote="origin",
+            git_base_branch="master",
+        )
+        args = SimpleNamespace(
+            changed_file=[],
+            symbol_query=[],
+            code_query=[],
+            changed_files_from=None,
+            git_diff=None,
+            pr_url=None,
+            pr_number=None,
+            pr_source="auto",
+            git_host_config=None,
+            gitcode_api_url=None,
+            variants="auto",
+            relevance_mode="balanced",
+            top_projects=0,
+            keep_per_signature=1,
+            show_source_evidence=False,
+            run_tool="auto",
+            parallel_jobs=1,
+            run_timeout=0,
+        )
+        with mock.patch.dict(
+            os.environ,
+            {
+                "ARKUI_XTS_SELECTOR_COMMAND_PREFIX": "ohos xts",
+                "ARKUI_XTS_SELECTOR_COMMAND_MODE": "wrapper",
+            },
+            clear=False,
+        ):
+            commands = build_coverage_run_commands(report, app_config, args)
+
+        self.assertTrue(commands[0]["command"].startswith("ohos xts run --from-report /tmp/report.json "))
+        self.assertNotIn("--run-now", commands[0]["command"])
 
     def test_print_human_hides_multi_source_changed_file_blocks_by_default(self) -> None:
         report = {

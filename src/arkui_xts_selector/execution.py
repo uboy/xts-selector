@@ -14,7 +14,7 @@ from .build_state import (
     build_runtest_command,
     build_xdevice_command,
 )
-from .hdc_transport import build_hdc_command, resolve_hdc_binary
+from .hdc_transport import build_hdc_command, build_hdc_env, resolve_hdc_binary
 from .runtime_state import (
     InterprocessLockTimeout,
     acquire_device_lock,
@@ -609,6 +609,7 @@ def _query_device_release_line(
             text=True,
             timeout=15.0,
             check=False,
+            env=build_hdc_env(hdc_path),
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         return "", str(exc)
@@ -665,6 +666,7 @@ def preflight_execution(
                     text=True,
                     timeout=15.0,
                     check=False,
+                    env=build_hdc_env(hdc_path),
                 )
             except (OSError, subprocess.TimeoutExpired) as exc:
                 errors.append(f"failed to query connected devices via hdc: {exc}")

@@ -297,6 +297,58 @@ class ExecutionPlanningTests(unittest.TestCase):
 
         self.assertEqual(preflight["status"], "passed")
 
+    def test_preflight_passes_hdc_library_path_to_subprocess(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            repo_root = Path("/tmp/repo")
+            fake_hdc = Path(tmpdir) / "hdc"
+            fake_hdc.write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
+            fake_hdc.chmod(0o755)
+            library_dir = Path(tmpdir) / "toolchains"
+            library_dir.mkdir()
+            (library_dir / "libusb_shared.so").write_text("", encoding="utf-8")
+            target = build_run_target_entry(
+                _sample_target("button_static", "ActsButtonTest"),
+                repo_root=repo_root,
+                acts_out_root=repo_root / "out/release/suites/acts",
+                device="SER1",
+                hdc_path=fake_hdc,
+            )
+            report = {"results": [{"changed_file": "a.cpp", "run_targets": [target]}], "symbol_queries": []}
+
+            attach_execution_plan(
+                report,
+                repo_root=repo_root,
+                acts_out_root=repo_root / "out/release/suites/acts",
+                devices=["SER1"],
+                run_tool="aa_test",
+                shard_mode="mirror",
+                hdc_path=fake_hdc,
+            )
+
+            seen_env: dict[str, str] = {}
+
+            def fake_run(command, **kwargs):
+                seen_env.update(kwargs.get("env") or {})
+                return SimpleNamespace(returncode=0, stdout="SER1\n", stderr="")
+
+            with mock.patch("arkui_xts_selector.execution.shutil.which", return_value="python3"), \
+                 mock.patch.dict(
+                     os.environ,
+                     {"ARKUI_XTS_SELECTOR_HDC_LIBRARY_PATH": str(library_dir)},
+                     clear=False,
+                 ), \
+                 mock.patch("arkui_xts_selector.execution.subprocess.run", side_effect=fake_run):
+                preflight = preflight_execution(
+                    report,
+                    repo_root=repo_root,
+                    devices=["SER1"],
+                    hdc_path=fake_hdc,
+                )
+
+        self.assertEqual(preflight["status"], "passed")
+        self.assertIn("LD_LIBRARY_PATH", seen_env)
+        self.assertEqual(seen_env["LD_LIBRARY_PATH"].split(":")[0], str(library_dir.resolve()))
+
 
 class SelectorRunLabelTests(unittest.TestCase):
     def test_main_writes_planned_manifest_for_run_label(self) -> None:

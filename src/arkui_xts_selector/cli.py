@@ -109,6 +109,8 @@ REPO_ROOT = discover_repo_root()
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_DIR = PROJECT_ROOT / "config"
 DEFAULT_CACHE_FILE = Path("/tmp/arkui_xts_selector_cache.json")
+COMMAND_PREFIX_ENV = "ARKUI_XTS_SELECTOR_COMMAND_PREFIX"
+COMMAND_MODE_ENV = "ARKUI_XTS_SELECTOR_COMMAND_MODE"
 
 
 def default_cache_path(xts_root: Path) -> Path:
@@ -5088,10 +5090,12 @@ def _single_line_comment_text(value: object) -> str:
 
 def _print_copyable_command_lines(title: str, items: list[dict[str, object]], indent: int = 0) -> None:
     lines: list[str] = []
+    seen_commands: set[str] = set()
     for item in items:
         command = str(item.get("command") or "").strip()
-        if not command or command == "-":
+        if not command or command == "-" or command in seen_commands:
             continue
+        seen_commands.add(command)
         summary_parts = [
             _single_line_comment_text(item.get("label")),
             _single_line_comment_text(item.get("why")),
@@ -5195,6 +5199,33 @@ def _run_tool_purpose(tool: str) -> str:
     return "-"
 
 
+def _selector_command_prefix_tokens() -> list[str]:
+    raw = str(os.environ.get(COMMAND_PREFIX_ENV) or "").strip()
+    if raw:
+        try:
+            tokens = shlex.split(raw)
+        except ValueError:
+            tokens = raw.split()
+        if tokens:
+            return tokens
+    return ["arkui-xts-selector"]
+
+
+def _uses_wrapper_commands() -> bool:
+    mode = compact_token(os.environ.get(COMMAND_MODE_ENV, ""))
+    if mode == "wrapper":
+        return True
+    tokens = [compact_token(token) for token in _selector_command_prefix_tokens()]
+    return len(tokens) >= 2 and tokens[:2] == ["ohos", "xts"]
+
+
+def _wrapper_or_direct_command_tokens(wrapper_subcommand: str | None = None) -> list[object]:
+    tokens: list[object] = list(_selector_command_prefix_tokens())
+    if _uses_wrapper_commands() and wrapper_subcommand:
+        tokens.append(wrapper_subcommand)
+    return tokens
+
+
 def _showing_summary_text(relevance_summary: dict[str, object], shown_count: int) -> str:
     shown = int(relevance_summary.get("shown", shown_count))
     total_after = int(relevance_summary.get("total_after", shown_count))
@@ -5278,8 +5309,10 @@ def _preparation_summary(report: dict) -> str:
 
 
 def _base_selector_run_command(report: dict, app_config: AppConfig, args: argparse.Namespace) -> list[object]:
-    command_name = "arkui-xts-selector"
-    run_command: list[object] = [command_name, "--repo-root", app_config.repo_root]
+    if _uses_wrapper_commands():
+        run_command: list[object] = _wrapper_or_direct_command_tokens("run")
+    else:
+        run_command = [*_wrapper_or_direct_command_tokens(), "--repo-root", app_config.repo_root]
     selector_report_path = str(report.get("selector_run", {}).get("selector_report_path", "")).strip()
     if selector_report_path:
         run_command.extend(["--from-report", selector_report_path])
@@ -5311,7 +5344,7 @@ def _base_selector_run_command(report: dict, app_config: AppConfig, args: argpar
             run_command.extend(["--keep-per-signature", args.keep_per_signature])
     if app_config.runtime_state_root and app_config.runtime_state_root != default_runtime_state_root():
         run_command.extend(["--runtime-state-root", app_config.runtime_state_root])
-    if app_config.hdc_path:
+    if app_config.hdc_path and not _uses_wrapper_commands():
         run_command.extend(["--hdc-path", app_config.hdc_path])
     if app_config.hdc_endpoint:
         run_command.extend(["--hdc-endpoint", app_config.hdc_endpoint])
@@ -5345,7 +5378,8 @@ def build_coverage_run_commands(report: dict, app_config: AppConfig, args: argpa
     ):
         target_count = _run_priority_target_count(coverage, priority)
         command = _base_selector_run_command(report, app_config, args)
-        command.append("--run-now")
+        if not _uses_wrapper_commands():
+            command.append("--run-now")
         if args.run_tool != "auto":
             command.extend(["--run-tool", args.run_tool])
         command.extend(["--run-priority", priority])
@@ -5377,7 +5411,6 @@ def build_coverage_run_commands(report: dict, app_config: AppConfig, args: argpa
 
 
 def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespace) -> list[dict[str, str]]:
-    command_name = "arkui-xts-selector"
     sdk_root_exists = Path(str(report.get("sdk_api_root") or "")).exists()
     built_artifacts = report.get("built_artifacts", {})
     has_acts_artifacts = bool(built_artifacts.get("testcases_dir_exists")) and bool(built_artifacts.get("module_info_exists"))
@@ -5405,8 +5438,8 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             ),
             "command": _shell_join(
                 [
-                    command_name,
-                    "--download-daily-sdk",
+                    *_wrapper_or_direct_command_tokens("sdk" if _uses_wrapper_commands() else None),
+                    *([] if _uses_wrapper_commands() else ["--download-daily-sdk"]),
                     "--sdk-component",
                     app_config.sdk_component,
                     "--sdk-branch",
@@ -5434,8 +5467,8 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             ),
             "command": _shell_join(
                 [
-                    command_name,
-                    "--download-daily-tests",
+                    *_wrapper_or_direct_command_tokens("tests" if _uses_wrapper_commands() else None),
+                    *([] if _uses_wrapper_commands() else ["--download-daily-tests"]),
                     "--daily-component",
                     app_config.daily_component,
                     "--daily-branch",
@@ -5459,8 +5492,8 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             "why": "Use this when you need a matching daily firmware image package.",
             "command": _shell_join(
                 [
-                    command_name,
-                    "--download-daily-firmware",
+                    *_wrapper_or_direct_command_tokens("firmware" if _uses_wrapper_commands() else None),
+                    *([] if _uses_wrapper_commands() else ["--download-daily-firmware"]),
                     "--firmware-component",
                     app_config.firmware_component,
                     "--firmware-branch",
@@ -5484,8 +5517,8 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             "why": "Download and flash a daily firmware package to the connected device.",
             "command": _shell_join(
                 [
-                    command_name,
-                    "--flash-daily-firmware",
+                    *_wrapper_or_direct_command_tokens("flash" if _uses_wrapper_commands() else None),
+                    *([] if _uses_wrapper_commands() else ["--flash-daily-firmware"]),
                     "--firmware-component",
                     app_config.firmware_component,
                     "--firmware-branch",
@@ -5514,7 +5547,7 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             ),
             "command": _shell_join(
                 [
-                    command_name,
+                    *_wrapper_or_direct_command_tokens(),
                     "--flash-firmware-path",
                     app_config.flash_firmware_path or "<image_bundle_root>",
                     *(["--device", app_config.device] if app_config.device else []),
@@ -5529,7 +5562,8 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
         ("all", "Run all coverage", _run_priority_target_count(coverage, "all"), f"{_run_priority_target_count(coverage, 'all')} total target(s), including duplicates, are ready to run."),
     ):
         command = _base_selector_run_command(report, app_config, args)
-        command.append("--run-now")
+        if not _uses_wrapper_commands():
+            command.append("--run-now")
         if args.run_tool != "auto":
             command.extend(["--run-tool", args.run_tool])
         command.extend(["--run-priority", priority])
@@ -5610,16 +5644,16 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         if batch_run_commands:
             print("Batch Run Commands")
             _print_human_table(
-                ["#", "Mode", "Targets", "Est. Time", "Why", "Command"],
+                ["#", "Mode", "Targets", "Est. Time", "Why"],
                 [
-                    [index, item.get("label", "-"), item.get("count", "-"), item.get("estimated_duration", "-"), item.get("why", "-"), item.get("command", "-")]
+                    [index, item.get("label", "-"), item.get("count", "-"), item.get("estimated_duration", "-"), item.get("why", "-")]
                     for index, item in enumerate(batch_run_commands, start=1)
                 ],
                 indent=2,
             )
             print()
             _print_copyable_command_lines(
-                "Copyable Batch Run Commands",
+                "Run Commands",
                 [
                     {
                         "label": item.get("label", "-"),
@@ -5763,10 +5797,10 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         ]
                     )
                     command_index += 1
-            _print_human_table(["#", "Suite", "Tool", "What It Does", "Command"], command_rows, indent=2)
+            _print_human_table(["#", "Suite", "Tool", "What It Does"], [row[:4] for row in command_rows], indent=2)
             print()
             _print_copyable_command_lines(
-                "Copyable Commands",
+                "Commands",
                 [
                     {
                         "label": f"{_suite_label(target)} [{tool_name}]",
@@ -5943,10 +5977,8 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             command_rows.append(["target", command])
         if command_rows:
             print("Local Build Commands")
-            _print_human_table(["Scope", "Command"], command_rows, indent=2)
-            print()
             _print_copyable_command_lines(
-                "Copyable Local Build Commands",
+                "Commands",
                 [
                     {
                         "label": f"Local build [{scope}]",
@@ -5962,13 +5994,12 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
     if next_steps:
         print("Next Steps")
         _print_human_table(
-            ["Step", "Status", "Why", "Command"],
+            ["Step", "Status", "Why"],
             [
                 [
                     item.get("step", "-"),
                     item.get("status", "-"),
                     item.get("why", "-"),
-                    item.get("command", "-"),
                 ]
                 for item in next_steps
             ],
@@ -5976,7 +6007,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         )
         print()
         _print_copyable_command_lines(
-            "Copyable Next Steps",
+            "Commands",
             [
                 {
                     "label": f"{item.get('step', '-')} [{item.get('status', '-')}]",
