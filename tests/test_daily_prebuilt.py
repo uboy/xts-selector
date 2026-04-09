@@ -561,6 +561,43 @@ class DailyPrebuiltCliTests(unittest.TestCase):
         self.assertEqual(payload["operations"]["flash_local_firmware"]["requested_path"], str(firmware_root))
         mocked_projects.assert_not_called()
 
+    def test_main_prints_flash_subprogress_for_local_firmware_utility_mode(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            firmware_root = Path(tmpdir) / "image_bundle"
+            firmware_root.mkdir()
+            argv = [
+                "arkui-xts-selector",
+                "--flash-firmware-path",
+                str(firmware_root),
+            ]
+
+            def fake_flash_image_bundle(**kwargs):
+                progress_callback = kwargs.get("progress_callback")
+                if progress_callback is not None:
+                    progress_callback("loader device ready: location=11, serial=1160102420220046")
+                    progress_callback("write progress 35%")
+                flash_result = mock.Mock()
+                flash_result.status = "completed"
+                flash_result.to_dict.return_value = {
+                    "status": "completed",
+                    "image_root": str(firmware_root),
+                    "command": ["python3", "flash.py"],
+                }
+                return flash_result
+
+            with mock.patch.object(sys, "argv", argv):
+                with mock.patch("arkui_xts_selector.cli.resolve_local_firmware_root", return_value=firmware_root), \
+                     mock.patch("arkui_xts_selector.cli.flash_image_bundle", side_effect=fake_flash_image_bundle), \
+                     mock.patch("arkui_xts_selector.cli.load_or_build_projects") as mocked_projects, \
+                     redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()) as stderr:
+                    code = main()
+
+        self.assertEqual(code, 0)
+        self.assertIn("flash: loader device ready: location=11, serial=1160102420220046", stderr.getvalue())
+        self.assertIn("flash: write progress 35%", stderr.getvalue())
+        self.assertIn("flash_local_firmware: completed", stdout.getvalue())
+        mocked_projects.assert_not_called()
+
     def test_list_tags_output_omits_placeholder_metadata(self) -> None:
         build = DailyBuildInfo(
             tag="20260408_180752",

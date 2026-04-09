@@ -78,6 +78,7 @@ class FlashingTests(unittest.TestCase):
 
             commands: list[list[str]] = []
             hdc_envs: list[dict[str, str]] = []
+            progress_messages: list[str] = []
 
             def fake_run(command: list[str], timeout: float | None = None, env: dict[str, str] | None = None):
                 commands.append(list(command))
@@ -98,16 +99,32 @@ class FlashingTests(unittest.TestCase):
                     return SimpleNamespace(returncode=0, stdout="SER1\n", stderr="")
                 if command == [str(hdc), "-t", "SER1", "target", "boot", "-bootloader"]:
                     return SimpleNamespace(returncode=0, stdout="", stderr="")
-                if command == [sys.executable, str(flash_py), "-a", "-i", str(image_root)]:
-                    return SimpleNamespace(returncode=0, stdout="Reset Device OK.\n", stderr="")
                 raise AssertionError(f"unexpected command: {command}")
+
+            def fake_stream(
+                command: list[str],
+                timeout: float | None = None,
+                env: dict[str, str] | None = None,
+                progress_callback=None,
+                idle_heartbeat_seconds: float = 20.0,
+            ):
+                del timeout, env, idle_heartbeat_seconds
+                self.assertEqual(command, [sys.executable, str(flash_py), "-a", "-i", str(image_root)])
+                if progress_callback is not None:
+                    progress_callback("Write gpt ok.")
+                    progress_callback("write progress 35%")
+                return SimpleNamespace(returncode=0, stdout="Reset Device OK.\n", stderr="")
 
             with mock.patch("arkui_xts_selector.flashing.resolve_flash_py_path", return_value=flash_py), \
                  mock.patch("arkui_xts_selector.flashing.resolve_hdc_path", return_value=hdc), \
                  mock.patch("arkui_xts_selector.flashing.infer_flash_tool_path", return_value=flash_tool), \
+                 mock.patch("arkui_xts_selector.flashing._run_streaming_command", side_effect=fake_stream), \
+                 mock.patch("arkui_xts_selector.flashing.Path.home", return_value=root), \
                  mock.patch.dict(
                      os.environ,
-                     {"ARKUI_XTS_SELECTOR_HDC_LIBRARY_PATH": str(toolchains)},
+                     {
+                         "ARKUI_XTS_SELECTOR_HDC_LIBRARY_PATH": str(toolchains),
+                     },
                      clear=False,
                  ), \
                  mock.patch("arkui_xts_selector.flashing._run_command", side_effect=fake_run), \
@@ -118,14 +135,19 @@ class FlashingTests(unittest.TestCase):
                     hdc_path=str(hdc),
                     device="SER1",
                     flash_timeout_seconds=10.0,
+                    progress_callback=progress_messages.append,
                 )
 
-        self.assertEqual(result.status, "completed")
-        self.assertEqual(result.loader_device.location_id, "143")
-        self.assertIn([str(hdc), "-t", "SER1", "target", "boot", "-bootloader"], commands)
-        self.assertIn([sys.executable, str(flash_py), "-a", "-i", str(image_root)], commands)
-        self.assertTrue(hdc_envs)
-        self.assertEqual(hdc_envs[0]["LD_LIBRARY_PATH"].split(":")[0], str(toolchains.resolve()))
+            self.assertEqual(result.status, "completed")
+            self.assertEqual(result.loader_device.location_id, "143")
+            self.assertIn([str(hdc), "-t", "SER1", "target", "boot", "-bootloader"], commands)
+            self.assertTrue(hdc_envs)
+            self.assertEqual(hdc_envs[0]["LD_LIBRARY_PATH"].split(":")[0], str(toolchains.resolve()))
+            config_path = root / ".config" / "upgrade_tool" / "config.ini"
+            self.assertTrue(config_path.is_file())
+            self.assertIn("rb_check_off=true", config_path.read_text(encoding="utf-8"))
+            self.assertIn("Write gpt ok.", progress_messages)
+            self.assertIn("write progress 35%", progress_messages)
 
 
 if __name__ == "__main__":

@@ -4235,6 +4235,12 @@ def emit_progress(enabled: bool, message: str) -> None:
     print(f"phase: {message}", file=sys.stderr, flush=True)
 
 
+def emit_subprogress(enabled: bool, prefix: str, message: str) -> None:
+    if not enabled:
+        return
+    print(f"{prefix}: {message}", file=sys.stderr, flush=True)
+
+
 def prepare_daily_prebuilt_from_config(app_config: AppConfig) -> PreparedDailyPrebuilt | None:
     if not app_config.daily_build_tag and not app_config.daily_date:
         return None
@@ -4492,6 +4498,7 @@ def run_utility_mode(
                 flash_py_path=str(app_config.flash_py_path) if app_config.flash_py_path else None,
                 hdc_path=str(app_config.hdc_path) if app_config.hdc_path else None,
                 device=app_config.device,
+                progress_callback=(lambda message: emit_subprogress(progress_enabled, "flash", message)),
             )
             report["operations"]["flash_daily_firmware"] = flash_result.to_dict()
             if flash_result.status != "completed":
@@ -4509,6 +4516,7 @@ def run_utility_mode(
                 flash_py_path=str(app_config.flash_py_path) if app_config.flash_py_path else None,
                 hdc_path=str(app_config.hdc_path) if app_config.hdc_path else None,
                 device=app_config.device,
+                progress_callback=(lambda message: emit_subprogress(progress_enabled, "flash", message)),
             )
             report["operations"]["flash_local_firmware"] = {
                 **flash_result.to_dict(),

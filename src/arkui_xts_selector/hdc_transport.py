@@ -21,6 +21,38 @@ def resolve_hdc_binary(hdc_path: Path | str | None = None) -> str | None:
     return shutil.which("hdc")
 
 
+def _candidate_hdc_library_dirs(hdc_path: Path | str | None = None) -> list[Path]:
+    candidates: list[Path] = []
+
+    def add(path: Path) -> None:
+        if path not in candidates:
+            candidates.append(path)
+
+    resolved = resolve_hdc_binary(hdc_path)
+    if resolved:
+        hdc_dir = Path(resolved).expanduser().resolve().parent
+        for candidate in (
+            hdc_dir,
+            hdc_dir / "lib",
+            hdc_dir.parent / "lib",
+            hdc_dir / "lib64",
+            hdc_dir.parent / "lib64",
+        ):
+            add(candidate)
+
+    home = Path.home()
+    search_roots = (
+        home / "proj" / "command-line-tools" / "sdk",
+        home / "command-line-tools" / "sdk",
+    )
+    for root in search_roots:
+        if not root.is_dir():
+            continue
+        for candidate in sorted(root.glob("*/openharmony/toolchains")):
+            add(candidate)
+    return candidates
+
+
 def resolve_hdc_library_dir(hdc_path: Path | str | None = None) -> str | None:
     explicit = str(os.environ.get(HDC_LIBRARY_PATH_ENV) or os.environ.get("HDC_LIBRARY_PATH") or "").strip()
     if explicit:
@@ -29,17 +61,7 @@ def resolve_hdc_library_dir(hdc_path: Path | str | None = None) -> str | None:
             return str(candidate.resolve())
         return explicit
 
-    resolved = resolve_hdc_binary(hdc_path)
-    if not resolved:
-        return None
-    hdc_dir = Path(resolved).expanduser().resolve().parent
-    for candidate in (
-        hdc_dir,
-        hdc_dir / "lib",
-        hdc_dir.parent / "lib",
-        hdc_dir / "lib64",
-        hdc_dir.parent / "lib64",
-    ):
+    for candidate in _candidate_hdc_library_dirs(hdc_path):
         if candidate.is_dir() and (candidate / "libusb_shared.so").exists():
             return str(candidate.resolve())
     return None
