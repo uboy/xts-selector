@@ -16,8 +16,11 @@ def discover_selector_repo_root() -> Path:
 
 
 def _looks_like_ohos_root(candidate: Path) -> bool:
-    candidate = candidate.resolve()
-    return all((candidate / relative_path).exists() for relative_path in _OHOS_REQUIRED_PATHS)
+    try:
+        candidate = candidate.resolve()
+        return all((candidate / relative_path).exists() for relative_path in _OHOS_REQUIRED_PATHS)
+    except OSError:
+        return False
 
 
 def _resolve_ohos_root_candidate(path: Path) -> Path:

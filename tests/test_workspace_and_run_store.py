@@ -36,6 +36,27 @@ class WorkspaceDiscoveryTests(unittest.TestCase):
 
         self.assertEqual(discovered, ohos_root.resolve())
 
+    def test_discover_repo_root_skips_inaccessible_sibling(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            base = Path(tmpdir)
+            selector_root = base / "arkui-xts-selector"
+            selector_root.mkdir()
+            blocked_root = base / "admin1"
+            blocked_root.mkdir()
+            ohos_root = base / "ohos_master"
+            _create_ohos_tree(ohos_root)
+
+            blocked_root.chmod(0)
+            try:
+                discovered = discover_repo_root(
+                    search_roots=[selector_root],
+                    selector_repo_root=selector_root,
+                )
+            finally:
+                blocked_root.chmod(0o755)
+
+        self.assertEqual(discovered, ohos_root.resolve())
+
 
 class RunStoreResolutionTests(unittest.TestCase):
     def test_resolve_labeled_run_prefers_latest_comparable_completed_manifest(self) -> None:
