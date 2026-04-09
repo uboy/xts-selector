@@ -26,6 +26,7 @@ import urllib.parse
 import urllib.request
 from configparser import ConfigParser
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Iterable, Callable
 from urllib.parse import urlparse
@@ -54,6 +55,7 @@ from .daily_prebuilt import (
     DEFAULT_SDK_COMPONENT,
     PreparedDailyArtifact,
     PreparedDailyPrebuilt,
+    daily_component_candidates,
     discover_image_bundle_roots,
     derive_date_from_tag,
     is_placeholder_metadata,
@@ -759,6 +761,96 @@ def ets_name_matches_source_focus(base_token: str, source_focus: set[str]) -> bo
         base_token == token or base_token.startswith(token) or token.startswith(base_token)
         for token in source_focus
     )
+
+
+def source_token_matches_source_focus(
+    token: str,
+    source_focus: set[str],
+    source_families: set[str],
+) -> bool:
+    normalized = compact_token(token)
+    if (
+        not normalized
+        or normalized in GENERIC_PATH_TOKENS
+        or normalized in GENERIC_COVERAGE_TOKENS
+    ):
+        return False
+    if any(
+        normalized == focus_token or normalized.startswith(focus_token)
+        for focus_token in source_focus
+    ):
+        return True
+    if normalized in source_families:
+        return True
+    family_key = coverage_family_key(normalized)
+    if family_key and family_key in source_families:
+        return True
+    capability_key = coverage_capability_key(normalized)
+    capability_family = capability_family_key(capability_key) if capability_key else ""
+    return bool(capability_family and capability_family in source_families)
+
+
+def imported_ets_symbol_matches_source_focus(
+    name: str,
+    source_focus: set[str],
+    source_families: set[str],
+) -> bool:
+    base_token = related_signal_base_token(name)
+    if source_token_matches_source_focus(base_token, source_focus, source_families):
+        return True
+    family_token = related_signal_family_token(name)
+    return source_token_matches_source_focus(family_token, source_focus, source_families)
+
+
+def strip_ets_import_statements(text: str) -> str:
+    stripped = IMPORT_BINDING_RE.sub(" ", text)
+    stripped = DEFAULT_IMPORT_RE.sub(" ", stripped)
+    return stripped
+
+
+def imported_ets_symbol_used_in_body(
+    name: str,
+    body_identifier_calls: set[str],
+    body_type_member_owners: set[str],
+    body_words: set[str],
+) -> bool:
+    if name in body_identifier_calls or name in body_type_member_owners:
+        return True
+    normalized = compact_token(name)
+    base_token = related_signal_base_token(name)
+    return bool(
+        (normalized and normalized in body_words)
+        or (base_token and base_token in body_words)
+    )
+
+
+def ohos_module_signal_tokens(module_name: str) -> set[str]:
+    tail = compact_token(module_name.rsplit(".", 1)[-1])
+    tokens = {tail} if tail else set()
+    return {
+        token
+        for token in tokens
+        if token
+        and len(token) >= 4
+        and token != "ohos"
+        and token not in GENERIC_PATH_TOKENS
+        and token not in GENERIC_SCOPE_TOKENS
+        and token not in LOW_SIGNAL_SPECIFICITY_TOKENS
+        and token not in GENERIC_COVERAGE_TOKENS
+    }
+
+
+def classify_ohos_module_signal_strength(
+    module_name: str,
+    source_focus: set[str],
+    source_families: set[str],
+) -> str:
+    tokens = ohos_module_signal_tokens(module_name)
+    if not tokens:
+        return ""
+    if any(source_token_matches_source_focus(token, source_focus, source_families) for token in tokens):
+        return "strong"
+    return "weak"
 
 
 def should_keep_ets_signal_name(
@@ -2514,7 +2606,9 @@ def infer_signals(
 
     signals = {
         "modules": set(),
+        "weak_modules": set(),
         "symbols": set(),
+        "weak_symbols": set(),
         "project_hints": set(),
         "method_hints": set(),
         "type_hints": set(),
@@ -2578,31 +2672,45 @@ def infer_signals(
         text = read_text(changed_file)
         source_families = {FAMILY_TOKEN_ALIAS_INDEX.get(family, family) for family in signals["family_tokens"]}
         source_focus = ets_source_focus_tokens(source_families)
+        body_text = strip_ets_import_statements(text)
+        body_identifier_calls = set(IDENTIFIER_CALL_RE.findall(body_text))
+        body_type_member_owners = {owner for owner, _member in TYPE_MEMBER_CALL_RE.findall(body_text)}
+        body_words = {word.lower() for word in WORD_RE.findall(body_text)}
 
         for match in OHOS_MODULE_RE.findall(text):
-            signals["modules"].add(match)
-            module = normalize_ohos_module(match, sdk_index.top_level_modules)
-            if module:
-                signals["modules"].add(module)
+            module_names = {match}
+            normalized_module = normalize_ohos_module(match, sdk_index.top_level_modules)
+            if normalized_module:
+                module_names.add(normalized_module)
+            for module_name in module_names:
+                strength = classify_ohos_module_signal_strength(module_name, source_focus, source_families)
+                if strength == "strong":
+                    signals["modules"].add(module_name)
+                elif strength == "weak":
+                    signals["weak_modules"].add(module_name)
 
-        def _add_ets_type_signal(name: str, allow_source_family_fallback: bool) -> None:
+        def _add_ets_type_signal(name: str, strength: str) -> None:
             cleaned = str(name).strip()
             if not cleaned:
                 return
-            if not should_keep_ets_signal_name(cleaned, source_families, allow_source_family_fallback):
+            if strength == "strong":
+                signals["symbols"].add(cleaned)
+                signals["type_hints"].add(cleaned)
+            elif strength == "weak":
+                signals["weak_symbols"].add(cleaned)
+            else:
                 return
-            signals["symbols"].add(cleaned)
-            signals["type_hints"].add(cleaned)
             family_token = related_signal_family_token(cleaned)
             mapped_family = coverage_family_key(family_token) or coverage_family_key(related_signal_base_token(cleaned))
-            if mapped_family:
+            if strength == "strong" and mapped_family:
                 signals["family_tokens"].add(mapped_family)
                 signals["project_hints"].add(mapped_family)
                 signals["symbols"].update(mapping_config.pattern_alias.get(mapped_family, []))
 
         exported_type_names = set(EXPORT_CLASS_RE.findall(text)) | set(EXPORT_INTERFACE_RE.findall(text))
         for name in sorted(exported_type_names):
-            _add_ets_type_signal(name, allow_source_family_fallback=True)
+            if should_keep_ets_signal_name(name, source_families, allow_source_family_fallback=True):
+                _add_ets_type_signal(name, "strong")
 
         imported_type_names: set[str] = set()
         for match in IMPORT_BINDING_RE.finditer(text):
@@ -2615,7 +2723,17 @@ def infer_signals(
             if token and token[:1].isupper():
                 imported_type_names.add(token)
         for name in sorted(imported_type_names):
-            _add_ets_type_signal(name, allow_source_family_fallback=False)
+            source_owned = imported_ets_symbol_matches_source_focus(name, source_focus, source_families)
+            used_in_body = imported_ets_symbol_used_in_body(
+                name,
+                body_identifier_calls,
+                body_type_member_owners,
+                body_words,
+            )
+            if source_owned:
+                _add_ets_type_signal(name, "strong")
+            elif used_in_body and should_keep_ets_signal_name(name, source_families, allow_source_family_fallback=False):
+                _add_ets_type_signal(name, "weak")
 
         public_methods = [
             method
@@ -2705,7 +2823,12 @@ def infer_signals(
     apply_composite_mapping(changed_file, rel_lower, signals, content_index, mapping_config)
 
     signals["modules"] = {item for item in signals["modules"] if item}
+    signals["weak_modules"] = {item for item in signals.get("weak_modules", set()) if item and item not in signals["modules"]}
     signals["symbols"] = {item for item in signals["symbols"] if item}
+    signals["weak_symbols"] = {
+        item for item in signals.get("weak_symbols", set())
+        if item and item not in signals["symbols"]
+    }
     signals["project_hints"] = {
         compact_token(item)
         for item in signals["project_hints"]
@@ -2725,6 +2848,7 @@ def symbol_score(
     file_index: TestFileIndex,
     family_tokens: set[str],
     lowered_member_calls: set[str],
+    weak: bool = False,
 ) -> tuple[int, list[str]]:
     score = 0
     reasons: list[str] = []
@@ -2735,32 +2859,45 @@ def symbol_score(
     family_supports = base and base in family_tokens
     is_ubiquitous = base in UBIQUITOUS_BASES
     strong = (not is_ubiquitous) or path_supports or family_supports
+    reason_prefix = "weak " if weak else ""
 
     if signal_symbol in file_index.imported_symbols:
-        score += 7 if strong else 1
-        reasons.append(f"imports symbol {signal_symbol}")
-    if signal_symbol in file_index.identifier_calls:
-        # If the symbol is also explicitly imported, the call is confirmation
-        # evidence that adds less marginal value than the import itself.
-        # If NOT imported (ArkUI components are globally available in ETS
-        # without explicit import), the call is still valid usage evidence
-        # but weaker than an explicit SDK import.
-        #   import + call  → 7 + 3 = 10  (explicitly imported and used)
-        #   call only      → 4            (globally used, no import)
-        if signal_symbol in file_index.imported_symbols:
-            call_pts = 3 if strong else 1
+        if weak:
+            score += 2 if strong else 1
         else:
-            call_pts = 4 if strong else 1
+            score += 7 if strong else 1
+        reasons.append(f"{reason_prefix}imports symbol {signal_symbol}")
+    if signal_symbol in file_index.identifier_calls:
+        if weak:
+            if signal_symbol in file_index.imported_symbols:
+                call_pts = 2 if strong else 1
+            else:
+                call_pts = 1
+        else:
+            # If the symbol is also explicitly imported, the call is
+            # confirmation evidence that adds less marginal value than the
+            # import itself. If NOT imported (ArkUI components are globally
+            # available in ETS without explicit import), the call is still
+            # valid usage evidence but weaker than an explicit SDK import.
+            #   import + call  → 7 + 3 = 10  (explicitly imported and used)
+            #   call only      → 4            (globally used, no import)
+            if signal_symbol in file_index.imported_symbols:
+                call_pts = 3 if strong else 1
+            else:
+                call_pts = 4 if strong else 1
         score += call_pts
-        reasons.append(f"calls {signal_symbol}()")
+        reasons.append(f"{reason_prefix}calls {signal_symbol}()")
     if lower in lowered_member_calls:
-        score += 4 if strong else 1
-        reasons.append(f"member call .{lower}()")
+        score += 1 if weak else (4 if strong else 1)
+        reasons.append(f"{reason_prefix}member call .{lower}()")
     if lower in file_index.words:
-        word_score = 2 if strong and not is_ubiquitous else (1 if strong else 0)
+        if weak:
+            word_score = 0
+        else:
+            word_score = 2 if strong and not is_ubiquitous else (1 if strong else 0)
         score += word_score
         if word_score:
-            reasons.append(f"mentions {lower}")
+            reasons.append(f"{reason_prefix}mentions {lower}")
     return score, reasons
 
 
@@ -2781,14 +2918,33 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
         if module in file_index.imports:
             score += 10
             reasons.append(f"imports {module}")
+    for module in sorted(signals.get("weak_modules", set())):
+        if module in file_index.imports:
+            score += 2
+            reasons.append(f"weak imports {module}")
 
     typed_modifier_matches: list[str] = []
     for symbol in sorted(signals["symbols"]):
-        delta, symbol_reasons = symbol_score(symbol, file_index, signals["family_tokens"], lowered_member_calls)
+        delta, symbol_reasons = symbol_score(
+            symbol,
+            file_index,
+            signals["family_tokens"],
+            lowered_member_calls,
+        )
         score += delta
         reasons.extend(symbol_reasons)
         if symbol.endswith("Modifier") and compact_token(symbol[:-8]) in file_index.typed_modifier_bases:
             typed_modifier_matches.append(symbol)
+    for symbol in sorted(signals.get("weak_symbols", set())):
+        delta, symbol_reasons = symbol_score(
+            symbol,
+            file_index,
+            signals["family_tokens"],
+            lowered_member_calls,
+            weak=True,
+        )
+        score += delta
+        reasons.extend(symbol_reasons)
 
     if typed_modifier_matches:
         score += 5
@@ -3620,6 +3776,9 @@ def build_global_coverage_recommendations(
             previous_focus_overlap = int(candidate["unit_focus_overlaps"].get(unit_key, 0) or 0)
             if focus_overlap > previous_focus_overlap:
                 candidate["unit_focus_overlaps"][unit_key] = focus_overlap
+            previous_representative_score = float(candidate["unit_representative_scores"].get(unit_key, 0.0) or 0.0)
+            if float(focus_overlap) > previous_representative_score:
+                candidate["unit_representative_scores"][unit_key] = float(focus_overlap)
 
     ordered_candidates: list[dict[str, object]] = []
     unit_winners: dict[str, dict[str, object]] = {}
@@ -3862,7 +4021,9 @@ def build_query_signals(
     query_tokens = {compact_token(part) for part in parts if compact_token(part)}
     signals = {
         "modules": set(),
+        "weak_modules": set(),
         "symbols": set(),
+        "weak_symbols": set(),
         "project_hints": set(),
         "method_hints": set(),
         "type_hints": set(),
@@ -3942,7 +4103,9 @@ def build_query_signals(
 
     return {
         "modules": {item for item in signals["modules"] if item},
+        "weak_modules": {item for item in signals.get("weak_modules", set()) if item},
         "symbols": {item for item in signals["symbols"] if item},
+        "weak_symbols": {item for item in signals.get("weak_symbols", set()) if item},
         "project_hints": {
             compact_token(item) for item in signals["project_hints"]
             if item and compact_token(item) not in CONTENT_MODIFIER_NOISE
@@ -4603,7 +4766,9 @@ def format_report(
             "changed_file": rel,
             "signals": {
                 "modules": sorted(signals["modules"]),
+                "weak_modules": sorted(signals.get("weak_modules", set())),
                 "symbols": sorted(signals["symbols"]),
+                "weak_symbols": sorted(signals.get("weak_symbols", set())),
                 "project_hints": sorted(signals["project_hints"]),
                 "method_hints": sorted(signals.get("method_hints", set())),
                 "type_hints": sorted(signals.get("type_hints", set())),
@@ -4756,7 +4921,9 @@ def format_report(
             "query": query,
             "signals": {
                 "modules": sorted(signals["modules"]),
+                "weak_modules": sorted(signals.get("weak_modules", set())),
                 "symbols": sorted(signals["symbols"]),
+                "weak_symbols": sorted(signals.get("weak_symbols", set())),
                 "project_hints": sorted(signals["project_hints"]),
                 "method_hints": sorted(signals.get("method_hints", set())),
                 "type_hints": sorted(signals.get("type_hints", set())),
@@ -4915,6 +5082,31 @@ def _print_human_table(headers: list[str], rows: list[list[object]] | list[tuple
     console.print(renderable)
 
 
+def _single_line_comment_text(value: object) -> str:
+    return " ".join(str(value or "").split())
+
+
+def _print_copyable_command_lines(title: str, items: list[dict[str, object]], indent: int = 0) -> None:
+    lines: list[str] = []
+    for item in items:
+        command = str(item.get("command") or "").strip()
+        if not command or command == "-":
+            continue
+        summary_parts = [
+            _single_line_comment_text(item.get("label")),
+            _single_line_comment_text(item.get("why")),
+        ]
+        summary = " | ".join(part for part in summary_parts if part)
+        lines.append(f"{command}  # {summary}" if summary else command)
+    if not lines:
+        return
+    prefix = " " * indent
+    print(title)
+    for line in lines:
+        print(f"{prefix}{line}" if prefix else line)
+    print()
+
+
 def _print_key_value_section(title: str, rows: list[tuple[object, object]]) -> None:
     filtered_rows = [(key, value) for key, value in rows if _human_value(value) != "-"]
     if not filtered_rows:
@@ -5022,12 +5214,51 @@ def _showing_summary_text(relevance_summary: dict[str, object], shown_count: int
 
 
 def _daily_selector_arg(flag: str, build_tag: str | None, build_date: str | None) -> list[str]:
-    if build_tag:
-        result = [flag, build_tag]
-        if build_date:
-            result.extend([flag.replace("build-tag", "date"), build_date])
+    normalized_tag = str(build_tag or "").strip()
+    normalized_date = str(build_date or "").strip() or derive_date_from_tag(normalized_tag)
+    if normalized_tag:
+        result = [flag, normalized_tag]
+        if normalized_date:
+            result.extend([flag.replace("build-tag", "date"), normalized_date])
         return result
-    return [flag.replace("build-tag", "date"), build_date or "<YYYYMMDD>"]
+    return [flag.replace("build-tag", "date"), normalized_date or "<YYYYMMDD>"]
+
+
+@lru_cache(maxsize=32)
+def _latest_daily_selector_metadata(component: str, branch: str, component_role: str) -> tuple[str, str]:
+    normalized_component = str(component or "").strip()
+    normalized_branch = str(branch or "").strip() or "master"
+    candidates = daily_component_candidates(normalized_component, component_role=component_role)
+    newest_tag = ""
+    newest_date = ""
+    for candidate in candidates:
+        try:
+            builds = list_daily_tags(component=candidate, branch=normalized_branch, count=1)
+        except Exception:
+            continue
+        if not builds:
+            continue
+        tag = str(builds[0].tag or "").strip()
+        if tag and tag > newest_tag:
+            newest_tag = tag
+            newest_date = derive_date_from_tag(tag)
+    return newest_tag, newest_date
+
+
+def _daily_selector_hint_args(
+    flag: str,
+    *,
+    build_tag: str | None,
+    build_date: str | None,
+    component: str,
+    branch: str,
+    component_role: str,
+) -> list[str]:
+    normalized_tag = "" if is_placeholder_metadata(build_tag) else str(build_tag or "").strip()
+    normalized_date = "" if is_placeholder_metadata(build_date) else str(build_date or "").strip()
+    if not normalized_tag and not normalized_date:
+        normalized_tag, normalized_date = _latest_daily_selector_metadata(component, branch, component_role)
+    return _daily_selector_arg(flag, normalized_tag or None, normalized_date or None)
 
 
 def _cache_state_text(cache_used: bool, cache_file: object | None) -> str:
@@ -5180,7 +5411,14 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
                     app_config.sdk_component,
                     "--sdk-branch",
                     app_config.sdk_branch,
-                    *_daily_selector_arg("--sdk-build-tag", app_config.sdk_build_tag, app_config.sdk_date),
+                    *_daily_selector_hint_args(
+                        "--sdk-build-tag",
+                        build_tag=app_config.sdk_build_tag,
+                        build_date=app_config.sdk_date,
+                        component=app_config.sdk_component,
+                        branch=app_config.sdk_branch,
+                        component_role="generic",
+                    ),
                 ]
             ),
         }
@@ -5202,7 +5440,14 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
                     app_config.daily_component,
                     "--daily-branch",
                     app_config.daily_branch,
-                    *_daily_selector_arg("--daily-build-tag", app_config.daily_build_tag, app_config.daily_date),
+                    *_daily_selector_hint_args(
+                        "--daily-build-tag",
+                        build_tag=app_config.daily_build_tag,
+                        build_date=app_config.daily_date,
+                        component=app_config.daily_component,
+                        branch=app_config.daily_branch,
+                        component_role="xts",
+                    ),
                 ]
             ),
         }
@@ -5220,7 +5465,14 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
                     app_config.firmware_component,
                     "--firmware-branch",
                     app_config.firmware_branch,
-                    *_daily_selector_arg("--firmware-build-tag", app_config.firmware_build_tag, app_config.firmware_date),
+                    *_daily_selector_hint_args(
+                        "--firmware-build-tag",
+                        build_tag=app_config.firmware_build_tag,
+                        build_date=app_config.firmware_date,
+                        component=app_config.firmware_component,
+                        branch=app_config.firmware_branch,
+                        component_role="generic",
+                    ),
                 ]
             ),
         }
@@ -5238,7 +5490,14 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
                     app_config.firmware_component,
                     "--firmware-branch",
                     app_config.firmware_branch,
-                    *_daily_selector_arg("--firmware-build-tag", app_config.firmware_build_tag, app_config.firmware_date),
+                    *_daily_selector_hint_args(
+                        "--firmware-build-tag",
+                        build_tag=app_config.firmware_build_tag,
+                        build_date=app_config.firmware_date,
+                        component=app_config.firmware_component,
+                        branch=app_config.firmware_branch,
+                        component_role="generic",
+                    ),
                     *(["--device", app_config.device] if app_config.device else []),
                 ]
             ),
@@ -5359,6 +5618,18 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                 indent=2,
             )
             print()
+            _print_copyable_command_lines(
+                "Copyable Batch Run Commands",
+                [
+                    {
+                        "label": item.get("label", "-"),
+                        "why": item.get("why", "-"),
+                        "command": item.get("command", "-"),
+                    }
+                    for item in batch_run_commands
+                ],
+                indent=2,
+            )
 
         def _print_coverage_group(
             title: str,
@@ -5494,6 +5765,24 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                     command_index += 1
             _print_human_table(["#", "Suite", "Tool", "What It Does", "Command"], command_rows, indent=2)
             print()
+            _print_copyable_command_lines(
+                "Copyable Commands",
+                [
+                    {
+                        "label": f"{_suite_label(target)} [{tool_name}]",
+                        "why": _run_tool_purpose(tool_name),
+                        "command": target.get(command_key, "-"),
+                    }
+                    for target in grouped_targets
+                    for tool_name, command_key in (
+                        ("aa_test", "aa_test_command"),
+                        ("xdevice", "xdevice_command"),
+                        ("runtest", "runtest_command"),
+                    )
+                    if target.get(command_key)
+                ],
+                indent=2,
+            )
             show_plan = bool(result_rows) or any(row[2] != "pending" for row in plan_rows)
             if plan_rows and show_plan:
                 print("Execution Plan")
@@ -5656,6 +5945,18 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             print("Local Build Commands")
             _print_human_table(["Scope", "Command"], command_rows, indent=2)
             print()
+            _print_copyable_command_lines(
+                "Copyable Local Build Commands",
+                [
+                    {
+                        "label": f"Local build [{scope}]",
+                        "why": "Prepare missing local build artifacts.",
+                        "command": command,
+                    }
+                    for scope, command in command_rows
+                ],
+                indent=2,
+            )
 
     next_steps = report.get("next_steps", [])
     if next_steps:
@@ -5674,6 +5975,18 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             indent=2,
         )
         print()
+        _print_copyable_command_lines(
+            "Copyable Next Steps",
+            [
+                {
+                    "label": f"{item.get('step', '-')} [{item.get('status', '-')}]",
+                    "why": item.get("why", "-"),
+                    "command": item.get("command", "-"),
+                }
+                for item in next_steps
+            ],
+            indent=2,
+        )
 
     coverage_recommendations = report.get("coverage_recommendations", {})
     if coverage_recommendations:
@@ -5800,7 +6113,9 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             changed_rows.extend(
                 [
                     ("Modules", _human_preview(signals.get("modules", []))),
+                    ("Weak Modules", _human_preview(signals.get("weak_modules", []))),
                     ("Symbols", _human_preview(signals.get("symbols", []))),
+                    ("Weak Symbols", _human_preview(signals.get("weak_symbols", []))),
                     ("Project Hints", _human_preview(signals.get("project_hints", []))),
                     ("Method Hints", _human_preview(signals.get("method_hints", []))),
                     ("Type Hints", _human_preview(signals.get("type_hints", []))),
@@ -5862,6 +6177,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             signal_rows.extend(
                 [
                     ("Symbols", _human_preview(item["signals"].get("symbols", []))),
+                    ("Weak Symbols", _human_preview(item["signals"].get("weak_symbols", []))),
                     ("Project Hints", _human_preview(item["signals"].get("project_hints", []))),
                     ("Method Hints", _human_preview(item["signals"].get("method_hints", []))),
                     ("Type Hints", _human_preview(item["signals"].get("type_hints", []))),

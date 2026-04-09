@@ -23,6 +23,7 @@ from arkui_xts_selector.cli import (
     TestProjectIndex,
     apply_ranking_rules_config,
     build_coverage_run_commands,
+    build_next_steps,
     build_global_coverage_recommendations,
     candidate_bucket,
     classify_project_variant,
@@ -76,9 +77,19 @@ from arkui_xts_selector.cli import (
     unresolved_reason,
     variant_matches,
 )
+from arkui_xts_selector.daily_prebuilt import DailyBuildInfo
 
 
 class CliDesignV1Tests(unittest.TestCase):
+    @staticmethod
+    def _build_next_steps_args() -> SimpleNamespace:
+        return SimpleNamespace(
+            run_tool="auto",
+            parallel_jobs=1,
+            run_timeout=0,
+            show_source_evidence=False,
+        )
+
     def test_parse_pr_number_supports_pull_and_pulls_urls(self) -> None:
         self.assertEqual(parse_pr_number("https://gitcode.com/openharmony/arkui_ace_engine/pull/83145"), "83145")
         self.assertEqual(parse_pr_number("https://gitcode.com/openharmony/arkui_ace_engine/pulls/83145"), "83145")
@@ -469,10 +480,70 @@ class FancySliderModifier extends SliderModifier {}
                 MappingConfig(),
             )
 
-        self.assertIn("@ohos.app.ability.Want", signals["modules"])
+        self.assertNotIn("@ohos.app.ability.Want", signals["modules"])
+        self.assertIn("@ohos.app.ability.Want", signals["weak_modules"])
         self.assertIn("UIExtensionProxy", signals["symbols"])
         self.assertIn("UIExtensionProxy", signals["type_hints"])
         self.assertIn("UIExtensionComponentModifier", signals["symbols"])
+
+    def test_infer_signals_demotes_incidental_imports_from_changed_ets_source(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            path = (
+                Path(tmpdir)
+                / "foundation"
+                / "arkui"
+                / "ace_engine"
+                / "advanced_ui_component"
+                / "chipgroup"
+                / "source"
+                / "chipgroup.ets"
+            )
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                """
+                import { ChipGroupItemOptions } from './ChipGroupTypes'
+                import SymbolGlyphModifier from '@ohos.arkui.modifier'
+                import Chip from '@ohos.arkui.advanced.Chip'
+
+                export struct ChipGroup {
+                  items: ChipGroupItemOptions[] = []
+
+                  build() {
+                    let modifier = new SymbolGlyphModifier()
+                    Chip()
+                  }
+                }
+                """,
+                encoding="utf-8",
+            )
+
+            signals = infer_signals(
+                path,
+                SdkIndex(),
+                ContentModifierIndex(),
+                MappingConfig(),
+            )
+            source_profile = build_source_profile(
+                "changed_file",
+                "foundation/arkui/ace_engine/advanced_ui_component/chipgroup/source/chipgroup.ets",
+                signals,
+                raw_path=path,
+            )
+
+        self.assertNotIn("@ohos.arkui.advanced.Chip", signals["modules"])
+        self.assertIn("@ohos.arkui.advanced.Chip", signals["weak_modules"])
+        self.assertNotIn("@ohos.arkui.modifier", signals["modules"])
+        self.assertNotIn("@ohos.arkui.modifier", signals["weak_modules"])
+        self.assertIn("ChipGroupItemOptions", signals["symbols"])
+        self.assertNotIn("Chip", signals["symbols"])
+        self.assertNotIn("Chip", signals["weak_symbols"])
+        self.assertIn("SymbolGlyphModifier", signals["weak_symbols"])
+        self.assertNotIn("SymbolGlyphModifier", signals["symbols"])
+        self.assertNotIn("text_rendering", signals["project_hints"])
+        self.assertNotIn("text_rendering", signals["family_tokens"])
+        self.assertNotIn("text_rendering", source_profile["family_keys"])
+        self.assertNotIn("text_rendering.symbol", source_profile["capability_keys"])
+        self.assertIn("chipgroup", source_profile["focus_tokens"])
 
     def test_build_query_signals_collects_method_hints_from_composite_mapping(self) -> None:
         # After substring matching fix (Task 3), short queries no longer match
@@ -534,6 +605,30 @@ class FancySliderModifier extends SliderModifier {}
         self.assertEqual(score, 6)
         self.assertIn("constructs hinted type CalendarPickerDialog", reasons)
         self.assertIn("imports hinted type CalendarPickerDialog", reasons)
+
+    def test_score_file_keeps_weak_import_signals_below_direct_evidence_threshold(self) -> None:
+        file_index = TestFileIndex(
+            relative_path="test/common/incidental_symbol.ets",
+            imported_symbols={"SymbolGlyphModifier"},
+            identifier_calls={"SymbolGlyphModifier"},
+        )
+        signals = {
+            "modules": set(),
+            "weak_modules": set(),
+            "symbols": set(),
+            "weak_symbols": {"SymbolGlyphModifier"},
+            "project_hints": set(),
+            "method_hints": set(),
+            "type_hints": set(),
+            "family_tokens": {"chipgroup"},
+        }
+
+        score, reasons = score_file(file_index, signals)
+
+        self.assertEqual(score, 4)
+        self.assertTrue(reasons)
+        self.assertTrue(all(reason.startswith("weak ") for reason in reasons))
+        self.assertLess(score, 12)
 
     def test_parse_args_rejects_conflicting_progress_flags(self) -> None:
         old_argv = sys.argv
@@ -763,7 +858,109 @@ class FancySliderModifier extends SliderModifier {}
         self.assertIn('--sdk-component ohos-sdk-public', output)
         self.assertIn('--sdk-branch master', output)
         self.assertIn('--sdk-date 20260406', output)
+        self.assertIn('Copyable Next Steps', output)
+        self.assertIn(
+            'arkui-xts-selector --download-daily-sdk --sdk-component ohos-sdk-public --sdk-branch master --sdk-date 20260406  # Download SDK [optional] | SDK root already exists; use this to switch to another SDK build by tag or date.',
+            output,
+        )
         self.assertIn('Preparation', output)
+
+    def test_build_next_steps_uses_latest_available_daily_tag_and_date_when_config_is_empty(self) -> None:
+        app_config = AppConfig(
+            repo_root=Path("/tmp/repo"),
+            xts_root=Path("/tmp/repo/test/xts"),
+            sdk_api_root=Path("/tmp/repo/sdk"),
+            cache_file=None,
+            git_repo_root=Path("/tmp/repo/foundation/arkui/ace_engine"),
+            git_remote="origin",
+            git_base_branch="master",
+            daily_component="dayu200",
+            daily_branch="master",
+            sdk_component="ohos-sdk-public",
+            sdk_branch="master",
+            firmware_component="dayu200",
+            firmware_branch="master",
+        )
+        report = {
+            "sdk_api_root": "/tmp/missing-sdk",
+            "built_artifacts": {"testcases_dir_exists": False, "module_info_exists": False},
+            "coverage_recommendations": {"required_target_keys": [], "recommended_target_keys": []},
+            "execution_overview": {"selected_target_count": 0},
+            "selector_run": {"selector_report_path": "/tmp/report.json"},
+        }
+
+        def fake_list_daily_tags(component: str, branch: str = "master", count: int = 1, **_: object) -> list[DailyBuildInfo]:
+            self.assertEqual(branch, "master")
+            self.assertEqual(count, 1)
+            mapping = {
+                "ohos-sdk-public": "20260409_101500",
+                "dayu200_Dyn_Sta_XTS": "20260408_223344",
+                "dayu200": "20260407_112233",
+            }
+            tag = mapping.get(component)
+            if not tag:
+                return []
+            return [
+                DailyBuildInfo(
+                    tag=tag,
+                    component=component,
+                    branch=branch,
+                    version_type="daily",
+                    version_name=tag,
+                )
+            ]
+
+        with mock.patch("arkui_xts_selector.cli.list_daily_tags", side_effect=fake_list_daily_tags):
+            steps = build_next_steps(report, app_config, self._build_next_steps_args())
+
+        step_commands = {step["step"]: step["command"] for step in steps}
+        self.assertIn("--sdk-build-tag 20260409_101500", step_commands["Download SDK"])
+        self.assertIn("--sdk-date 20260409", step_commands["Download SDK"])
+        self.assertIn("--daily-build-tag 20260408_223344", step_commands["Download tests"])
+        self.assertIn("--daily-date 20260408", step_commands["Download tests"])
+        self.assertIn("--firmware-build-tag 20260407_112233", step_commands["Download firmware"])
+        self.assertIn("--firmware-date 20260407", step_commands["Download firmware"])
+        self.assertIn("--firmware-build-tag 20260407_112233", step_commands["Flash daily firmware"])
+        self.assertIn("--firmware-date 20260407", step_commands["Flash daily firmware"])
+
+    def test_build_next_steps_uses_explicit_tag_and_derived_date_without_network_lookup(self) -> None:
+        app_config = AppConfig(
+            repo_root=Path("/tmp/repo"),
+            xts_root=Path("/tmp/repo/test/xts"),
+            sdk_api_root=Path("/tmp/repo/sdk"),
+            cache_file=None,
+            git_repo_root=Path("/tmp/repo/foundation/arkui/ace_engine"),
+            git_remote="origin",
+            git_base_branch="master",
+            sdk_build_tag="20260406_204500",
+            sdk_component="ohos-sdk-public",
+            sdk_branch="master",
+            daily_build_tag="20260405_193000",
+            daily_component="dayu200_Dyn_Sta_XTS",
+            daily_branch="master",
+            firmware_build_tag="20260404_081500",
+            firmware_component="dayu200",
+            firmware_branch="master",
+        )
+        report = {
+            "sdk_api_root": "/tmp/missing-sdk",
+            "built_artifacts": {"testcases_dir_exists": False, "module_info_exists": False},
+            "coverage_recommendations": {"required_target_keys": [], "recommended_target_keys": []},
+            "execution_overview": {"selected_target_count": 0},
+            "selector_run": {"selector_report_path": "/tmp/report.json"},
+        }
+
+        with mock.patch("arkui_xts_selector.cli.list_daily_tags") as daily_tags_mock:
+            steps = build_next_steps(report, app_config, self._build_next_steps_args())
+
+        daily_tags_mock.assert_not_called()
+        step_commands = {step["step"]: step["command"] for step in steps}
+        self.assertIn("--sdk-build-tag 20260406_204500", step_commands["Download SDK"])
+        self.assertIn("--sdk-date 20260406", step_commands["Download SDK"])
+        self.assertIn("--daily-build-tag 20260405_193000", step_commands["Download tests"])
+        self.assertIn("--daily-date 20260405", step_commands["Download tests"])
+        self.assertIn("--firmware-build-tag 20260404_081500", step_commands["Download firmware"])
+        self.assertIn("--firmware-date 20260404", step_commands["Download firmware"])
 
     def test_print_human_uses_rich_box_drawing_tables(self) -> None:
         report = {
@@ -892,6 +1089,11 @@ class FancySliderModifier extends SliderModifier {}
         self.assertIn('ace_ets_module_modifier_static', output)
         self.assertIn('ace_ets_module_modifier', output)
         self.assertIn('XDevice run with reports and', output)
+        self.assertIn('Copyable Commands', output)
+        self.assertIn(
+            'hdc shell aa test -b com.example.static -m entry -s unittest OpenHarmonyTestRunner  # ace_ets_module_modifier_static [aa_test] | Direct device run via hdc and OpenHarmonyTestRunner.',
+            output,
+        )
         self.assertIn('Increase --top-projects to see more.', output)
         self.assertNotIn('<timestamp>', output)
 
@@ -1338,6 +1540,79 @@ class FancySliderModifier extends SliderModifier {}
         )
 
         self.assertEqual(recommendations['recommended_target_keys'], ['proj/navigation4/Test.json'])
+
+    def test_build_global_coverage_recommendations_prefers_focus_owner_for_fallback_only_source(self) -> None:
+        recommendations = build_global_coverage_recommendations(
+            [
+                {
+                    'source': {'key': 'changed_file:chipgroup.ets', 'type': 'changed_file', 'value': 'chipgroup.ets'},
+                    'source_profile': {
+                        'key': 'changed_file:chipgroup.ets',
+                        'type': 'changed_file',
+                        'value': 'chipgroup.ets',
+                        'family_keys': [],
+                        'capability_keys': [],
+                        'focus_tokens': ['chip', 'chipgroup', 'chipgroupitemoptions'],
+                    },
+                    'project_entry': {
+                        'project': 'proj/layout',
+                        'test_json': 'proj/layout/Test.json',
+                        'build_target': 'layout_suite',
+                        'bundle_name': 'com.example.layout',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'LayoutTest',
+                        'bucket': 'must-run',
+                        'variant': 'static',
+                        'surface': 'static',
+                        'scope_tier': 'direct',
+                        'specificity_score': 18,
+                        'score': 36,
+                        'family_keys': ['list'],
+                        'direct_family_keys': ['list'],
+                        'focus_token_counts': {'chip': 1},
+                        'umbrella_penalty': 0.0,
+                        'scope_reasons': ['broad chip-adjacent owner'],
+                    },
+                    'source_rank': 1,
+                },
+                {
+                    'source': {'key': 'changed_file:chipgroup.ets', 'type': 'changed_file', 'value': 'chipgroup.ets'},
+                    'source_profile': {
+                        'key': 'changed_file:chipgroup.ets',
+                        'type': 'changed_file',
+                        'value': 'chipgroup.ets',
+                        'family_keys': [],
+                        'capability_keys': [],
+                        'focus_tokens': ['chip', 'chipgroup', 'chipgroupitemoptions'],
+                    },
+                    'project_entry': {
+                        'project': 'proj/advance_chip',
+                        'test_json': 'proj/advance_chip/Test.json',
+                        'build_target': 'advance_chip_suite',
+                        'bundle_name': 'com.example.chip',
+                        'driver_module_name': 'entry',
+                        'xdevice_module_name': 'AdvanceChipTest',
+                        'bucket': 'must-run',
+                        'variant': 'static',
+                        'surface': 'static',
+                        'scope_tier': 'focused',
+                        'specificity_score': 11,
+                        'score': 39,
+                        'family_keys': ['text_rendering'],
+                        'direct_family_keys': ['text_rendering'],
+                        'focus_token_counts': {'chip': 3, 'chipgroup': 2, 'chipgroupitemoptions': 2},
+                        'umbrella_penalty': 0.0,
+                        'scope_reasons': ['exact chipgroup owner'],
+                    },
+                    'source_rank': 4,
+                },
+            ],
+            repo_root=Path('/tmp/repo'),
+            acts_out_root=Path('/tmp/repo/out/release/suites/acts'),
+            device='SER1',
+        )
+
+        self.assertEqual(recommendations['required_target_keys'], ['proj/advance_chip/Test.json'])
 
     def test_build_global_coverage_recommendations_prefers_exact_capability_owner_inside_family(self) -> None:
         recommendations = build_global_coverage_recommendations(
@@ -1808,6 +2083,11 @@ class FancySliderModifier extends SliderModifier {}
         self.assertIn('Required Run Order', output)
         self.assertIn('Optional Duplicate Coverage', output)
         self.assertIn('Batch Run Commands', output)
+        self.assertIn('Copyable Batch Run Commands', output)
+        self.assertIn(
+            'arkui-xts-selector --run-now --run-priority required  # Run required batch | Only strongest unique coverage.',
+            output,
+        )
         self.assertIn('adds 2 new', output)
         self.assertIn('coverage', output)
         self.assertIn('already', output)
