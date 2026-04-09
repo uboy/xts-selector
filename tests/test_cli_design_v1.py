@@ -557,6 +557,17 @@ class FancySliderModifier extends SliderModifier {}
 
         self.assertIn("test/unittest/", config.path_prefixes)
         self.assertIn("test/mock/", config.path_prefixes)
+        self.assertIn(
+            "foundation/arkui/ace_engine/advanced_ui_component_static/assembled_advanced_ui_component/",
+            config.path_prefixes,
+        )
+        wrapper_rule = next(
+            item for item in config.rules
+            if item["id"] == "generated_advanced_ui_assembled_wrappers"
+        )
+        self.assertEqual(wrapper_rule["category"], "generated_wrapper_noise")
+        self.assertTrue(wrapper_rule["description"])
+        self.assertGreaterEqual(len(wrapper_rule["how_to_identify"]), 2)
 
     def test_match_changed_file_exclusion_matches_native_unit_test_path(self) -> None:
         matched = match_changed_file_exclusion(
@@ -568,6 +579,7 @@ class FancySliderModifier extends SliderModifier {}
         self.assertIsNotNone(matched)
         self.assertEqual(matched['reason'], 'excluded_from_xts_analysis')
         self.assertEqual(matched['changed_file'], 'test/unittest/core/pattern/text_input/text_input_modify_test.cpp')
+        self.assertEqual(matched['rule_id'], 'native_unit_tests_root')
 
     def test_filter_changed_files_for_xts_excludes_unit_test_and_keeps_framework_file(self) -> None:
         changed_files = [
@@ -585,15 +597,56 @@ class FancySliderModifier extends SliderModifier {}
         self.assertEqual(len(excluded), 1)
         self.assertEqual(excluded[0]['changed_file'], 'test/unittest/core/pattern/text_input/text_input_modify_test.cpp')
 
+    def test_filter_changed_files_for_xts_excludes_assembled_advanced_ui_wrapper(self) -> None:
+        changed_files = [
+            Path('/tmp/work/foundation/arkui/ace_engine/advanced_ui_component/chipgroup/source/chipgroup.ets'),
+            Path('/tmp/work/foundation/arkui/ace_engine/advanced_ui_component_static/assembled_advanced_ui_component/@ohos.arkui.advanced.ChipGroup.ets'),
+        ]
+
+        kept, excluded = filter_changed_files_for_xts(
+            changed_files,
+            Path('/tmp/work'),
+            load_changed_file_exclusion_config(None),
+        )
+
+        self.assertEqual(
+            kept,
+            [Path('/tmp/work/foundation/arkui/ace_engine/advanced_ui_component/chipgroup/source/chipgroup.ets')],
+        )
+        self.assertEqual(len(excluded), 1)
+        self.assertEqual(
+            excluded[0]['changed_file'],
+            'foundation/arkui/ace_engine/advanced_ui_component_static/assembled_advanced_ui_component/@ohos.arkui.advanced.chipgroup.ets',
+        )
+        self.assertEqual(excluded[0]['rule_id'], 'generated_advanced_ui_assembled_wrappers')
+
     def test_load_changed_file_exclusion_config_merges_configured_prefixes(self) -> None:
         with TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / 'changed_file_exclusions.json'
-            config_path.write_text(json.dumps({'path_prefixes': ['custom/generated/']}), encoding='utf-8')
+            config_path.write_text(
+                json.dumps(
+                    {
+                        'path_prefixes': ['custom/generated/'],
+                        'rules': [
+                            {
+                                'id': 'generated_docs',
+                                'category': 'generated_docs_noise',
+                                'path_prefix': 'generated/docs/',
+                                'description': 'Generated docs should not drive XTS selection.',
+                                'how_to_identify': ['Path starts with generated/docs/.'],
+                            }
+                        ],
+                    }
+                ),
+                encoding='utf-8',
+            )
 
             config = load_changed_file_exclusion_config(config_path)
 
         self.assertIn('custom/generated/', config.path_prefixes)
         self.assertIn('test/unittest/', config.path_prefixes)
+        self.assertIn('generated/docs/', config.path_prefixes)
+        self.assertTrue(any(item['id'] == 'generated_docs' for item in config.rules))
 
     def test_print_human_includes_excluded_inputs(self) -> None:
         report = {
@@ -612,6 +665,7 @@ class FancySliderModifier extends SliderModifier {}
                     'changed_file': 'test/unittest/core/pattern/text_input/text_input_modify_test.cpp',
                     'reason': 'excluded_from_xts_analysis',
                     'matched_prefix': 'test/unittest/',
+                    'rule_id': 'native_unit_tests_root',
                 }
             ],
             'results': [],
@@ -626,7 +680,7 @@ class FancySliderModifier extends SliderModifier {}
             print_human(report)
         output = buffer.getvalue()
         self.assertIn('Excluded Inputs', output)
-        self.assertIn('excluded_from_xts_analysis', output)
+        self.assertIn('native_unit_tests_root', output)
         self.assertIn('test/unittest/', output)
 
     def test_print_human_shows_effective_variants_mode_for_changed_file(self) -> None:

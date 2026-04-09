@@ -118,11 +118,58 @@ RELEVANCE_MODE_CHOICES = ("all", "balanced", "strict")
 PR_SOURCE_CHOICES = ("auto", "api", "git")
 HUMAN_OPTIONAL_DUPLICATE_DISPLAY_LIMIT = 20
 DEFAULT_CHANGED_FILE_EXCLUSION_RULES = {
-    "path_prefixes": [
-        "test/unittest/",
-        "foundation/arkui/ace_engine/test/unittest/",
-        "test/mock/",
-        "foundation/arkui/ace_engine/test/mock/",
+    "rules": [
+        {
+            "id": "native_unit_tests_root",
+            "category": "non_xts_local_tests",
+            "path_prefix": "test/unittest/",
+            "description": "Native/unit-test sources are implementation-side checks, not user-facing XTS coverage targets.",
+            "how_to_identify": [
+                "Path starts with test/unittest/.",
+                "File belongs to local unit-test coverage rather than XTS ACTS suites.",
+            ],
+        },
+        {
+            "id": "ace_engine_unit_tests_mirror",
+            "category": "non_xts_local_tests",
+            "path_prefix": "foundation/arkui/ace_engine/test/unittest/",
+            "description": "Mirrored ace_engine unit-test directories should not drive XTS selection.",
+            "how_to_identify": [
+                "Path starts with foundation/arkui/ace_engine/test/unittest/.",
+                "Content is repo-local unit testing, not external ArkUI XTS behavior coverage.",
+            ],
+        },
+        {
+            "id": "mock_sources_root",
+            "category": "non_product_test_support",
+            "path_prefix": "test/mock/",
+            "description": "Mock infrastructure changes should not directly select product-facing XTS suites.",
+            "how_to_identify": [
+                "Path starts with test/mock/.",
+                "Files provide fake or stub test infrastructure rather than production behavior.",
+            ],
+        },
+        {
+            "id": "ace_engine_mock_sources_mirror",
+            "category": "non_product_test_support",
+            "path_prefix": "foundation/arkui/ace_engine/test/mock/",
+            "description": "Mirrored ace_engine mock sources are support code and should be excluded from XTS changed-file analysis.",
+            "how_to_identify": [
+                "Path starts with foundation/arkui/ace_engine/test/mock/.",
+                "Files are mock/stub support code rather than product behavior.",
+            ],
+        },
+        {
+            "id": "generated_advanced_ui_assembled_wrappers",
+            "category": "generated_wrapper_noise",
+            "path_prefix": "foundation/arkui/ace_engine/advanced_ui_component_static/assembled_advanced_ui_component/",
+            "description": "Generated assembled advanced-ui ETS wrappers import broad generic ArkUI symbols and can swamp the selector with unrelated XTS suites.",
+            "how_to_identify": [
+                "Path is under foundation/arkui/ace_engine/advanced_ui_component_static/assembled_advanced_ui_component/.",
+                "File is an assembled @ohos.arkui.advanced.* ETS wrapper rather than the authored source under advanced_ui_component/<component>/source/.",
+                "The wrapper re-exports or imports broad generic ArkUI component symbols such as Text, Image, Button, Scroll, Stack, and similar shared primitives.",
+            ],
+        },
     ]
 }
 
@@ -1352,6 +1399,7 @@ class MappingConfig:
 @dataclass
 class ChangedFileExclusionConfig:
     path_prefixes: list[str] = field(default_factory=list)
+    rules: list[dict[str, object]] = field(default_factory=list)
 
 
 @dataclass
@@ -1402,6 +1450,7 @@ class AppConfig:
     flash_firmware_path: Path | None = None
     flash_py_path: Path | None = None
     hdc_path: Path | None = None
+    hdc_endpoint: str | None = None
 
 
 @dataclass
@@ -1683,16 +1732,53 @@ def normalize_changed_files(values: Iterable[str], base_roots: Iterable[Path] | 
 def load_changed_file_exclusion_config(path_value: Path | None) -> ChangedFileExclusionConfig:
     data = load_json_if_exists(path_value)
     configured_prefixes = data.get("path_prefixes", []) if isinstance(data, dict) else []
+    configured_rules = data.get("rules", []) if isinstance(data, dict) else []
     prefixes: list[str] = []
-    for value in list(DEFAULT_CHANGED_FILE_EXCLUSION_RULES.get("path_prefixes", [])) + list(configured_prefixes):
+    rules: list[dict[str, object]] = []
+    for raw_rule in list(DEFAULT_CHANGED_FILE_EXCLUSION_RULES.get("rules", [])) + list(configured_rules):
+        if not isinstance(raw_rule, dict):
+            continue
+        path_prefix = raw_rule.get("path_prefix")
+        if not isinstance(path_prefix, str):
+            continue
+        normalized = path_prefix.replace('\\', '/').strip().lstrip('./').lower()
+        if normalized and not normalized.endswith('/'):
+            normalized += '/'
+        if not normalized or normalized in prefixes:
+            continue
+        prefixes.append(normalized)
+        rules.append(
+            {
+                "id": str(raw_rule.get("id") or normalized.rstrip('/').split('/')[-1] or "rule"),
+                "category": str(raw_rule.get("category") or "generic_exclusion"),
+                "path_prefix": normalized,
+                "description": str(raw_rule.get("description") or ""),
+                "how_to_identify": [
+                    str(item)
+                    for item in raw_rule.get("how_to_identify", [])
+                    if isinstance(item, str) and item.strip()
+                ],
+            }
+        )
+    for value in configured_prefixes:
         if not isinstance(value, str):
             continue
         normalized = value.replace('\\', '/').strip().lstrip('./').lower()
         if normalized and not normalized.endswith('/'):
             normalized += '/'
-        if normalized and normalized not in prefixes:
-            prefixes.append(normalized)
-    return ChangedFileExclusionConfig(path_prefixes=prefixes)
+        if not normalized or normalized in prefixes:
+            continue
+        prefixes.append(normalized)
+        rules.append(
+            {
+                "id": normalized.rstrip('/').split('/')[-1] or "legacy_prefix",
+                "category": "legacy_prefix_exclusion",
+                "path_prefix": normalized,
+                "description": "Legacy path-prefix exclusion loaded from path_prefixes.",
+                "how_to_identify": [f"Path starts with {normalized}"],
+            }
+        )
+    return ChangedFileExclusionConfig(path_prefixes=prefixes, rules=rules)
 
 
 def changed_file_match_keys(path: Path, git_repo_root: Path) -> set[str]:
@@ -1725,12 +1811,17 @@ def match_changed_file_exclusion(
     exclusion_config: ChangedFileExclusionConfig,
 ) -> dict | None:
     keys = changed_file_match_keys(path, git_repo_root)
-    for prefix in exclusion_config.path_prefixes:
+    for rule in exclusion_config.rules:
+        prefix = str(rule.get("path_prefix") or "")
         if any(key.startswith(prefix) for key in keys):
             return {
                 "changed_file": describe_changed_file(path, git_repo_root),
                 "reason": "excluded_from_xts_analysis",
                 "matched_prefix": prefix,
+                "rule_id": rule.get("id", ""),
+                "category": rule.get("category", ""),
+                "description": rule.get("description", ""),
+                "how_to_identify": list(rule.get("how_to_identify", [])),
             }
     return None
 
@@ -4390,6 +4481,8 @@ def format_report(
         "ranking_rules_file": str(app_config.ranking_rules_file) if app_config.ranking_rules_file else None,
         "runtime_state_root": str(app_config.runtime_state_root) if app_config.runtime_state_root else None,
         "runtime_history_file": str(default_runtime_history_file(app_config.runtime_state_root)),
+        "hdc_path": str(app_config.hdc_path) if app_config.hdc_path else None,
+        "hdc_endpoint": app_config.hdc_endpoint,
         "built_artifacts": built_artifacts,
         "built_artifact_index": built_artifact_index,
         "product_build": product_build,
@@ -4530,6 +4623,8 @@ def format_report(
                     repo_root=REPO_ROOT,
                     acts_out_root=acts_out_root,
                     device=device,
+                    hdc_path=app_config.hdc_path,
+                    hdc_endpoint=app_config.hdc_endpoint,
                 )
                 for item in shown_project_results
             ],
@@ -4684,6 +4779,8 @@ def format_report(
                     repo_root=REPO_ROOT,
                     acts_out_root=acts_out_root,
                     device=device,
+                    hdc_path=app_config.hdc_path,
+                    hdc_endpoint=app_config.hdc_endpoint,
                 )
                 for item in shown_project_results
             ],
@@ -4983,6 +5080,10 @@ def _base_selector_run_command(report: dict, app_config: AppConfig, args: argpar
             run_command.extend(["--keep-per-signature", args.keep_per_signature])
     if app_config.runtime_state_root and app_config.runtime_state_root != default_runtime_state_root():
         run_command.extend(["--runtime-state-root", app_config.runtime_state_root])
+    if app_config.hdc_path:
+        run_command.extend(["--hdc-path", app_config.hdc_path])
+    if app_config.hdc_endpoint:
+        run_command.extend(["--hdc-endpoint", app_config.hdc_endpoint])
     if float(app_config.device_lock_timeout or 0.0) != 30.0:
         run_command.extend(["--device-lock-timeout", app_config.device_lock_timeout])
     if app_config.devices:
@@ -5656,11 +5757,11 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
     if excluded_inputs:
         print("Excluded Inputs")
         _print_human_table(
-            ["Changed File", "Reason", "Matched Prefix"],
+            ["Changed File", "Rule", "Matched Prefix"],
             [
                 [
                     item.get("changed_file", "-"),
-                    item.get("reason", "-"),
+                    item.get("rule_id", item.get("reason", "-")),
                     item.get("matched_prefix", "-"),
                 ]
                 for item in excluded_inputs
@@ -5843,7 +5944,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--composite-mappings-file", help="Optional JSON file with multi-component mapping rules.")
     parser.add_argument("--ranking-rules-file", help="Optional JSON file with family-group, generic-token, umbrella, and planner ranking rules.")
     parser.add_argument("--changed-file-exclusions-file", help="Optional JSON file with changed-file path prefixes to exclude from XTS analysis.")
-    parser.add_argument("--device", help="Optional HDC device serial/IP:PORT for generated aa test commands.")
+    parser.add_argument("--device", help="Optional device serial/connect key visible from the selected HDC server.")
     parser.add_argument("--devices", action="append", default=[], help="Comma-separated device serial list for command generation and execution.")
     parser.add_argument("--devices-from", help="File with one device serial per line (comments with # are ignored).")
     parser.add_argument("--product-name", help="Product name for build guidance. Default: rk3568.")
@@ -5895,7 +5996,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--list-tags-lookback", type=int, default=30, metavar="DAYS",
         help="How many days back to search when listing tags. Default: 30.")
     parser.add_argument("--flash-py-path", help="Path to the Rockchip flash.py helper used for board flashing.")
-    parser.add_argument("--hdc-path", help="Path to hdc used for switching a device into bootloader mode before flashing.")
+    parser.add_argument("--hdc-path", help="Path to hdc used for generated commands, execution preflight, and flashing.")
+    parser.add_argument("--hdc-endpoint", help="Remote HDC server endpoint HOST:PORT used for generated commands, preflight, and execution.")
     parser.add_argument("--run-tool", choices=RUN_TOOL_CHOICES, default="auto", help="Execution tool to use for --run-now. Default: auto.")
     parser.add_argument("--run-priority", choices=RUN_PRIORITY_CHOICES, default="recommended", help="Execution priority for --run-now. required = strongest unique coverage, recommended = required plus additional unique coverage, all = include duplicate fallback coverage.")
     parser.add_argument("--shard-mode", choices=SHARD_MODE_CHOICES, default="mirror", help="Execution distribution mode. mirror = all selected targets on every device; split = shard unique targets across devices.")
@@ -6021,6 +6123,7 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         selector_repo_root,
         selector_repo_root,
     ) if (args.hdc_path or cfg.get("hdc_path")) else None
+    hdc_endpoint = args.hdc_endpoint or cfg.get("hdc_endpoint")
     gitcode_api_url = args.gitcode_api_url or cfg.get("gitcode_api_url") or ini_url
     gitcode_token = args.gitcode_token or cfg.get("gitcode_token") or ini_token
     cache_value = None if args.no_cache else (args.cache_file or cfg.get("cache_file"))
@@ -6074,6 +6177,7 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         flash_firmware_path=flash_firmware_path,
         flash_py_path=flash_py_path,
         hdc_path=hdc_path,
+        hdc_endpoint=hdc_endpoint,
     )
 
 
@@ -6176,6 +6280,8 @@ def main() -> int:
             parallel_jobs=args.parallel_jobs,
             runtime_state_root=app_config.runtime_state_root,
             device_lock_timeout=app_config.device_lock_timeout,
+            hdc_path=app_config.hdc_path,
+            hdc_endpoint=app_config.hdc_endpoint,
         )
         report["next_steps"] = build_next_steps(report, app_config, args)
         execution_summary = None
@@ -6187,6 +6293,8 @@ def main() -> int:
                 report,
                 repo_root=app_config.repo_root,
                 devices=app_config.devices,
+                hdc_path=app_config.hdc_path,
+                hdc_endpoint=app_config.hdc_endpoint,
             )
             report["execution_preflight"] = execution_preflight
             if execution_preflight.get("status") != "passed":
@@ -6389,6 +6497,8 @@ def main() -> int:
         parallel_jobs=args.parallel_jobs,
         runtime_state_root=app_config.runtime_state_root,
         device_lock_timeout=app_config.device_lock_timeout,
+        hdc_path=app_config.hdc_path,
+        hdc_endpoint=app_config.hdc_endpoint,
     )
     report["show_source_evidence"] = bool(args.show_source_evidence or args.debug_trace or len(report.get("results", [])) <= 1)
     report["coverage_run_commands"] = build_coverage_run_commands(report, app_config, args)
@@ -6402,6 +6512,8 @@ def main() -> int:
             report,
             repo_root=app_config.repo_root,
             devices=app_config.devices,
+            hdc_path=app_config.hdc_path,
+            hdc_endpoint=app_config.hdc_endpoint,
         )
         report["execution_preflight"] = execution_preflight
         if execution_preflight.get("status") != "passed":

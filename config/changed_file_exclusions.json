@@ -1,8 +1,55 @@
 {
-  "path_prefixes": [
-    "test/unittest/",
-    "foundation/arkui/ace_engine/test/unittest/",
-    "test/mock/",
-    "foundation/arkui/ace_engine/test/mock/"
+  "rules": [
+    {
+      "id": "native_unit_tests_root",
+      "category": "non_xts_local_tests",
+      "path_prefix": "test/unittest/",
+      "description": "Native/unit-test sources are implementation-side checks, not user-facing XTS coverage targets.",
+      "how_to_identify": [
+        "Path starts with test/unittest/.",
+        "File belongs to local unit-test coverage rather than XTS ACTS suites."
+      ]
+    },
+    {
+      "id": "ace_engine_unit_tests_mirror",
+      "category": "non_xts_local_tests",
+      "path_prefix": "foundation/arkui/ace_engine/test/unittest/",
+      "description": "Mirrored ace_engine unit-test directories should not drive XTS selection.",
+      "how_to_identify": [
+        "Path starts with foundation/arkui/ace_engine/test/unittest/.",
+        "Content is repo-local unit testing, not external ArkUI XTS behavior coverage."
+      ]
+    },
+    {
+      "id": "mock_sources_root",
+      "category": "non_product_test_support",
+      "path_prefix": "test/mock/",
+      "description": "Mock infrastructure changes should not directly select product-facing XTS suites.",
+      "how_to_identify": [
+        "Path starts with test/mock/.",
+        "Files provide fake or stub test infrastructure rather than production behavior."
+      ]
+    },
+    {
+      "id": "ace_engine_mock_sources_mirror",
+      "category": "non_product_test_support",
+      "path_prefix": "foundation/arkui/ace_engine/test/mock/",
+      "description": "Mirrored ace_engine mock sources are support code and should be excluded from XTS changed-file analysis.",
+      "how_to_identify": [
+        "Path starts with foundation/arkui/ace_engine/test/mock/.",
+        "Files are mock/stub support code rather than product behavior."
+      ]
+    },
+    {
+      "id": "generated_advanced_ui_assembled_wrappers",
+      "category": "generated_wrapper_noise",
+      "path_prefix": "foundation/arkui/ace_engine/advanced_ui_component_static/assembled_advanced_ui_component/",
+      "description": "Generated assembled advanced-ui ETS wrappers import broad generic ArkUI symbols and can swamp the selector with unrelated XTS suites.",
+      "how_to_identify": [
+        "Path is under foundation/arkui/ace_engine/advanced_ui_component_static/assembled_advanced_ui_component/.",
+        "File is an assembled @ohos.arkui.advanced.* ETS wrapper rather than the authored source under advanced_ui_component/<component>/source/.",
+        "The wrapper re-exports or imports broad generic ArkUI component symbols such as Text, Image, Button, Scroll, Stack, and similar shared primitives."
+      ]
+    }
   ]
 }

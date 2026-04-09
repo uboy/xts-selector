@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import sys
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -178,11 +179,15 @@ class ExecutionPlanningTests(unittest.TestCase):
             shard_mode="mirror",
         )
 
-        def fake_which(command: str) -> str | None:
-            return f"/usr/bin/{command}" if command in {"hdc", "python"} else None
+        def fake_exec_which(command: str) -> str | None:
+            return command if command in {"python", "python3"} else None
+
+        def fake_hdc_which(command: str) -> str | None:
+            return "hdc" if command == "hdc" else None
 
         fake_completed = SimpleNamespace(returncode=0, stdout="SER1\n", stderr="")
-        with mock.patch("arkui_xts_selector.execution.shutil.which", side_effect=fake_which), \
+        with mock.patch("arkui_xts_selector.execution.shutil.which", side_effect=fake_exec_which), \
+             mock.patch("arkui_xts_selector.hdc_transport.shutil.which", side_effect=fake_hdc_which), \
              mock.patch("arkui_xts_selector.execution.subprocess.run", return_value=fake_completed):
             preflight = preflight_execution(report, repo_root=repo_root, devices=["SER1", "SER2"])
 
@@ -212,8 +217,11 @@ class ExecutionPlanningTests(unittest.TestCase):
             shard_mode="mirror",
         )
 
-        def fake_which(command: str) -> str | None:
-            return f"/usr/bin/{command}" if command in {"hdc", "python"} else None
+        def fake_exec_which(command: str) -> str | None:
+            return command if command in {"python", "python3"} else None
+
+        def fake_hdc_which(command: str) -> str | None:
+            return "hdc" if command == "hdc" else None
 
         def fake_run(command, **kwargs):
             args = list(command)
@@ -223,12 +231,71 @@ class ExecutionPlanningTests(unittest.TestCase):
                 return SimpleNamespace(returncode=0, stdout="OpenHarmony-6.1.0.31\n", stderr="")
             raise AssertionError(f"unexpected command: {args}")
 
-        with mock.patch("arkui_xts_selector.execution.shutil.which", side_effect=fake_which), \
+        with mock.patch("arkui_xts_selector.execution.shutil.which", side_effect=fake_exec_which), \
+             mock.patch("arkui_xts_selector.hdc_transport.shutil.which", side_effect=fake_hdc_which), \
              mock.patch("arkui_xts_selector.execution.subprocess.run", side_effect=fake_run):
             preflight = preflight_execution(report, repo_root=repo_root, devices=["SER1"])
 
         self.assertEqual(preflight["status"], "failed")
         self.assertTrue(any("version mismatch" in item for item in preflight["errors"]))
+
+    def test_build_run_target_entry_uses_remote_hdc_endpoint_for_generated_commands(self) -> None:
+        target = build_run_target_entry(
+            _sample_target("button_static", "ActsButtonTest"),
+            repo_root=Path("/tmp/repo"),
+            acts_out_root=Path("/tmp/repo/out/release/suites/acts"),
+            device="SER1",
+            hdc_path="/custom/tools/hdc",
+            hdc_endpoint="127.0.0.1:28710",
+        )
+
+        self.assertIn("/custom/tools/hdc -s 127.0.0.1:28710 -t SER1 shell aa test", target["aa_test_command"])
+
+    def test_preflight_uses_remote_hdc_endpoint_and_explicit_binary(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            repo_root = Path("/tmp/repo")
+            fake_hdc = Path(tmpdir) / "hdc"
+            fake_hdc.write_text("#!/bin/bash\nexit 0\n", encoding="utf-8")
+            fake_hdc.chmod(0o755)
+            target = build_run_target_entry(
+                _sample_target("button_static", "ActsButtonTest"),
+                repo_root=repo_root,
+                acts_out_root=repo_root / "out/release/suites/acts",
+                device="SER1",
+                hdc_path=fake_hdc,
+                hdc_endpoint="127.0.0.1:28710",
+            )
+            report = {"results": [{"changed_file": "a.cpp", "run_targets": [target]}], "symbol_queries": []}
+
+            attach_execution_plan(
+                report,
+                repo_root=repo_root,
+                acts_out_root=repo_root / "out/release/suites/acts",
+                devices=["SER1"],
+                run_tool="aa_test",
+                shard_mode="mirror",
+                hdc_path=fake_hdc,
+                hdc_endpoint="127.0.0.1:28710",
+            )
+
+            def fake_run(command, **kwargs):
+                args = list(command)
+                expected = [str(fake_hdc.resolve()), "-s", "127.0.0.1:28710", "list", "targets"]
+                if args == expected:
+                    return SimpleNamespace(returncode=0, stdout="SER1\n", stderr="")
+                raise AssertionError(f"unexpected command: {args}")
+
+            with mock.patch("arkui_xts_selector.execution.shutil.which", return_value="python3"), \
+                 mock.patch("arkui_xts_selector.execution.subprocess.run", side_effect=fake_run):
+                preflight = preflight_execution(
+                    report,
+                    repo_root=repo_root,
+                    devices=["SER1"],
+                    hdc_path=fake_hdc,
+                    hdc_endpoint="127.0.0.1:28710",
+                )
+
+        self.assertEqual(preflight["status"], "passed")
 
 
 class SelectorRunLabelTests(unittest.TestCase):

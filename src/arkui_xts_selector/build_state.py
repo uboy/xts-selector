@@ -6,6 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .hdc_transport import build_hdc_shell_command, ensure_hdc_wrapper
+
 
 def compact_token(value: str) -> str:
     return "".join(ch for ch in value.lower() if ch.isalnum())
@@ -70,16 +72,30 @@ def build_bootstrap_xdevice_runner(root: Path) -> str | None:
     )
 
 
-def build_aa_test_command(bundle_name: str | None, module_name: str | None, project_path: str, device: str | None) -> str | None:
+def build_aa_test_command(
+    bundle_name: str | None,
+    module_name: str | None,
+    project_path: str,
+    device: str | None,
+    hdc_path: Path | str | None = None,
+    hdc_endpoint: str | None = None,
+) -> str | None:
     if not bundle_name:
         return None
-    prefix = "hdc shell "
-    if device:
-        prefix = f"hdc -t {device} shell "
     is_static = "static" in compact_token(project_path)
     if is_static:
-        return f"{prefix}aa test -b {bundle_name} -m {module_name or 'entry'} -s unittest OpenHarmonyTestRunner"
-    return f"{prefix}aa test -p {bundle_name} -b {bundle_name} -s unittest OpenHarmonyTestRunner"
+        return build_hdc_shell_command(
+            ["shell", "aa", "test", "-b", bundle_name, "-m", module_name or "entry", "-s", "unittest", "OpenHarmonyTestRunner"],
+            hdc_path=hdc_path,
+            hdc_endpoint=hdc_endpoint,
+            device=device,
+        )
+    return build_hdc_shell_command(
+        ["shell", "aa", "test", "-p", bundle_name, "-b", bundle_name, "-s", "unittest", "OpenHarmonyTestRunner"],
+        hdc_path=hdc_path,
+        hdc_endpoint=hdc_endpoint,
+        device=device,
+    )
 
 
 def _safe_report_fragment(value: str | None) -> str:
@@ -95,6 +111,8 @@ def build_xdevice_command(
     device: str | None,
     acts_out_root: Path | None,
     report_path: Path | None = None,
+    hdc_path: Path | str | None = None,
+    hdc_endpoint: str | None = None,
 ) -> str | None:
     if not module_name:
         return None
@@ -124,7 +142,11 @@ def build_xdevice_command(
     if runner == "python3 -m xdevice" and (root / "run.sh").exists():
         runner = "bash ./run.sh"
     rendered_args = " ".join(shlex.quote(arg) for arg in args)
-    return f"cd {shlex.quote(str(root))} && {runner} {rendered_args}"
+    wrapper_dir = ensure_hdc_wrapper(root, hdc_path=hdc_path, hdc_endpoint=hdc_endpoint)
+    env_prefix = ""
+    if wrapper_dir is not None:
+        env_prefix = f"PATH={shlex.quote(str(wrapper_dir))}:$PATH "
+    return f"cd {shlex.quote(str(root))} && {env_prefix}{runner} {rendered_args}"
 
 
 def build_runtest_command(build_target: str, device: str | None) -> str | None:

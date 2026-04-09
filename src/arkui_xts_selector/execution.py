@@ -14,6 +14,7 @@ from .build_state import (
     build_runtest_command,
     build_xdevice_command,
 )
+from .hdc_transport import build_hdc_command, resolve_hdc_binary
 from .runtime_state import (
     InterprocessLockTimeout,
     acquire_device_lock,
@@ -87,6 +88,8 @@ def build_run_target_entry(
     acts_out_root: Path | None,
     device: str | None,
     xdevice_report_path: Path | None = None,
+    hdc_path: Path | str | None = None,
+    hdc_endpoint: str | None = None,
 ) -> dict[str, Any]:
     target_key = item.get("test_json") or item.get("project") or ""
     return {
@@ -117,6 +120,8 @@ def build_run_target_entry(
             module_name=item.get("driver_module_name"),
             project_path=item.get("project", ""),
             device=device,
+            hdc_path=hdc_path,
+            hdc_endpoint=hdc_endpoint,
         ),
         "xdevice_command": build_xdevice_command(
             repo_root=repo_root,
@@ -124,6 +129,8 @@ def build_run_target_entry(
             device=device,
             acts_out_root=acts_out_root,
             report_path=xdevice_report_path,
+            hdc_path=hdc_path,
+            hdc_endpoint=hdc_endpoint,
         ),
         "runtest_command": build_runtest_command(
             build_target=item.get("build_target", "") or "",
@@ -142,6 +149,8 @@ def _command_map_for_target(
     acts_out_root: Path | None,
     device: str | None,
     xdevice_report_path: Path | None = None,
+    hdc_path: Path | str | None = None,
+    hdc_endpoint: str | None = None,
 ) -> dict[str, str]:
     commands = {
         "aa_test": build_aa_test_command(
@@ -149,6 +158,8 @@ def _command_map_for_target(
             module_name=target.get("driver_module_name"),
             project_path=target.get("project", ""),
             device=device,
+            hdc_path=hdc_path,
+            hdc_endpoint=hdc_endpoint,
         ),
         "xdevice": build_xdevice_command(
             repo_root=repo_root,
@@ -156,6 +167,8 @@ def _command_map_for_target(
             device=device,
             acts_out_root=acts_out_root,
             report_path=xdevice_report_path,
+            hdc_path=hdc_path,
+            hdc_endpoint=hdc_endpoint,
         ),
         "runtest": build_runtest_command(
             build_target=target.get("build_target", "") or "",
@@ -220,6 +233,8 @@ def build_execution_plan(
     run_tool: str,
     xdevice_reports_root: Path | None = None,
     plan_index: int = 0,
+    hdc_path: Path | str | None = None,
+    hdc_endpoint: str | None = None,
 ) -> list[dict[str, Any]]:
     plans: list[dict[str, Any]] = []
     device_slots: list[str | None] = devices if devices else [None]
@@ -238,6 +253,8 @@ def build_execution_plan(
             acts_out_root,
             device,
             xdevice_report_path=xdevice_report_path,
+            hdc_path=hdc_path,
+            hdc_endpoint=hdc_endpoint,
         )
         selected_tool, command = _select_tool(commands, run_tool)
         status = "pending" if selected_tool and command else "unavailable"
@@ -347,6 +364,8 @@ def attach_execution_plan(
     parallel_jobs: int = 1,
     runtime_state_root: Path | None = None,
     device_lock_timeout: float = 30.0,
+    hdc_path: Path | str | None = None,
+    hdc_endpoint: str | None = None,
 ) -> None:
     groups = collect_unique_run_targets(report)
     coverage_recommendations = report.get("coverage_recommendations", {})
@@ -385,6 +404,8 @@ def attach_execution_plan(
             run_tool,
             xdevice_reports_root=xdevice_reports_root,
             plan_index=group_index,
+            hdc_path=hdc_path,
+            hdc_endpoint=hdc_endpoint,
         )
         for target in group["targets"]:
             target["execution_sources"] = list(group["sources"])
@@ -570,11 +591,17 @@ def _release_line_from_text(value: str | None) -> str:
     return f"{match.group(1)}.{match.group(2)}"
 
 
-def _query_device_release_line(device: str | None) -> tuple[str, str]:
-    command = ["hdc"]
-    if device:
-        command.extend(["-t", device])
-    command.extend(["shell", "param", "get", "const.ohos.fullname"])
+def _query_device_release_line(
+    device: str | None,
+    hdc_path: Path | str | None = None,
+    hdc_endpoint: str | None = None,
+) -> tuple[str, str]:
+    command = build_hdc_command(
+        ["shell", "param", "get", "const.ohos.fullname"],
+        hdc_path=hdc_path,
+        hdc_endpoint=hdc_endpoint,
+        device=device,
+    )
     try:
         completed = subprocess.run(
             command,
@@ -595,6 +622,8 @@ def preflight_execution(
     report: dict[str, Any],
     repo_root: Path,
     devices: list[str],
+    hdc_path: Path | str | None = None,
+    hdc_endpoint: str | None = None,
 ) -> dict[str, Any]:
     plans = collect_selected_execution_plans(report)
     selected_tools = sorted({item.get("selected_tool", "") for item in plans if item.get("selected_tool")})
@@ -607,7 +636,8 @@ def preflight_execution(
         reason = item.get("reason") or "execution plan is unavailable"
         errors.append(f"{item.get('device_label', 'default')}: {reason}")
 
-    hdc_available = shutil.which("hdc") is not None
+    hdc_binary = resolve_hdc_binary(hdc_path)
+    hdc_available = hdc_binary is not None
     python_available = bool(shutil.which("python") or shutil.which("python3"))
     runtest_available = (repo_root / "test/xts/acts/runtest.sh").exists()
     tool_availability = {
@@ -626,7 +656,11 @@ def preflight_execution(
         else:
             try:
                 completed = subprocess.run(
-                    ["hdc", "list", "targets"],
+                    build_hdc_command(
+                        ["list", "targets"],
+                        hdc_path=hdc_path,
+                        hdc_endpoint=hdc_endpoint,
+                    ),
                     capture_output=True,
                     text=True,
                     timeout=15.0,
@@ -656,7 +690,11 @@ def preflight_execution(
     devices_to_validate = requested_devices or (connected_devices[:1] if len(connected_devices) == 1 else [])
     if expected_release and devices_to_validate and ({"aa_test", "xdevice"} & set(selected_tools)):
         for device in devices_to_validate:
-            detected_release, raw_value = _query_device_release_line(device)
+            detected_release, raw_value = _query_device_release_line(
+                device,
+                hdc_path=hdc_path,
+                hdc_endpoint=hdc_endpoint,
+            )
             if not detected_release:
                 warnings.append(
                     f"could not determine OpenHarmony version for device {device}: {raw_value or 'empty response'}"
