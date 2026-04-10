@@ -858,9 +858,12 @@ class FancySliderModifier extends SliderModifier {}
         self.assertIn('--sdk-component ohos-sdk-public', output)
         self.assertIn('--sdk-branch master', output)
         self.assertIn('--sdk-date 20260406', output)
-        self.assertIn('Commands', output)
         self.assertIn(
-            'arkui-xts-selector --download-daily-sdk --sdk-component ohos-sdk-public --sdk-branch master --sdk-date 20260406  # Download SDK [optional] | SDK root already exists; use this to switch to another SDK build by tag or date.',
+            '1. Download SDK [optional]. SDK root already exists; use this to switch to another SDK build by tag or date.',
+            output,
+        )
+        self.assertIn(
+            'arkui-xts-selector --download-daily-sdk --sdk-component ohos-sdk-public --sdk-branch master --sdk-date 20260406',
             output,
         )
         self.assertIn('Preparation', output)
@@ -910,6 +913,8 @@ class FancySliderModifier extends SliderModifier {}
                 )
             ]
 
+        from arkui_xts_selector import cli as cli_module
+        cli_module._latest_daily_selector_metadata.cache_clear()
         with mock.patch("arkui_xts_selector.cli.list_daily_tags", side_effect=fake_list_daily_tags):
             steps = build_next_steps(report, app_config, self._build_next_steps_args())
 
@@ -1005,6 +1010,51 @@ class FancySliderModifier extends SliderModifier {}
         self.assertTrue(step_commands["Flash daily firmware"].startswith("ohos xts flash "))
         self.assertTrue(step_commands["Run required tests"].startswith("ohos xts run "))
         self.assertNotIn("--run-now", step_commands["Run required tests"])
+
+    def test_build_next_steps_adds_compare_step_when_safe_base_run_exists(self) -> None:
+        app_config = AppConfig(
+            repo_root=Path("/tmp/repo"),
+            xts_root=Path("/tmp/repo/test/xts"),
+            sdk_api_root=Path("/tmp/repo/sdk"),
+            cache_file=None,
+            git_repo_root=Path("/tmp/repo/foundation/arkui/ace_engine"),
+            git_remote="origin",
+            git_base_branch="master",
+            run_label="fix",
+            run_store_root=Path("/tmp/run-store"),
+        )
+        report = {
+            "sdk_api_root": "/tmp/missing-sdk",
+            "built_artifacts": {"testcases_dir_exists": True, "module_info_exists": True},
+            "coverage_recommendations": {"required_target_keys": [], "recommended_target_keys": ["suite1"]},
+            "execution_overview": {"selected_target_count": 1},
+            "selector_run": {"label": "fix", "selector_report_path": "/tmp/report.json"},
+        }
+
+        existing_result = Path("/tmp/base-results")
+        with mock.patch("pathlib.Path.exists", return_value=True), mock.patch(
+            "arkui_xts_selector.cli.list_run_manifests",
+            return_value=[
+                {
+                    "label": "baseline",
+                    "label_key": "baseline",
+                    "status": "completed",
+                    "timestamp": "20260410T010000Z",
+                    "comparable_result_paths": [str(existing_result)],
+                }
+            ],
+        ), mock.patch.dict(
+            os.environ,
+            {
+                "ARKUI_XTS_SELECTOR_COMMAND_PREFIX": "ohos xts",
+                "ARKUI_XTS_SELECTOR_COMMAND_MODE": "wrapper",
+            },
+            clear=False,
+        ):
+            steps = build_next_steps(report, app_config, self._build_next_steps_args())
+
+        step_commands = {step["step"]: step["command"] for step in steps}
+        self.assertEqual(step_commands["Compare with base run"], "ohos xts compare baseline fix")
 
     def test_print_human_uses_rich_box_drawing_tables(self) -> None:
         report = {
@@ -1133,11 +1183,15 @@ class FancySliderModifier extends SliderModifier {}
         self.assertIn('ace_ets_module_modifier_static', output)
         self.assertIn('ace_ets_module_modifier', output)
         self.assertIn('XDevice run with reports and', output)
-        self.assertIn('Commands', output)
         self.assertIn(
-            'hdc shell aa test -b com.example.static -m entry -s unittest OpenHarmonyTestRunner  # ace_ets_module_modifier_static [aa_test] | Direct device run via hdc and OpenHarmonyTestRunner.',
+            '1. ace_ets_module_modifier_static [aa_test]. Direct device run via hdc and OpenHarmonyTestRunner.',
             output,
         )
+        self.assertIn(
+            'hdc shell aa test -b com.example.static -m entry -s unittest OpenHarmonyTestRunner',
+            output,
+        )
+        self.assertNotIn('Primary Evidence', output)
         self.assertIn('Increase --top-projects to see more.', output)
         self.assertNotIn('<timestamp>', output)
 
@@ -2127,9 +2181,12 @@ class FancySliderModifier extends SliderModifier {}
         self.assertIn('Required Run Order', output)
         self.assertIn('Optional Duplicate Coverage', output)
         self.assertIn('Batch Run Commands', output)
-        self.assertIn('Run Commands', output)
         self.assertIn(
-            'arkui-xts-selector --run-now --run-priority required  # Run required batch | Only strongest unique coverage.',
+            '1. Run required batch. Only strongest unique coverage. Targets: 1. Est.: -.',
+            output,
+        )
+        self.assertIn(
+            'arkui-xts-selector --run-now --run-priority required',
             output,
         )
         self.assertIn('adds 2 new', output)
@@ -2247,7 +2304,7 @@ class FancySliderModifier extends SliderModifier {}
         self.assertTrue(commands[0]["command"].startswith("ohos xts run --from-report /tmp/report.json "))
         self.assertNotIn("--run-now", commands[0]["command"])
 
-    def test_print_human_hides_multi_source_changed_file_blocks_by_default(self) -> None:
+    def test_print_human_hides_multi_source_evidence_details_by_default(self) -> None:
         report = {
             'repo_root': '/tmp/repo',
             'xts_root': '/tmp/repo/test/xts',
@@ -2278,8 +2335,9 @@ class FancySliderModifier extends SliderModifier {}
             print_human(report)
         output = buffer.getvalue()
         self.assertIn('Source Evidence', output)
-        self.assertIn('hidden in multi-source mode', output)
-        self.assertNotIn('Changed File: a.cpp', output)
+        self.assertIn('hidden by default', output)
+        self.assertIn('Changed File: a.cpp', output)
+        self.assertNotIn('Primary Evidence', output)
 
     def test_print_human_shows_zero_coverage_recommendations_for_multi_source_reports(self) -> None:
         report = {

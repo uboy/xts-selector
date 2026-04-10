@@ -77,10 +77,12 @@ from .execution import (
 )
 from .flashing import flash_image_bundle
 from .run_store import (
+    COMPLETED_RUN_STATUSES,
     RunSession,
     build_run_manifest,
     create_run_session,
     default_run_store_root,
+    list_run_manifests,
     normalize_run_label,
     resolve_latest_run,
     write_run_artifacts,
@@ -5096,27 +5098,32 @@ def _single_line_comment_text(value: object) -> str:
     return " ".join(str(value or "").split())
 
 
-def _print_copyable_command_lines(title: str, items: list[dict[str, object]], indent: int = 0) -> None:
-    lines: list[str] = []
+def _print_actionable_command_list(title: str, items: list[dict[str, object]]) -> None:
+    entries: list[tuple[str, str]] = []
     seen_commands: set[str] = set()
     for item in items:
         command = str(item.get("command") or "").strip()
         if not command or command == "-" or command in seen_commands:
             continue
         seen_commands.add(command)
-        summary_parts = [
-            _single_line_comment_text(item.get("label")),
-            _single_line_comment_text(item.get("why")),
-        ]
-        summary = " | ".join(part for part in summary_parts if part)
-        lines.append(f"{command}  # {summary}" if summary else command)
-    if not lines:
+        title_text = _single_line_comment_text(item.get("label") or item.get("step") or item.get("title"))
+        status_text = _single_line_comment_text(item.get("status"))
+        why_text = _single_line_comment_text(item.get("why"))
+        details_text = _single_line_comment_text(item.get("details"))
+        summary = title_text or "Command"
+        if status_text and status_text != "-":
+            summary = f"{summary} [{status_text}]"
+        tail_parts = [part for part in (why_text, details_text) if part]
+        if tail_parts:
+            summary = f"{summary}. {' '.join(tail_parts)}"
+        entries.append((summary, command))
+    if not entries:
         return
-    prefix = " " * indent
     print(title)
-    for line in lines:
-        print(f"{prefix}{line}" if prefix else line)
-    print()
+    for index, (summary, command) in enumerate(entries, start=1):
+        print(f"{index}. {summary}")
+        print(command)
+        print()
 
 
 def _print_key_value_section(title: str, rows: list[tuple[object, object]]) -> None:
@@ -5376,6 +5383,63 @@ def _run_priority_target_count(coverage: dict[str, object], priority: str) -> in
     return recommended_count + optional_count
 
 
+def _build_compare_command(base_label: str, target_label: str, run_store_root: Path | None) -> str:
+    if _uses_wrapper_commands():
+        return _shell_join([*_wrapper_or_direct_command_tokens("compare"), base_label, target_label])
+    resolved_run_store = (run_store_root or default_run_store_root(PROJECT_ROOT)).resolve()
+    return _shell_join(
+        [
+            "python3",
+            "-m",
+            "arkui_xts_selector.xts_compare",
+            "--base-label",
+            base_label,
+            "--target-label",
+            target_label,
+            "--label-root",
+            str(resolved_run_store),
+        ]
+    )
+
+
+def _find_compare_base_label(run_store_root: Path | None, current_label: str | None) -> str | None:
+    current = str(current_label or "").strip()
+    if not current:
+        return None
+    current_key = normalize_run_label(current)
+    root = (run_store_root or default_run_store_root(PROJECT_ROOT)).resolve()
+    candidates: dict[str, dict[str, str]] = {}
+    for manifest in list_run_manifests(root):
+        label = str(manifest.get("label") or "").strip()
+        label_key = str(manifest.get("label_key") or normalize_run_label(label))
+        if not label or label_key == current_key:
+            continue
+        if str(manifest.get("status") or "") not in COMPLETED_RUN_STATUSES:
+            continue
+        comparable_paths = [
+            str(Path(path).expanduser().resolve())
+            for path in manifest.get("comparable_result_paths", [])
+            if str(path).strip() and Path(path).expanduser().exists()
+        ]
+        if not comparable_paths:
+            continue
+        candidate = {
+            "label": label,
+            "label_key": label_key,
+            "timestamp": str(manifest.get("timestamp", "")),
+        }
+        previous = candidates.get(label_key)
+        if previous is None or candidate["timestamp"] > previous["timestamp"]:
+            candidates[label_key] = candidate
+    if not candidates:
+        return None
+    if "baseline" in candidates:
+        return candidates["baseline"]["label"]
+    if len(candidates) == 1:
+        return next(iter(candidates.values()))["label"]
+    return None
+
+
 def build_coverage_run_commands(report: dict, app_config: AppConfig, args: argparse.Namespace) -> list[dict[str, str]]:
     coverage = report.get("coverage_recommendations", {})
     commands: list[dict[str, str]] = []
@@ -5424,6 +5488,8 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
     has_acts_artifacts = bool(built_artifacts.get("testcases_dir_exists")) and bool(built_artifacts.get("module_info_exists"))
     daily_prebuilt_ready = bool(getattr(app_config, "daily_prebuilt_ready", False))
     coverage = report.get("coverage_recommendations", {})
+    selector_run = report.get("selector_run", {}) if isinstance(report.get("selector_run"), dict) else {}
+    current_run_label = str(selector_run.get("label") or app_config.run_label or "").strip()
     required_target_count = len(coverage.get("required_target_keys", []))
     recommended_target_count = len(coverage.get("recommended_target_keys", []))
     selected_targets = int(report.get("execution_overview", {}).get("selected_target_count", 0))
@@ -5591,6 +5657,16 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
                 "command": _shell_join(command),
             }
         )
+    compare_base_label = _find_compare_base_label(app_config.run_store_root, current_run_label)
+    if compare_base_label:
+        steps.append(
+            {
+                "step": "Compare with base run",
+                "status": "follow-up",
+                "why": f"Use this after the run finishes to compare the new results against the saved base run '{compare_base_label}'.",
+                "command": _build_compare_command(compare_base_label, current_run_label, app_config.run_store_root),
+            }
+        )
     return steps
 
 
@@ -5650,27 +5726,17 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         _print_key_value_section("Coverage Recommendations", coverage_rows)
         batch_run_commands = list(report.get("coverage_run_commands", []))
         if batch_run_commands:
-            print("Batch Run Commands")
-            _print_human_table(
-                ["#", "Mode", "Targets", "Est. Time", "Why"],
-                [
-                    [index, item.get("label", "-"), item.get("count", "-"), item.get("estimated_duration", "-"), item.get("why", "-")]
-                    for index, item in enumerate(batch_run_commands, start=1)
-                ],
-                indent=2,
-            )
-            print()
-            _print_copyable_command_lines(
-                "Run Commands",
+            _print_actionable_command_list(
+                "Batch Run Commands",
                 [
                     {
                         "label": item.get("label", "-"),
                         "why": item.get("why", "-"),
+                        "details": f"Targets: {item.get('count', '-')}. Est.: {item.get('estimated_duration', '-')}.",
                         "command": item.get("command", "-"),
                     }
                     for item in batch_run_commands
-                ],
-                indent=2,
+                ]
             )
 
         def _print_coverage_group(
@@ -5783,32 +5849,8 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                 indent=2,
             )
             print()
-            print("How To Run")
-            command_rows: list[list[object]] = []
-            command_index = 1
-            for target in grouped_targets:
-                for tool_name, command_key in (
-                    ("aa_test", "aa_test_command"),
-                    ("xdevice", "xdevice_command"),
-                    ("runtest", "runtest_command"),
-                ):
-                    command = target.get(command_key)
-                    if not command:
-                        continue
-                    command_rows.append(
-                        [
-                            command_index,
-                            _suite_label(target),
-                            tool_name,
-                            _run_tool_purpose(tool_name),
-                            command,
-                        ]
-                    )
-                    command_index += 1
-            _print_human_table(["#", "Suite", "Tool", "What It Does"], [row[:4] for row in command_rows], indent=2)
-            print()
-            _print_copyable_command_lines(
-                "Commands",
+            _print_actionable_command_list(
+                "How To Run",
                 [
                     {
                         "label": f"{_suite_label(target)} [{tool_name}]",
@@ -5822,8 +5864,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         ("runtest", "runtest_command"),
                     )
                     if target.get(command_key)
-                ],
-                indent=2,
+                ]
             )
             show_plan = bool(result_rows) or any(row[2] != "pending" for row in plan_rows)
             if plan_rows and show_plan:
@@ -5984,9 +6025,8 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         for command in guidance.get("target_build_commands", [])[:5]:
             command_rows.append(["target", command])
         if command_rows:
-            print("Local Build Commands")
-            _print_copyable_command_lines(
-                "Commands",
+            _print_actionable_command_list(
+                "Local Build Commands",
                 [
                     {
                         "label": f"Local build [{scope}]",
@@ -5994,38 +6034,20 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         "command": command,
                     }
                     for scope, command in command_rows
-                ],
-                indent=2,
+                ]
             )
 
     next_steps = report.get("next_steps", [])
     if next_steps:
-        print("Next Steps")
-        _print_human_table(
-            ["Step", "Status", "Why"],
-            [
-                [
-                    item.get("step", "-"),
-                    item.get("status", "-"),
-                    item.get("why", "-"),
-                ]
-                for item in next_steps
-            ],
-            indent=2,
+        status_rank = {"recommended": 0, "ready": 1, "follow-up": 2, "optional": 3, "blocked": 4}
+        ordered_next_steps = sorted(
+            next_steps,
+            key=lambda item: (
+                status_rank.get(str(item.get("status", "")), 99),
+                str(item.get("step", "")),
+            ),
         )
-        print()
-        _print_copyable_command_lines(
-            "Commands",
-            [
-                {
-                    "label": f"{item.get('step', '-')} [{item.get('status', '-')}]",
-                    "why": item.get("why", "-"),
-                    "command": item.get("command", "-"),
-                }
-                for item in next_steps
-            ],
-            indent=2,
-        )
+        _print_actionable_command_list("Next Steps", ordered_next_steps)
 
     coverage_recommendations = report.get("coverage_recommendations", {})
     if coverage_recommendations:
@@ -6122,15 +6144,13 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         )
         print()
 
-    show_source_evidence = bool(report.get("show_source_evidence", len(report.get("results", [])) <= 1))
-    if report["results"] and not show_source_evidence and len(report["results"]) > 1:
+    show_source_evidence = bool(report.get("show_source_evidence", False))
+    if report["results"] and not show_source_evidence:
         _print_key_value_section(
             "Source Evidence",
-            [("Visibility", "hidden in multi-source mode; use --show-source-evidence to inspect per-file evidence")],
+            [("Visibility", "hidden by default; use --show-source-evidence to inspect matching source files")],
         )
     for item in report["results"]:
-        if not show_source_evidence:
-            continue
         signals = item["signals"]
         relevance_summary = item.get("relevance_summary", {})
         primary_projects, broader_projects = split_scope_groups(item.get("projects", []))
@@ -6184,7 +6204,8 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             print()
             continue
         print_run_targets(item["run_targets"], relevance_summary)
-        print_projects(item["projects"])
+        if show_source_evidence:
+            print_projects(item["projects"])
 
     if report["unresolved_files"]:
         print("Unresolved Files")
@@ -6245,7 +6266,8 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             print()
             continue
         print_run_targets(item.get("run_targets", []), relevance_summary)
-        print_projects(item["projects"])
+        if show_source_evidence:
+            print_projects(item["projects"])
 
     for item in report["code_queries"]:
         _print_key_value_section(f"Code Query: {item['query']}", [("matches", len(item.get("matches", [])))])
@@ -6855,7 +6877,7 @@ def main() -> int:
         hdc_path=app_config.hdc_path,
         hdc_endpoint=app_config.hdc_endpoint,
     )
-    report["show_source_evidence"] = bool(args.show_source_evidence or args.debug_trace or len(report.get("results", [])) <= 1)
+    report["show_source_evidence"] = bool(args.show_source_evidence or args.debug_trace)
     report["coverage_run_commands"] = build_coverage_run_commands(report, app_config, args)
     report["next_steps"] = build_next_steps(report, app_config, args)
     execution_summary = None
