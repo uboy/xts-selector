@@ -71,8 +71,11 @@ from .execution import (
     SHARD_MODE_CHOICES,
     attach_execution_plan,
     build_run_target_entry,
+    collect_unique_run_targets,
     execute_planned_targets,
+    normalize_requested_test_names,
     preflight_execution,
+    read_requested_test_names,
     resolve_devices,
 )
 from .flashing import flash_image_bundle
@@ -120,9 +123,11 @@ def default_cache_path(xts_root: Path) -> Path:
     workspace_hash = hashlib.sha256(str(xts_root.resolve()).encode()).hexdigest()[:12]
     return Path(f"/tmp/arkui_xts_selector_cache_{workspace_hash}.json")
 DEFAULT_REPORT_FILE = "arkui_xts_selector_report.json"
+SELECTED_TESTS_FILE_NAME = "selected_tests.json"
 RELEVANCE_MODE_CHOICES = ("all", "balanced", "strict")
 PR_SOURCE_CHOICES = ("auto", "api", "git")
 HUMAN_OPTIONAL_DUPLICATE_DISPLAY_LIMIT = 20
+HUMAN_RUN_TARGET_DISPLAY_LIMIT = 10
 DEFAULT_CHANGED_FILE_EXCLUSION_RULES = {
     "rules": [
         {
@@ -4577,6 +4582,82 @@ def write_json_report(report: dict, json_to_stdout: bool, json_output_path: Path
     return target
 
 
+def resolve_selected_tests_output_path(selector_report_path: Path | None) -> Path | None:
+    if selector_report_path is None:
+        return None
+    return selector_report_path.resolve().with_name(SELECTED_TESTS_FILE_NAME)
+
+
+def _selected_test_aliases(entry: dict[str, object]) -> list[str]:
+    aliases: list[str] = []
+    seen: set[str] = set()
+    candidates = [
+        entry.get("build_target"),
+        entry.get("xdevice_module_name"),
+        entry.get("project"),
+        entry.get("test_json"),
+        entry.get("target_key"),
+    ]
+    for candidate in candidates:
+        text = str(candidate or "").strip()
+        if not text:
+            continue
+        for alias in (
+            text,
+            Path(text).stem,
+            text.rstrip("/").rsplit("/", 1)[-1],
+        ):
+            normalized = alias.strip().lower()
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            aliases.append(alias.strip())
+    return aliases
+
+
+def build_selected_tests_payload(report: dict, selector_report_path: Path | None) -> dict[str, object]:
+    groups = collect_unique_run_targets(report)
+    selected_keys = set(report.get("execution_overview", {}).get("selected_target_keys", []))
+    requested_test_names = list(report.get("execution_overview", {}).get("requested_test_names", []))
+    tests: list[dict[str, object]] = []
+    for group in groups:
+        representative = dict(group.get("representative", {}))
+        tests.append(
+            {
+                "name": _suite_label(representative),
+                "aliases": _selected_test_aliases(representative),
+                "selected_by_default": group.get("key") in selected_keys,
+                "build_target": representative.get("build_target"),
+                "xdevice_module_name": representative.get("xdevice_module_name"),
+                "artifact_status": representative.get("artifact_status", "unknown"),
+                "artifact_reason": representative.get("artifact_reason", ""),
+                "bucket": representative.get("bucket", ""),
+                "scope_tier": representative.get("scope_tier", ""),
+                "variant": representative.get("variant", ""),
+                "project": representative.get("project", ""),
+                "test_json": representative.get("test_json", ""),
+                "target_key": group.get("key", ""),
+            }
+        )
+    return {
+        "selector_report_path": str(selector_report_path) if selector_report_path is not None else "",
+        "available_target_count": len(groups),
+        "selected_target_count": len(selected_keys),
+        "requested_test_names": requested_test_names,
+        "tests": tests,
+    }
+
+
+def write_selected_tests_report(report: dict, selector_report_path: Path | None) -> Path | None:
+    target = resolve_selected_tests_output_path(selector_report_path)
+    if target is None:
+        return None
+    payload = build_selected_tests_payload(report, selector_report_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return target
+
+
 def load_selector_report(path: Path) -> dict:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -5389,7 +5470,12 @@ def _base_selector_run_command(report: dict, app_config: AppConfig, args: argpar
         run_command.extend(["--device-lock-timeout", app_config.device_lock_timeout])
     if app_config.devices:
         run_command.extend(["--devices", ",".join(app_config.devices)])
-    if args.show_source_evidence:
+    for test_name in getattr(args, "run_test_name", []) or []:
+        run_command.extend(["--run-test-name", test_name])
+    run_test_names_file = getattr(args, "run_test_names_file", None)
+    if run_test_names_file:
+        run_command.extend(["--run-test-names-file", run_test_names_file])
+    if getattr(args, "show_source_evidence", False):
         run_command.append("--show-source-evidence")
     return run_command
 
@@ -5505,7 +5591,9 @@ def build_coverage_run_commands(report: dict, app_config: AppConfig, args: argpa
 
 
 def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespace) -> list[dict[str, str]]:
-    sdk_root_exists = Path(str(report.get("sdk_api_root") or "")).exists()
+    sdk_root_value = str(report.get("sdk_api_root") or "").strip()
+    sdk_root_exists = bool(sdk_root_value) and Path(sdk_root_value).exists()
+    run_only_flow = bool(getattr(args, "from_report", None) or getattr(args, "last_report", False))
     built_artifacts = report.get("built_artifacts", {})
     has_acts_artifacts = bool(built_artifacts.get("testcases_dir_exists")) and bool(built_artifacts.get("module_info_exists"))
     daily_prebuilt_ready = bool(getattr(app_config, "daily_prebuilt_ready", False))
@@ -5523,35 +5611,36 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
     )
 
     steps: list[dict[str, str]] = []
-    steps.append(
-        {
-            "step": "Download SDK",
-            "status": "optional" if sdk_root_exists else "recommended",
-            "why": (
-                "SDK root already exists; use this to switch to another SDK build by tag or date."
-                if sdk_root_exists
-                else "SDK root is missing or you want to switch SDK version."
-            ),
-            "command": _shell_join(
-                [
-                    *_wrapper_or_direct_command_tokens("sdk" if _uses_wrapper_commands() else None),
-                    *([] if _uses_wrapper_commands() else ["--download-daily-sdk"]),
-                    "--sdk-component",
-                    app_config.sdk_component,
-                    "--sdk-branch",
-                    app_config.sdk_branch,
-                    *_daily_selector_hint_args(
-                        "--sdk-build-tag",
-                        build_tag=app_config.sdk_build_tag,
-                        build_date=app_config.sdk_date,
-                        component=app_config.sdk_component,
-                        branch=app_config.sdk_branch,
-                        component_role="generic",
-                    ),
-                ]
-            ),
-        }
-    )
+    if not run_only_flow:
+        steps.append(
+            {
+                "step": "Switch SDK For Selection" if sdk_root_exists else "Download SDK For Selection",
+                "status": "optional",
+                "why": (
+                    "Optional: use this only to rescore the selector against another SDK build. It is not required to run selected tests."
+                    if sdk_root_exists
+                    else "Optional: adding an SDK can improve selector matching for ArkUI API symbols, but it is not required to execute selected tests."
+                ),
+                "command": _shell_join(
+                    [
+                        *_wrapper_or_direct_command_tokens("sdk" if _uses_wrapper_commands() else None),
+                        *([] if _uses_wrapper_commands() else ["--download-daily-sdk"]),
+                        "--sdk-component",
+                        app_config.sdk_component,
+                        "--sdk-branch",
+                        app_config.sdk_branch,
+                        *_daily_selector_hint_args(
+                            "--sdk-build-tag",
+                            build_tag=app_config.sdk_build_tag,
+                            build_date=app_config.sdk_date,
+                            component=app_config.sdk_component,
+                            branch=app_config.sdk_branch,
+                            component_role="generic",
+                        ),
+                    ]
+                ),
+            }
+        )
     steps.append(
         {
             "step": "Download tests",
@@ -5708,6 +5797,202 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
 
 
 def print_human(report: dict, cache_used: bool | None = None, json_report_path: Path | None = None) -> None:
+    selected_tests_json_path = str(report.get("selected_tests_json_path", "")).strip()
+    unique_run_targets = collect_unique_run_targets(report)
+    selected_target_count = len(report.get("execution_overview", {}).get("selected_target_keys", []))
+
+    def _selected_run_target_groups() -> list[dict]:
+        selected_keys = {
+            str(item).strip()
+            for item in report.get("execution_overview", {}).get("selected_target_keys", [])
+            if str(item).strip()
+        }
+        if not selected_keys:
+            return list(unique_run_targets)
+        filtered = [
+            group
+            for group in unique_run_targets
+            if str(group.get("key") or "").strip() in selected_keys
+        ]
+        return filtered or list(unique_run_targets)
+
+    def _print_run_only_human() -> None:
+        selected_groups = _selected_run_target_groups()
+        summary_rows: list[tuple[object, object]] = [
+            ("Workspace", report.get("repo_root")),
+            ("ACTS Out", report.get("acts_out_root")),
+            ("Selected", len(selected_groups)),
+        ]
+        selector_run = report.get("selector_run") or {}
+        if selector_run:
+            summary_rows.extend(
+                [
+                    ("Run Label", selector_run.get("label", "-")),
+                    ("Run Dir", selector_run.get("run_dir", "-")),
+                ]
+            )
+        if json_report_path is not None:
+            summary_rows.append(("Report JSON", json_report_path))
+        if selected_tests_json_path:
+            summary_rows.append(("Selected Tests JSON", selected_tests_json_path))
+        requested_names = list(report.get("execution_overview", {}).get("requested_test_names", []))
+        if requested_names:
+            summary_rows.append(("Requested Names", _human_join(requested_names)))
+        if report.get("requested_devices"):
+            summary_rows.append(("Devices", _human_join(report["requested_devices"])))
+        if report.get("daily_prebuilt", {}).get("note"):
+            summary_rows.append(("Daily Note", report["daily_prebuilt"]["note"]))
+        _print_key_value_section("Run Summary", summary_rows)
+
+        if selected_groups:
+            print("Selected Tests")
+            test_rows: list[list[object]] = []
+            display_limit = HUMAN_RUN_TARGET_DISPLAY_LIMIT if len(selected_groups) > HUMAN_RUN_TARGET_DISPLAY_LIMIT else None
+            display_groups = selected_groups[:display_limit] if display_limit else selected_groups
+            for index, group in enumerate(display_groups, start=1):
+                target = group.get("representative", {})
+                first_plan = (target.get("execution_plan") or [{}])[0]
+                first_result = (target.get("execution_results") or [{}])[0]
+                test_rows.append(
+                    [
+                        index,
+                        _suite_label(target),
+                        target.get("artifact_status", "-"),
+                        first_result.get("selected_tool")
+                        or first_plan.get("selected_tool")
+                        or "-",
+                        first_result.get("device_label")
+                        or first_plan.get("device_label")
+                        or "-",
+                        first_result.get("status")
+                        or first_plan.get("status")
+                        or ("selected" if target.get("selected_for_execution") else "pending"),
+                    ]
+                )
+            _print_human_table(["#", "Suite", "Artifacts", "Tool", "Device", "Status"], test_rows, indent=2)
+            print()
+            if display_limit and len(selected_groups) > display_limit:
+                note_rows: list[tuple[object, object]] = [
+                    ("Visible", f"{display_limit} of {len(selected_groups)}"),
+                    ("Note", "Full selected suite list remains in selected_tests.json."),
+                ]
+                if selected_tests_json_path:
+                    note_rows.append(("JSON", selected_tests_json_path))
+                _print_key_value_section("Selected Tests Note", note_rows)
+
+        execution_rows: list[tuple[object, object]] = []
+        if report.get("execution_overview"):
+            overview = report["execution_overview"]
+            execution_rows.append(
+                (
+                    "execution_overview",
+                    (
+                        f"tool={overview.get('run_tool', '-')}, "
+                        f"run_priority={overview.get('run_priority', 'recommended')}, "
+                        f"parallel_jobs={overview.get('parallel_jobs', 1)}, "
+                        f"selected_targets={overview.get('selected_target_count', 0)}, "
+                        f"executed={_human_value(overview.get('executed'))}"
+                    ),
+                )
+            )
+        if report.get("execution_preflight"):
+            preflight = report["execution_preflight"]
+            execution_rows.append(
+                (
+                    "execution_preflight",
+                    (
+                        f"status={preflight.get('status', '-')}, "
+                        f"plans={preflight.get('plan_count', 0)}, "
+                        f"tools={_human_join(preflight.get('selected_tools', []))}, "
+                        f"connected_devices={_human_join(preflight.get('connected_devices', []))}"
+                    ),
+                )
+            )
+            if preflight.get("errors"):
+                execution_rows.append(("preflight_errors", _human_preview(preflight.get("errors", [])[:5], limit=5)))
+            if preflight.get("warnings"):
+                execution_rows.append(("preflight_warnings", _human_preview(preflight.get("warnings", [])[:5], limit=5)))
+        if report.get("execution_summary"):
+            summary = report["execution_summary"]
+            execution_rows.append(
+                (
+                    "execution_summary",
+                    (
+                        f"planned={summary.get('planned_run_count', 0)}, "
+                        f"passed={summary.get('passed', 0)}, "
+                        f"failed={summary.get('failed', 0)}, "
+                        f"blocked={summary.get('blocked', 0)}, "
+                        f"timeout={summary.get('timeout', 0)}, "
+                        f"unavailable={summary.get('unavailable', 0)}"
+                    ),
+                )
+            )
+        if report.get("runtime_history_update"):
+            history_update = report["runtime_history_update"]
+            execution_rows.append(
+                (
+                    "runtime_history",
+                    (
+                        f"file={history_update.get('history_file', '-')}, "
+                        f"updated_targets={history_update.get('updated_targets', 0)}, "
+                        f"updated_samples={history_update.get('updated_samples', 0)}, "
+                        f"significant_updates={history_update.get('significant_updates', 0)}"
+                    ),
+                )
+            )
+        if execution_rows:
+            _print_key_value_section("Execution", execution_rows)
+
+        result_rows: list[list[object]] = []
+        plan_rows: list[list[object]] = []
+        for index, group in enumerate(selected_groups, start=1):
+            target = group.get("representative", {})
+            for plan in target.get("execution_plan", []):
+                plan_rows.append(
+                    [
+                        index,
+                        _suite_label(target),
+                        plan.get("device_label", "-"),
+                        plan.get("status", "-"),
+                        plan.get("selected_tool") or "-",
+                        plan.get("reason") or "-",
+                    ]
+                )
+            for result in target.get("execution_results", []):
+                result_rows.append(
+                    [
+                        index,
+                        _suite_label(target),
+                        result.get("device_label", "-"),
+                        result.get("status", "-"),
+                        result.get("selected_tool") or "-",
+                        _format_duration_seconds(result.get("duration_s")),
+                        "-" if result.get("returncode") is None else result.get("returncode"),
+                        _format_case_summary(result.get("case_summary")),
+                        result.get("result_path") or "-",
+                    ]
+                )
+        if result_rows:
+            print("Execution Results")
+            _print_human_table(
+                ["#", "Suite", "Device", "Status", "Tool", "Duration", "RC", "Case Summary", "Result Path"],
+                result_rows,
+                indent=2,
+            )
+            print()
+        elif plan_rows:
+            print("Execution Plan")
+            _print_human_table(
+                ["#", "Suite", "Device", "Status", "Tool", "Reason"],
+                plan_rows,
+                indent=2,
+            )
+            print()
+
+    if str(report.get("human_mode", "")).strip() == "run_only":
+        _print_run_only_human()
+        return
+
     def print_coverage_recommendations(recommendations: dict[str, object]) -> None:
         ordered_targets = list(recommendations.get("ordered_targets", []))
         required_targets = list(recommendations.get("required", []))
@@ -5856,7 +6141,9 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             target_rows: list[list[object]] = []
             plan_rows: list[list[object]] = []
             result_rows: list[list[object]] = []
-            for index, target in enumerate(grouped_targets, start=1):
+            display_limit = HUMAN_RUN_TARGET_DISPLAY_LIMIT if len(grouped_targets) > HUMAN_RUN_TARGET_DISPLAY_LIMIT else None
+            display_targets = grouped_targets[:display_limit] if display_limit else grouped_targets
+            for index, target in enumerate(display_targets, start=1):
                 target_rows.append(
                     [
                         index,
@@ -5906,24 +6193,14 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                 indent=2,
             )
             print()
-            _print_actionable_command_list(
-                "How To Run",
-                [
-                    {
-                        "label": f"{_suite_label(target)} [{tool_name}]",
-                        "why": _run_tool_purpose(tool_name),
-                        "command": target.get(command_key, "-"),
-                    }
-                    for target in grouped_targets
-                    if str(target.get("artifact_status") or "") != "missing"
-                    for tool_name, command_key in (
-                        ("aa_test", "aa_test_command"),
-                        ("xdevice", "xdevice_command"),
-                        ("runtest", "runtest_command"),
-                    )
-                    if target.get(command_key)
+            if display_limit and len(grouped_targets) > display_limit:
+                note_rows: list[tuple[object, object]] = [
+                    ("Visible", f"{display_limit} of {len(grouped_targets)}"),
+                    ("Note", "Full suite list remains in selected_tests.json."),
                 ]
-            )
+                if selected_tests_json_path:
+                    note_rows.append(("JSON", selected_tests_json_path))
+                _print_key_value_section(f"{group_title} Note", note_rows)
             missing_targets = [target for target in grouped_targets if str(target.get("artifact_status") or "") == "missing"]
             if missing_targets:
                 _print_actionable_command_list(
@@ -5989,7 +6266,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
     summary_rows: list[tuple[object, object]] = [
         ("Workspace", report.get("repo_root")),
         ("XTS", report.get("xts_root")),
-        ("SDK API", report.get("sdk_api_root")),
+        ("SDK API (selection)", report.get("sdk_api_root")),
         ("ACE Engine", report.get("git_repo_root")),
         ("ACTS Out", report.get("acts_out_root")),
         ("Mode", report.get("variants_mode", "auto")),
@@ -6119,6 +6396,19 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             ),
         )
         _print_actionable_command_list("Next Steps", ordered_next_steps)
+
+    if unique_run_targets:
+        runnable_rows: list[tuple[object, object]] = [
+            ("Available", len(unique_run_targets)),
+            ("Selected By Default", selected_target_count),
+            ("Manual Selection", "Use --run-test-name <name> or --run-test-names-file <file> with the run command."),
+        ]
+        if selected_tests_json_path:
+            runnable_rows.append(("JSON", selected_tests_json_path))
+        requested_names = list(report.get("execution_overview", {}).get("requested_test_names", []))
+        if requested_names:
+            runnable_rows.append(("Requested Names", _human_join(requested_names)))
+        _print_key_value_section("Runnable Tests", runnable_rows)
 
     coverage_recommendations = report.get("coverage_recommendations", {})
     if coverage_recommendations:
@@ -6452,6 +6742,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--parallel-jobs", type=int, default=1, help="Maximum number of device queues to execute in parallel for --run-now. Same-device commands stay sequential.")
     parser.add_argument("--device-lock-timeout", type=float, default=30.0, help="Wait up to N seconds for an exclusive device lock before blocking that device queue. Default: 30.")
     parser.add_argument("--run-top-targets", type=int, default=0, help="Execute at most N unique run targets. 0 = all.")
+    parser.add_argument("--run-test-name", action="append", default=[], help="Run only the named suite. Can be repeated. Matches names and aliases from selected_tests.json.")
+    parser.add_argument("--run-test-names-file", help="Text file with one or comma-separated suite names per line for manual run selection.")
     parser.add_argument("--run-timeout", type=float, default=0.0, help="Per-command timeout in seconds for --run-now. 0 = disabled.")
     parser.add_argument("--relevance-mode", choices=RELEVANCE_MODE_CHOICES, default="all", help="Filter ranked projects by relevance. all = current behavior, balanced = must-run + high-confidence, strict = must-run only.")
     parser.add_argument("--variants", choices=["auto", "static", "dynamic", "both"], default="auto", help="Filter returned candidates by variant. Default: auto.")
@@ -6690,18 +6982,33 @@ def main() -> int:
     changed_inputs = list(args.changed_file)
     symbol_queries = [item.strip() for item in args.symbol_query if item and item.strip()]
     code_queries = [item.strip() for item in args.code_query if item and item.strip()]
+    requested_test_names_path = (
+        resolve_path(args.run_test_names_file, app_config.repo_root, app_config.repo_root)
+        if args.run_test_names_file
+        else None
+    )
+    requested_test_names = normalize_requested_test_names(
+        [
+            *list(args.run_test_name),
+            *read_requested_test_names(requested_test_names_path),
+        ]
+    )
 
     if args.changed_files_from:
         changed_inputs.extend(read_text(resolve_path(args.changed_files_from, app_config.repo_root, app_config.repo_root)).splitlines())
 
     if source_report is not None:
         report = source_report
+        report["human_mode"] = "run_only"
         report["timings_ms"] = {}
         report["json_output_mode"] = "stdout" if json_to_stdout else "file"
         report["requested_devices"] = list(app_config.devices)
         report["execution_summary"] = {}
         if json_output_path is not None:
             report["json_output_path"] = str(json_output_path)
+            selected_tests_json_path = resolve_selected_tests_output_path(json_output_path)
+            if selected_tests_json_path is not None:
+                report["selected_tests_json_path"] = str(selected_tests_json_path)
         if run_session is not None:
             report["selector_run"] = {
                 "label": run_session.label,
@@ -6730,6 +7037,7 @@ def main() -> int:
             device_lock_timeout=app_config.device_lock_timeout,
             hdc_path=app_config.hdc_path,
             hdc_endpoint=app_config.hdc_endpoint,
+            requested_test_names=requested_test_names,
         )
         report["next_steps"] = build_next_steps(report, app_config, args)
         execution_summary = None
@@ -6763,6 +7071,7 @@ def main() -> int:
                     parallel_jobs=args.parallel_jobs,
                     runtime_state_root=app_config.runtime_state_root,
                     device_lock_timeout=app_config.device_lock_timeout,
+                    requested_test_names=requested_test_names,
                 )
         else:
             report["execution_preflight"] = {}
@@ -6790,6 +7099,8 @@ def main() -> int:
 
         emit_progress(progress_enabled, "writing JSON report")
         written_json_path = write_json_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)
+        if written_json_path is not None:
+            write_selected_tests_report(report, written_json_path)
         if run_session is not None:
             manifest = build_run_manifest(
                 report,
@@ -6919,6 +7230,9 @@ def main() -> int:
         }
     if json_output_path is not None:
         report["json_output_path"] = str(json_output_path)
+        selected_tests_json_path = resolve_selected_tests_output_path(json_output_path)
+        if selected_tests_json_path is not None:
+            report["selected_tests_json_path"] = str(selected_tests_json_path)
     if run_session is not None:
         report["selector_run"] = {
             "label": run_session.label,
@@ -6947,6 +7261,7 @@ def main() -> int:
         device_lock_timeout=app_config.device_lock_timeout,
         hdc_path=app_config.hdc_path,
         hdc_endpoint=app_config.hdc_endpoint,
+        requested_test_names=requested_test_names,
     )
     report["show_source_evidence"] = bool(args.show_source_evidence or args.debug_trace)
     report["coverage_run_commands"] = build_coverage_run_commands(report, app_config, args)
@@ -6982,6 +7297,7 @@ def main() -> int:
                 parallel_jobs=args.parallel_jobs,
                 runtime_state_root=app_config.runtime_state_root,
                 device_lock_timeout=app_config.device_lock_timeout,
+                requested_test_names=requested_test_names,
             )
     else:
         report["execution_preflight"] = {}
@@ -7009,6 +7325,8 @@ def main() -> int:
 
     emit_progress(progress_enabled, "writing JSON report")
     written_json_path = write_json_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)
+    if written_json_path is not None:
+        write_selected_tests_report(report, written_json_path)
     if run_session is not None:
         manifest = build_run_manifest(
             report,

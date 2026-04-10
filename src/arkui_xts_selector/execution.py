@@ -25,14 +25,51 @@ from .runtime_state import (
 RUN_TOOL_CHOICES = ("auto", "aa_test", "xdevice", "runtest")
 SHARD_MODE_CHOICES = ("mirror", "split")
 RUN_PRIORITY_CHOICES = ("required", "recommended", "all")
-_RUN_TOOL_ORDER = ("aa_test", "xdevice", "runtest")
+_RUN_TOOL_ORDER = ("xdevice", "aa_test", "runtest")
 _OHOS_RELEASE_RE = re.compile(r"openharmony[-_ ]?(\d+)\.(\d+)", re.I)
+_AA_TEST_EXPLICIT_FAILURE_RE = re.compile(
+    r"failed to start user test|error code:\s*\d+|failed to retrieve specified package information|"
+    r"application corresponding to the specified package name is not installed|executecommand need connect-key",
+    re.I,
+)
+_AA_TEST_SUCCESS_EVIDENCE_RE = re.compile(
+    r"tests?\s*run\s*:\s*\d+|test count\s+is:\s*\d+|suite count\s+is:\s*\d+|"
+    r"\[\d+/\d+[^\]]*\]\s+.+\s+(?:PASSED|FAILED)\b",
+    re.I,
+)
 
 
 def _utc_now() -> str:
     from datetime import datetime, timezone
 
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def normalize_requested_test_names(values: list[str]) -> list[str]:
+    names: list[str] = []
+    seen: set[str] = set()
+    for raw in values:
+        for chunk in str(raw or "").split(","):
+            token = chunk.strip()
+            if not token:
+                continue
+            normalized = token.lower()
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            names.append(token)
+    return names
+
+
+def read_requested_test_names(path: Path | None) -> list[str]:
+    if path is None:
+        return []
+    try:
+        lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except OSError:
+        return []
+    values = [line.partition("#")[0] for line in lines]
+    return normalize_requested_test_names(values)
 
 
 def normalize_device_tokens(values: list[str]) -> list[str]:
@@ -212,6 +249,45 @@ def _safe_fragment(value: str | None) -> str:
     return compact or "target"
 
 
+def _target_name_aliases(target: dict[str, Any]) -> list[str]:
+    aliases: list[str] = []
+    seen: set[str] = set()
+    candidates = [
+        target.get("build_target"),
+        target.get("xdevice_module_name"),
+        target.get("project"),
+        target.get("test_json"),
+        target.get("target_key"),
+    ]
+    for candidate in candidates:
+        text = str(candidate or "").strip()
+        if not text:
+            continue
+        for alias in (
+            text,
+            Path(text).stem,
+            text.rstrip("/").rsplit("/", 1)[-1],
+        ):
+            normalized = alias.strip().lower()
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            aliases.append(alias.strip())
+    return aliases
+
+
+def _group_matches_requested_test_names(group: dict[str, Any], requested_test_names: list[str]) -> bool:
+    if not requested_test_names:
+        return True
+    aliases = {alias.lower() for alias in _target_name_aliases(group.get("representative", {}))}
+    if not aliases:
+        return False
+    for requested in requested_test_names:
+        if requested.lower() in aliases:
+            return True
+    return False
+
+
 def _planned_xdevice_result_path(
     xdevice_reports_root: Path | None,
     target: dict[str, Any],
@@ -377,6 +453,7 @@ def attach_execution_plan(
     device_lock_timeout: float = 30.0,
     hdc_path: Path | str | None = None,
     hdc_endpoint: str | None = None,
+    requested_test_names: list[str] | None = None,
 ) -> None:
     groups = collect_unique_run_targets(report)
     coverage_recommendations = report.get("coverage_recommendations", {})
@@ -400,6 +477,13 @@ def attach_execution_plan(
         default_groups = []
     else:
         default_groups = list(groups)
+    normalized_requested_test_names = normalize_requested_test_names(requested_test_names or [])
+    if normalized_requested_test_names:
+        default_groups = [
+            group
+            for group in default_groups
+            if _group_matches_requested_test_names(group, normalized_requested_test_names)
+        ]
     if run_top_targets <= 0:
         selected_groups = default_groups
     else:
@@ -438,6 +522,7 @@ def attach_execution_plan(
         "optional_target_count": len(optional_keys),
         "selected_target_count": len(selected_groups),
         "selected_target_keys": [group["key"] for group in selected_groups],
+        "requested_test_names": list(normalized_requested_test_names),
         "executed": False,
     }
 
@@ -478,6 +563,14 @@ def _classify_xdevice_case(status: str, result: str) -> str:
     return "unknown"
 
 
+def _aa_test_has_explicit_failure(text: str) -> bool:
+    return bool(_AA_TEST_EXPLICIT_FAILURE_RE.search(text or ""))
+
+
+def _aa_test_has_success_evidence(text: str) -> bool:
+    return bool(_AA_TEST_SUCCESS_EVIDENCE_RE.search(text or ""))
+
+
 def _execute_plan_item(item: dict[str, Any], timeout_value: float | None) -> tuple[dict[str, Any], dict[str, int] | None]:
     started_at = _utc_now()
     started_monotonic = time.monotonic()
@@ -510,12 +603,20 @@ def _execute_plan_item(item: dict[str, Any], timeout_value: float | None) -> tup
     if item.get("selected_tool") == "xdevice":
         case_summary = _load_xdevice_case_summary(item.get("result_path"))
     status = "passed" if completed.returncode == 0 else "failed"
+    combined_output = "\n".join(
+        part for part in [str(completed.stdout or ""), str(completed.stderr or "")] if part
+    )
     if (
         status == "passed"
         and case_summary is not None
         and (case_summary["fail_count"] or case_summary["blocked_count"] or case_summary["unknown_count"])
     ):
         status = "failed"
+    if status == "passed" and item.get("selected_tool") == "aa_test":
+        if _aa_test_has_explicit_failure(combined_output):
+            status = "failed"
+        elif not _aa_test_has_success_evidence(combined_output):
+            status = "failed"
     outcome = {
         **item,
         "status": status,
@@ -528,6 +629,16 @@ def _execute_plan_item(item: dict[str, Any], timeout_value: float | None) -> tup
         "finished_at": _utc_now(),
         "duration_s": round(time.monotonic() - started_monotonic, 3),
     }
+    if (
+        item.get("selected_tool") == "aa_test"
+        and outcome["status"] == "failed"
+        and completed.returncode == 0
+        and not outcome["stderr_tail"]
+    ):
+        if _aa_test_has_explicit_failure(combined_output):
+            outcome["stderr_tail"] = _tail_text(combined_output)
+        else:
+            outcome["stderr_tail"] = "aa_test returned 0 but produced no observable test execution evidence"
     return outcome, case_summary
 
 
@@ -750,6 +861,7 @@ def execute_planned_targets(
     parallel_jobs: int = 1,
     runtime_state_root: Path | None = None,
     device_lock_timeout: float = 30.0,
+    requested_test_names: list[str] | None = None,
 ) -> dict[str, Any]:
     attach_execution_plan(
         report,
@@ -764,6 +876,7 @@ def execute_planned_targets(
         parallel_jobs=parallel_jobs,
         runtime_state_root=runtime_state_root,
         device_lock_timeout=device_lock_timeout,
+        requested_test_names=requested_test_names,
     )
     groups = collect_unique_run_targets(report)
     selected_keys = set(report.get("execution_overview", {}).get("selected_target_keys", []))

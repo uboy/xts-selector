@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import unittest
+from contextlib import nullcontext
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -15,7 +16,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from arkui_xts_selector.cli import ContentModifierIndex, MappingConfig, SdkIndex, main
-from arkui_xts_selector.execution import attach_execution_plan, build_run_target_entry, preflight_execution
+from arkui_xts_selector.execution import (
+    attach_execution_plan,
+    build_run_target_entry,
+    execute_planned_targets,
+    preflight_execution,
+)
 
 
 def _sample_target(project_name: str, module_name: str) -> dict[str, object]:
@@ -35,6 +41,66 @@ def _sample_target(project_name: str, module_name: str) -> dict[str, object]:
 
 
 class ExecutionPlanningTests(unittest.TestCase):
+    def test_attach_execution_plan_auto_prefers_xdevice_when_available(self) -> None:
+        repo_root = Path("/tmp/repo")
+        target = build_run_target_entry(
+            _sample_target("button_static", "ActsButtonTest"),
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            device="SER1",
+        )
+        report = {"results": [{"changed_file": "a.cpp", "run_targets": [target]}], "symbol_queries": []}
+
+        attach_execution_plan(
+            report,
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            devices=["SER1"],
+            run_tool="auto",
+            shard_mode="mirror",
+        )
+
+        self.assertEqual(target["execution_plan"][0]["selected_tool"], "xdevice")
+
+    def test_attach_execution_plan_filters_by_requested_test_name_alias(self) -> None:
+        repo_root = Path("/tmp/repo")
+        first = build_run_target_entry(
+            _sample_target("button_static", "ActsButtonTest"),
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            device="SER1",
+        )
+        second = build_run_target_entry(
+            _sample_target("slider_static", "ActsSliderTest"),
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            device="SER1",
+        )
+        report = {
+            "results": [
+                {"changed_file": "a.cpp", "run_targets": [first]},
+                {"changed_file": "b.cpp", "run_targets": [second]},
+            ],
+            "symbol_queries": [],
+        }
+
+        attach_execution_plan(
+            report,
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            devices=["SER1"],
+            run_tool="aa_test",
+            shard_mode="mirror",
+            requested_test_names=["ActsSliderTest"],
+        )
+
+        self.assertEqual(
+            report["execution_overview"]["selected_target_keys"],
+            ["test/xts/acts/arkui/slider_static/Test.json"],
+        )
+        self.assertFalse(first["selected_for_execution"])
+        self.assertTrue(second["selected_for_execution"])
+
     def test_attach_execution_plan_split_shards_targets_across_devices(self) -> None:
         repo_root = Path("/tmp/repo")
         first = build_run_target_entry(
@@ -349,6 +415,59 @@ class ExecutionPlanningTests(unittest.TestCase):
         self.assertIn("LD_LIBRARY_PATH", seen_env)
         self.assertEqual(seen_env["LD_LIBRARY_PATH"].split(":")[0], str(library_dir.resolve()))
 
+    def test_execute_planned_targets_marks_aa_test_without_evidence_as_failed(self) -> None:
+        repo_root = Path("/tmp/repo")
+        target = build_run_target_entry(
+            _sample_target("button_static", "ActsButtonTest"),
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            device="SER1",
+        )
+        report = {"results": [{"changed_file": "a.cpp", "run_targets": [target]}], "symbol_queries": []}
+
+        fake_completed = SimpleNamespace(returncode=0, stdout="", stderr="")
+        with mock.patch("arkui_xts_selector.execution.acquire_device_lock", return_value=nullcontext()), \
+             mock.patch("arkui_xts_selector.execution.subprocess.run", return_value=fake_completed):
+            summary = execute_planned_targets(
+                report,
+                repo_root=repo_root,
+                acts_out_root=repo_root / "out/release/suites/acts",
+                devices=["SER1"],
+                run_tool="aa_test",
+            )
+
+        self.assertEqual(summary["failed"], 1)
+        self.assertEqual(target["execution_results"][0]["status"], "failed")
+        self.assertIn("no observable test execution evidence", target["execution_results"][0]["stderr_tail"])
+
+    def test_execute_planned_targets_accepts_aa_test_with_real_output_evidence(self) -> None:
+        repo_root = Path("/tmp/repo")
+        target = build_run_target_entry(
+            _sample_target("button_static", "ActsButtonTest"),
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            device="SER1",
+        )
+        report = {"results": [{"changed_file": "a.cpp", "run_targets": [target]}], "symbol_queries": []}
+
+        fake_completed = SimpleNamespace(
+            returncode=0,
+            stdout="Tests run: 5, Passed: 5, Failed: 0\n",
+            stderr="",
+        )
+        with mock.patch("arkui_xts_selector.execution.acquire_device_lock", return_value=nullcontext()), \
+             mock.patch("arkui_xts_selector.execution.subprocess.run", return_value=fake_completed):
+            summary = execute_planned_targets(
+                report,
+                repo_root=repo_root,
+                acts_out_root=repo_root / "out/release/suites/acts",
+                devices=["SER1"],
+                run_tool="aa_test",
+            )
+
+        self.assertEqual(summary["passed"], 1)
+        self.assertEqual(target["execution_results"][0]["status"], "passed")
+
 
 class SelectorRunLabelTests(unittest.TestCase):
     def test_main_writes_planned_manifest_for_run_label(self) -> None:
@@ -398,6 +517,55 @@ class SelectorRunLabelTests(unittest.TestCase):
             payload = json.loads(manifests[0].read_text(encoding="utf-8"))
             self.assertEqual(payload["label"], "baseline")
             self.assertEqual(payload["status"], "planned")
+
+    def test_main_from_report_marks_human_mode_run_only(self) -> None:
+        report_payload = {
+            "repo_root": "/tmp/repo",
+            "xts_root": "/tmp/repo/test/xts",
+            "sdk_api_root": "/tmp/repo/sdk",
+            "git_repo_root": "/tmp/repo/foundation/arkui/ace_engine",
+            "acts_out_root": "/tmp/repo/out/release/suites/acts",
+            "product_build": {"status": "present", "out_dir_exists": True, "build_log_exists": True, "error_log_exists": False, "error_log_size": 0},
+            "built_artifacts": {"status": "present", "testcases_dir_exists": True, "module_info_exists": True, "testcase_json_count": 1},
+            "built_artifact_index": {},
+            "cache_used": False,
+            "variants_mode": "auto",
+            "excluded_inputs": [],
+            "results": [],
+            "symbol_queries": [],
+            "code_queries": [],
+            "unresolved_files": [],
+            "timings_ms": {},
+        }
+
+        with TemporaryDirectory() as tmpdir:
+            report_path = Path(tmpdir) / "selector_report.json"
+            report_path.write_text(json.dumps(report_payload), encoding="utf-8")
+            seen_report: dict[str, object] = {}
+
+            def fake_attach_execution_plan(report, **kwargs):
+                report["execution_overview"] = {"selected_target_keys": [], "selected_target_count": 0, "executed": False}
+
+            def fake_print_human(report, *_args, **_kwargs):
+                seen_report.update(report)
+
+            argv = [
+                "arkui-xts-selector",
+                "--from-report",
+                str(report_path),
+                "--no-progress",
+            ]
+            with mock.patch.object(sys, "argv", argv):
+                with mock.patch("arkui_xts_selector.cli.attach_execution_plan", side_effect=fake_attach_execution_plan), \
+                     mock.patch("arkui_xts_selector.cli.build_next_steps", return_value=[]), \
+                     mock.patch("arkui_xts_selector.cli.write_json_report", return_value=report_path), \
+                     mock.patch("arkui_xts_selector.cli.write_selected_tests_report"), \
+                     mock.patch("arkui_xts_selector.cli.print_human", side_effect=fake_print_human), \
+                     redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                    code = main()
+
+        self.assertEqual(code, 0)
+        self.assertEqual(seen_report.get("human_mode"), "run_only")
 
 
 if __name__ == "__main__":

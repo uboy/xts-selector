@@ -56,6 +56,7 @@ from arkui_xts_selector.cli import (
     resolve_json_output_path,
     resolve_pr_changed_files,
     restrict_explicit_surface_projects,
+    write_selected_tests_report,
     write_json_report,
     family_tokens_from_path,
     format_report,
@@ -88,6 +89,8 @@ class CliDesignV1Tests(unittest.TestCase):
             parallel_jobs=1,
             run_timeout=0,
             show_source_evidence=False,
+            from_report=None,
+            last_report=False,
         )
 
     def test_parse_pr_number_supports_pull_and_pulls_urls(self) -> None:
@@ -841,9 +844,9 @@ class FancySliderModifier extends SliderModifier {}
             'timings_ms': {},
             'next_steps': [
                 {
-                    'step': 'Download SDK',
+                    'step': 'Download SDK For Selection',
                     'status': 'optional',
-                    'why': 'SDK root already exists; use this to switch to another SDK build by tag or date.',
+                    'why': 'Optional: adding an SDK can improve selector matching for ArkUI API symbols, but it is not required to execute selected tests.',
                     'command': 'arkui-xts-selector --download-daily-sdk --sdk-component ohos-sdk-public --sdk-branch master --sdk-date 20260406',
                 }
             ],
@@ -859,7 +862,7 @@ class FancySliderModifier extends SliderModifier {}
         self.assertIn('--sdk-branch master', output)
         self.assertIn('--sdk-date 20260406', output)
         self.assertIn(
-            '1. Download SDK [optional]. SDK root already exists; use this to switch to another SDK build by tag or date.',
+            '1. Download SDK For Selection [optional]. Optional: adding an SDK can improve selector matching for ArkUI API symbols, but it is not required to execute selected tests.',
             output,
         )
         self.assertIn(
@@ -867,6 +870,7 @@ class FancySliderModifier extends SliderModifier {}
             output,
         )
         self.assertIn('Preparation', output)
+        self.assertIn('SDK API (selection)', output)
 
     def test_build_next_steps_uses_latest_available_daily_tag_and_date_when_config_is_empty(self) -> None:
         app_config = AppConfig(
@@ -919,8 +923,8 @@ class FancySliderModifier extends SliderModifier {}
             steps = build_next_steps(report, app_config, self._build_next_steps_args())
 
         step_commands = {step["step"]: step["command"] for step in steps}
-        self.assertIn("--sdk-build-tag 20260409_101500", step_commands["Download SDK"])
-        self.assertIn("--sdk-date 20260409", step_commands["Download SDK"])
+        self.assertIn("--sdk-build-tag 20260409_101500", step_commands["Download SDK For Selection"])
+        self.assertIn("--sdk-date 20260409", step_commands["Download SDK For Selection"])
         self.assertIn("--daily-build-tag 20260408_223344", step_commands["Download tests"])
         self.assertIn("--daily-date 20260408", step_commands["Download tests"])
         self.assertIn("--firmware-build-tag 20260407_112233", step_commands["Download firmware"])
@@ -960,8 +964,8 @@ class FancySliderModifier extends SliderModifier {}
 
         daily_tags_mock.assert_not_called()
         step_commands = {step["step"]: step["command"] for step in steps}
-        self.assertIn("--sdk-build-tag 20260406_204500", step_commands["Download SDK"])
-        self.assertIn("--sdk-date 20260406", step_commands["Download SDK"])
+        self.assertIn("--sdk-build-tag 20260406_204500", step_commands["Download SDK For Selection"])
+        self.assertIn("--sdk-date 20260406", step_commands["Download SDK For Selection"])
         self.assertIn("--daily-build-tag 20260405_193000", step_commands["Download tests"])
         self.assertIn("--daily-date 20260405", step_commands["Download tests"])
         self.assertIn("--firmware-build-tag 20260404_081500", step_commands["Download firmware"])
@@ -1004,12 +1008,38 @@ class FancySliderModifier extends SliderModifier {}
             steps = build_next_steps(report, app_config, self._build_next_steps_args())
 
         step_commands = {step["step"]: step["command"] for step in steps}
-        self.assertTrue(step_commands["Download SDK"].startswith("ohos xts sdk "))
+        self.assertTrue(step_commands["Download SDK For Selection"].startswith("ohos xts sdk "))
         self.assertTrue(step_commands["Download tests"].startswith("ohos xts tests "))
         self.assertTrue(step_commands["Download firmware"].startswith("ohos xts firmware "))
         self.assertTrue(step_commands["Flash daily firmware"].startswith("ohos xts flash "))
         self.assertTrue(step_commands["Run required tests"].startswith("ohos xts run "))
         self.assertNotIn("--run-now", step_commands["Run required tests"])
+
+    def test_build_next_steps_omits_sdk_step_for_from_report_flow(self) -> None:
+        app_config = AppConfig(
+            repo_root=Path("/tmp/repo"),
+            xts_root=Path("/tmp/repo/test/xts"),
+            sdk_api_root=Path("/tmp/repo/sdk"),
+            cache_file=None,
+            git_repo_root=Path("/tmp/repo/foundation/arkui/ace_engine"),
+            git_remote="origin",
+            git_base_branch="master",
+        )
+        report = {
+            "sdk_api_root": "/tmp/missing-sdk",
+            "built_artifacts": {"testcases_dir_exists": True, "module_info_exists": True},
+            "coverage_recommendations": {"required_target_keys": [], "recommended_target_keys": ["suite1"]},
+            "execution_overview": {"selected_target_count": 1},
+            "selector_run": {"selector_report_path": "/tmp/report.json"},
+        }
+        args = self._build_next_steps_args()
+        args.from_report = "/tmp/report.json"
+
+        steps = build_next_steps(report, app_config, args)
+
+        step_names = [step["step"] for step in steps]
+        self.assertNotIn("Download SDK For Selection", step_names)
+        self.assertNotIn("Switch SDK For Selection", step_names)
 
     def test_build_next_steps_adds_compare_step_when_safe_base_run_exists(self) -> None:
         app_config = AppConfig(
@@ -1187,7 +1217,7 @@ class FancySliderModifier extends SliderModifier {}
         self.assertNotIn('Timings (ms)', output)
         self.assertIn('Index Cache', output)
 
-    def test_print_human_how_to_run_uses_unique_command_rows_and_explains_tools(self) -> None:
+    def test_print_human_lists_tests_without_per_suite_command_blocks(self) -> None:
         report = {
             'repo_root': '/tmp/repo',
             'xts_root': '/tmp/repo/test/xts',
@@ -1246,6 +1276,8 @@ class FancySliderModifier extends SliderModifier {}
             'code_queries': [],
             'unresolved_files': [],
             'timings_ms': {},
+            'selected_tests_json_path': '/tmp/selected_tests.json',
+            'execution_overview': {'selected_target_keys': ['test/xts/acts/arkui/ace_ets_module_modifier_static/Test.json']},
         }
         buffer = io.StringIO()
         with redirect_stdout(buffer):
@@ -1254,21 +1286,123 @@ class FancySliderModifier extends SliderModifier {}
         output = buffer.getvalue()
         self.assertIn('Primary Tests', output)
         self.assertIn('Broader Coverage', output)
-        self.assertIn('How To Run', output)
-        self.assertIn('ace_ets_module_modifier_static', output)
-        self.assertIn('ace_ets_module_modifier', output)
-        self.assertIn('XDevice run with reports and', output)
-        self.assertIn(
-            '1. ace_ets_module_modifier_static [aa_test]. Direct device run via hdc and OpenHarmonyTestRunner.',
-            output,
-        )
-        self.assertIn(
-            'hdc shell aa test -b com.example.static -m entry -s unittest OpenHarmonyTestRunner',
-            output,
-        )
+        self.assertIn('Runnable Tests', output)
+        self.assertIn('/tmp/selected_tests.json', output)
+        self.assertIn('Manual Selection', output)
+        self.assertNotIn('How To Run', output)
+        self.assertNotIn('Direct device run via hdc and OpenHarmonyTestRunner.', output)
         self.assertNotIn('Primary Evidence', output)
         self.assertIn('Increase --top-projects to see more.', output)
         self.assertNotIn('<timestamp>', output)
+
+    def test_print_human_run_only_mode_is_compact(self) -> None:
+        report = {
+            'human_mode': 'run_only',
+            'repo_root': '/tmp/repo',
+            'xts_root': '/tmp/repo/test/xts',
+            'sdk_api_root': '/tmp/repo/sdk',
+            'git_repo_root': '/tmp/repo/foundation/arkui/ace_engine',
+            'acts_out_root': '/tmp/repo/out/release/suites/acts',
+            'product_build': {'status': 'present', 'out_dir_exists': True, 'build_log_exists': True, 'error_log_exists': False, 'error_log_size': 0},
+            'built_artifacts': {'status': 'present', 'testcases_dir_exists': True, 'module_info_exists': True, 'testcase_json_count': 1},
+            'built_artifact_index': {},
+            'cache_used': False,
+            'variants_mode': 'auto',
+            'excluded_inputs': [],
+            'results': [
+                {
+                    'changed_file': 'a.cpp',
+                    'signals': {'modules': [], 'symbols': [], 'project_hints': [], 'method_hints': [], 'type_hints': [], 'family_tokens': []},
+                    'effective_variants_mode': 'both',
+                    'relevance_summary': {'mode': 'all', 'shown': 1, 'total_after': 1, 'total_before': 1, 'filtered_out': 0},
+                    'projects': [],
+                    'run_targets': [
+                        {
+                            'project': 'test/xts/acts/arkui/ace_ets_module_modifier_static',
+                            'target_key': 'test/xts/acts/arkui/ace_ets_module_modifier_static/Test.json',
+                            'test_json': 'test/xts/acts/arkui/ace_ets_module_modifier_static/Test.json',
+                            'build_target': 'ace_ets_module_modifier_static',
+                            'variant': 'static',
+                            'bucket': 'must-run',
+                            'scope_tier': 'focused',
+                            'artifact_status': 'available',
+                            'scope_reasons': ['button match'],
+                            'execution_plan': [{'device_label': 'SER1', 'status': 'pending', 'selected_tool': 'xdevice', 'reason': ''}],
+                            'execution_results': [{'device_label': 'SER1', 'status': 'passed', 'selected_tool': 'xdevice', 'duration_s': 12.5, 'returncode': 0, 'case_summary': {'passed': 10, 'failed': 0}, 'result_path': '/tmp/xdevice/result'}],
+                            'selected_for_execution': True,
+                        },
+                    ],
+                }
+            ],
+            'symbol_queries': [],
+            'code_queries': [],
+            'unresolved_files': [],
+            'timings_ms': {},
+            'selector_run': {'label': 'baseline', 'run_dir': '/tmp/.runs/baseline'},
+            'selected_tests_json_path': '/tmp/selected_tests.json',
+            'requested_devices': ['SER1'],
+            'execution_overview': {'selected_target_keys': ['test/xts/acts/arkui/ace_ets_module_modifier_static/Test.json'], 'selected_target_count': 1, 'executed': True, 'run_tool': 'xdevice', 'run_priority': 'recommended', 'parallel_jobs': 1},
+            'execution_preflight': {'status': 'passed', 'plan_count': 1, 'selected_tools': ['xdevice'], 'connected_devices': ['SER1']},
+            'execution_summary': {'planned_run_count': 1, 'passed': 1, 'failed': 0, 'blocked': 0, 'timeout': 0, 'unavailable': 0},
+            'runtime_history_update': {'history_file': '/tmp/history.json', 'updated_targets': 1, 'updated_samples': 2, 'significant_updates': 0},
+        }
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            from arkui_xts_selector.cli import print_human
+            print_human(report)
+        output = buffer.getvalue()
+        self.assertIn('Run Summary', output)
+        self.assertIn('Selected Tests', output)
+        self.assertIn('Execution Results', output)
+        self.assertIn('/tmp/selected_tests.json', output)
+        self.assertNotIn('Preparation', output)
+        self.assertNotIn('Next Steps', output)
+        self.assertNotIn('Coverage Recommendations', output)
+        self.assertNotIn('Changed File:', output)
+        self.assertNotIn('Primary Tests', output)
+
+    def test_write_selected_tests_report_creates_companion_json(self) -> None:
+        report = {
+            'results': [
+                {
+                    'changed_file': 'a.cpp',
+                    'run_targets': [
+                        {
+                            'project': 'test/xts/acts/arkui/ace_ets_module_modifier_static',
+                            'test_json': 'test/xts/acts/arkui/ace_ets_module_modifier_static/Test.json',
+                            'build_target': 'ace_ets_module_modifier_static',
+                            'xdevice_module_name': 'ActsAceEtsModuleModifierStaticTest',
+                            'artifact_status': 'available',
+                            'artifact_reason': '',
+                            'bucket': 'must-run',
+                            'variant': 'static',
+                            'scope_tier': 'focused',
+                        }
+                    ],
+                }
+            ],
+            'symbol_queries': [],
+            'coverage_recommendations': {
+                'ordered_targets': [],
+            },
+            'execution_overview': {
+                'selected_target_keys': ['test/xts/acts/arkui/ace_ets_module_modifier_static/Test.json'],
+                'requested_test_names': ['ace_ets_module_modifier_static'],
+            },
+        }
+        with TemporaryDirectory() as tmpdir:
+            selector_report_path = Path(tmpdir) / 'selector_report.json'
+            written = write_selected_tests_report(report, selector_report_path)
+
+            self.assertIsNotNone(written)
+            payload = json.loads(Path(written).read_text(encoding='utf-8'))
+
+        self.assertEqual(payload['selector_report_path'], str(selector_report_path))
+        self.assertEqual(payload['available_target_count'], 1)
+        self.assertEqual(payload['selected_target_count'], 1)
+        self.assertEqual(payload['requested_test_names'], ['ace_ets_module_modifier_static'])
+        self.assertEqual(payload['tests'][0]['name'], 'ace_ets_module_modifier_static')
+        self.assertTrue(payload['tests'][0]['selected_by_default'])
 
     def test_sort_project_results_prefers_scope_tier_before_raw_score(self) -> None:
         ranked = [
