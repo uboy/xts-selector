@@ -105,12 +105,43 @@ def _resolve_path_or_which(explicit: str | None, command: str, fallbacks: list[P
     raise FileNotFoundError(f"could not resolve required tool: {command}")
 
 
+def _preferred_flash_py_candidates(explicit: str | None = None) -> list[Path]:
+    candidates: list[Path] = []
+    seen: set[str] = set()
+
+    def add(path_value: str | Path | None) -> None:
+        if not path_value:
+            return
+        candidate = Path(path_value).expanduser().resolve()
+        key = str(candidate)
+        if key in seen or not candidate.exists():
+            return
+        seen.add(key)
+        candidates.append(candidate)
+
+    add(explicit)
+    resolved = shutil.which("flash.py")
+    add(resolved)
+    add(Path.home() / "bin/linux/flash.py")
+    return candidates
+
+
+def _adjacent_flash_tool_path(flash_py_path: Path) -> Path | None:
+    machine = os.uname().machine if hasattr(os, "uname") else platform.machine()
+    candidate = (flash_py_path.resolve().parent / "bin" / f"flash.{machine}").resolve()
+    if candidate.exists():
+        return candidate
+    return None
+
+
 def resolve_flash_py_path(explicit: str | None = None) -> Path:
-    return _resolve_path_or_which(
-        explicit,
-        "flash.py",
-        [Path.home() / "bin/linux/flash.py"],
-    )
+    candidates = _preferred_flash_py_candidates(explicit)
+    if not candidates:
+        raise FileNotFoundError("could not resolve required tool: flash.py")
+    for candidate in candidates:
+        if _adjacent_flash_tool_path(candidate) is not None:
+            return candidate
+    return candidates[0]
 
 
 def resolve_hdc_path(explicit: str | None = None) -> Path:
@@ -122,9 +153,8 @@ def resolve_hdc_path(explicit: str | None = None) -> Path:
 
 
 def infer_flash_tool_path(flash_py_path: Path) -> Path:
-    machine = os.uname().machine if hasattr(os, "uname") else platform.machine()
-    candidate = (flash_py_path.resolve().parent / "bin" / f"flash.{machine}").resolve()
-    if candidate.exists():
+    candidate = _adjacent_flash_tool_path(flash_py_path)
+    if candidate is not None:
         return candidate
     raise FileNotFoundError(f"could not locate flash tool next to {flash_py_path}")
 

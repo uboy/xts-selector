@@ -3585,6 +3585,7 @@ def build_global_coverage_recommendations(
     repo_root: Path,
     acts_out_root: Path | None,
     device: str | None,
+    built_artifact_index: dict[str, object] | None = None,
 ) -> dict[str, object]:
     if not candidate_entries:
         return {
@@ -3598,6 +3599,7 @@ def build_global_coverage_recommendations(
             "ordered_target_keys": [],
             "covered_source_keys": [],
             "uncovered_sources": [],
+            "unavailable_targets": [],
         }
 
     def _unit_key_for_source(source_profile: dict[str, object], unit_key: str, unit_kind: str) -> str:
@@ -3612,6 +3614,7 @@ def build_global_coverage_recommendations(
     candidates_by_key: dict[str, dict[str, object]] = {}
     all_sources: dict[str, dict[str, object]] = {}
     all_units: dict[str, dict[str, object]] = {}
+    unavailable_targets: dict[str, dict[str, object]] = {}
     for entry in candidate_entries:
         project_entry = dict(entry.get("project_entry") or {})
         if not project_entry:
@@ -3631,10 +3634,25 @@ def build_global_coverage_recommendations(
             project_entry,
             repo_root=repo_root,
             acts_out_root=acts_out_root,
+            built_artifact_index=built_artifact_index,
             device=device,
         )
         target_key = target.get("target_key") or target.get("test_json") or target.get("project") or ""
         if not target_key:
+            continue
+        if str(target.get("artifact_status") or "") == "missing":
+            unavailable_targets.setdefault(
+                str(target_key),
+                {
+                    "target_key": str(target_key),
+                    "project": target.get("project", ""),
+                    "test_json": target.get("test_json", ""),
+                    "build_target": target.get("build_target", ""),
+                    "xdevice_module_name": target.get("xdevice_module_name", ""),
+                    "artifact_status": target.get("artifact_status", "missing"),
+                    "artifact_reason": target.get("artifact_reason", ""),
+                },
+            )
             continue
         candidate = candidates_by_key.setdefault(
             str(target_key),
@@ -3999,6 +4017,7 @@ def build_global_coverage_recommendations(
         "ordered_target_keys": [str(target.get("target_key") or "") for target in ordered_candidates],
         "covered_source_keys": covered_unit_keys,
         "uncovered_sources": uncovered_sources,
+        "unavailable_targets": list(unavailable_targets.values()),
     }
 
 
@@ -4799,6 +4818,7 @@ def format_report(
                     item,
                     repo_root=REPO_ROOT,
                     acts_out_root=acts_out_root,
+                    built_artifact_index=built_artifact_index,
                     device=device,
                     hdc_path=app_config.hdc_path,
                     hdc_endpoint=app_config.hdc_endpoint,
@@ -4957,6 +4977,7 @@ def format_report(
                     item,
                     repo_root=REPO_ROOT,
                     acts_out_root=acts_out_root,
+                    built_artifact_index=built_artifact_index,
                     device=device,
                     hdc_path=app_config.hdc_path,
                     hdc_endpoint=app_config.hdc_endpoint,
@@ -4990,6 +5011,7 @@ def format_report(
         coverage_candidates,
         repo_root=REPO_ROOT,
         acts_out_root=acts_out_root,
+        built_artifact_index=built_artifact_index,
         device=device,
     )
     if runtime_history_index is not None:
@@ -5658,7 +5680,22 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             }
         )
     compare_base_label = _find_compare_base_label(app_config.run_store_root, current_run_label)
+    recommended_run_command = ""
     if compare_base_label:
+        recommended_run_command = ""
+        for step in steps:
+            if step.get("step") == "Run recommended tests":
+                recommended_run_command = str(step.get("command") or "")
+                break
+        if recommended_run_command and not run_blocked and recommended_target_count > 0:
+            steps.append(
+                {
+                    "step": "Run recommended tests + compare",
+                    "status": "recommended",
+                    "why": f"Runs the recommended batch and then compares the result against the saved base run '{compare_base_label}'.",
+                    "command": f"{recommended_run_command} && {_build_compare_command(compare_base_label, current_run_label, app_config.run_store_root)}",
+                }
+            )
         steps.append(
             {
                 "step": "Compare with base run",
@@ -5713,6 +5750,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             ("Est. Full", _format_duration_seconds(recommendations.get("estimated_all_duration_s"))),
         ]
         uncovered_sources = recommendations.get("uncovered_sources", [])
+        unavailable_targets = list(recommendations.get("unavailable_targets", []))
         if uncovered_sources:
             coverage_rows.append(
                 (
@@ -5723,6 +5761,8 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                     ),
                 )
             )
+        if unavailable_targets:
+            coverage_rows.append(("Unavailable In Artifacts", len(unavailable_targets)))
         _print_key_value_section("Coverage Recommendations", coverage_rows)
         batch_run_commands = list(report.get("coverage_run_commands", []))
         if batch_run_commands:
@@ -5791,6 +5831,18 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             display_limit=HUMAN_OPTIONAL_DUPLICATE_DISPLAY_LIMIT,
             overflow_note="showing only the top duplicate fallbacks; the full duplicate tail remains in JSON output",
         )
+        if unavailable_targets:
+            print("Unavailable In Current Artifacts")
+            rows = [
+                [
+                    index,
+                    item.get("build_target") or item.get("xdevice_module_name") or item.get("project") or "-",
+                    item.get("artifact_reason") or "-",
+                ]
+                for index, item in enumerate(unavailable_targets, start=1)
+            ]
+            _print_human_table(["#", "Suite", "Why Skipped"], rows, indent=2)
+            print()
 
     def print_run_targets(targets: list[dict], relevance_summary: dict[str, object] | None = None) -> None:
         if not targets:
@@ -5809,11 +5861,16 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                     [
                         index,
                         _suite_label(target),
+                        target.get("artifact_status", "-"),
                         target.get("scope_tier", "-"),
                         target.get("variant", "-"),
                         target.get("bucket", "-"),
                         _format_estimate_label(target),
-                        _human_preview(target.get("scope_reasons", []), limit=2),
+                        _human_preview(
+                            ([target.get("artifact_reason")] if target.get("artifact_status") == "missing" else [])
+                            + list(target.get("scope_reasons", [])),
+                            limit=2,
+                        ),
                         target.get("project") or target.get("test_json") or "-",
                     ]
                 )
@@ -5844,7 +5901,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         ]
                     )
             _print_human_table(
-                ["#", "Suite", "Scope", "Surface", "Priority", "Est.", "Why First", "Project"],
+                ["#", "Suite", "Artifacts", "Scope", "Surface", "Priority", "Est.", "Why First", "Project"],
                 target_rows,
                 indent=2,
             )
@@ -5858,6 +5915,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         "command": target.get(command_key, "-"),
                     }
                     for target in grouped_targets
+                    if str(target.get("artifact_status") or "") != "missing"
                     for tool_name, command_key in (
                         ("aa_test", "aa_test_command"),
                         ("xdevice", "xdevice_command"),
@@ -5866,6 +5924,19 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                     if target.get(command_key)
                 ]
             )
+            missing_targets = [target for target in grouped_targets if str(target.get("artifact_status") or "") == "missing"]
+            if missing_targets:
+                _print_actionable_command_list(
+                    "Unavailable Suites",
+                    [
+                        {
+                            "label": _suite_label(target),
+                            "why": target.get("artifact_reason") or "suite is absent from the active ACTS artifacts",
+                            "command": "",
+                        }
+                        for target in missing_targets
+                    ],
+                )
             show_plan = bool(result_rows) or any(row[2] != "pending" for row in plan_rows)
             if plan_rows and show_plan:
                 print("Execution Plan")

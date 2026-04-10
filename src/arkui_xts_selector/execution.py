@@ -14,6 +14,7 @@ from .build_state import (
     build_runtest_command,
     build_xdevice_command,
 )
+from .built_artifacts import resolve_target_artifact_availability
 from .hdc_transport import build_hdc_command, build_hdc_env, resolve_hdc_binary
 from .runtime_state import (
     InterprocessLockTimeout,
@@ -86,12 +87,14 @@ def build_run_target_entry(
     item: dict[str, Any],
     repo_root: Path,
     acts_out_root: Path | None,
-    device: str | None,
+    built_artifact_index: dict[str, Any] | None = None,
+    device: str | None = None,
     xdevice_report_path: Path | None = None,
     hdc_path: Path | str | None = None,
     hdc_endpoint: str | None = None,
 ) -> dict[str, Any]:
     target_key = item.get("test_json") or item.get("project") or ""
+    availability = resolve_target_artifact_availability(item, built_artifact_index)
     return {
         "target_key": target_key,
         "project": item["project"],
@@ -102,6 +105,9 @@ def build_run_target_entry(
         "xdevice_module_name": item.get("xdevice_module_name"),
         "build_target": item.get("build_target"),
         "driver_type": item.get("driver_type"),
+        "artifact_status": availability.get("status", "unknown"),
+        "artifact_reason": availability.get("reason", ""),
+        "artifact_match": availability.get("matched_by", ""),
         "confidence": item.get("confidence", ""),
         "bucket": item.get("bucket", ""),
         "variant": item.get("variant", ""),
@@ -259,7 +265,12 @@ def build_execution_plan(
         selected_tool, command = _select_tool(commands, run_tool)
         status = "pending" if selected_tool and command else "unavailable"
         reason = ""
-        if status == "unavailable":
+        if str(target.get("artifact_status") or "") == "missing":
+            status = "unavailable"
+            reason = str(target.get("artifact_reason") or "target is absent from the current ACTS artifacts")
+            selected_tool = None
+            command = ""
+        elif status == "unavailable":
             if run_tool == "runtest" and target.get("build_target") and device is None:
                 reason = "runtest requires an explicit device"
             elif run_tool == "auto":

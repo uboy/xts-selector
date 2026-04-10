@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from arkui_xts_selector.flashing import (
     flash_image_bundle,
+    resolve_flash_py_path,
     infer_flash_tool_path,
     list_rockchip_devices,
 )
@@ -32,6 +33,25 @@ class FlashingTests(unittest.TestCase):
             resolved = infer_flash_tool_path(flash_py)
 
         self.assertEqual(resolved, flash_tool.resolve())
+
+    def test_resolve_flash_py_path_prefers_candidate_with_neighbor_tool(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            broken_flash = root / "broken" / "flash.py"
+            broken_flash.parent.mkdir(parents=True)
+            broken_flash.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+
+            home_flash = root / "bin" / "linux" / "flash.py"
+            home_flash.parent.mkdir(parents=True)
+            home_flash.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
+            tool = root / "bin" / "linux" / "bin" / f"flash.{os.uname().machine}"
+            tool.parent.mkdir(parents=True)
+            tool.write_text("", encoding="utf-8")
+
+            with mock.patch("arkui_xts_selector.flashing.Path.home", return_value=root):
+                resolved = resolve_flash_py_path(str(broken_flash))
+
+        self.assertEqual(resolved, home_flash.resolve())
 
     def test_list_rockchip_devices_parses_loader_output(self) -> None:
         completed = SimpleNamespace(

@@ -1054,7 +1054,82 @@ class FancySliderModifier extends SliderModifier {}
             steps = build_next_steps(report, app_config, self._build_next_steps_args())
 
         step_commands = {step["step"]: step["command"] for step in steps}
+        self.assertEqual(
+            step_commands["Run recommended tests + compare"],
+            "ohos xts run --from-report /tmp/report.json --run-priority recommended --run-top-targets 1 && ohos xts compare baseline fix",
+        )
         self.assertEqual(step_commands["Compare with base run"], "ohos xts compare baseline fix")
+
+    def test_print_human_marks_targets_missing_from_current_artifacts(self) -> None:
+        report = {
+            'repo_root': '/tmp/repo',
+            'xts_root': '/tmp/repo/test/xts',
+            'sdk_api_root': '/tmp/repo/sdk',
+            'git_repo_root': '/tmp/repo/foundation/arkui/ace_engine',
+            'acts_out_root': '/tmp/repo/out/release/suites/acts',
+            'product_build': {'status': 'present', 'out_dir_exists': True, 'build_log_exists': True, 'error_log_exists': False, 'error_log_size': 0},
+            'built_artifacts': {'status': 'present', 'testcases_dir_exists': True, 'module_info_exists': True, 'testcase_json_count': 1},
+            'built_artifact_index': {'status': 'built', 'module_info_entries': ['ActsAvailable'], 'testcase_modules_count': 1, 'hap_runtime_modules_count': 0, 'testcase_modules': [], 'hap_runtime_modules': []},
+            'cache_used': False,
+            'variants_mode': 'auto',
+            'excluded_inputs': [],
+            'results': [
+                {
+                    'changed_file': 'a.cpp',
+                    'signals': {'modules': [], 'symbols': [], 'project_hints': [], 'method_hints': [], 'type_hints': [], 'family_tokens': []},
+                    'effective_variants_mode': 'both',
+                    'relevance_summary': {'mode': 'all', 'shown': 1, 'total_after': 1, 'total_before': 1, 'filtered_out': 0},
+                    'projects': [],
+                    'run_targets': [
+                        {
+                            'project': 'test/xts/acts/arkui/ace_ets_module_missing',
+                            'test_json': 'test/xts/acts/arkui/ace_ets_module_missing/Test.json',
+                            'build_target': 'ace_ets_module_missing',
+                            'variant': 'static',
+                            'bucket': 'must-run',
+                            'scope_tier': 'focused',
+                            'scope_reasons': ['chipgroup match'],
+                            'artifact_status': 'missing',
+                            'artifact_reason': 'not found in the current ACTS artifacts inventory: ace_ets_module_missing',
+                            'aa_test_command': 'hdc shell aa test -b com.example.missing -m entry -s unittest OpenHarmonyTestRunner',
+                            'xdevice_command': 'python3 -m xdevice run acts -rp /tmp/report_missing',
+                            'runtest_command': './test/xts/acts/runtest.sh device=SER1 module=ace_ets_module_missing runonly=TRUE',
+                            'execution_plan': [],
+                            'execution_results': [],
+                        },
+                    ],
+                }
+            ],
+            'symbol_queries': [],
+            'code_queries': [],
+            'unresolved_files': [],
+            'timings_ms': {},
+            'coverage_recommendations': {
+                'source_count': 1,
+                'candidate_count': 0,
+                'required': [],
+                'recommended': [],
+                'recommended_additional': [],
+                'optional_duplicates': [],
+                'ordered_targets': [],
+                'unavailable_targets': [
+                    {
+                        'build_target': 'ace_ets_module_missing',
+                        'artifact_reason': 'not found in the current ACTS artifacts inventory: ace_ets_module_missing',
+                    }
+                ],
+            },
+        }
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            from arkui_xts_selector.cli import print_human
+            print_human(report)
+        output = buffer.getvalue()
+        self.assertIn('Unavailable In Current Artifacts', output)
+        self.assertIn('ace_ets_module_missing', output)
+        self.assertIn('not found in the current ACTS artifacts inventory', output)
+        self.assertIn('Artifacts', output)
+        self.assertNotIn('1. ace_ets_module_missing [aa_test]', output)
 
     def test_print_human_uses_rich_box_drawing_tables(self) -> None:
         report = {
