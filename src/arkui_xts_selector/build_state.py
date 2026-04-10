@@ -98,6 +98,57 @@ def build_aa_test_command(
     )
 
 
+def build_install_test_haps_shell_sequence(
+    local_haps: list[Path],
+    *,
+    hdc_path: Path | str | None = None,
+    hdc_endpoint: str | None = None,
+    device: str | None = None,
+) -> list[str]:
+    """Return hdc shell commands to push each HAP to the device and run ``bm install``."""
+    commands: list[str] = []
+    for local in local_haps:
+        if not local.is_file():
+            continue
+        remote = f"/data/local/tmp/{local.name}"
+        commands.append(
+            build_hdc_shell_command(
+                ["file", "send", str(local.resolve()), remote],
+                hdc_path=hdc_path,
+                hdc_endpoint=hdc_endpoint,
+                device=device,
+            )
+        )
+        commands.append(
+            build_hdc_shell_command(
+                ["shell", "bm", "install", "-p", remote],
+                hdc_path=hdc_path,
+                hdc_endpoint=hdc_endpoint,
+                device=device,
+            )
+        )
+    return commands
+
+
+def build_uninstall_bundle_shell_command(
+    bundle_name: str,
+    *,
+    hdc_path: Path | str | None = None,
+    hdc_endpoint: str | None = None,
+    device: str | None = None,
+) -> str:
+    """Return an ``hdc shell bm uninstall`` command for the given bundle id."""
+    name = str(bundle_name or "").strip()
+    if not name:
+        return ""
+    return build_hdc_shell_command(
+        ["shell", "bm", "uninstall", "-n", name],
+        hdc_path=hdc_path,
+        hdc_endpoint=hdc_endpoint,
+        device=device,
+    )
+
+
 def _safe_report_fragment(value: str | None) -> str:
     raw = str(value or "").strip().lower()
     compact = "".join(ch if ch.isalnum() else "-" for ch in raw)

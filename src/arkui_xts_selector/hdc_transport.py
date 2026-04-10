@@ -153,8 +153,6 @@ def ensure_hdc_wrapper(
     wrapper_dir.mkdir(parents=True, exist_ok=True)
     wrapper_path = wrapper_dir / "hdc"
     command = [resolved_hdc]
-    if hdc_endpoint:
-        command.extend(["-s", str(hdc_endpoint)])
     wrapper_lines = [
         "#!/usr/bin/env bash",
         "set -e",
@@ -164,7 +162,31 @@ def ensure_hdc_wrapper(
         wrapper_lines.append(
             f'export LD_LIBRARY_PATH="{_shell_double_quote(library_dir)}${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}"'
         )
-    wrapper_lines.append(f'exec {render_shell_command(command)} "$@"')
+    if hdc_endpoint:
+        wrapper_lines.extend(
+            [
+                'args=("$@")',
+                "translated=()",
+                "i=0",
+                "while [ $i -lt ${#args[@]} ]; do",
+                '  arg="${args[$i]}"',
+                '  if [ "$arg" = "-s" ] && [ $((i + 1)) -lt ${#args[@]} ]; then',
+                '    next="${args[$((i + 1))]}"',
+                '    case "$next" in',
+                "      *:*) translated+=(\"$arg\" \"$next\") ;;",
+                "      *) translated+=(\"-t\" \"$next\") ;;",
+                "    esac",
+                "    i=$((i + 2))",
+                "    continue",
+                "  fi",
+                '  translated+=("$arg")',
+                "  i=$((i + 1))",
+                "done",
+                f'exec {render_shell_command(command)} -s {shlex.quote(str(hdc_endpoint))} "${{translated[@]}}"',
+            ]
+        )
+    else:
+        wrapper_lines.append(f'exec {render_shell_command(command)} "$@"')
     wrapper_text = "\n".join(wrapper_lines) + "\n"
     try:
         existing = wrapper_path.read_text(encoding="utf-8")

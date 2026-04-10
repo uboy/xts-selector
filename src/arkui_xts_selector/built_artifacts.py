@@ -121,6 +121,65 @@ def _artifact_identifier_set(values: list[object]) -> set[str]:
     }
 
 
+def resolve_test_hap_names_from_artifact_index(
+    target: dict[str, Any],
+    built_artifact_index: dict[str, Any] | None,
+) -> tuple[list[str], str]:
+    """Infer ``test-file-name`` HAP basenames from built ``testcases/*.json`` when the repo ``Test.json`` omits them.
+
+    Matching uses the same normalization as :func:`resolve_target_artifact_availability` so
+    ``bundle_name`` lines up with the deployed ACTS metadata even when the source tree is stale.
+
+    Returns ``(hap_basenames, provenance)`` with ``provenance`` empty when nothing was inferred.
+    """
+    if not isinstance(built_artifact_index, dict):
+        return [], ""
+    modules = built_artifact_index.get("testcase_modules")
+    if not isinstance(modules, list):
+        modules = []
+    hap_runtime = built_artifact_index.get("hap_runtime_modules")
+    if not isinstance(hap_runtime, list):
+        hap_runtime = []
+    if not modules and not hap_runtime:
+        return [], ""
+
+    bundle = str(target.get("bundle_name") or "").strip()
+    if bundle:
+        want = _normalized_artifact_token(bundle)
+        if want:
+            collected: list[str] = []
+            seen: set[str] = set()
+            for mod in modules:
+                if not isinstance(mod, dict):
+                    continue
+                mod_bundle = str(mod.get("bundle_name") or "").strip()
+                if _normalized_artifact_token(mod_bundle) != want:
+                    continue
+                for name in mod.get("test_file_names") or []:
+                    if not isinstance(name, str) or not name.endswith(".hap"):
+                        continue
+                    if name not in seen:
+                        seen.add(name)
+                        collected.append(name)
+            if collected:
+                return collected, "acts_testcases_index:bundle_name"
+
+    xdm = str(target.get("xdevice_module_name") or "").strip()
+    if xdm:
+        want_stem = _normalized_artifact_token(xdm)
+        if want_stem:
+            for item in hap_runtime:
+                if not isinstance(item, dict):
+                    continue
+                if _normalized_artifact_token(item.get("stem")) != want_stem:
+                    continue
+                hap = item.get("hap")
+                if isinstance(hap, str) and hap.endswith(".hap"):
+                    return [hap], "acts_testcases_index:hap_stem"
+
+    return [], ""
+
+
 def resolve_target_artifact_availability(target: dict[str, Any], built_artifact_index: dict[str, Any] | None) -> dict[str, str]:
     index = built_artifact_index if isinstance(built_artifact_index, dict) else {}
     testcase_modules = index.get("testcase_modules", [])

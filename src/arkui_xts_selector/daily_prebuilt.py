@@ -20,6 +20,13 @@ DEFAULT_SDK_COMPONENT = "ohos-sdk-public"
 DEFAULT_FIRMWARE_COMPONENT = "dayu200"
 PLACEHOLDER_METADATA_VALUES = {"", "-", "--", "n/a", "none", "null", "unknown"}
 DOWNLOAD_PROGRESS_UPDATE_INTERVAL = 0.5
+RESET = "\033[0m"
+RED = "\033[31m"
+ORANGE = "\033[38;5;208m"
+YELLOW = "\033[33m"
+GREEN = "\033[32m"
+DIM = "\033[2m"
+PROGRESS_BAR_WIDTH = 34
 
 
 @dataclass
@@ -399,6 +406,16 @@ def _format_progress_duration(seconds: float | None) -> str:
     return f"{minutes:02d}:{secs:02d}"
 
 
+def _color_for_percent(percent: float) -> str:
+    if percent < 25:
+        return RED
+    if percent < 50:
+        return ORANGE
+    if percent < 75:
+        return YELLOW
+    return GREEN
+
+
 def _response_header(response: Any, name: str) -> str:
     headers = getattr(response, "headers", None)
     if headers is None:
@@ -434,10 +451,17 @@ def _render_download_progress(
         progress = min(100.0, (downloaded_bytes / total_bytes) * 100.0)
         remaining = max(total_bytes - downloaded_bytes, 0)
         eta_seconds = (remaining / rate) if rate > 0 else None
+        ratio = min(max(downloaded_bytes / total_bytes, 0.0), 1.0)
+        filled = int(PROGRESS_BAR_WIDTH * ratio)
+        bar_fill = "█" * filled
+        bar_rest = "░" * (PROGRESS_BAR_WIDTH - filled)
+        color = _color_for_percent(progress)
         return (
-            f"download {name}: {progress:5.1f}% "
-            f"{_format_progress_bytes(downloaded_bytes)}/{_format_progress_bytes(total_bytes)} "
-            f"{_format_progress_bytes(rate)}/s eta {_format_progress_duration(eta_seconds)}"
+            f"download {name}: "
+            f"{color}[{bar_fill}{bar_rest}]{RESET} "
+            f"{color}{progress:5.1f}%{RESET} "
+            f"({_format_progress_bytes(downloaded_bytes)} / {_format_progress_bytes(total_bytes)}) "
+            f"{DIM}{_format_progress_bytes(rate)}/s eta {_format_progress_duration(eta_seconds)}{RESET}"
         )
     return (
         f"download {name}: {_format_progress_bytes(downloaded_bytes)} transferred "
@@ -460,10 +484,7 @@ def _emit_download_progress(
         transferred_bytes=transferred_bytes,
         elapsed_seconds=elapsed_seconds,
     )
-    if hasattr(sys.stderr, "isatty") and sys.stderr.isatty():
-        print(f"\r{line}", file=sys.stderr, end="\n" if final else "", flush=True)
-        return
-    print(line, file=sys.stderr, flush=True)
+    print(f"\r{line}", file=sys.stderr, end="\n" if final else "", flush=True)
 
 
 def _download_file(url: str, target: Path, timeout: float = 120.0) -> None:
@@ -624,6 +645,7 @@ def list_daily_tags(
     after_date: str | None = None,
     before_date: str | None = None,
     lookback_days: int = 30,
+    component_role: str = "xts",
     api_url: str = DEFAULT_DAILY_API_URL,
     timeout: float = 30.0,
 ) -> list[DailyBuildInfo]:
@@ -639,20 +661,30 @@ def list_daily_tags(
     else:
         start = end - timedelta(days=lookback_days)
 
+    components = daily_component_candidates(component, component_role=component_role)
+    if not components:
+        return []
+
     all_builds: list[DailyBuildInfo] = []
+    seen_tags: set[str] = set()
     current = end
     while current >= start:
-        try:
-            day_builds = fetch_daily_builds(
-                component=component,
-                branch=branch,
-                build_date=current.strftime("%Y%m%d"),
-                api_url=api_url,
-                timeout=timeout,
-            )
-            all_builds.extend(day_builds)
-        except (ValueError, OSError, Exception):
-            pass
+        for candidate in components:
+            try:
+                day_builds = fetch_daily_builds(
+                    component=candidate,
+                    branch=branch,
+                    build_date=current.strftime("%Y%m%d"),
+                    api_url=api_url,
+                    timeout=timeout,
+                )
+                for build in day_builds:
+                    if build.tag in seen_tags:
+                        continue
+                    seen_tags.add(build.tag)
+                    all_builds.append(build)
+            except (ValueError, OSError, Exception):
+                continue
         current -= timedelta(days=1)
         if len(all_builds) >= count * 3:
             break

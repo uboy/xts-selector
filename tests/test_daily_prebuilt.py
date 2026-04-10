@@ -13,7 +13,14 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from arkui_xts_selector.cli import ContentModifierIndex, MappingConfig, SdkIndex, main
+from arkui_xts_selector.cli import (
+    ContentModifierIndex,
+    MappingConfig,
+    SdkIndex,
+    _has_local_acts_artifacts,
+    _sync_prebuilt_acts_to_local_root,
+    main,
+)
 from arkui_xts_selector.daily_prebuilt import (
     DEFAULT_DAILY_COMPONENT,
     DEFAULT_FIRMWARE_COMPONENT,
@@ -28,6 +35,7 @@ from arkui_xts_selector.daily_prebuilt import (
     prepare_daily_prebuilt,
     prepare_daily_firmware,
     prepare_daily_sdk,
+    list_daily_tags,
     resolve_daily_build,
 )
 
@@ -160,6 +168,34 @@ class DailyBuildResolutionTests(unittest.TestCase):
             )
 
         self.assertEqual(resolved.tag, newer.tag)
+
+    def test_list_daily_tags_tries_xts_component_candidates_for_plain_board_alias(self) -> None:
+        build = DailyBuildInfo(
+            tag="20260410_120510",
+            component="dayu200_Dyn_Sta_XTS",
+            branch="master",
+            version_type="Daily_Version",
+            version_name="OpenHarmony_7.0.0.20",
+            full_package_url="https://example.invalid/full.tar.gz",
+        )
+
+        def fake_fetch(*, component: str, **_: object) -> list[DailyBuildInfo]:
+            if component == "dayu200_Dyn_Sta_XTS":
+                return [build]
+            return []
+
+        with mock.patch("arkui_xts_selector.daily_prebuilt.fetch_daily_builds", side_effect=fake_fetch):
+            tags = list_daily_tags(
+                component="dayu200",
+                branch="master",
+                count=5,
+                after_date="20260410",
+                before_date="20260410",
+                lookback_days=1,
+                component_role="xts",
+            )
+
+        self.assertEqual([item.tag for item in tags], ["20260410_120510"])
 
 
 class DailyPrebuiltPreparationTests(unittest.TestCase):
@@ -492,6 +528,67 @@ class DailyPrebuiltCliTests(unittest.TestCase):
             payload = json.loads(manifests[0].read_text(encoding="utf-8"))
             self.assertEqual(payload["daily_prebuilt"]["tag"], "20260403_120242")
             self.assertEqual(payload["daily_prebuilt"]["acts_out_root"], str(prebuilt_root))
+
+    def test_has_local_acts_artifacts_detects_module_info(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            acts_root = Path(tmpdir) / "out/release/suites/acts"
+            testcases = acts_root / "testcases"
+            testcases.mkdir(parents=True, exist_ok=True)
+            (testcases / "module_info.list").write_text("ActsFoo\n", encoding="utf-8")
+
+            self.assertTrue(_has_local_acts_artifacts(acts_root))
+
+    def test_has_local_acts_artifacts_detects_json_testcases(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            acts_root = Path(tmpdir) / "out/release/suites/acts"
+            testcases = acts_root / "testcases"
+            testcases.mkdir(parents=True, exist_ok=True)
+            (testcases / "ActsFoo.json").write_text("{}", encoding="utf-8")
+
+            self.assertTrue(_has_local_acts_artifacts(acts_root))
+
+    def test_has_local_acts_artifacts_false_when_missing(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            acts_root = Path(tmpdir) / "out/release/suites/acts"
+            acts_root.mkdir(parents=True, exist_ok=True)
+
+            self.assertFalse(_has_local_acts_artifacts(acts_root))
+
+    def test_sync_prebuilt_acts_to_local_root_replaces_destination_and_cleans_cache(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source = root / "cache/extracted/out/rk3568/suites/acts"
+            destination = root / "repo/out/release/suites/acts"
+            source_testcases = source / "testcases"
+            source_testcases.mkdir(parents=True, exist_ok=True)
+            (source_testcases / "module_info.list").write_text("ActsA\n", encoding="utf-8")
+            destination.mkdir(parents=True, exist_ok=True)
+            (destination / "stale.txt").write_text("stale", encoding="utf-8")
+
+            prepared = PreparedDailyPrebuilt(
+                build=DailyBuildInfo(
+                    tag="20260410_180220",
+                    component="dayu200_Dyn_Sta_XTS",
+                    branch="master",
+                    version_type="Daily_Version",
+                    version_name="OpenHarmony_7.0.0.20",
+                    full_package_url="https://example.invalid/full.tar.gz",
+                ),
+                cache_root=root / "cache",
+                archive_path=root / "cache/full.tar.gz",
+                extracted_root=root / "cache/extracted",
+                acts_out_root=source,
+                acts_out_candidates=[source],
+            )
+            synced = _sync_prebuilt_acts_to_local_root(
+                prepared,
+                destination,
+                progress_enabled=False,
+            )
+            self.assertEqual(synced, destination.resolve())
+            self.assertTrue((destination / "testcases" / "module_info.list").is_file())
+            self.assertFalse((destination / "stale.txt").exists())
+            self.assertFalse((root / "cache/extracted").exists())
 
     def test_main_supports_download_only_utility_mode(self) -> None:
         prepared_sdk = PreparedDailyArtifact(

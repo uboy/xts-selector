@@ -4267,6 +4267,48 @@ def emit_subprogress(enabled: bool, prefix: str, message: str) -> None:
     print(f"{prefix}: {message}", file=sys.stderr, flush=True)
 
 
+def _has_local_acts_artifacts(acts_out_root: Path | None) -> bool:
+    if acts_out_root is None:
+        return False
+    root = acts_out_root.expanduser().resolve()
+    testcases_dir = root / "testcases"
+    if not testcases_dir.is_dir():
+        return False
+    return (testcases_dir / "module_info.list").is_file() or any(testcases_dir.glob("*.json"))
+
+
+def _sync_prebuilt_acts_to_local_root(
+    prepared: PreparedDailyPrebuilt | None,
+    local_acts_root: Path | None,
+    *,
+    progress_enabled: bool,
+) -> Path | None:
+    if prepared is None or prepared.acts_out_root is None or local_acts_root is None:
+        return None
+    source = prepared.acts_out_root.expanduser().resolve()
+    destination = local_acts_root.expanduser().resolve()
+    if source == destination:
+        return destination
+
+    print(
+        "warning: syncing downloaded ACTS artifacts to local output root and replacing existing contents: "
+        f"{destination}",
+        file=sys.stderr,
+        flush=True,
+    )
+    emit_progress(progress_enabled, f"syncing acts artifacts to {destination}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        shutil.rmtree(destination)
+    shutil.copytree(source, destination)
+
+    extracted_root = prepared.extracted_root.expanduser().resolve()
+    if extracted_root.exists() and extracted_root != destination:
+        emit_progress(progress_enabled, f"cleaning extracted daily cache {extracted_root}")
+        shutil.rmtree(extracted_root)
+    return destination
+
+
 def prepare_daily_prebuilt_from_config(app_config: AppConfig) -> PreparedDailyPrebuilt | None:
     if not app_config.daily_build_tag and not app_config.daily_date:
         return None
@@ -4377,14 +4419,17 @@ def run_list_tags_mode(args: argparse.Namespace, app_config: "AppConfig") -> int
         component = app_config.sdk_component
         branch = app_config.sdk_branch
         label = "SDK"
+        component_role = "sdk"
     elif tag_type == "firmware":
         component = app_config.firmware_component
         branch = app_config.firmware_branch
         label = "firmware"
+        component_role = "firmware"
     else:
         component = app_config.daily_component
         branch = app_config.daily_branch
         label = "XTS tests"
+        component_role = "xts"
 
     count = max(1, args.list_tags_count)
     after_date = args.list_tags_after or None
@@ -4403,6 +4448,7 @@ def run_list_tags_mode(args: argparse.Namespace, app_config: "AppConfig") -> int
             after_date=after_date,
             before_date=before_date,
             lookback_days=lookback,
+            component_role=component_role,
         )
     except Exception as exc:
         print(f"error: failed to fetch tag list: {exc}", file=sys.stderr)
@@ -5480,6 +5526,34 @@ def _base_selector_run_command(report: dict, app_config: AppConfig, args: argpar
     return run_command
 
 
+def _repeat_this_run_command_tokens(report: dict, app_config: AppConfig, args: argparse.Namespace) -> list[object]:
+    """Shell tokens to replay the current run: same report, devices, HDC, and run flags."""
+    command = list(_base_selector_run_command(report, app_config, args))
+    if not _uses_wrapper_commands():
+        command.append("--run-now")
+    command.extend(["--run-tool", str(getattr(args, "run_tool", "auto") or "auto")])
+    command.extend(["--run-priority", str(getattr(args, "run_priority", "recommended") or "recommended")])
+    rtp = int(getattr(args, "run_top_targets", 0) or 0)
+    if rtp > 0:
+        command.extend(["--run-top-targets", str(rtp)])
+    pj = int(getattr(args, "parallel_jobs", 1) or 1)
+    if pj > 1:
+        command.extend(["--parallel-jobs", str(pj)])
+    shard = str(getattr(app_config, "shard_mode", None) or "mirror")
+    if shard and shard != "mirror":
+        command.extend(["--shard-mode", shard])
+    rto = float(getattr(args, "run_timeout", 0.0) or 0.0)
+    if rto > 0:
+        command.extend(["--run-timeout", str(rto)])
+    dlt = float(getattr(app_config, "device_lock_timeout", 30.0) or 30.0)
+    if dlt != 30.0:
+        command.extend(["--device-lock-timeout", str(dlt)])
+    run_label = str(getattr(args, "run_label", None) or "").strip() or str(getattr(app_config, "run_label", None) or "").strip()
+    if run_label:
+        command.extend(["--run-label", run_label])
+    return command
+
+
 def _run_priority_target_count(coverage: dict[str, object], priority: str) -> int:
     required_count = len(coverage.get("required_target_keys", []))
     recommended_count = len(coverage.get("recommended_target_keys", []))
@@ -5610,7 +5684,18 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
         else "ACTS artifacts are missing; download tests or prepare build artifacts first."
     )
 
+    repeat_tokens = _repeat_this_run_command_tokens(report, app_config, args)
+    report["repeat_run_command"] = _shell_join(repeat_tokens)
+
     steps: list[dict[str, str]] = []
+    steps.append(
+        {
+            "step": "Repeat this run",
+            "status": "ready",
+            "why": "Re-execute with the same report path, devices, HDC settings, and run flags as this invocation.",
+            "command": report["repeat_run_command"],
+        }
+    )
     if not run_only_flow:
         steps.append(
             {
@@ -5923,7 +6008,8 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         f"failed={summary.get('failed', 0)}, "
                         f"blocked={summary.get('blocked', 0)}, "
                         f"timeout={summary.get('timeout', 0)}, "
-                        f"unavailable={summary.get('unavailable', 0)}"
+                        f"unavailable={summary.get('unavailable', 0)}, "
+                        f"skipped={summary.get('skipped', 0)}"
                     ),
                 )
             )
@@ -5988,6 +6074,18 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                 indent=2,
             )
             print()
+
+        next_steps = list(report.get("next_steps") or [])
+        if next_steps:
+            status_rank = {"recommended": 0, "ready": 1, "follow-up": 2, "optional": 3, "blocked": 4}
+
+            def _next_step_sort_key(item: dict[str, object]) -> tuple[object, ...]:
+                step = str(item.get("step", ""))
+                prefix = 0 if step == "Repeat this run" else 1
+                return (prefix, status_rank.get(str(item.get("status", "")), 99), step)
+
+            ordered_next_steps = sorted(next_steps, key=_next_step_sort_key)
+            _print_actionable_command_list("Next Steps", ordered_next_steps)
 
     if str(report.get("human_mode", "")).strip() == "run_only":
         _print_run_only_human()
@@ -6388,13 +6486,13 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
     next_steps = report.get("next_steps", [])
     if next_steps:
         status_rank = {"recommended": 0, "ready": 1, "follow-up": 2, "optional": 3, "blocked": 4}
-        ordered_next_steps = sorted(
-            next_steps,
-            key=lambda item: (
-                status_rank.get(str(item.get("status", "")), 99),
-                str(item.get("step", "")),
-            ),
-        )
+
+        def _next_step_sort_key_main(item: dict[str, object]) -> tuple[object, ...]:
+            step = str(item.get("step", ""))
+            prefix = 0 if step == "Repeat this run" else 1
+            return (prefix, status_rank.get(str(item.get("status", "")), 99), step)
+
+        ordered_next_steps = sorted(next_steps, key=_next_step_sort_key_main)
         _print_actionable_command_list("Next Steps", ordered_next_steps)
 
     if unique_run_targets:
@@ -6463,7 +6561,8 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                     f"failed={summary.get('failed', 0)}, "
                     f"blocked={summary.get('blocked', 0)}, "
                     f"timeout={summary.get('timeout', 0)}, "
-                    f"unavailable={summary.get('unavailable', 0)}"
+                    f"unavailable={summary.get('unavailable', 0)}, "
+                    f"skipped={summary.get('skipped', 0)}"
                 ),
             )
         )
@@ -6954,6 +7053,37 @@ def main() -> int:
         except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
             print(f"daily prebuilt preparation failed: {exc}", file=sys.stderr)
             return 2
+    elif not _has_local_acts_artifacts(app_config.acts_out_root):
+        preferred_local_acts_root = app_config.acts_out_root
+        app_config.daily_date = time.strftime("%Y%m%d")
+        warning_root = str(app_config.acts_out_root or "")
+        print(
+            "warning: local ACTS artifacts were not found under "
+            f"{warning_root or '<unset>'}; auto-downloading daily tests for {app_config.daily_date}.",
+            file=sys.stderr,
+            flush=True,
+        )
+        emit_progress(progress_enabled, f"preparing daily prebuilt {app_config.daily_date}")
+        try:
+            prepared = prepare_daily_prebuilt_from_config(app_config)
+        except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
+            print(f"daily prebuilt preparation failed: {exc}", file=sys.stderr)
+            return 2
+        if preferred_local_acts_root is not None:
+            try:
+                synced_root = _sync_prebuilt_acts_to_local_root(
+                    prepared,
+                    preferred_local_acts_root,
+                    progress_enabled=progress_enabled,
+                )
+            except OSError as exc:
+                print(f"daily prebuilt sync failed: {exc}", file=sys.stderr)
+                return 2
+            if synced_root is not None:
+                app_config.acts_out_root = synced_root
+                app_config.daily_prebuilt_note = (
+                    f"{app_config.daily_prebuilt_note} Synced to local ACTS root {synced_root}."
+                ).strip()
     source_report_path = resolve_selector_report_input(
         args.from_report,
         bool(args.last_report),
@@ -7021,6 +7151,12 @@ def main() -> int:
                 "manifest_path": str(run_session.manifest_path),
             }
 
+        if app_config.daily_prebuilt is not None:
+            report["daily_prebuilt"] = {
+                **app_config.daily_prebuilt.to_dict(),
+                "note": app_config.daily_prebuilt_note,
+            }
+
         emit_progress(progress_enabled, "planning target execution from saved report")
         attach_execution_plan(
             report,
@@ -7072,6 +7208,8 @@ def main() -> int:
                     runtime_state_root=app_config.runtime_state_root,
                     device_lock_timeout=app_config.device_lock_timeout,
                     requested_test_names=requested_test_names,
+                    hdc_path=app_config.hdc_path,
+                    hdc_endpoint=app_config.hdc_endpoint,
                 )
         else:
             report["execution_preflight"] = {}
@@ -7298,6 +7436,8 @@ def main() -> int:
                 runtime_state_root=app_config.runtime_state_root,
                 device_lock_timeout=app_config.device_lock_timeout,
                 requested_test_names=requested_test_names,
+                hdc_path=app_config.hdc_path,
+                hdc_endpoint=app_config.hdc_endpoint,
             )
     else:
         report["execution_preflight"] = {}

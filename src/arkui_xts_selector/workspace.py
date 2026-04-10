@@ -129,5 +129,33 @@ def default_git_repo_root(repo_root: Path) -> Path:
     return repo_root / "foundation/arkui/ace_engine"
 
 
+def _existing_acts_out_roots(repo_root: Path) -> list[Path]:
+    out_root = repo_root / "out"
+    candidates: list[Path] = []
+    if not out_root.is_dir():
+        return candidates
+    try:
+        for child in sorted((item for item in out_root.iterdir() if item.is_dir()), key=lambda p: p.name.lower()):
+            candidate = child / "suites/acts"
+            if candidate.is_dir():
+                candidates.append(candidate.resolve())
+    except OSError:
+        return []
+    return candidates
+
+
 def default_acts_out_root(repo_root: Path) -> Path:
-    return repo_root / "out/release/suites/acts"
+    release_root = (repo_root / "out/release/suites/acts").resolve()
+    existing = _existing_acts_out_roots(repo_root)
+    if not existing:
+        return release_root
+
+    with_testcases = [path for path in existing if (path / "testcases").is_dir()]
+    if with_testcases:
+        if release_root in with_testcases:
+            return release_root
+        return with_testcases[0]
+
+    if release_root in existing:
+        return release_root
+    return existing[0]

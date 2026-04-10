@@ -16,11 +16,16 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from arkui_xts_selector.cli import ContentModifierIndex, MappingConfig, SdkIndex, main
+from arkui_xts_selector.build_state import build_install_test_haps_shell_sequence, build_uninstall_bundle_shell_command
+from arkui_xts_selector.built_artifacts import resolve_test_hap_names_from_artifact_index
 from arkui_xts_selector.execution import (
+    _expand_execution_plan_for_requested_test_sessions,
+    _execute_plan_item,
     attach_execution_plan,
     build_run_target_entry,
     execute_planned_targets,
     preflight_execution,
+    resolve_local_test_hap_paths,
 )
 
 
@@ -61,6 +66,30 @@ class ExecutionPlanningTests(unittest.TestCase):
         )
 
         self.assertEqual(target["execution_plan"][0]["selected_tool"], "xdevice")
+
+    def test_attach_execution_plan_auto_prefers_aa_test_when_hdc_endpoint_set(self) -> None:
+        repo_root = Path("/tmp/repo")
+        target = build_run_target_entry(
+            _sample_target("button_static", "ActsButtonTest"),
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            device="SER1",
+        )
+        report = {"results": [{"changed_file": "a.cpp", "run_targets": [target]}], "symbol_queries": []}
+
+        attach_execution_plan(
+            report,
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            devices=["SER1"],
+            run_tool="auto",
+            shard_mode="mirror",
+            hdc_endpoint="127.0.0.1:28711",
+            xdevice_reports_root=Path("/tmp/xdevice_reports"),
+        )
+
+        self.assertEqual(target["execution_plan"][0]["selected_tool"], "aa_test")
+        self.assertTrue(target["execution_plan"][0]["result_path"])
 
     def test_attach_execution_plan_filters_by_requested_test_name_alias(self) -> None:
         repo_root = Path("/tmp/repo")
@@ -467,6 +496,218 @@ class ExecutionPlanningTests(unittest.TestCase):
 
         self.assertEqual(summary["passed"], 1)
         self.assertEqual(target["execution_results"][0]["status"], "passed")
+
+    def test_expand_execution_plan_for_requested_test_sessions_duplicates_per_name(self) -> None:
+        plan = [
+            {"device": "D1", "result_path": "/tmp/reports/dev/0000_00_Suite", "command": "true"},
+        ]
+        out = _expand_execution_plan_for_requested_test_sessions(plan, ["ActsA", "ActsB"])
+        self.assertEqual(len(out), 2)
+        self.assertEqual(out[0]["requested_test_session_name"], "ActsA")
+        self.assertEqual(out[1]["requested_test_session_name"], "ActsB")
+        self.assertEqual(
+            out[0]["result_path"],
+            "/tmp/reports/dev/r000_0000_00_Suite",
+        )
+        self.assertEqual(
+            out[1]["result_path"],
+            "/tmp/reports/dev/r001_0000_00_Suite",
+        )
+
+    def test_aa_test_skips_when_hap_missing_after_daily_fetch(self) -> None:
+        with TemporaryDirectory() as tmp:
+            acts = Path(tmp) / "acts"
+            tc = acts / "testcases"
+            tc.mkdir(parents=True)
+            (tc / "module_info.list").write_text("x", encoding="utf-8")
+            item = {
+                "selected_tool": "aa_test",
+                "acts_out_root": str(acts),
+                "test_haps": ["MissingSuite.hap"],
+                "hdc_endpoint": "",
+                "device": None,
+                "command": "hdc shell echo skip",
+                "hdc_wrapper_dir": "",
+                "result_path": "",
+            }
+            report = {"daily_prebuilt": {"tag": "20260410_120000", "version_name": "OpenHarmony_x"}}
+            outcome, _ = _execute_plan_item(item, None, hdc_path=None, report=report)
+            self.assertEqual(outcome["status"], "skipped")
+            self.assertIn("not found", outcome.get("stderr_tail", ""))
+
+    def test_resolve_local_test_hap_paths_finds_testcases_hap(self) -> None:
+        with TemporaryDirectory() as tmp:
+            acts = Path(tmp) / "acts"
+            hap = acts / "testcases" / "FooStaticTest.hap"
+            hap.parent.mkdir(parents=True)
+            hap.write_text("", encoding="utf-8")
+            found = resolve_local_test_hap_paths(acts, ["FooStaticTest.hap"])
+            self.assertEqual(found, [hap.resolve()])
+
+    def test_build_install_test_haps_shell_sequence_uses_hdc_file_send_and_bm(self) -> None:
+        with TemporaryDirectory() as tmp:
+            hap = Path(tmp) / "a.hap"
+            hap.write_text("", encoding="utf-8")
+            cmds = build_install_test_haps_shell_sequence(
+                [hap],
+                hdc_path="/opt/hdc",
+                hdc_endpoint="127.0.0.1:1",
+                device="DEV1",
+            )
+            self.assertEqual(len(cmds), 2)
+            self.assertIn("file send", cmds[0])
+            self.assertIn("/data/local/tmp/a.hap", cmds[0])
+            self.assertIn("bm install", cmds[1])
+            self.assertIn("-p /data/local/tmp/a.hap", cmds[1])
+
+    def test_build_uninstall_bundle_shell_command_uses_bm_uninstall(self) -> None:
+        cmd = build_uninstall_bundle_shell_command(
+            "com.example.app",
+            hdc_path="/opt/hdc",
+            hdc_endpoint="127.0.0.1:1",
+            device="DEV1",
+        )
+        self.assertIn("bm uninstall", cmd)
+        self.assertIn("-n com.example.app", cmd)
+
+    def test_execute_planned_targets_installs_hap_before_aa_test(self) -> None:
+        with TemporaryDirectory() as tmp:
+            repo_root = Path(tmp) / "repo"
+            acts = repo_root / "out/release/suites/acts"
+            hap = acts / "testcases" / "button_static.hap"
+            hap.parent.mkdir(parents=True)
+            hap.write_bytes(b"x")
+            target = build_run_target_entry(
+                _sample_target("button_static", "ActsButtonTest"),
+                repo_root=repo_root,
+                acts_out_root=acts,
+                device="SER1",
+            )
+            report = {"results": [{"changed_file": "a.cpp", "run_targets": [target]}], "symbol_queries": []}
+
+            calls: list[str] = []
+
+            def fake_run(command: str, **kwargs: object) -> SimpleNamespace:
+                calls.append(command)
+                if "file send" in command and "button_static.hap" in command:
+                    return SimpleNamespace(returncode=0, stdout="", stderr="")
+                if "bm install" in command:
+                    return SimpleNamespace(returncode=0, stdout="install bundle successfully\n", stderr="")
+                if "bm uninstall" in command:
+                    return SimpleNamespace(returncode=0, stdout="uninstall success\n", stderr="")
+                if "aa test" in command or "aa" in command:
+                    return SimpleNamespace(returncode=0, stdout="Tests run: 1, Passed: 1\n", stderr="")
+                return SimpleNamespace(returncode=1, stdout="", stderr=f"unexpected: {command!r}")
+
+            with mock.patch("arkui_xts_selector.execution.acquire_device_lock", return_value=nullcontext()), \
+                 mock.patch("arkui_xts_selector.execution.subprocess.run", side_effect=fake_run):
+                execute_planned_targets(
+                    report,
+                    repo_root=repo_root,
+                    acts_out_root=acts,
+                    devices=["SER1"],
+                    run_tool="aa_test",
+                )
+
+        self.assertGreaterEqual(len(calls), 4)
+        self.assertTrue(any("file send" in c and "button_static.hap" in c for c in calls))
+        self.assertTrue(any("bm install" in c for c in calls))
+        self.assertTrue(any("bm uninstall" in c for c in calls))
+        idx_send = next(i for i, c in enumerate(calls) if "file send" in c and "button_static.hap" in c)
+        idx_aa = next(i for i, c in enumerate(calls) if "aa test" in c)
+        idx_rm = next(i for i, c in enumerate(calls) if "bm uninstall" in c)
+        self.assertLess(idx_send, idx_aa)
+        self.assertLess(idx_aa, idx_rm)
+
+    def test_resolve_test_hap_names_from_artifact_index_matches_bundle(self) -> None:
+        index = {
+            "testcase_modules": [
+                {
+                    "json": "/acts/testcases/ActsSuiteFoo.json",
+                    "bundle_name": "com.example.suite",
+                    "driver_module_name": "entry",
+                    "test_file_names": ["ActsSuiteFooStaticTest.hap", "extra.txt"],
+                }
+            ],
+            "hap_runtime_modules": [
+                {
+                    "hap": "ActsSuiteFooStaticTest.hap",
+                    "stem": "ActsSuiteFooStaticTest",
+                    "source_json": "/acts/testcases/ActsSuiteFoo.json",
+                    "bundle_name": "com.example.suite",
+                    "driver_module_name": "entry",
+                }
+            ],
+        }
+        target = {"bundle_name": "com.example.suite", "xdevice_module_name": None}
+        names, provenance = resolve_test_hap_names_from_artifact_index(target, index)
+        self.assertEqual(names, ["ActsSuiteFooStaticTest.hap"])
+        self.assertEqual(provenance, "acts_testcases_index:bundle_name")
+
+    def test_resolve_test_hap_names_from_artifact_index_matches_hap_stem(self) -> None:
+        index = {
+            "testcase_modules": [],
+            "hap_runtime_modules": [
+                {
+                    "hap": "ActsBarApi12StaticTest.hap",
+                    "stem": "ActsBarApi12StaticTest",
+                    "source_json": "/acts/testcases/ActsBarApi12StaticTest.json",
+                    "bundle_name": "com.other",
+                    "driver_module_name": "entry",
+                }
+            ],
+        }
+        target = {"bundle_name": "", "xdevice_module_name": "ActsBarApi12StaticTest"}
+        names, provenance = resolve_test_hap_names_from_artifact_index(target, index)
+        self.assertEqual(names, ["ActsBarApi12StaticTest.hap"])
+        self.assertEqual(provenance, "acts_testcases_index:hap_stem")
+
+    def test_build_run_target_entry_fills_test_haps_from_built_index(self) -> None:
+        repo_root = Path("/tmp/repo")
+        index = {
+            "testcase_modules": [
+                {
+                    "json": str(repo_root / "out/release/suites/acts/testcases/ActsChipStatic.json"),
+                    "bundle_name": "com.arkui.ace.advance.chip.static",
+                    "driver_module_name": "entry",
+                    "test_file_names": ["ActsAceEtsModuleAdvanceChipStaticTest.hap"],
+                }
+            ],
+            "hap_runtime_modules": [
+                {
+                    "hap": "ActsAceEtsModuleAdvanceChipStaticTest.hap",
+                    "stem": "ActsAceEtsModuleAdvanceChipStaticTest",
+                    "bundle_name": "com.arkui.ace.advance.chip.static",
+                    "driver_module_name": "entry",
+                    "source_json": str(repo_root / "out/release/suites/acts/testcases/ActsChipStatic.json"),
+                }
+            ],
+        }
+        item = {
+            "project": "test/xts/acts/arkui/ace_ets_module_advance_chip_static",
+            "test_json": "test/xts/acts/arkui/ace_ets_module_advance_chip_static/Test.json",
+            "bundle_name": "com.arkui.ace.advance.chip.static",
+            "driver_module_name": "entry",
+            "xdevice_module_name": None,
+            "build_target": "ace_ets_module_advance_chip_static",
+            "driver_type": "OHJSUnitTest",
+            "test_haps": [],
+            "confidence": "medium",
+            "bucket": "high-confidence related",
+            "variant": "static",
+        }
+        target = build_run_target_entry(
+            item,
+            repo_root=repo_root,
+            acts_out_root=repo_root / "out/release/suites/acts",
+            built_artifact_index=index,
+            device="SER1",
+        )
+        self.assertEqual(target["test_haps"], ["ActsAceEtsModuleAdvanceChipStaticTest.hap"])
+        self.assertEqual(target["test_haps_inference"], "acts_testcases_index:bundle_name")
+        self.assertEqual(target["xdevice_module_name"], "ActsAceEtsModuleAdvanceChipStaticTest")
+        self.assertEqual(target["artifact_status"], "available")
+        self.assertIn("ActsAceEtsModuleAdvanceChipStaticTest", target["xdevice_command"] or "")
 
 
 class SelectorRunLabelTests(unittest.TestCase):

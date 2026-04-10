@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from arkui_xts_selector.cli import resolve_selector_report_input, run_session_from_report
 from arkui_xts_selector.run_store import create_run_session, resolve_labeled_run, resolve_latest_run
-from arkui_xts_selector.workspace import discover_repo_root
+from arkui_xts_selector.workspace import default_acts_out_root, discover_repo_root
 
 
 def _create_ohos_tree(root: Path) -> None:
@@ -56,6 +56,28 @@ class WorkspaceDiscoveryTests(unittest.TestCase):
                 blocked_root.chmod(0o755)
 
         self.assertEqual(discovered, ohos_root.resolve())
+
+    def test_default_acts_out_root_prefers_existing_product_path(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            product_acts = repo_root / "out" / "rk3568" / "suites" / "acts"
+            product_acts.mkdir(parents=True, exist_ok=True)
+
+            resolved = default_acts_out_root(repo_root)
+
+        self.assertEqual(resolved, product_acts.resolve())
+
+    def test_default_acts_out_root_prefers_testcases_over_empty_release(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            release_acts = repo_root / "out" / "release" / "suites" / "acts"
+            release_acts.mkdir(parents=True, exist_ok=True)
+            product_acts = repo_root / "out" / "rk3568" / "suites" / "acts"
+            (product_acts / "testcases").mkdir(parents=True, exist_ok=True)
+
+            resolved = default_acts_out_root(repo_root)
+
+        self.assertEqual(resolved, product_acts.resolve())
 
 
 class RunStoreResolutionTests(unittest.TestCase):

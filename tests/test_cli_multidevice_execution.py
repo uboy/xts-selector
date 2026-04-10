@@ -333,7 +333,7 @@ class RunTargetPlanningTests(unittest.TestCase):
 
         def fake_run(command: str, **_kwargs):
             if "SER1" in command:
-                return SimpleNamespace(returncode=0, stdout="ok\n", stderr="")
+                return SimpleNamespace(returncode=0, stdout="Tests run: 1, Passed: 1, Failed: 0\n", stderr="")
             return SimpleNamespace(returncode=3, stdout="", stderr="boom\n")
 
         with mock.patch("arkui_xts_selector.execution.subprocess.run", side_effect=fake_run):
@@ -404,7 +404,7 @@ class RunTargetPlanningTests(unittest.TestCase):
 
         def fake_run(command: str, **_kwargs):
             calls.append(command)
-            return SimpleNamespace(returncode=0, stdout="ok\n", stderr="")
+            return SimpleNamespace(returncode=0, stdout="Tests run: 1, Passed: 1, Failed: 0\n", stderr="")
 
         with mock.patch("arkui_xts_selector.execution.subprocess.run", side_effect=fake_run):
             summary = execute_planned_targets(
@@ -526,6 +526,67 @@ class RunTargetPlanningTests(unittest.TestCase):
         self.assertEqual(result["status"], "failed")
         self.assertEqual(result["case_summary"]["total_tests"], 2)
         self.assertEqual(result["case_summary"]["fail_count"], 1)
+
+    def test_execute_planned_targets_marks_xdevice_unavailable_zero_tests_as_failed(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir) / "repo"
+            acts_out_root = repo_root / "out/release/suites/acts"
+            acts_out_root.mkdir(parents=True, exist_ok=True)
+            target = build_run_target_entry(
+                {
+                    "project": "test/xts/acts/arkui/button_static",
+                    "test_json": "test/xts/acts/arkui/button_static/Test.json",
+                    "bundle_name": "com.example.button",
+                    "driver_module_name": "entry",
+                    "xdevice_module_name": "ActsButtonStaticTest",
+                    "build_target": "arkui_button",
+                    "driver_type": "JSUnitTest",
+                    "test_haps": ["ActsButtonStaticTest.hap"],
+                    "confidence": "high",
+                    "bucket": "must-run",
+                    "variant": "static",
+                },
+                repo_root=repo_root,
+                acts_out_root=acts_out_root,
+                device="SER1",
+            )
+            report = {
+                "results": [{"changed_file": "a.cpp", "run_targets": [target]}],
+                "symbol_queries": [],
+            }
+
+            def fake_run(command: str, **_kwargs):
+                match = re.search(r"-rp (?P<path>\S+)", command)
+                self.assertIsNotNone(match)
+                result_root = Path(match.group("path"))
+                result_root.mkdir(parents=True, exist_ok=True)
+                (result_root / "summary_report.xml").write_text(
+                    (
+                        '<testsuites name="summary_report" tests="0" unavailable="1">'
+                        '<testsuite name="ActsButtonStaticTest" tests="0" unavailable="1" '
+                        'message="[Environment-0101021] Test source required 1 devices, actually 0 devices were found" />'
+                        "</testsuites>"
+                    ),
+                    encoding="utf-8",
+                )
+                return SimpleNamespace(returncode=0, stdout="ok\n", stderr="")
+
+            with mock.patch("arkui_xts_selector.execution.subprocess.run", side_effect=fake_run):
+                summary = execute_planned_targets(
+                    report,
+                    repo_root=repo_root,
+                    acts_out_root=acts_out_root,
+                    devices=["SER1"],
+                    run_tool="xdevice",
+                    xdevice_reports_root=Path(tmpdir) / "xdevice_reports",
+                )
+
+        self.assertEqual(summary["passed"], 0)
+        self.assertEqual(summary["failed"], 1)
+        result = report["results"][0]["run_targets"][0]["execution_results"][0]
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("required 1 devices", result["stderr_tail"])
+        self.assertEqual(result["case_summary"]["unavailable_count"], 1)
 
 
 class MainExecutionExitTests(unittest.TestCase):
