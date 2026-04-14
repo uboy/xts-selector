@@ -45,6 +45,7 @@ from arkui_xts_selector.cli import (
     filter_project_results_by_relevance,
     filter_changed_files_for_xts,
     infer_git_host_kind,
+    load_or_build_projects,
     load_changed_file_exclusion_config,
     load_ini_git_host_config,
     load_ini_gitcode_config,
@@ -59,6 +60,8 @@ from arkui_xts_selector.cli import (
     resolve_json_output_path,
     resolve_pr_changed_files,
     restrict_explicit_surface_projects,
+    project_might_match,
+    select_candidate_projects,
     write_selected_tests_report,
     write_json_report,
     family_tokens_from_path,
@@ -299,6 +302,8 @@ class CliDesignV1Tests(unittest.TestCase):
         seen_urls: list[str] = []
 
         def _fake_urlopen(request: object, timeout: int = 20) -> _Response:
+            if isinstance(request, mock.Mock):
+                raise AssertionError("unexpected mock request object")
             full_url = request.full_url
             seen_urls.append(full_url)
             if "/isource/merge_requests/" in full_url:
@@ -451,27 +456,6 @@ class CliDesignV1Tests(unittest.TestCase):
         with redirect_stderr(buffer):
             emit_progress(False, "loading XTS project index")
         self.assertEqual(buffer.getvalue(), "")
-
-    def test_parse_args_accepts_generic_git_host_flags(self) -> None:
-        old_argv = sys.argv
-        sys.argv = [
-            "arkui-xts-selector",
-            "--pr-url",
-            "https://codehub.example.com/group/project/merge_requests/12",
-            "--git-host-kind",
-            "codehub",
-            "--git-host-url",
-            "https://codehub.example.com",
-        ]
-        try:
-            from arkui_xts_selector.cli import parse_args
-
-            args = parse_args()
-        finally:
-            sys.argv = old_argv
-
-        self.assertEqual(args.git_host_kind, "codehub")
-        self.assertEqual(args.git_host_url, "https://codehub.example.com")
 
     def test_resolve_json_output_path_defaults_to_cwd_report_file(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -814,6 +798,53 @@ class FancySliderModifier extends SliderModifier {}
                 parse_args()
         finally:
             sys.argv = old_argv
+
+    def test_parse_args_accepts_changed_symbol(self) -> None:
+        old_argv = sys.argv
+        sys.argv = ["arkui-xts-selector", "--changed-file", "a.cpp", "--changed-symbol", "Foo::Bar"]
+        try:
+            from arkui_xts_selector.cli import parse_args
+
+            args = parse_args()
+        finally:
+            sys.argv = old_argv
+
+        self.assertEqual(args.changed_file, ["a.cpp"])
+        self.assertEqual(args.changed_symbol, ["Foo::Bar"])
+
+    def test_parse_args_accepts_changed_range(self) -> None:
+        old_argv = sys.argv
+        sys.argv = ["arkui-xts-selector", "--changed-file", "a.cpp", "--changed-range", "12:18"]
+        try:
+            from arkui_xts_selector.cli import parse_args
+
+            args = parse_args()
+        finally:
+            sys.argv = old_argv
+
+        self.assertEqual(args.changed_file, ["a.cpp"])
+        self.assertEqual(args.changed_range, ["12:18"])
+
+    def test_parse_args_accepts_generic_git_host_flags(self) -> None:
+        old_argv = sys.argv
+        sys.argv = [
+            "arkui-xts-selector",
+            "--pr-url",
+            "https://codehub.example.com/group/project/merge_requests/12",
+            "--git-host-kind",
+            "codehub",
+            "--git-host-url",
+            "https://codehub.example.com",
+        ]
+        try:
+            from arkui_xts_selector.cli import parse_args
+
+            args = parse_args()
+        finally:
+            sys.argv = old_argv
+
+        self.assertEqual(args.git_host_kind, "codehub")
+        self.assertEqual(args.git_host_url, "https://codehub.example.com")
 
     def test_family_tokens_keep_compound_component_names(self) -> None:
         tokens = family_tokens_from_path(
@@ -3832,6 +3863,290 @@ class CacheIsolationTests(unittest.TestCase):
         """Cache path must be in /tmp/."""
         path = default_cache_path(Path("/some/xts/root"))
         self.assertTrue(str(path).startswith("/tmp/"))
+
+    def test_load_or_build_projects_does_not_rewrite_cache_on_full_hit(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            xts_root = Path(tmpdir) / "test/xts/acts/arkui"
+            project_root = xts_root / "demo_static"
+            project_root.mkdir(parents=True, exist_ok=True)
+            (project_root / "Test.json").write_text(
+                json.dumps({"driver": {"module-name": "entry"}, "kits": [{"test-file-name": ["Demo.hap"]}]}),
+                encoding="utf-8",
+            )
+            pages_dir = project_root / "pages"
+            pages_dir.mkdir(parents=True, exist_ok=True)
+            (pages_dir / "index.ets").write_text("Button('demo')\n", encoding="utf-8")
+            cache_file = Path(tmpdir) / "xts-cache.json"
+
+            projects_first, cache_used_first = load_or_build_projects(xts_root, cache_file)
+            self.assertFalse(cache_used_first)
+            self.assertEqual(len(projects_first), 1)
+
+            with mock.patch("pathlib.Path.write_text", side_effect=AssertionError("cache rewrite should be skipped on full hit")):
+                projects_second, cache_used_second = load_or_build_projects(xts_root, cache_file)
+
+        self.assertTrue(cache_used_second)
+        self.assertEqual([project.relative_root for project in projects_second], [projects_first[0].relative_root])
+
+    def test_load_or_build_projects_backfills_meta_without_project_hashes(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            xts_root = Path(tmpdir) / "test/xts/acts/arkui"
+            project_root = xts_root / "demo_static"
+            project_root.mkdir(parents=True, exist_ok=True)
+            (project_root / "Test.json").write_text(
+                json.dumps({"driver": {"module-name": "entry"}, "kits": [{"test-file-name": ["Demo.hap"]}]}),
+                encoding="utf-8",
+            )
+            pages_dir = project_root / "pages"
+            pages_dir.mkdir(parents=True, exist_ok=True)
+            (pages_dir / "index.ets").write_text("Button('demo').role(ButtonRole.Normal)\n", encoding="utf-8")
+            cache_file = Path(tmpdir) / "xts-cache.json"
+
+            projects_first, cache_used_first = load_or_build_projects(xts_root, cache_file)
+            self.assertFalse(cache_used_first)
+            self.assertEqual(len(projects_first), 1)
+
+            meta_file = cache_file.with_name(cache_file.name + ".meta.json")
+            self.assertTrue(meta_file.exists())
+            meta_file.unlink()
+            cache_stat = cache_file.stat()
+            os.utime(cache_file, ns=(cache_stat.st_atime_ns, cache_stat.st_mtime_ns + 10_000_000))
+
+            with mock.patch("arkui_xts_selector.cli._build_project_hash", side_effect=AssertionError("project hash walk should be skipped")):
+                projects_second, cache_used_second = load_or_build_projects(xts_root, cache_file)
+
+            self.assertTrue(cache_used_second)
+            self.assertTrue(meta_file.exists())
+            self.assertEqual([project.relative_root for project in projects_second], [projects_first[0].relative_root])
+
+    def test_score_project_loads_lazy_cached_files_on_demand(self) -> None:
+        project = TestProjectIndex.from_dict(
+            {
+                "relative_root": "test/xts/acts/arkui/demo_static",
+                "test_json": "test/xts/acts/arkui/demo_static/Test.json",
+                "bundle_name": None,
+                "path_key": "demo_static",
+                "variant": "static",
+                "surface": "static",
+                "supported_surfaces": ["static"],
+                "files": [
+                    {
+                        "relative_path": "test/xts/acts/arkui/demo_static/pages/index.ets",
+                        "surface": "static",
+                        "imports": [],
+                        "imported_symbols": ["ButtonAttribute"],
+                        "identifier_calls": ["Button"],
+                        "member_calls": ["role"],
+                        "type_member_calls": [],
+                        "typed_modifier_bases": [],
+                        "words": ["Button", "role"],
+                    }
+                ],
+                "search_summary": {
+                    "imports": [],
+                    "imported_symbols": ["ButtonAttribute"],
+                    "imported_symbol_tokens": ["buttonattribute"],
+                    "identifier_calls": ["Button"],
+                    "identifier_call_tokens": ["button"],
+                    "member_call_tokens": ["role"],
+                    "type_owner_tokens": [],
+                    "typed_modifier_bases": [],
+                    "words": ["button", "role"],
+                    "path_tokens": ["demostatic"],
+                    "project_path_compact": "demostatic",
+                    "file_path_compacts": ["testxtsactsarkuidemostaticpagesindexets"],
+                },
+            },
+            lazy_files=True,
+        )
+        self.assertEqual(project.files, [])
+
+        score, reasons, file_hits = score_project(
+            project,
+            {
+                "modules": set(),
+                "symbols": {"Button"},
+                "weak_modules": set(),
+                "weak_symbols": set(),
+                "project_hints": set(),
+                "method_hints": {"role"},
+                "type_hints": set(),
+                "family_tokens": {"button"},
+            },
+        )
+
+        self.assertGreater(score, 0)
+        self.assertTrue(reasons)
+        self.assertEqual(file_hits[0][1].relative_path, "test/xts/acts/arkui/demo_static/pages/index.ets")
+        self.assertEqual(len(project.files), 1)
+
+    def test_project_might_match_exact_api_prefilter_skips_broad_path_only_hits(self) -> None:
+        project = TestProjectIndex.from_dict(
+            {
+                "relative_root": "test/xts/acts/arkui/button_static",
+                "test_json": "test/xts/acts/arkui/button_static/Test.json",
+                "bundle_name": None,
+                "path_key": "button_static",
+                "variant": "static",
+                "surface": "static",
+                "supported_surfaces": ["static"],
+                "files": [],
+                "search_summary": {
+                    "imports": [],
+                    "imported_symbols": [],
+                    "imported_symbol_tokens": [],
+                    "identifier_calls": [],
+                    "identifier_call_tokens": [],
+                    "member_call_tokens": [],
+                    "type_owner_tokens": [],
+                    "typed_modifier_bases": [],
+                    "words": ["button"],
+                    "path_tokens": ["button", "static"],
+                    "project_path_compact": "buttonstatic",
+                    "file_path_compacts": ["testxtsactsarkuibuttonstaticpagesindexets"],
+                },
+            },
+            lazy_files=True,
+        )
+
+        self.assertFalse(
+            project_might_match(
+                project,
+                {
+                    "modules": set(),
+                    "symbols": {"ButtonAttribute.role"},
+                    "weak_modules": set(),
+                    "weak_symbols": set(),
+                    "project_hints": {"button"},
+                    "method_hints": {"role"},
+                    "type_hints": {"ButtonAttribute"},
+                    "exact_api_prefilter_entities": {"ButtonAttribute.role"},
+                    "family_tokens": {"button"},
+                },
+            )
+        )
+
+    def test_select_candidate_projects_prefers_exact_api_shortlist_for_file_only_lineage(self) -> None:
+        broad_project = TestProjectIndex.from_dict(
+            {
+                "relative_root": "test/xts/acts/arkui/button_broad",
+                "test_json": "test/xts/acts/arkui/button_broad/Test.json",
+                "bundle_name": None,
+                "path_key": "button_broad",
+                "variant": "static",
+                "surface": "static",
+                "supported_surfaces": ["static"],
+                "files": [],
+                "search_summary": {
+                    "imports": [],
+                    "imported_symbols": ["Button"],
+                    "imported_symbol_tokens": ["button"],
+                    "identifier_calls": ["Button"],
+                    "identifier_call_tokens": ["button"],
+                    "member_call_tokens": [],
+                    "type_owner_tokens": [],
+                    "typed_modifier_bases": [],
+                    "words": ["button"],
+                    "path_tokens": ["button", "broad"],
+                    "project_path_compact": "buttonbroad",
+                    "file_path_compacts": ["testxtsactsarkuibuttonbroadpagesindexets"],
+                },
+            },
+            lazy_files=True,
+        )
+        exact_project = TestProjectIndex.from_dict(
+            {
+                "relative_root": "test/xts/acts/arkui/button_role",
+                "test_json": "test/xts/acts/arkui/button_role/Test.json",
+                "bundle_name": None,
+                "path_key": "button_role",
+                "variant": "static",
+                "surface": "static",
+                "supported_surfaces": ["static"],
+                "files": [],
+                "search_summary": {
+                    "imports": [],
+                    "imported_symbols": ["ButtonAttribute"],
+                    "imported_symbol_tokens": ["buttonattribute"],
+                    "identifier_calls": [],
+                    "identifier_call_tokens": [],
+                    "member_call_tokens": ["role"],
+                    "type_owner_tokens": [],
+                    "typed_modifier_bases": [],
+                    "words": ["button", "role"],
+                    "path_tokens": ["button", "role"],
+                    "project_path_compact": "buttonrole",
+                    "file_path_compacts": ["testxtsactsarkuibuttonrolepagesindexets"],
+                },
+            },
+            lazy_files=True,
+        )
+
+        all_projects, shortlisted = select_candidate_projects(
+            [broad_project, exact_project],
+            {
+                "modules": set(),
+                "symbols": {"Button", "ButtonModifier", "ButtonAttribute.role"},
+                "weak_modules": set(),
+                "weak_symbols": set(),
+                "project_hints": {"button"},
+                "method_hints": {"role"},
+                "type_hints": {"ButtonAttribute"},
+                "exact_api_prefilter_entities": {"ButtonAttribute.role"},
+                "family_tokens": {"button"},
+            },
+            "static",
+        )
+
+        self.assertEqual([project.relative_root for project in all_projects], [broad_project.relative_root, exact_project.relative_root])
+        self.assertEqual([project.relative_root for project in shortlisted], [exact_project.relative_root])
+
+    def test_select_candidate_projects_falls_back_to_broad_shortlist_when_exact_pass_is_empty(self) -> None:
+        broad_project = TestProjectIndex.from_dict(
+            {
+                "relative_root": "test/xts/acts/arkui/button_broad",
+                "test_json": "test/xts/acts/arkui/button_broad/Test.json",
+                "bundle_name": None,
+                "path_key": "button_broad",
+                "variant": "static",
+                "surface": "static",
+                "supported_surfaces": ["static"],
+                "files": [],
+                "search_summary": {
+                    "imports": [],
+                    "imported_symbols": ["Button"],
+                    "imported_symbol_tokens": ["button"],
+                    "identifier_calls": ["Button"],
+                    "identifier_call_tokens": ["button"],
+                    "member_call_tokens": [],
+                    "type_owner_tokens": [],
+                    "typed_modifier_bases": [],
+                    "words": ["button"],
+                    "path_tokens": ["button", "broad"],
+                    "project_path_compact": "buttonbroad",
+                    "file_path_compacts": ["testxtsactsarkuibuttonbroadpagesindexets"],
+                },
+            },
+            lazy_files=True,
+        )
+
+        _all_projects, shortlisted = select_candidate_projects(
+            [broad_project],
+            {
+                "modules": set(),
+                "symbols": {"Button", "ButtonModifier", "ButtonAttribute.role"},
+                "weak_modules": set(),
+                "weak_symbols": set(),
+                "project_hints": {"button"},
+                "method_hints": {"role"},
+                "type_hints": {"ButtonAttribute"},
+                "exact_api_prefilter_entities": {"ButtonAttribute.role"},
+                "family_tokens": {"button"},
+            },
+            "static",
+        )
+
+        self.assertEqual([project.relative_root for project in shortlisted], [broad_project.relative_root])
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ This is not runtime coverage. It is a test selection helper.
 - auto-discover a full OHOS workspace from the current tree or a sibling checkout such as `ohos_master`
 - configurable XTS/SDK/git roots
 - optional daily-prebuilt ACTS reuse from official OpenHarmony full packages, so `xdevice` can run without a local XTS build
+- optional `--quick` mode to skip daily-download fallback and use only local ACTS artifacts for faster local-only analysis
 - standalone daily artifact download for XTS, SDK, and dayu200 firmware packages
 - optional dayu200 firmware flashing through the same CLI using `hdc` + Rockchip `flash.py`
 - output `aa test`, `python -m xdevice`, and `runtest.sh` commands
@@ -120,6 +121,8 @@ Current interpretation rule:
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - project structure, indexes, and execution flow
 - [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) - scope and expected behavior
 - [docs/DESIGN.md](docs/DESIGN.md) - design notes and implementation direction
+- [docs/API_IMPACT_SELECTION_PLAN.md](docs/API_IMPACT_SELECTION_PLAN.md) - phased plan for API-lineage-based impact selection
+- [docs/API_IMPACT_SELECTION_DESIGN.md](docs/API_IMPACT_SELECTION_DESIGN.md) - design notes for mapping changed ArkUI/Ace files to affected APIs and consumers
 
 ## Common Examples
 
@@ -181,6 +184,12 @@ arkui-xts-selector \
   --daily-build-tag 20260403_120242 \
   --daily-component dayu200_Dyn_Sta_XTS \
   --run-tool xdevice
+```
+
+```bash
+arkui-xts-selector \
+  --changed-file foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_model_static.cpp \
+  --quick
 ```
 
 ```bash

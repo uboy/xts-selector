@@ -36,6 +36,7 @@ from rich.console import Console
 from rich.padding import Padding
 from rich.table import Table
 
+from .api_lineage import ApiLineageMap, build_api_lineage_map
 from .api_surface import (
     BOTH,
     DYNAMIC,
@@ -118,10 +119,22 @@ COMMAND_PREFIX_ENV = "ARKUI_XTS_SELECTOR_COMMAND_PREFIX"
 COMMAND_MODE_ENV = "ARKUI_XTS_SELECTOR_COMMAND_MODE"
 
 
+@dataclass(frozen=True)
+class XtsWorkspaceSnapshot:
+    signature: str
+    newest_mtime_ns: int
+
+
 def default_cache_path(xts_root: Path) -> Path:
     """Generate workspace-specific cache path to avoid race conditions."""
     workspace_hash = hashlib.sha256(str(xts_root.resolve()).encode()).hexdigest()[:12]
     return Path(f"/tmp/arkui_xts_selector_cache_{workspace_hash}.json")
+
+
+def default_cache_meta_path(cache_file: Path) -> Path:
+    return cache_file.with_name(cache_file.name + ".meta.json")
+
+
 DEFAULT_REPORT_FILE = "arkui_xts_selector_report.json"
 SELECTED_TESTS_FILE_NAME = "selected_tests.json"
 RELEVANCE_MODE_CHOICES = ("all", "balanced", "strict")
@@ -1356,7 +1369,7 @@ def normalize_git_host_kind(value: str | None) -> str:
     normalized = str(value or "").strip().lower()
     if normalized in {"", "auto"}:
         return "auto"
-    if normalized == "gitcode":
+    if normalized in {"gitcode"}:
         return "gitcode"
     if normalized in {"codehub", "codehub-y", "cr-y.codehub", "opencodehub"}:
         return "codehub"
@@ -1586,6 +1599,7 @@ class AppConfig:
     daily_prebuilt: PreparedDailyPrebuilt | None = None
     daily_prebuilt_ready: bool = False
     daily_prebuilt_note: str = ""
+    quick_mode: bool = False
     sdk_build_tag: str | None = None
     sdk_component: str = DEFAULT_SDK_COMPONENT
     sdk_branch: str = "master"
@@ -1665,6 +1679,7 @@ class TestProjectIndex:
     search_path_tokens: set[str] = field(default_factory=set)
     search_project_path_compact: str = ""
     search_file_path_compacts: list[str] = field(default_factory=list)
+    _serialized_files: list[dict] | None = field(default=None, repr=False, compare=False)
 
     def to_dict(self) -> dict:
         payload = {
@@ -1675,7 +1690,7 @@ class TestProjectIndex:
             "variant": self.variant,
             "surface": self.surface,
             "supported_surfaces": sorted(self.supported_surfaces),
-            "files": [item.to_dict() for item in self.files],
+            "files": self._serialized_files if self._serialized_files is not None else [item.to_dict() for item in self.files],
         }
         if self.search_summary_ready:
             payload["search_summary"] = {
@@ -1695,7 +1710,16 @@ class TestProjectIndex:
         return payload
 
     @classmethod
-    def from_dict(cls, data: dict) -> "TestProjectIndex":
+    def from_dict(cls, data: dict, *, lazy_files: bool = False) -> "TestProjectIndex":
+        summary = data.get("search_summary")
+        raw_files = data.get("files", [])
+        serialized_files = None
+        files: list[TestFileIndex]
+        if lazy_files and isinstance(summary, dict) and isinstance(raw_files, list):
+            files = []
+            serialized_files = raw_files
+        else:
+            files = [TestFileIndex.from_dict(item) for item in raw_files]
         project = cls(
             relative_root=data["relative_root"],
             test_json=data["test_json"],
@@ -1704,9 +1728,9 @@ class TestProjectIndex:
             variant=data.get("variant", "unknown"),
             surface=data.get("surface", data.get("variant", "unknown")),
             supported_surfaces=set(data.get("supported_surfaces", [])),
-            files=[TestFileIndex.from_dict(item) for item in data["files"]],
+            files=files,
+            _serialized_files=serialized_files,
         )
-        summary = data.get("search_summary")
         if isinstance(summary, dict):
             project.search_summary_ready = True
             project.search_imports = set(summary.get("imports", []))
@@ -1789,8 +1813,50 @@ def ensure_project_search_summary(project: TestProjectIndex) -> TestProjectIndex
     return project
 
 
-def project_might_match(project: TestProjectIndex, signals: dict[str, set[str]]) -> bool:
+def ensure_project_files_loaded(project: TestProjectIndex) -> TestProjectIndex:
+    if project.files or not project._serialized_files:
+        return project
+    project.files = [TestFileIndex.from_dict(item) for item in project._serialized_files if isinstance(item, dict)]
+    return project
+
+
+def project_matches_exact_api_prefilter(project: TestProjectIndex, signals: dict[str, set[str]]) -> bool:
     ensure_project_search_summary(project)
+    exact_api_entities = {str(item) for item in signals.get("exact_api_prefilter_entities", set()) if "." in str(item)}
+    if not exact_api_entities:
+        return False
+
+    type_tokens = (
+        set(project.search_type_owner_tokens)
+        | set(project.search_imported_symbol_tokens)
+        | set(project.search_identifier_call_tokens)
+    )
+    member_tokens = set(project.search_member_call_tokens)
+    for api_entity in sorted(exact_api_entities):
+        owner, separator, method = api_entity.partition(".")
+        if not separator or not owner or not method:
+            continue
+        owner_token = compact_token(owner)
+        method_token = compact_token(method)
+        if owner_token and method_token and owner_token in type_tokens and method_token in member_tokens:
+            return True
+    return False
+
+
+def project_might_match(
+    project: TestProjectIndex,
+    signals: dict[str, set[str]],
+    *,
+    exact_api_prefilter_mode: bool | None = None,
+) -> bool:
+    ensure_project_search_summary(project)
+    exact_api_prefilter = (
+        bool(signals.get("exact_api_prefilter_entities"))
+        or any("." in item for item in signals.get("symbols", set()))
+    ) if exact_api_prefilter_mode is None else bool(exact_api_prefilter_mode)
+
+    if exact_api_prefilter:
+        return project_matches_exact_api_prefilter(project, signals)
 
     if signals["modules"] & project.search_imports:
         return True
@@ -1847,7 +1913,21 @@ def select_candidate_projects(
     variants_mode: str,
 ) -> tuple[list[TestProjectIndex], list[TestProjectIndex]]:
     variant_projects = [project for project in projects if variant_matches(project.variant, variants_mode)]
-    shortlisted = [project for project in variant_projects if project_might_match(project, signals)]
+    exact_shortlisted: list[TestProjectIndex] = []
+    if signals.get("exact_api_prefilter_entities"):
+        exact_shortlisted = [
+            project
+            for project in variant_projects
+            if project_might_match(project, signals, exact_api_prefilter_mode=True)
+        ]
+        if exact_shortlisted:
+            return variant_projects, exact_shortlisted
+
+    shortlisted = [
+        project
+        for project in variant_projects
+        if project_might_match(project, signals, exact_api_prefilter_mode=False)
+    ]
     if not shortlisted:
         return variant_projects, variant_projects
     return variant_projects, shortlisted
@@ -1875,6 +1955,42 @@ def normalize_changed_files(values: Iterable[str], base_roots: Iterable[Path] | 
         candidate_paths = [(root / raw).resolve() for root in candidate_roots] or [(REPO_ROOT / raw).resolve()]
         existing = next((candidate for candidate in candidate_paths if candidate.exists()), None)
         result.append(existing or candidate_paths[0])
+    return result
+
+
+def parse_changed_ranges(
+    values: Iterable[str],
+    *,
+    changed_files: Iterable[Path],
+    base_roots: Iterable[Path] | None = None,
+) -> dict[Path, list[tuple[int, int]]]:
+    changed_file_list = [path.resolve() for path in changed_files]
+    result: dict[Path, list[tuple[int, int]]] = {}
+    for value in values:
+        raw = str(value or "").strip()
+        if not raw:
+            continue
+        parts = raw.rsplit(":", 2)
+        target_path: Path
+        start_raw: str
+        end_raw: str
+        if len(parts) == 2 and all(part.isdigit() for part in parts):
+            if len(changed_file_list) != 1:
+                raise ValueError(f"Ambiguous changed range '{raw}': file path is required when multiple changed files are present.")
+            target_path = changed_file_list[0]
+            start_raw, end_raw = parts
+        elif len(parts) == 3 and parts[1].isdigit() and parts[2].isdigit():
+            path_value, start_raw, end_raw = parts
+            normalized_paths = normalize_changed_files([path_value], base_roots=base_roots)
+            if not normalized_paths:
+                raise ValueError(f"Unable to resolve changed range path from '{raw}'.")
+            target_path = normalized_paths[0].resolve()
+        else:
+            raise ValueError(f"Invalid changed range '{raw}'. Expected 'start:end' or 'path:start:end'.")
+
+        start = max(1, int(start_raw))
+        end = max(start, int(end_raw))
+        result.setdefault(target_path, []).append((start, end))
     return result
 
 
@@ -2488,15 +2604,56 @@ def discover_projects(xts_root: Path) -> list[TestProjectIndex]:
     return projects
 
 
-def _build_project_hash(project_root: Path, source_files: list[Path]) -> str:
-    """Compute hash for a single project based on its source files."""
+def _build_xts_workspace_signature(xts_root: Path) -> str:
+    return _capture_xts_workspace_snapshot(xts_root).signature
+
+
+def _capture_xts_workspace_snapshot(xts_root: Path) -> XtsWorkspaceSnapshot:
+    skip_dirs = {".git", ".ohpm", "node_modules", "oh_modules", "out"}
     h = hashlib.sha256()
-    for f in sorted(source_files):
+    file_count = 0
+    newest_mtime_ns = 0
+    for dirpath, dirnames, filenames in os.walk(xts_root, topdown=True, onerror=lambda _exc: None):
+        dirnames[:] = sorted(name for name in dirnames if name not in skip_dirs)
         try:
-            stat = f.stat()
-            h.update(f"{f}:{stat.st_mtime_ns}:{stat.st_size}".encode())
+            newest_mtime_ns = max(newest_mtime_ns, int(Path(dirpath).stat().st_mtime_ns))
         except OSError:
-            h.update(f"{f}:missing".encode())
+            pass
+        base = Path(dirpath)
+        for filename in sorted(filenames):
+            if filename != "Test.json" and not filename.endswith((".ets", ".ts", ".js")):
+                continue
+            path = base / filename
+            try:
+                stat = path.stat()
+            except OSError:
+                continue
+            rel = str(path.relative_to(xts_root)).replace(os.sep, "/")
+            h.update(f"{rel}:{stat.st_mtime_ns}:{stat.st_size}\n".encode())
+            file_count += 1
+            newest_mtime_ns = max(newest_mtime_ns, int(stat.st_mtime_ns))
+    return XtsWorkspaceSnapshot(
+        signature=f"{file_count}:{h.hexdigest()}",
+        newest_mtime_ns=newest_mtime_ns,
+    )
+
+
+def _build_project_hash(project_root: Path, skip_dirs: set[str]) -> str:
+    """Compute hash for a single project based on its relevant source files."""
+    h = hashlib.sha256()
+    for dirpath, dirnames, filenames in os.walk(project_root, topdown=True, onerror=lambda _exc: None):
+        dirnames[:] = sorted(name for name in dirnames if name not in skip_dirs)
+        base = Path(dirpath)
+        for filename in sorted(filenames):
+            if filename != "Test.json" and not filename.endswith((".ets", ".ts", ".js")):
+                continue
+            path = base / filename
+            try:
+                stat = path.stat()
+            except OSError:
+                continue
+            rel = str(path.relative_to(project_root)).replace(os.sep, "/")
+            h.update(f"{rel}:{stat.st_mtime_ns}:{stat.st_size}\n".encode())
     return h.hexdigest()
 
 
@@ -2532,11 +2689,65 @@ def _build_single_project(
     )
 
 
+def _projects_from_cache_payload(cache_data: dict[str, object], *, lazy_files: bool) -> list[TestProjectIndex]:
+    return [
+        TestProjectIndex.from_dict(item["data"], lazy_files=lazy_files)
+        for _key, item in sorted((cache_data.get("projects", {}) or {}).items())
+        if isinstance(item, dict) and isinstance(item.get("data"), dict)
+    ]
+
+
 def load_or_build_projects(xts_root: Path, cache_file: Path | None) -> tuple[list[TestProjectIndex], bool]:
     CACHE_VERSION = 4
 
     if cache_file:
         cache_file.parent.mkdir(parents=True, exist_ok=True)
+    cache_meta_file = default_cache_meta_path(cache_file) if cache_file else None
+
+    # Fast path: validate the workspace against a tiny sidecar metadata file.
+    if cache_file and cache_file.exists() and cache_meta_file and cache_meta_file.exists():
+        try:
+            meta_payload = json.loads(read_text(cache_meta_file))
+            if meta_payload.get("version") == CACHE_VERSION:
+                workspace_snapshot = _capture_xts_workspace_snapshot(xts_root)
+                if meta_payload.get("workspace_signature") == workspace_snapshot.signature:
+                    cache_data = json.loads(read_text(cache_file))
+                    if cache_data.get("version") == CACHE_VERSION:
+                        projects = _projects_from_cache_payload(cache_data, lazy_files=True)
+                        for project in projects:
+                            if not project.search_summary_ready:
+                                ensure_project_search_summary(project)
+                        return projects, len(projects) > 0
+        except (json.JSONDecodeError, KeyError, TypeError, OSError):
+            pass
+
+    # Compatibility fast path: older caches may not have a sidecar yet.
+    # If the workspace-specific cache file is newer than every relevant source
+    # file and directory in the workspace, the cache cannot be stale for this
+    # workspace snapshot, so we can safely restore it and backfill the sidecar.
+    if cache_file and cache_file.exists() and cache_meta_file and not cache_meta_file.exists():
+        try:
+            workspace_snapshot = _capture_xts_workspace_snapshot(xts_root)
+            cache_stat = cache_file.stat()
+            cache_data = json.loads(read_text(cache_file))
+            if cache_data.get("version") == CACHE_VERSION and int(cache_stat.st_mtime_ns) >= workspace_snapshot.newest_mtime_ns:
+                projects = _projects_from_cache_payload(cache_data, lazy_files=True)
+                for project in projects:
+                    if not project.search_summary_ready:
+                        ensure_project_search_summary(project)
+                cache_meta_file.write_text(
+                    json.dumps(
+                        {
+                            "version": CACHE_VERSION,
+                            "workspace_signature": workspace_snapshot.signature,
+                        },
+                        ensure_ascii=False,
+                    ),
+                    encoding="utf-8",
+                )
+                return projects, len(projects) > 0
+        except (json.JSONDecodeError, KeyError, TypeError, OSError):
+            pass
 
     # Discover all project directories
     skip_dirs = {".git", ".ohpm", "node_modules", "oh_modules", "out"}
@@ -2560,23 +2771,20 @@ def load_or_build_projects(xts_root: Path, cache_file: Path | None) -> tuple[lis
     new_cache: dict[str, dict] = {}
     projects: list[TestProjectIndex] = []
     cache_hits = 0
+    cache_changed = False
 
     for test_json, root in project_dirs:
-        source_files = sorted(
-            f.resolve() for f in root.rglob("*")
-            if f.is_file() and (f.name == "Test.json" or f.suffix.lower() in {".ets", ".ts", ".js"})
-            and not any(skip in f.parts for skip in skip_dirs)
-        )
-        proj_hash = _build_project_hash(root, source_files)
+        proj_hash = _build_project_hash(root, skip_dirs)
         rel_key = str(root.relative_to(xts_root)).replace(os.sep, "/")
 
         if rel_key in old_cache and old_cache[rel_key].get("hash") == proj_hash:
             # Cache hit
             try:
                 project = TestProjectIndex.from_dict(old_cache[rel_key]["data"])
-                ensure_project_search_summary(project)
+                if not project.search_summary_ready:
+                    ensure_project_search_summary(project)
                 projects.append(project)
-                new_cache[rel_key] = {"hash": proj_hash, "data": project.to_dict()}
+                new_cache[rel_key] = old_cache[rel_key]
                 cache_hits += 1
                 continue
             except (KeyError, TypeError):
@@ -2587,14 +2795,29 @@ def load_or_build_projects(xts_root: Path, cache_file: Path | None) -> tuple[lis
         ensure_project_search_summary(project)
         projects.append(project)
         new_cache[rel_key] = {"hash": proj_hash, "data": project.to_dict()}
+        cache_changed = True
 
     # Save updated cache
-    if cache_file:
+    if len(old_cache) != len(new_cache):
+        cache_changed = True
+    if cache_file and cache_changed:
         cache_payload = {
             "version": CACHE_VERSION,
             "projects": new_cache,
         }
         cache_file.write_text(json.dumps(cache_payload, ensure_ascii=False), encoding="utf-8")
+    if cache_file and cache_meta_file and (cache_changed or not cache_meta_file.exists()):
+        workspace_signature = _build_xts_workspace_signature(xts_root)
+        cache_meta_file.write_text(
+            json.dumps(
+                {
+                    "version": CACHE_VERSION,
+                    "workspace_signature": workspace_signature,
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
 
     cache_used = cache_hits == len(project_dirs) and len(project_dirs) > 0
     return projects, cache_used
@@ -3003,6 +3226,122 @@ def infer_signals(
     return signals
 
 
+def apply_api_lineage_signals(
+    changed_file: Path,
+    signals: dict[str, set[str]],
+    api_lineage_map: ApiLineageMap | None,
+    repo_root: Path,
+    changed_symbols: Iterable[str] | None = None,
+    changed_ranges: Iterable[tuple[int, int]] | None = None,
+) -> tuple[list[str], list[str], list[str]]:
+    if api_lineage_map is None:
+        return [], [], []
+
+    file_level_affected_api_entities = api_lineage_map.apis_for_source(changed_file, repo_root=repo_root)
+    derived_source_symbols = [str(item).strip() for item in (changed_symbols or []) if str(item).strip()]
+    if not derived_source_symbols and changed_ranges:
+        derived_source_symbols = api_lineage_map.symbols_for_source_ranges(
+            changed_file,
+            changed_ranges,
+            repo_root=repo_root,
+        )
+    narrowed_api_entities = api_lineage_map.apis_for_source_symbols(
+        changed_file,
+        derived_source_symbols,
+        repo_root=repo_root,
+    ) if derived_source_symbols else []
+    affected_api_entities = narrowed_api_entities or file_level_affected_api_entities
+    lineage_symbols: set[str] = set()
+    lineage_project_hints: set[str] = set()
+    lineage_family_tokens: set[str] = set()
+    lineage_method_hints: set[str] = set()
+    lineage_type_hints: set[str] = set()
+    exact_api_prefilter_entities: set[str] = set()
+    for api_entity in affected_api_entities:
+        lineage_symbols.add(api_entity)
+        owner, _separator, method_name = str(api_entity).partition(".")
+        if owner:
+            lineage_type_hints.add(owner)
+        if owner and method_name:
+            exact_api_prefilter_entities.add(str(api_entity))
+        for suffix in ("Modifier", "Attribute", "Configuration", "Controller"):
+            owner = owner.replace(suffix, "")
+        base = compact_token(owner)
+        if base:
+            lineage_project_hints.add(base)
+            lineage_family_tokens.add(base)
+        if method_name:
+            lineage_method_hints.add(method_name)
+    if narrowed_api_entities:
+        signals["symbols"] = lineage_symbols
+        signals["project_hints"] = lineage_project_hints
+        signals["family_tokens"] = lineage_family_tokens
+        signals["method_hints"] = lineage_method_hints
+        signals["type_hints"] = lineage_type_hints
+    else:
+        signals["symbols"].update(lineage_symbols)
+        signals["project_hints"].update(lineage_project_hints)
+        signals["family_tokens"].update(lineage_family_tokens)
+        signals["method_hints"].update(lineage_method_hints)
+        signals["type_hints"].update(lineage_type_hints)
+    if exact_api_prefilter_entities:
+        signals["exact_api_prefilter_entities"] = exact_api_prefilter_entities
+    return affected_api_entities, file_level_affected_api_entities, derived_source_symbols
+
+
+def collect_source_only_consumers(
+    affected_api_entities: list[str],
+    api_lineage_map: ApiLineageMap | None,
+    *,
+    top_projects: int,
+    top_files: int,
+) -> list[dict[str, object]]:
+    if api_lineage_map is None or not affected_api_entities:
+        return []
+
+    affected_set = set(affected_api_entities)
+    project_entries: dict[str, dict[str, object]] = {}
+    for api_entity in affected_api_entities:
+        for consumer_project in api_lineage_map.consumer_projects_for_api(api_entity, kind="source_only"):
+            entry = project_entries.setdefault(
+                consumer_project,
+                {
+                    "project": consumer_project,
+                    "consumer_kind": "source_only",
+                    "matched_api_entities": set(),
+                    "files": [],
+                },
+            )
+            entry["matched_api_entities"].add(api_entity)
+
+    for consumer_project, entry in project_entries.items():
+        matched_files: list[dict[str, object]] = []
+        for consumer_file in api_lineage_map.consumer_files_for_project(consumer_project):
+            matched_file_apis = sorted(api_lineage_map.consumer_file_to_apis.get(consumer_file, set()) & affected_set)
+            if not matched_file_apis:
+                continue
+            matched_files.append(
+                {
+                    "file": consumer_file,
+                    "matched_api_entities": matched_file_apis,
+                }
+            )
+        matched_files.sort(key=lambda item: (-len(item.get("matched_api_entities", [])), str(item.get("file", ""))))
+        entry["matched_api_entities"] = sorted(entry["matched_api_entities"])
+        entry["files"] = matched_files[:top_files]
+        entry["matched_file_count"] = len(matched_files)
+
+    ordered = sorted(
+        project_entries.values(),
+        key=lambda item: (
+            -len(item.get("matched_api_entities", [])),
+            -int(item.get("matched_file_count", 0)),
+            str(item.get("project", "")),
+        ),
+    )
+    return ordered if top_projects <= 0 else ordered[:top_projects]
+
+
 def symbol_score(
     signal_symbol: str,
     file_index: TestFileIndex,
@@ -3200,6 +3539,7 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
 
 
 def score_project(project: TestProjectIndex, signals: dict[str, set[str]]) -> tuple[int, list[str], list[tuple[int, TestFileIndex, list[str]]]]:
+    ensure_project_files_loaded(project)
     project_score = 0
     project_reasons: list[str] = []
     path_key = compact_token(project.path_key)
@@ -4964,6 +5304,10 @@ def format_report(
     runtime_history_index: RuntimeHistoryIndex | None = None,
     requested_run_tool: str = "auto",
     progress_callback: Callable[[str], None] | None = None,
+    api_lineage_map: ApiLineageMap | None = None,
+    api_lineage_map_path: Path | None = None,
+    changed_symbols: list[str] | None = None,
+    changed_ranges_by_file: dict[Path, list[tuple[int, int]]] | None = None,
 ) -> dict:
     setup_started = time.perf_counter()
     built_artifacts = inspect_built_artifacts(REPO_ROOT, acts_out_root)
@@ -4995,6 +5339,21 @@ def format_report(
         "unresolved_files": [],
         "timings_ms": {},
     }
+    if api_lineage_map is not None:
+        report["api_lineage_map"] = {
+            "schema_version": api_lineage_map.schema_version,
+            "path": str(api_lineage_map_path) if api_lineage_map_path else None,
+            "api_entity_count": len(api_lineage_map.api_to_sources),
+            "source_count": len(api_lineage_map.source_to_apis),
+            "consumer_file_count": len(api_lineage_map.consumer_file_to_apis),
+            "consumer_project_count": len(api_lineage_map.consumer_project_to_apis),
+            "source_only_consumer_file_count": sum(
+                1 for kind in api_lineage_map.consumer_file_kinds.values() if kind == "source_only"
+            ),
+            "source_only_consumer_project_count": sum(
+                1 for kind in api_lineage_map.consumer_project_kinds.values() if kind == "source_only"
+            ),
+        }
     coverage_candidates: list[dict[str, object]] = []
     report["timings_ms"]["report_setup"] = round((time.perf_counter() - setup_started) * 1000, 3)
     selected_build_targets: list[str] = []
@@ -5004,6 +5363,21 @@ def format_report(
             progress_callback(f"scoring changed file {repo_rel(changed_file)}")
         rel = repo_rel(changed_file)
         signals = infer_signals(changed_file, sdk_index, content_index, mapping_config)
+        changed_ranges = list((changed_ranges_by_file or {}).get(changed_file.resolve(), []))
+        affected_api_entities, file_level_affected_api_entities, derived_source_symbols = apply_api_lineage_signals(
+            changed_file,
+            signals,
+            api_lineage_map,
+            app_config.repo_root,
+            changed_symbols=changed_symbols,
+            changed_ranges=changed_ranges,
+        )
+        source_only_consumers = collect_source_only_consumers(
+            affected_api_entities,
+            api_lineage_map,
+            top_projects=top_projects,
+            top_files=top_files,
+        )
         effective_variants_mode = resolve_variants_mode(variants_mode, changed_file)
         source_profile = build_source_profile(
             "changed_file",
@@ -5011,6 +5385,16 @@ def format_report(
             signals,
             raw_path=changed_file,
         )
+        if affected_api_entities:
+            source_profile["affected_api_entities"] = affected_api_entities
+        if changed_symbols:
+            source_profile["changed_symbols"] = sorted(changed_symbols)
+        if changed_ranges:
+            source_profile["changed_ranges"] = [f"{start}:{end}" for start, end in changed_ranges]
+        if derived_source_symbols:
+            source_profile["derived_source_symbols"] = derived_source_symbols
+        if file_level_affected_api_entities != affected_api_entities:
+            source_profile["file_level_affected_api_entities"] = file_level_affected_api_entities
         project_results = []
         all_variant_projects, candidate_projects = select_candidate_projects(
             projects,
@@ -5099,6 +5483,12 @@ def format_report(
         )
         result_item = {
             "changed_file": rel,
+            "changed_symbols": sorted(changed_symbols or []),
+            "changed_ranges": [f"{start}:{end}" for start, end in changed_ranges],
+            "derived_source_symbols": derived_source_symbols,
+            "affected_api_entities": affected_api_entities,
+            "file_level_affected_api_entities": file_level_affected_api_entities,
+            "source_only_consumers": source_only_consumers,
             "signals": {
                 "modules": sorted(signals["modules"]),
                 "weak_modules": sorted(signals.get("weak_modules", set())),
@@ -5660,6 +6050,10 @@ def _base_selector_run_command(report: dict, app_config: AppConfig, args: argpar
     else:
         for changed_file in args.changed_file:
             run_command.extend(["--changed-file", changed_file])
+        for changed_symbol in getattr(args, "changed_symbol", []):
+            run_command.extend(["--changed-symbol", changed_symbol])
+        for changed_range in getattr(args, "changed_range", []):
+            run_command.extend(["--changed-range", changed_range])
         for symbol_query in args.symbol_query:
             run_command.extend(["--symbol-query", symbol_query])
         for code_query in args.code_query:
@@ -6816,11 +7210,12 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         changed_summary_rows: list[list[object]] = []
         for index, item in enumerate(report["results"], start=1):
             primary_projects, broader_projects = split_scope_groups(item.get("projects", []))
+            affected_apis = list(item.get("affected_api_entities", [])) or list(item.get("file_level_affected_api_entities", []))
             changed_summary_rows.append(
                 [
                     index,
                     item.get("changed_file", "-"),
-                    "-",
+                    _human_preview(affected_apis, limit=3),
                     len(item.get("projects", [])),
                     len(item.get("run_targets", [])),
                     len(primary_projects),
@@ -6864,6 +7259,26 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             ("Primary", len(primary_projects)),
             ("Broader", len(broader_projects)),
         ]
+        source_only_consumers = list(item.get("source_only_consumers", []))
+        if source_only_consumers:
+            changed_rows.append(("Source-only Apps", len(source_only_consumers)))
+            changed_rows.append(
+                (
+                    "Source-only Preview",
+                    _human_preview([entry.get("project", "-") for entry in source_only_consumers], limit=4),
+                )
+            )
+        if item.get("changed_symbols"):
+            changed_rows.append(("Changed Symbols", _human_preview(item.get("changed_symbols", []), limit=4)))
+        if item.get("changed_ranges"):
+            changed_rows.append(("Changed Ranges", _human_preview(item.get("changed_ranges", []), limit=4)))
+        if item.get("derived_source_symbols"):
+            changed_rows.append(("Derived Symbols", _human_preview(item.get("derived_source_symbols", []), limit=4)))
+        if item.get("affected_api_entities"):
+            changed_rows.append(("Affected APIs", _human_preview(item.get("affected_api_entities", []), limit=4)))
+        file_level_apis = list(item.get("file_level_affected_api_entities", []))
+        if file_level_apis and file_level_apis != item.get("affected_api_entities", []):
+            changed_rows.append(("File-level APIs", _human_preview(file_level_apis, limit=4)))
         if report.get("debug_trace"):
             changed_rows.extend(
                 [
@@ -6991,6 +7406,8 @@ def parse_args() -> argparse.Namespace:
     json_group = parser.add_mutually_exclusive_group()
     parser.add_argument("--config", help="JSON config file.")
     parser.add_argument("--changed-file", action="append", default=[], help="Changed file path. Can be repeated.")
+    parser.add_argument("--changed-symbol", action="append", default=[], help="Optional changed symbol/function name used to narrow affected APIs for changed-file analysis. Can be repeated.")
+    parser.add_argument("--changed-range", action="append", default=[], help="Optional changed line range used to derive touched source symbols, in 'start:end' or 'path:start:end' form. Can be repeated.")
     parser.add_argument("--symbol-query", action="append", default=[], help="Find XTS tests by component/symbol name, e.g. ButtonModifier.")
     parser.add_argument("--code-query", action="append", default=[], help="Find code files by keyword, e.g. ButtonModifier.")
     parser.add_argument("--changed-files-from", help="Text file with one changed file path per line.")
@@ -7044,6 +7461,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--daily-branch", help="Daily build branch filter. Default: master.")
     parser.add_argument("--daily-date", help="Daily build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --daily-build-tag.")
     parser.add_argument("--daily-cache-root", help="Cache directory for downloaded/extracted daily full packages. Default: /tmp/arkui_xts_selector_daily_cache")
+    parser.add_argument("--quick", action="store_true", help="Quick mode: skip daily download and use only local ACTS artifacts. Use when you have a built tree or want fast analysis with reduced accuracy.")
     parser.add_argument("--download-daily-tests", action="store_true", help="Download and extract the daily XTS package described by --daily-* options, then exit.")
     parser.add_argument("--download-daily-sdk", action="store_true", help="Download and extract the daily SDK package described by --sdk-* options, then exit.")
     parser.add_argument("--download-daily-firmware", action="store_true", help="Download and extract the daily firmware image package described by --firmware-* options, then exit.")
@@ -7255,6 +7673,7 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         daily_branch=args.daily_branch or cfg.get("daily_branch") or "master",
         daily_date=args.daily_date or cfg.get("daily_date"),
         daily_cache_root=daily_cache_root,
+        quick_mode=bool(args.quick),
         sdk_build_tag=args.sdk_build_tag or cfg.get("sdk_build_tag"),
         sdk_component=args.sdk_component or cfg.get("sdk_component") or DEFAULT_SDK_COMPONENT,
         sdk_branch=args.sdk_branch or cfg.get("sdk_branch") or "master",
@@ -7298,7 +7717,25 @@ def main() -> int:
             json_to_stdout=json_to_stdout,
             json_output_path=json_output_path,
         )
-    if app_config.daily_build_tag or app_config.daily_date:
+    if app_config.quick_mode:
+        # Quick mode: skip daily download, use only local artifacts
+        emit_progress(progress_enabled, "quick mode enabled (using local ACTS artifacts only)")
+        if not _has_local_acts_artifacts(app_config.acts_out_root):
+            print(
+                "warning: --quick mode active but no local ACTS artifacts found. "
+                f"Expected under: {app_config.acts_out_root or '<unset>'}",
+                file=sys.stderr,
+                flush=True,
+            )
+            print(
+                "Options: (1) Build tests: ohos build --product-name rk3568 --build-target ohos_test\n"
+                "         (2) Download daily: ohos download tests\n"
+                "         (3) Run without --quick to auto-download daily prebuilt\n"
+                "Proceeding with API/SDK analysis only (reduced accuracy).",
+                file=sys.stderr,
+                flush=True,
+            )
+    elif app_config.daily_build_tag or app_config.daily_date:
         emit_progress(progress_enabled, f"preparing daily prebuilt {app_config.daily_build_tag or app_config.daily_date}")
         try:
             prepare_daily_prebuilt_from_config(app_config)
@@ -7306,36 +7743,44 @@ def main() -> int:
             print(f"daily prebuilt preparation failed: {exc}", file=sys.stderr)
             return 2
     elif not _has_local_acts_artifacts(app_config.acts_out_root):
-        preferred_local_acts_root = app_config.acts_out_root
-        app_config.daily_date = time.strftime("%Y%m%d")
         warning_root = str(app_config.acts_out_root or "")
-        print(
-            "warning: local ACTS artifacts were not found under "
-            f"{warning_root or '<unset>'}; auto-downloading daily tests for {app_config.daily_date}.",
-            file=sys.stderr,
-            flush=True,
-        )
-        emit_progress(progress_enabled, f"preparing daily prebuilt {app_config.daily_date}")
-        try:
-            prepared = prepare_daily_prebuilt_from_config(app_config)
-        except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
-            print(f"daily prebuilt preparation failed: {exc}", file=sys.stderr)
-            return 2
-        if preferred_local_acts_root is not None:
+        if args.run_now:
+            preferred_local_acts_root = app_config.acts_out_root
+            app_config.daily_date = time.strftime("%Y%m%d")
+            print(
+                "warning: local ACTS artifacts were not found under "
+                f"{warning_root or '<unset>'}; auto-downloading daily tests for {app_config.daily_date}.",
+                file=sys.stderr,
+                flush=True,
+            )
+            emit_progress(progress_enabled, f"preparing daily prebuilt {app_config.daily_date}")
             try:
-                synced_root = _sync_prebuilt_acts_to_local_root(
-                    prepared,
-                    preferred_local_acts_root,
-                    progress_enabled=progress_enabled,
-                )
-            except OSError as exc:
-                print(f"daily prebuilt sync failed: {exc}", file=sys.stderr)
+                prepared = prepare_daily_prebuilt_from_config(app_config)
+            except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
+                print(f"daily prebuilt preparation failed: {exc}", file=sys.stderr)
                 return 2
-            if synced_root is not None:
-                app_config.acts_out_root = synced_root
-                app_config.daily_prebuilt_note = (
-                    f"{app_config.daily_prebuilt_note} Synced to local ACTS root {synced_root}."
-                ).strip()
+            if preferred_local_acts_root is not None:
+                try:
+                    synced_root = _sync_prebuilt_acts_to_local_root(
+                        prepared,
+                        preferred_local_acts_root,
+                        progress_enabled=progress_enabled,
+                    )
+                except OSError as exc:
+                    print(f"daily prebuilt sync failed: {exc}", file=sys.stderr)
+                    return 2
+                if synced_root is not None:
+                    app_config.acts_out_root = synced_root
+                    app_config.daily_prebuilt_note = (
+                        f"{app_config.daily_prebuilt_note} Synced to local ACTS root {synced_root}."
+                    ).strip()
+        else:
+            print(
+                "warning: local ACTS artifacts were not found under "
+                f"{warning_root or '<unset>'}; continuing with selection-only analysis and current inventory gaps.",
+                file=sys.stderr,
+                flush=True,
+            )
     source_report_path = resolve_selector_report_input(
         args.from_report,
         bool(args.last_report),
@@ -7362,6 +7807,7 @@ def main() -> int:
             json_output_path = resolve_json_output_path(None)
     xdevice_reports_root = (run_session.run_dir / "xdevice_reports") if run_session is not None else None
     changed_inputs = list(args.changed_file)
+    changed_symbols = [item.strip() for item in args.changed_symbol if item and item.strip()]
     symbol_queries = [item.strip() for item in args.symbol_query if item and item.strip()]
     code_queries = [item.strip() for item in args.code_query if item and item.strip()]
     requested_test_names_path = (
@@ -7534,6 +7980,16 @@ def main() -> int:
             seen.add(item)
     changed_files = deduped
 
+    try:
+        changed_ranges_by_file = parse_changed_ranges(
+            args.changed_range,
+            changed_files=changed_files,
+            base_roots=[app_config.repo_root, app_config.git_repo_root],
+        )
+    except ValueError as exc:
+        print(f"changed range parsing failed: {exc}", file=sys.stderr)
+        return 2
+
     if not changed_files and not symbol_queries and not code_queries:
         print("No changed files, symbol queries, or code queries were provided.", file=sys.stderr)
         return 2
@@ -7572,10 +8028,27 @@ def main() -> int:
     runtime_history_started = time.perf_counter()
     runtime_history_index = build_runtime_history_index(default_runtime_history_file(app_config.runtime_state_root))
     load_runtime_history_ms = round((time.perf_counter() - runtime_history_started) * 1000, 3)
+    api_lineage_map = None
+    api_lineage_map_path = None
+    build_api_lineage_map_ms = 0.0
+    if changed_files:
+        emit_progress(progress_enabled, "building api lineage map")
+        lineage_started = time.perf_counter()
+        api_lineage_map, api_lineage_map_path = build_api_lineage_map(
+            repo_root=app_config.repo_root,
+            ace_engine_root=app_config.git_repo_root,
+            sdk_api_root=app_config.sdk_api_root,
+            projects=projects,
+            runtime_state_root=app_config.runtime_state_root,
+            project_cache_file=app_config.cache_file,
+        )
+        build_api_lineage_map_ms = round((time.perf_counter() - lineage_started) * 1000, 3)
     emit_progress(progress_enabled, "building report")
     report_started = time.perf_counter()
     report = format_report(
         changed_files=changed_files,
+        changed_symbols=changed_symbols,
+        changed_ranges_by_file=changed_ranges_by_file,
         symbol_queries=symbol_queries,
         code_queries=code_queries,
         projects=projects,
@@ -7598,6 +8071,8 @@ def main() -> int:
         runtime_history_index=runtime_history_index,
         requested_run_tool=args.run_tool,
         progress_callback=progress_callback,
+        api_lineage_map=api_lineage_map,
+        api_lineage_map_path=api_lineage_map_path,
     )
     report["acts_out_root"] = str(app_config.acts_out_root or (app_config.repo_root / "out/release/suites/acts"))
     report["excluded_inputs"] = excluded_inputs
@@ -7608,6 +8083,7 @@ def main() -> int:
         "build_content_modifier_index": build_content_modifier_index_ms,
         "load_mapping_config": load_mapping_config_ms,
         "load_runtime_history": load_runtime_history_ms,
+        "build_api_lineage_map": build_api_lineage_map_ms,
         "main_report_call": round((time.perf_counter() - report_started) * 1000, 3),
     })
     report["timings_ms"]["total_runtime"] = round((time.perf_counter() - runtime_started) * 1000, 3)
