@@ -12,7 +12,7 @@ This is not runtime coverage. It is a test selection helper.
 ## Features
 
 - analyze changed files directly
-- read changed files from Git diff or GitCode PR
+- read changed files from Git diff or GitCode/CodeHub PR/MR URLs
 - auto-discover a full OHOS workspace from the current tree or a sibling checkout such as `ohos_master`
 - configurable XTS/SDK/git roots
 - optional daily-prebuilt ACTS reuse from official OpenHarmony full packages, so `xdevice` can run without a local XTS build
@@ -94,6 +94,26 @@ Execution timing and locking notes:
 - use `--runtime-state-root` to move the shared state elsewhere
 - use `--device-lock-timeout` to control how long a run waits before a busy device queue is marked `blocked`
 
+## Current UX Gaps
+
+The selector is already usable for changed-file, symbol, and PR/MR driven impact selection. Recent UX follow-up already changed the default behavior in three places:
+
+- large changed-file sets now aggregate progress instead of printing every file path
+- large multi-file reports now auto-compact per-file sections in human output while keeping full detail in JSON
+- the human report now uses `Selected Test Inventory` wording to separate analysis-selected targets from currently runnable artifacts
+
+Remaining gaps are narrower, but still real:
+
+- very large broad PR or file-only queries can still produce a large JSON report and feel latency-heavy
+- broad file-only queries still depend on semantic corpus coverage; thinly modeled families can over-select
+- actual runnability still depends on the current ACTS/build inventory even when selection evidence is strong
+
+Current interpretation rule:
+
+- selection evidence and ranking come from source/API analysis
+- actual runnability must still be confirmed by the currently available ACTS/build inventory
+- when these disagree, treat the real inventory as authoritative
+
 ## Documentation
 
 - [docs/CLI_REFERENCE.md](docs/CLI_REFERENCE.md) - detailed CLI reference for `arkui-xts-selector` and `xts_compare`
@@ -135,6 +155,14 @@ arkui-xts-selector \
   --pr-url https://gitcode.com/openharmony/arkui_ace_engine/pull/82225 \
   --pr-source api \
   --git-host-config ../gitee_util/config.ini
+```
+
+```bash
+arkui-xts-selector \
+  --pr-url https://codehub.example.com/group/project/merge_requests/12 \
+  --pr-source api \
+  --git-host-kind codehub \
+  --git-host-url https://codehub.example.com
 ```
 
 ```bash
@@ -460,8 +488,8 @@ Current limitation:
 | Reconstruct likely suites from an attribute or API name | `arkui-xts-selector --symbol-query ButtonAttribute` | Ranked XTS projects for the requested API surface, including evidence and runnable targets |
 | Search codebase only, without test selection | `arkui-xts-selector --code-query ButtonModifier` | Matching code files in the report, no direct runtime execution required |
 | Analyze a batch of changed files from a text list | `arkui-xts-selector --changed-files-from changed.txt` | Combined report for all listed files, unresolved items called out explicitly |
-| Analyze changes from git diff or PR | `arkui-xts-selector --git-diff HEAD~1..HEAD` or `--pr-url <url>` | Changed-file set resolved automatically, then normal ranking/build-guidance flow |
-| Force PR resolution through GitCode API | `arkui-xts-selector --pr-url <url> --pr-source api --git-host-config ../gitee_util/config.ini` | PR file list comes from GitCode API instead of git fetch, useful when local refs are stale or the PR is already merged |
+| Analyze changes from git diff or PR/MR URL | `arkui-xts-selector --git-diff HEAD~1..HEAD` or `--pr-url <url>` | Changed-file set resolved automatically, then normal ranking/build-guidance flow |
+| Force PR/MR resolution through the host API | `arkui-xts-selector --pr-url <url> --pr-source api --git-host-config ../gitee_util/config.ini` | Changed-file list comes from the detected GitCode/CodeHub API instead of git fetch, useful when local refs are stale or the review is already merged |
 | Run from a shared workspace config | `arkui-xts-selector --config config/selector.example.json --symbol-query ButtonModifier` | Same selection flow, but roots/product/device defaults come from config |
 | Reuse official daily prebuilt ACTS artifacts | `arkui-xts-selector --symbol-query ButtonModifier --daily-build-tag 20260403_120242 --daily-component dayu200_Dyn_Sta_XTS --run-tool xdevice` | Selector keeps using local source trees for analysis, but execution commands point at ACTS suites extracted from the downloaded full package |
 | Download a daily test package without running selector analysis | `arkui-xts-selector --download-daily-tests --daily-build-tag 20260404_120510` | Utility-mode download/extract flow only, then exit |

@@ -3,6 +3,7 @@ import json
 import os
 import re
 import sys
+import urllib.error
 import unittest
 from unittest import mock
 from contextlib import redirect_stdout, redirect_stderr
@@ -43,7 +44,9 @@ from arkui_xts_selector.cli import (
     fetch_pr_changed_files_via_api,
     filter_project_results_by_relevance,
     filter_changed_files_for_xts,
+    infer_git_host_kind,
     load_changed_file_exclusion_config,
+    load_ini_git_host_config,
     load_ini_gitcode_config,
     load_mapping_config,
     match_changed_file_exclusion,
@@ -96,11 +99,16 @@ class CliDesignV1Tests(unittest.TestCase):
     def test_parse_pr_number_supports_pull_and_pulls_urls(self) -> None:
         self.assertEqual(parse_pr_number("https://gitcode.com/openharmony/arkui_ace_engine/pull/83145"), "83145")
         self.assertEqual(parse_pr_number("https://gitcode.com/openharmony/arkui_ace_engine/pulls/83145"), "83145")
+        self.assertEqual(parse_pr_number("https://codehub.example.com/group/project/merge_requests/12"), "12")
 
     def test_parse_owner_repo_helpers_support_pulls_and_remote_urls(self) -> None:
         self.assertEqual(
             parse_owner_repo_from_pr("https://gitcode.com/openharmony/arkui_ace_engine/pulls/83145"),
             ("openharmony", "arkui_ace_engine"),
+        )
+        self.assertEqual(
+            parse_owner_repo_from_pr("https://codehub.example.com/group/project/merge_requests/12"),
+            ("group", "project"),
         )
         self.assertEqual(
             parse_owner_repo_from_remote_url("https://gitcode.com/openharmony/arkui_ace_engine.git"),
@@ -109,6 +117,28 @@ class CliDesignV1Tests(unittest.TestCase):
         self.assertEqual(
             parse_owner_repo_from_remote_url("git@gitcode.com:openharmony/arkui_ace_engine.git"),
             ("openharmony", "arkui_ace_engine"),
+        )
+        self.assertEqual(
+            parse_owner_repo_from_remote_url("https://codehub.example.com/group/project.git"),
+            ("group", "project"),
+        )
+
+    def test_infer_git_host_kind_prefers_pr_url_detection(self) -> None:
+        self.assertEqual(
+            infer_git_host_kind("https://gitcode.com/openharmony/arkui_ace_engine/pull/83145"),
+            "gitcode",
+        )
+        self.assertEqual(
+            infer_git_host_kind("https://codehub.example.com/group/project/merge_requests/12"),
+            "codehub",
+        )
+        self.assertEqual(
+            infer_git_host_kind(
+                "12",
+                configured_kind="auto",
+                api_url="https://codehub.example.com",
+            ),
+            "codehub",
         )
 
     def test_load_ini_gitcode_config_supports_bom(self) -> None:
@@ -124,6 +154,20 @@ class CliDesignV1Tests(unittest.TestCase):
 
         self.assertEqual(url, "https://gitcode.com/")
         self.assertEqual(token, "secret-token")
+
+    def test_load_ini_git_host_config_supports_codehub_section(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            ini_path = Path(tmpdir) / "config.ini"
+            ini_path.write_text(
+                "\ufeff[codehub]\n"
+                "codehub-url = https://codehub.example.com/\n"
+                "token = codehub-secret\n",
+                encoding="utf-8",
+            )
+            url, token = load_ini_git_host_config(str(ini_path), Path(tmpdir), "codehub")
+
+        self.assertEqual(url, "https://codehub.example.com/")
+        self.assertEqual(token, "codehub-secret")
 
     def test_apply_ranking_rules_config_reloads_family_groups_and_rank_weight(self) -> None:
         original_config = load_ranking_rules_config(default_ranking_rules_file())
@@ -226,6 +270,7 @@ class CliDesignV1Tests(unittest.TestCase):
             return_value=_Response({"files": [{"filename": "frameworks/core/components_ng/pattern/button/button_pattern.cpp"}]}),
         ):
             changed = fetch_pr_changed_files_via_api(
+                api_kind="gitcode",
                 api_url="https://gitcode.com",
                 token="secret",
                 owner="openharmony",
@@ -236,6 +281,46 @@ class CliDesignV1Tests(unittest.TestCase):
 
         self.assertEqual(len(changed), 1)
         self.assertTrue(str(changed[0]).endswith("frameworks/core/components_ng/pattern/button/button_pattern.cpp"))
+
+    def test_fetch_pr_changed_files_via_api_supports_codehub_changes_payload_with_path_fallback(self) -> None:
+        class _Response:
+            def __init__(self, payload: object) -> None:
+                self._payload = payload
+
+            def read(self) -> bytes:
+                return json.dumps(self._payload).encode("utf-8")
+
+            def __enter__(self) -> "_Response":
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+        seen_urls: list[str] = []
+
+        def _fake_urlopen(request: object, timeout: int = 20) -> _Response:
+            full_url = request.full_url
+            seen_urls.append(full_url)
+            if "/isource/merge_requests/" in full_url:
+                raise urllib.error.HTTPError(full_url, 404, "Not Found", hdrs=None, fp=None)
+            return _Response({"changes": [{"new_path": "frameworks/core/interfaces/native/implementation/flow_item_modifier.cpp"}]})
+
+        with mock.patch("arkui_xts_selector.cli.urllib.request.urlopen", side_effect=_fake_urlopen):
+            changed = fetch_pr_changed_files_via_api(
+                api_kind="codehub",
+                api_url="https://codehub.example.com",
+                token="secret",
+                owner="group",
+                repo="project",
+                pr_ref="https://codehub.example.com/group/project/merge_requests/12",
+                repo_root=ROOT / "src",
+            )
+
+        self.assertEqual(len(changed), 1)
+        self.assertTrue(str(changed[0]).endswith("frameworks/core/interfaces/native/implementation/flow_item_modifier.cpp"))
+        self.assertEqual(len(seen_urls), 2)
+        self.assertIn("/api/v4/projects/group%2Fproject/isource/merge_requests/12/changes", seen_urls[0])
+        self.assertIn("/api/v4/projects/group%2Fproject/merge_requests/12/changes", seen_urls[1])
 
     def test_resolve_pr_changed_files_prefers_api_when_requested(self) -> None:
         app_config = AppConfig(
@@ -263,6 +348,72 @@ class CliDesignV1Tests(unittest.TestCase):
         self.assertEqual(resolved, expected)
         api_fetch.assert_called_once()
         git_fetch.assert_not_called()
+
+    def test_resolve_pr_changed_files_supports_codehub_api_mode(self) -> None:
+        app_config = AppConfig(
+            repo_root=Path("/repo"),
+            xts_root=Path("/repo/test/xts/acts/arkui"),
+            sdk_api_root=Path("/repo/interface/sdk-js/api"),
+            cache_file=None,
+            git_repo_root=Path("/repo/foundation/arkui/ace_engine"),
+            git_remote="origin",
+            git_base_branch="master",
+            git_host_kind="codehub",
+            git_host_api_url="https://codehub.example.com",
+            git_host_token="secret",
+        )
+        expected = [Path("frameworks/core/interfaces/native/implementation/flow_item_modifier.cpp")]
+        with mock.patch("arkui_xts_selector.cli.resolve_pr_owner_repo", return_value=("group", "project")), \
+                mock.patch("arkui_xts_selector.cli.fetch_pr_metadata_via_api", return_value={"iid": 12}) as metadata_fetch, \
+                mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files_via_api", return_value=expected) as api_fetch, \
+                mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files") as git_fetch:
+            resolved = resolve_pr_changed_files(
+                app_config,
+                "https://codehub.example.com/group/project/merge_requests/12",
+                "api",
+            )
+
+        self.assertEqual(resolved, expected)
+        metadata_fetch.assert_called_once()
+        self.assertEqual(metadata_fetch.call_args.kwargs["api_kind"], "codehub")
+        api_fetch.assert_called_once()
+        self.assertEqual(api_fetch.call_args.kwargs["api_kind"], "codehub")
+        git_fetch.assert_not_called()
+
+    def test_resolve_pr_changed_files_loads_codehub_credentials_from_ini(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            ini_path = Path(tmpdir) / "config.ini"
+            ini_path.write_text(
+                "[codehub]\n"
+                "codehub-url = https://codehub.example.com\n"
+                "token = secret-token\n",
+                encoding="utf-8",
+            )
+            app_config = AppConfig(
+                repo_root=Path(tmpdir),
+                xts_root=Path("/repo/test/xts/acts/arkui"),
+                sdk_api_root=Path("/repo/interface/sdk-js/api"),
+                cache_file=None,
+                git_repo_root=Path("/repo/foundation/arkui/ace_engine"),
+                git_remote="origin",
+                git_base_branch="master",
+                git_host_kind="auto",
+                git_host_config_path=ini_path,
+            )
+            expected = [Path("frameworks/core/interfaces/native/implementation/flow_item_modifier.cpp")]
+            with mock.patch("arkui_xts_selector.cli.resolve_pr_owner_repo", return_value=("group", "project")), \
+                    mock.patch("arkui_xts_selector.cli.fetch_pr_metadata_via_api", return_value={"iid": 12}) as metadata_fetch, \
+                    mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files_via_api", return_value=expected):
+                resolved = resolve_pr_changed_files(
+                    app_config,
+                    "https://codehub.example.com/group/project/merge_requests/12",
+                    "api",
+                )
+
+        self.assertEqual(resolved, expected)
+        self.assertEqual(metadata_fetch.call_args.kwargs["api_kind"], "codehub")
+        self.assertEqual(metadata_fetch.call_args.kwargs["api_url"], "https://codehub.example.com")
+        self.assertEqual(metadata_fetch.call_args.kwargs["token"], "secret-token")
 
     def test_resolve_pr_changed_files_auto_falls_back_to_git_when_api_fails(self) -> None:
         app_config = AppConfig(
@@ -300,6 +451,27 @@ class CliDesignV1Tests(unittest.TestCase):
         with redirect_stderr(buffer):
             emit_progress(False, "loading XTS project index")
         self.assertEqual(buffer.getvalue(), "")
+
+    def test_parse_args_accepts_generic_git_host_flags(self) -> None:
+        old_argv = sys.argv
+        sys.argv = [
+            "arkui-xts-selector",
+            "--pr-url",
+            "https://codehub.example.com/group/project/merge_requests/12",
+            "--git-host-kind",
+            "codehub",
+            "--git-host-url",
+            "https://codehub.example.com",
+        ]
+        try:
+            from arkui_xts_selector.cli import parse_args
+
+            args = parse_args()
+        finally:
+            sys.argv = old_argv
+
+        self.assertEqual(args.git_host_kind, "codehub")
+        self.assertEqual(args.git_host_url, "https://codehub.example.com")
 
     def test_resolve_json_output_path_defaults_to_cwd_report_file(self) -> None:
         with TemporaryDirectory() as tmpdir:

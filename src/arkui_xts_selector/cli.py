@@ -126,8 +126,13 @@ DEFAULT_REPORT_FILE = "arkui_xts_selector_report.json"
 SELECTED_TESTS_FILE_NAME = "selected_tests.json"
 RELEVANCE_MODE_CHOICES = ("all", "balanced", "strict")
 PR_SOURCE_CHOICES = ("auto", "api", "git")
+GIT_HOST_KIND_CHOICES = ("auto", "gitcode", "codehub")
+CODEHUB_SECTION_NAMES = ("codehub", "codehub-y", "cr-y.codehub", "opencodehub")
 HUMAN_OPTIONAL_DUPLICATE_DISPLAY_LIMIT = 20
 HUMAN_RUN_TARGET_DISPLAY_LIMIT = 10
+HUMAN_COMPACT_CHANGED_FILE_THRESHOLD = 8
+PROGRESS_AGGREGATE_CHANGED_FILE_THRESHOLD = 6
+PROGRESS_AGGREGATE_CHANGED_FILE_STEP = 5
 DEFAULT_CHANGED_FILE_EXCLUSION_RULES = {
     "rules": [
         {
@@ -1347,7 +1352,34 @@ def resolve_path(value: str | None, default: Path, repo_root: Path) -> Path:
     return resolve_workspace_path(value=value, default=default, repo_root=repo_root)
 
 
-def load_ini_gitcode_config(path_value: str | None, repo_root: Path) -> tuple[str | None, str | None]:
+def normalize_git_host_kind(value: str | None) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"", "auto"}:
+        return "auto"
+    if normalized == "gitcode":
+        return "gitcode"
+    if normalized in {"codehub", "codehub-y", "cr-y.codehub", "opencodehub"}:
+        return "codehub"
+    return normalized
+
+
+def _load_ini_git_host_section(parser: ConfigParser, section: str) -> tuple[str | None, str | None]:
+    if not parser.has_section(section):
+        return None, None
+    normalized_kind = normalize_git_host_kind(section)
+    option_names: list[str]
+    if normalized_kind == "gitcode":
+        option_names = ["gitcode-url", "url"]
+    elif normalized_kind == "codehub":
+        option_names = [f"{section}-url", "codehub-url", "url"]
+    else:
+        option_names = ["url"]
+    url = next((parser.get(section, option, fallback=None) for option in option_names if parser.has_option(section, option)), None)
+    token = parser.get(section, "token", fallback=None)
+    return url, token
+
+
+def load_ini_git_host_config(path_value: str | None, repo_root: Path, host_kind: str) -> tuple[str | None, str | None]:
     if not path_value:
         return None, None
     path = resolve_path(path_value, repo_root, repo_root)
@@ -1355,10 +1387,22 @@ def load_ini_gitcode_config(path_value: str | None, repo_root: Path) -> tuple[st
         return None, None
     parser = ConfigParser()
     parser.read(path, encoding="utf-8-sig")
-    return (
-        parser.get("gitcode", "gitcode-url", fallback=None),
-        parser.get("gitcode", "token", fallback=None),
-    )
+    normalized_kind = normalize_git_host_kind(host_kind)
+    if normalized_kind == "gitcode":
+        sections_to_try = ("gitcode",)
+    elif normalized_kind == "codehub":
+        sections_to_try = CODEHUB_SECTION_NAMES
+    else:
+        sections_to_try = ("gitcode", *CODEHUB_SECTION_NAMES)
+    for section in sections_to_try:
+        url, token = _load_ini_git_host_section(parser, section)
+        if url or token:
+            return url, token
+    return None, None
+
+
+def load_ini_gitcode_config(path_value: str | None, repo_root: Path) -> tuple[str | None, str | None]:
+    return load_ini_git_host_config(path_value, repo_root, "gitcode")
 
 
 def add_family_symbol(mapping: dict[str, set[str]], family: str, symbol: str) -> None:
@@ -1512,6 +1556,10 @@ class AppConfig:
     git_repo_root: Path
     git_remote: str
     git_base_branch: str
+    git_host_kind: str = "auto"
+    git_host_api_url: str | None = None
+    git_host_token: str | None = None
+    git_host_config_path: Path | None = None
     device: str | None = None
     devices: list[str] = field(default_factory=list)
     gitcode_api_url: str | None = None
@@ -2043,40 +2091,119 @@ def fetch_pr_changed_files(repo_root: Path, remote: str, base_branch: str, pr_re
     raise RuntimeError(last_error)
 
 
-def fetch_gitcode_api_json(api_url: str, token: str, api_path: str) -> object:
+def infer_git_host_kind(
+    pr_ref: str,
+    *,
+    configured_kind: str | None = None,
+    api_url: str | None = None,
+) -> str:
+    normalized_kind = normalize_git_host_kind(configured_kind)
+    if normalized_kind != "auto":
+        return normalized_kind
+
+    parsed_pr = urlparse(pr_ref) if not str(pr_ref).isdigit() else None
+    if parsed_pr is not None:
+        pr_host = parsed_pr.netloc.lower()
+        pr_path = parsed_pr.path.lower()
+        if "codehub" in pr_host:
+            return "codehub"
+        if "gitcode" in pr_host:
+            return "gitcode"
+        if "/merge_requests/" in pr_path:
+            return "codehub"
+        if re.search(r"/pulls?/\d+", pr_path):
+            return "gitcode"
+
+    parsed_api = urlparse(api_url or "")
+    api_host = parsed_api.netloc.lower()
+    if "codehub" in api_host:
+        return "codehub"
+    if "gitcode" in api_host:
+        return "gitcode"
+    return "gitcode"
+
+
+def resolve_pr_api_credentials(app_config: AppConfig, pr_ref: str) -> tuple[str, str | None, str | None]:
+    host_kind = infer_git_host_kind(
+        pr_ref,
+        configured_kind=app_config.git_host_kind,
+        api_url=app_config.git_host_api_url or app_config.gitcode_api_url,
+    )
+    api_url = app_config.git_host_api_url or app_config.gitcode_api_url
+    token = app_config.git_host_token or app_config.gitcode_token
+    if (not api_url or not token) and app_config.git_host_config_path:
+        ini_url, ini_token = load_ini_git_host_config(
+            str(app_config.git_host_config_path),
+            app_config.repo_root,
+            host_kind,
+        )
+        api_url = api_url or ini_url
+        token = token or ini_token
+    return host_kind, api_url, token
+
+
+def fetch_git_host_api_json(api_kind: str, api_url: str, token: str, api_path: str | Iterable[str]) -> object:
     base = api_url.rstrip("/")
-    separator = "&" if "?" in api_path else "?"
-    requests_to_try = [
-        urllib.request.Request(
-            f"{base}{api_path}{separator}{urllib.parse.urlencode({'access_token': token})}",
-            headers={"Accept": "application/json"},
-        ),
-        urllib.request.Request(
-            f"{base}{api_path}",
-            headers={"Accept": "application/json", "private-token": token},
-        ),
-    ]
-    last_error = "gitcode api failed"
-    for request in requests_to_try:
-        try:
-            with urllib.request.urlopen(request, timeout=20) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except urllib.error.URLError as exc:
-            last_error = f"gitcode api failed: {exc}"
-        except json.JSONDecodeError as exc:
-            last_error = f"gitcode api returned invalid json: {exc}"
+    api_paths = [api_path] if isinstance(api_path, str) else [str(item) for item in api_path if str(item)]
+    last_error = f"{api_kind} api failed"
+    for candidate_path in api_paths:
+        requests_to_try: list[urllib.request.Request]
+        if api_kind == "gitcode":
+            separator = "&" if "?" in candidate_path else "?"
+            requests_to_try = [
+                urllib.request.Request(
+                    f"{base}{candidate_path}{separator}{urllib.parse.urlencode({'access_token': token})}",
+                    headers={"Accept": "application/json"},
+                ),
+                urllib.request.Request(
+                    f"{base}{candidate_path}",
+                    headers={"Accept": "application/json", "private-token": token},
+                ),
+            ]
+        else:
+            requests_to_try = [
+                urllib.request.Request(
+                    f"{base}{candidate_path}",
+                    headers={"Accept": "application/json", "Private-Token": token},
+                ),
+            ]
+        path_missing = True
+        for request in requests_to_try:
+            try:
+                with urllib.request.urlopen(request, timeout=20) as response:
+                    return json.loads(response.read().decode("utf-8"))
+            except urllib.error.HTTPError as exc:
+                last_error = f"{api_kind} api failed: {exc}"
+                path_missing = path_missing and exc.code in {404, 410}
+            except urllib.error.URLError as exc:
+                last_error = f"{api_kind} api failed: {exc}"
+                path_missing = False
+            except json.JSONDecodeError as exc:
+                last_error = f"{api_kind} api returned invalid json: {exc}"
+                path_missing = False
+        if not path_missing:
+            break
     raise RuntimeError(last_error)
 
 
-def fetch_pr_metadata_via_api(api_url: str, token: str, owner: str, repo: str, pr_ref: str) -> dict:
+def fetch_pr_metadata_via_api(api_kind: str, api_url: str, token: str, owner: str, repo: str, pr_ref: str) -> dict:
     pr_number = parse_pr_number(pr_ref)
-    data = fetch_gitcode_api_json(api_url, token, f"/api/v5/repos/{owner}/{repo}/pulls/{pr_number}")
+    if api_kind == "codehub":
+        project_id = urllib.parse.quote(f"{owner}/{repo}", safe="")
+        api_path: str | list[str] = [
+            f"/api/v4/projects/{project_id}/isource/merge_requests/{pr_number}",
+            f"/api/v4/projects/{project_id}/merge_requests/{pr_number}",
+        ]
+    else:
+        api_path = f"/api/v5/repos/{owner}/{repo}/pulls/{pr_number}"
+    data = fetch_git_host_api_json(api_kind, api_url, token, api_path)
     if not isinstance(data, dict):
-        raise RuntimeError(f"gitcode api unexpected PR response: {data}")
+        raise RuntimeError(f"{api_kind} api unexpected PR response: {data}")
     return data
 
 
 def fetch_pr_changed_files_via_api(
+    api_kind: str,
     api_url: str,
     token: str,
     owner: str,
@@ -2085,19 +2212,40 @@ def fetch_pr_changed_files_via_api(
     repo_root: Path,
 ) -> list[Path]:
     pr_number = parse_pr_number(pr_ref)
-    data = fetch_gitcode_api_json(api_url, token, f"/api/v5/repos/{owner}/{repo}/pulls/{pr_number}/files")
-    if isinstance(data, dict):
-        data = data.get("files") or data.get("data") or data.get("changed_files")
-    if not isinstance(data, list):
-        raise RuntimeError(f"gitcode api unexpected response: {data}")
-
     changed_files: list[str] = []
-    for item in data:
-        if not isinstance(item, dict):
-            continue
-        path_value = item.get("filename") or item.get("new_path") or item.get("old_path")
-        if path_value:
-            changed_files.append(path_value)
+    if api_kind == "codehub":
+        project_id = urllib.parse.quote(f"{owner}/{repo}", safe="")
+        data = fetch_git_host_api_json(
+            api_kind,
+            api_url,
+            token,
+            [
+                f"/api/v4/projects/{project_id}/isource/merge_requests/{pr_number}/changes",
+                f"/api/v4/projects/{project_id}/merge_requests/{pr_number}/changes",
+            ],
+        )
+        if isinstance(data, dict):
+            data = data.get("changes") or data.get("files") or data.get("data") or data.get("changed_files")
+        if not isinstance(data, list):
+            raise RuntimeError(f"{api_kind} api unexpected response: {data}")
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            path_value = item.get("new_path") or item.get("old_path") or item.get("filename")
+            if path_value:
+                changed_files.append(path_value)
+    else:
+        data = fetch_git_host_api_json(api_kind, api_url, token, f"/api/v5/repos/{owner}/{repo}/pulls/{pr_number}/files")
+        if isinstance(data, dict):
+            data = data.get("files") or data.get("data") or data.get("changed_files")
+        if not isinstance(data, list):
+            raise RuntimeError(f"{api_kind} api unexpected response: {data}")
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            path_value = item.get("filename") or item.get("new_path") or item.get("old_path")
+            if path_value:
+                changed_files.append(path_value)
     return normalize_changed_files(changed_files, base_roots=[repo_root])
 
 
@@ -2105,24 +2253,27 @@ def resolve_pr_changed_files(app_config: AppConfig, pr_ref: str, pr_source: str)
     owner_repo = resolve_pr_owner_repo(pr_ref, app_config.git_repo_root, app_config.git_remote)
     api_error: RuntimeError | None = None
     if pr_source in ("auto", "api"):
-        if not app_config.gitcode_api_url or not app_config.gitcode_token:
+        api_kind, api_url, token = resolve_pr_api_credentials(app_config, pr_ref)
+        if not api_url or not token:
             api_error = RuntimeError(
-                "PR API mode requires GitCode credentials; pass --gitcode-token or --git-host-config with [gitcode] token/url."
+                "PR API mode requires git host credentials; pass --git-host-token/--git-host-url or --git-host-config with [gitcode]/[codehub] token/url."
             )
         elif owner_repo is None:
             api_error = RuntimeError("could not determine owner/repo for PR API mode from --pr-url or local git remote")
         else:
             try:
                 fetch_pr_metadata_via_api(
-                    api_url=app_config.gitcode_api_url,
-                    token=app_config.gitcode_token,
+                    api_kind=api_kind,
+                    api_url=api_url,
+                    token=token,
                     owner=owner_repo[0],
                     repo=owner_repo[1],
                     pr_ref=pr_ref,
                 )
                 return fetch_pr_changed_files_via_api(
-                    api_url=app_config.gitcode_api_url,
-                    token=app_config.gitcode_token,
+                    api_kind=api_kind,
+                    api_url=api_url,
+                    token=token,
                     owner=owner_repo[0],
                     repo=owner_repo[1],
                     pr_ref=pr_ref,
@@ -4267,6 +4418,32 @@ def emit_subprogress(enabled: bool, prefix: str, message: str) -> None:
     print(f"{prefix}: {message}", file=sys.stderr, flush=True)
 
 
+def build_progress_callback(enabled: bool, changed_file_count: int = 0) -> Callable[[str], None] | None:
+    if not enabled:
+        return None
+    if changed_file_count < PROGRESS_AGGREGATE_CHANGED_FILE_THRESHOLD:
+        return lambda message: emit_progress(True, message)
+
+    state = {"seen_changed_files": 0, "last_emitted_changed_file": 0}
+
+    def _callback(message: str) -> None:
+        if message.startswith("scoring changed file "):
+            state["seen_changed_files"] += 1
+            current = state["seen_changed_files"]
+            should_emit = (
+                current == 1
+                or current == changed_file_count
+                or (current - state["last_emitted_changed_file"]) >= PROGRESS_AGGREGATE_CHANGED_FILE_STEP
+            )
+            if should_emit:
+                state["last_emitted_changed_file"] = current
+                emit_progress(True, f"scoring changed files {current}/{changed_file_count}")
+            return
+        emit_progress(True, message)
+
+    return _callback
+
+
 def _has_local_acts_artifacts(acts_out_root: Path | None) -> bool:
     if acts_out_root is None:
         return False
@@ -5497,8 +5674,12 @@ def _base_selector_run_command(report: dict, app_config: AppConfig, args: argpar
             run_command.extend(["--pr-number", args.pr_number])
         if args.pr_source != "auto":
             run_command.extend(["--pr-source", args.pr_source])
+        if getattr(args, "git_host_kind", "auto") != "auto":
+            run_command.extend(["--git-host-kind", args.git_host_kind])
         if args.git_host_config:
             run_command.extend(["--git-host-config", args.git_host_config])
+        if getattr(args, "git_host_url", None):
+            run_command.extend(["--git-host-url", args.git_host_url])
         if args.gitcode_api_url:
             run_command.extend(["--gitcode-api-url", args.gitcode_api_url])
         run_command.extend(["--variants", args.variants, "--relevance-mode", args.relevance_mode])
@@ -5885,6 +6066,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
     selected_tests_json_path = str(report.get("selected_tests_json_path", "")).strip()
     unique_run_targets = collect_unique_run_targets(report)
     selected_target_count = len(report.get("execution_overview", {}).get("selected_target_keys", []))
+    compact_changed_file_sections = len(report.get("results", [])) >= HUMAN_COMPACT_CHANGED_FILE_THRESHOLD
 
     def _selected_run_target_groups() -> list[dict]:
         selected_keys = {
@@ -5900,6 +6082,16 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             if str(group.get("key") or "").strip() in selected_keys
         ]
         return filtered or list(unique_run_targets)
+
+    def _run_target_has_inventory(group: dict[str, object]) -> bool:
+        candidates = list(group.get("targets", []))
+        representative = group.get("representative", {})
+        if representative:
+            candidates.append(representative)
+        for target in candidates:
+            if str(target.get("artifact_status") or "").strip() != "missing":
+                return True
+        return False
 
     def _print_run_only_human() -> None:
         selected_groups = _selected_run_target_groups()
@@ -6496,17 +6688,26 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         _print_actionable_command_list("Next Steps", ordered_next_steps)
 
     if unique_run_targets:
+        runnable_inventory_count = sum(1 for group in unique_run_targets if _run_target_has_inventory(group))
+        unavailable_inventory_count = max(len(unique_run_targets) - runnable_inventory_count, 0)
         runnable_rows: list[tuple[object, object]] = [
-            ("Available", len(unique_run_targets)),
-            ("Selected By Default", selected_target_count),
+            ("Selected Inventory Entries", len(unique_run_targets)),
+            ("Selected By Analysis", selected_target_count),
+            ("Runnable In Current Inventory", runnable_inventory_count),
+            (
+                "Meaning",
+                "\"Runnable Tests\" is shorthand only: selection comes from source/API analysis, and actual execution still depends on the current ACTS/build artifacts.",
+            ),
             ("Manual Selection", "Use --run-test-name <name> or --run-test-names-file <file> with the run command."),
         ]
+        if unavailable_inventory_count > 0:
+            runnable_rows.append(("Unavailable In Current Inventory", unavailable_inventory_count))
         if selected_tests_json_path:
             runnable_rows.append(("JSON", selected_tests_json_path))
         requested_names = list(report.get("execution_overview", {}).get("requested_test_names", []))
         if requested_names:
             runnable_rows.append(("Requested Names", _human_join(requested_names)))
-        _print_key_value_section("Runnable Tests", runnable_rows)
+        _print_key_value_section("Selected Test Inventory", runnable_rows)
 
     coverage_recommendations = report.get("coverage_recommendations", {})
     if coverage_recommendations:
@@ -6610,7 +6811,42 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             "Source Evidence",
             [("Visibility", "hidden by default; use --show-source-evidence to inspect matching source files")],
         )
+    if compact_changed_file_sections and report["results"]:
+        print("Changed Files Summary")
+        changed_summary_rows: list[list[object]] = []
+        for index, item in enumerate(report["results"], start=1):
+            primary_projects, broader_projects = split_scope_groups(item.get("projects", []))
+            changed_summary_rows.append(
+                [
+                    index,
+                    item.get("changed_file", "-"),
+                    "-",
+                    len(item.get("projects", [])),
+                    len(item.get("run_targets", [])),
+                    len(primary_projects),
+                    len(broader_projects),
+                    "see JSON",
+                ]
+            )
+        _print_human_table(
+            ["#", "Changed File", "APIs", "Tests", "Run Targets", "Primary", "Broader", "Detail"],
+            changed_summary_rows,
+            indent=2,
+        )
+        print()
+        compact_note_rows: list[tuple[object, object]] = [
+            ("Mode", f"compact (auto-enabled for {len(report['results'])} changed files)"),
+            (
+                "Why",
+                "Per-file suite tables are omitted to keep multi-file PR output readable; full per-file detail remains in the JSON report.",
+            ),
+        ]
+        if json_report_path is not None:
+            compact_note_rows.append(("JSON", json_report_path))
+        _print_key_value_section("Changed Files Note", compact_note_rows)
     for item in report["results"]:
+        if compact_changed_file_sections:
+            continue
         signals = item["signals"]
         relevance_summary = item.get("relevance_summary", {})
         primary_projects, broader_projects = split_scope_groups(item.get("projects", []))
@@ -6760,19 +6996,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--changed-files-from", help="Text file with one changed file path per line.")
     parser.add_argument("--git-diff", help="Optional git diff ref, for example HEAD~1..HEAD.")
     parser.add_argument("--git-root", help="Git root to use with --git-diff.")
-    parser.add_argument("--pr-url", help="GitCode PR URL, for example https://gitcode.com/.../pull/82225")
-    parser.add_argument("--pr-number", help="GitCode PR number.")
+    parser.add_argument("--pr-url", help="GitCode/CodeHub PR or MR URL, for example https://gitcode.com/.../pull/82225 or https://codehub.example.com/.../merge_requests/12")
+    parser.add_argument("--pr-number", help="Git host PR/MR number.")
     parser.add_argument(
         "--pr-source",
         choices=PR_SOURCE_CHOICES,
         default="auto",
-        help="How to resolve PR changed files: auto prefers GitCode API when token/config is available, api forces API mode, git forces git-fetch mode.",
+        help="How to resolve PR/MR changed files: auto prefers the detected host API when token/config is available, api forces API mode, git forces git-fetch mode.",
     )
     parser.add_argument("--git-remote", help="Git remote for PR fetching.")
     parser.add_argument("--git-base-branch", help="Base branch for PR diff. Default: master.")
-    parser.add_argument("--gitcode-api-url", help="GitCode base URL for API mode, for example https://gitcode.com")
-    parser.add_argument("--gitcode-token", help="GitCode access token for API mode.")
-    parser.add_argument("--git-host-config", help="Path to gitee_util/config.ini with [gitcode] token/url.")
+    parser.add_argument("--git-host-kind", choices=GIT_HOST_KIND_CHOICES, default="auto", help="PR API host kind. auto detects from the PR URL and falls back to GitCode-compatible behavior.")
+    parser.add_argument("--git-host-url", help="Git host base URL for API mode, for example https://gitcode.com or https://codehub.example.com")
+    parser.add_argument("--git-host-token", help="Git host access token for API mode.")
+    parser.add_argument("--gitcode-api-url", help="Deprecated alias for --git-host-url, kept for backward compatibility.")
+    parser.add_argument("--gitcode-token", help="Deprecated alias for --git-host-token, kept for backward compatibility.")
+    parser.add_argument("--git-host-config", help="Path to INI config with [gitcode] or [codehub] token/url entries.")
     parser.add_argument("--repo-root", help="Explicit OHOS workspace root. By default the CLI auto-discovers the workspace, including sibling ohos_master trees.")
     parser.add_argument("--xts-root", help="Absolute or relative path to XTS root.")
     parser.add_argument("--sdk-api-root", help="Absolute or relative path to SDK api root.")
@@ -6875,7 +7114,14 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         explicit_root=args.repo_root or cfg.get("repo_root"),
         selector_repo_root=selector_repo_root,
     )
-    ini_url, ini_token = load_ini_gitcode_config(args.git_host_config or cfg.get("git_host_config"), repo_root)
+    git_host_kind = normalize_git_host_kind(args.git_host_kind or cfg.get("git_host_kind"))
+    git_host_config_value = args.git_host_config or cfg.get("git_host_config")
+    git_host_config_path = resolve_path(git_host_config_value, repo_root, repo_root) if git_host_config_value else None
+    ini_url, ini_token = load_ini_git_host_config(
+        git_host_config_value,
+        repo_root,
+        git_host_kind if git_host_kind != "auto" else "gitcode",
+    )
     xts_root = resolve_path(args.xts_root or cfg.get("xts_root"), default_xts_root(repo_root), repo_root)
     sdk_api_root = resolve_path(args.sdk_api_root or cfg.get("sdk_api_root"), default_sdk_api_root(repo_root), repo_root)
     git_repo_root = resolve_path(args.git_root or cfg.get("git_repo_root"), default_git_repo_root(repo_root), repo_root)
@@ -6963,6 +7209,8 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         selector_repo_root,
     ) if (args.hdc_path or cfg.get("hdc_path")) else None
     hdc_endpoint = args.hdc_endpoint or cfg.get("hdc_endpoint")
+    git_host_api_url = args.git_host_url or cfg.get("git_host_api_url") or args.gitcode_api_url or cfg.get("gitcode_api_url") or ini_url
+    git_host_token = args.git_host_token or cfg.get("git_host_token") or args.gitcode_token or cfg.get("gitcode_token") or ini_token
     gitcode_api_url = args.gitcode_api_url or cfg.get("gitcode_api_url") or ini_url
     gitcode_token = args.gitcode_token or cfg.get("gitcode_token") or ini_token
     cache_value = None if args.no_cache else (args.cache_file or cfg.get("cache_file"))
@@ -6980,6 +7228,10 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         git_repo_root=git_repo_root,
         git_remote=git_remote,
         git_base_branch=git_base_branch,
+        git_host_kind=git_host_kind,
+        git_host_api_url=git_host_api_url,
+        git_host_token=git_host_token,
+        git_host_config_path=git_host_config_path,
         device=device,
         devices=devices,
         gitcode_api_url=gitcode_api_url,
@@ -7295,7 +7547,7 @@ def main() -> int:
     )
     changed_file_filtering_ms = round((time.perf_counter() - exclusion_started) * 1000, 3)
 
-    progress_callback = (lambda message: emit_progress(progress_enabled, message)) if progress_enabled else None
+    progress_callback = build_progress_callback(progress_enabled, len(changed_files))
 
     emit_progress(progress_enabled, "loading XTS project index")
     load_started = time.perf_counter()
