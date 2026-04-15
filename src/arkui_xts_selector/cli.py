@@ -119,6 +119,20 @@ COMMAND_PREFIX_ENV = "ARKUI_XTS_SELECTOR_COMMAND_PREFIX"
 COMMAND_MODE_ENV = "ARKUI_XTS_SELECTOR_COMMAND_MODE"
 
 
+class XtsUserError(RuntimeError):
+    """User-facing error with an optional recovery hint."""
+
+    def __init__(self, message: str, hint: str | None = None) -> None:
+        super().__init__(message)
+        self.hint = hint or ""
+
+    def __str__(self) -> str:
+        base = super().__str__()
+        if not self.hint:
+            return base
+        return f"{base}\n  Hint: {self.hint}"
+
+
 @dataclass(frozen=True)
 class XtsWorkspaceSnapshot:
     signature: str
@@ -5888,6 +5902,46 @@ def _format_duration_seconds(value: object) -> str:
     return f"~{secs}s"
 
 
+class _ProgressTracker:
+    """Phase progress tracker with optional ETA estimation."""
+
+    def __init__(self, enabled: bool = True) -> None:
+        self._enabled = enabled
+        self._phase_started = 0.0
+
+    def start(self, phase_name: str, estimated_seconds: float | None = None) -> None:
+        self._phase_started = time.perf_counter()
+        if not self._enabled:
+            return
+        suffix = ""
+        if estimated_seconds and estimated_seconds > 0:
+            suffix = f" (est. {_format_duration_seconds(estimated_seconds)})"
+        print(f"phase: {phase_name}{suffix}", file=sys.stderr, flush=True)
+
+    def update(self, message: str, progress_percent: float | None = None) -> None:
+        if not self._enabled:
+            return
+        elapsed = time.perf_counter() - self._phase_started
+        pct_part = f" [{progress_percent:.0f}%]" if progress_percent is not None else ""
+        eta_part = ""
+        if progress_percent is not None and progress_percent > 0 and elapsed > 1.0:
+            total_estimate = elapsed / (progress_percent / 100.0)
+            remaining = max(0.0, total_estimate - elapsed)
+            if remaining > 0:
+                eta_part = f" ETA: {_format_duration_seconds(remaining)}"
+        print(f"phase: {message}{pct_part}{eta_part}", file=sys.stderr, flush=True)
+
+    def complete(self, phase_name: str) -> None:
+        if not self._enabled:
+            return
+        elapsed = time.perf_counter() - self._phase_started
+        print(
+            f"phase: {phase_name} done ({_format_duration_seconds(elapsed)})",
+            file=sys.stderr,
+            flush=True,
+        )
+
+
 def _format_estimate_label(entry: dict[str, object]) -> str:
     base = _format_duration_seconds(entry.get("estimated_duration_s"))
     if base == "-":
@@ -6454,6 +6508,104 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             }
         )
     return steps
+
+
+def print_executive_summary(report: dict, json_report_path: Path | None = None) -> None:
+    """Print a compact summary before the detailed report."""
+    coverage = report.get("coverage_recommendations", {})
+    results = list(report.get("results", []))
+    changed_file_count = sum(
+        1
+        for result in results
+        if str((result.get("source_profile") or result.get("source") or {}).get("type", "")) == "changed_file"
+    )
+
+    seen_families: set[str] = set()
+    affected_families: list[str] = []
+    for result in results:
+        source_profile = result.get("source_profile") or result.get("source") or {}
+        for family_key in list(source_profile.get("family_keys", []))[:3]:
+            token = str(family_key).split("/")[-1]
+            if not token or token in seen_families:
+                continue
+            seen_families.add(token)
+            affected_families.append(token.replace("_", " ").title())
+            if len(affected_families) >= 8:
+                break
+
+    required_targets = list(coverage.get("required", []))
+    recommended_targets = list(coverage.get("recommended_additional", []))
+    optional_targets = list(coverage.get("optional_duplicates", []))
+    est_required = _format_duration_seconds(coverage.get("estimated_required_duration_s"))
+    est_recommended = _format_duration_seconds(coverage.get("estimated_recommended_duration_s"))
+    est_all = _format_duration_seconds(coverage.get("estimated_all_duration_s"))
+    coverage_commands = list(report.get("coverage_run_commands", []))
+    selected_tests_path = str(report.get("selected_tests_json_path", "")).strip()
+    repeat_run_command = str(report.get("repeat_run_command", "")).strip()
+
+    separator = "═" * 63
+    thin_separator = "─" * 63
+
+    print()
+    print(separator)
+    print(" EXECUTIVE SUMMARY")
+    print(separator)
+    print()
+
+    info_lines: list[str] = []
+    if changed_file_count:
+        suffix = "s" if changed_file_count != 1 else ""
+        info_lines.append(f"Changed: {changed_file_count} file{suffix} analyzed")
+    if affected_families:
+        families = ", ".join(affected_families[:5])
+        if len(affected_families) > 5:
+            families += f", +{len(affected_families) - 5} more"
+        info_lines.append(f"APIs Affected: {families}")
+    for line in info_lines:
+        print(line)
+    if info_lines:
+        print()
+
+    total_suites = len(required_targets) + len(recommended_targets) + len(optional_targets)
+    if total_suites > 0:
+        total_duration = est_all if est_all != "-" else (est_recommended if est_recommended != "-" else "-")
+        duration_note = f", {total_duration} estimated" if total_duration != "-" else ""
+        suite_suffix = "s" if total_suites != 1 else ""
+        print(f"TESTS TO RUN ({total_suites} suite{suite_suffix}{duration_note})")
+        print(thin_separator)
+        print(f" {'Priority':<10}  {'Suites':>6}  {'Est. Time':>10}")
+        print(f" {'─' * 10}  {'─' * 6}  {'─' * 10}")
+        if required_targets:
+            print(f" {'MUST RUN':<10}  {len(required_targets):>6}  {est_required:>10}")
+        if recommended_targets:
+            high_duration = est_recommended if est_recommended != "-" and not required_targets else "-"
+            print(f" {'HIGH':<10}  {len(recommended_targets):>6}  {high_duration:>10}")
+        if optional_targets:
+            print(f" {'OPTIONAL':<10}  {len(optional_targets):>6}  {'':>10}")
+        print()
+
+    if coverage_commands:
+        print("RUN COMMANDS:")
+        for command_entry in coverage_commands[:3]:
+            label = str(command_entry.get("label", "")).strip()
+            command = str(command_entry.get("command", "")).strip()
+            count = str(command_entry.get("count", "")).strip()
+            if not label or not command:
+                continue
+            count_note = f" ({count} suites)" if count and count != "0" else ""
+            print(f"  {label + count_note:<40}  {command}")
+    elif repeat_run_command:
+        print("RUN COMMANDS:")
+        print(f"  Repeat this run:                          {repeat_run_command}")
+
+    if selected_tests_path:
+        print(f"  Full JSON:                                cat {selected_tests_path}")
+    elif json_report_path is not None:
+        print(f"  Full JSON:                                cat {json_report_path}")
+
+    print()
+    print(separator)
+    print()
 
 
 def print_human(report: dict, cache_used: bool | None = None, json_report_path: Path | None = None) -> None:
@@ -7691,6 +7843,21 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
     )
 
 
+def validate_inputs(args: argparse.Namespace, app_config: AppConfig) -> list[str]:
+    """Return early syntax-level input errors only."""
+    del app_config
+    errors: list[str] = []
+    pr_url = str(getattr(args, "pr_url", None) or "").strip()
+    if not pr_url:
+        return errors
+    parsed = urlparse(pr_url)
+    if not parsed.scheme or not parsed.netloc:
+        errors.append(f"invalid PR URL format: {pr_url!r} - expected https://gitcode.com/.../pull/NNN")
+    elif "/pull/" not in parsed.path and "/pulls/" not in parsed.path:
+        errors.append(f"PR URL does not look like a pull request URL: {pr_url!r}")
+    return errors
+
+
 def main() -> int:
     global REPO_ROOT
     runtime_started = time.perf_counter()
@@ -7717,6 +7884,11 @@ def main() -> int:
             json_to_stdout=json_to_stdout,
             json_output_path=json_output_path,
         )
+    validation_errors = validate_inputs(args, app_config)
+    if validation_errors:
+        for err in validation_errors:
+            print(f"error: {err}", file=sys.stderr)
+        return 2
     if app_config.quick_mode:
         # Quick mode: skip daily download, use only local artifacts
         emit_progress(progress_enabled, "quick mode enabled (using local ACTS artifacts only)")
@@ -7950,6 +8122,7 @@ def main() -> int:
             write_run_artifacts(run_session, report, manifest)
         if not json_to_stdout:
             emit_progress(progress_enabled, "rendering human report")
+            print_executive_summary(report, written_json_path)
             print_human(report, None, written_json_path)
         if args.run_now and preflight_failed:
             return 2
@@ -7962,14 +8135,21 @@ def main() -> int:
         try:
             changed_files.extend(git_changed_files(app_config.git_repo_root, args.git_diff))
         except RuntimeError as exc:
-            print(f"git diff failed: {exc}", file=sys.stderr)
+            print(f"error: git diff failed: {exc}", file=sys.stderr)
             return 2
     if args.pr_url or args.pr_number:
         try:
             pr_ref = args.pr_url or args.pr_number
             changed_files.extend(resolve_pr_changed_files(app_config, pr_ref, args.pr_source))
         except RuntimeError as exc:
-            print(f"pr diff failed: {exc}", file=sys.stderr)
+            message = str(exc)
+            if "403" in message or "401" in message or "token" in message.lower():
+                hint = "The Git host token may be missing or expired. Run: ohos pr setup-token"
+            elif "404" in message or "not found" in message.lower():
+                hint = f"PR not found. Check the PR URL or number: {getattr(args, 'pr_url', None) or getattr(args, 'pr_number', None)}"
+            else:
+                hint = "Check the PR URL, configured git host credentials, and network access."
+            print(f"error: {XtsUserError(f'cannot fetch PR diff: {message}', hint=hint)}", file=sys.stderr)
             return 2
 
     deduped: list[Path] = []
@@ -8209,6 +8389,7 @@ def main() -> int:
 
     if not json_to_stdout:
         emit_progress(progress_enabled, "rendering human report")
+        print_executive_summary(report, written_json_path)
         print_human(report, cache_used, written_json_path)
     if args.run_now and preflight_failed:
         return 2
