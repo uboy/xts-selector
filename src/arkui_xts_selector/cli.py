@@ -11,6 +11,7 @@ This is impact analysis, not runtime coverage. It correlates:
 from __future__ import annotations
 
 import argparse
+from bisect import bisect_right
 import hashlib
 import json
 import math
@@ -36,6 +37,7 @@ from rich.console import Console
 from rich.padding import Padding
 from rich.table import Table
 
+from .api_lineage import ApiLineageMap, build_api_lineage_map
 from .api_surface import (
     BOTH,
     DYNAMIC,
@@ -51,7 +53,9 @@ from .built_artifacts import inspect_built_artifacts, load_built_artifact_index
 from .daily_prebuilt import (
     DEFAULT_DAILY_COMPONENT,
     DEFAULT_DAILY_CACHE_ROOT,
+    DEFAULT_FIRMWARE_CACHE_ROOT,
     DEFAULT_FIRMWARE_COMPONENT,
+    DEFAULT_SDK_CACHE_ROOT,
     DEFAULT_SDK_COMPONENT,
     PreparedDailyArtifact,
     PreparedDailyPrebuilt,
@@ -79,6 +83,10 @@ from .execution import (
     resolve_devices,
 )
 from .flashing import flash_image_bundle
+from .consumer_semantics import (
+    extract_consumer_semantics,
+    extract_typed_field_accesses as extract_typed_field_accesses_semantic,
+)
 from .run_store import (
     COMPLETED_RUN_STATUSES,
     RunSession,
@@ -118,16 +126,47 @@ COMMAND_PREFIX_ENV = "ARKUI_XTS_SELECTOR_COMMAND_PREFIX"
 COMMAND_MODE_ENV = "ARKUI_XTS_SELECTOR_COMMAND_MODE"
 
 
+class XtsUserError(RuntimeError):
+    """User-facing error with an optional recovery hint."""
+
+    def __init__(self, message: str, hint: str | None = None) -> None:
+        super().__init__(message)
+        self.hint = hint or ""
+
+    def __str__(self) -> str:
+        base = super().__str__()
+        if not self.hint:
+            return base
+        return f"{base}\n  Hint: {self.hint}"
+
+
+@dataclass(frozen=True)
+class XtsWorkspaceSnapshot:
+    signature: str
+    newest_mtime_ns: int
+
+
 def default_cache_path(xts_root: Path) -> Path:
     """Generate workspace-specific cache path to avoid race conditions."""
     workspace_hash = hashlib.sha256(str(xts_root.resolve()).encode()).hexdigest()[:12]
     return Path(f"/tmp/arkui_xts_selector_cache_{workspace_hash}.json")
+
+
+def default_cache_meta_path(cache_file: Path) -> Path:
+    return cache_file.with_name(cache_file.name + ".meta.json")
+
+
 DEFAULT_REPORT_FILE = "arkui_xts_selector_report.json"
 SELECTED_TESTS_FILE_NAME = "selected_tests.json"
 RELEVANCE_MODE_CHOICES = ("all", "balanced", "strict")
 PR_SOURCE_CHOICES = ("auto", "api", "git")
+GIT_HOST_KIND_CHOICES = ("auto", "gitcode", "codehub")
+CODEHUB_SECTION_NAMES = ("codehub", "codehub-y", "cr-y.codehub", "opencodehub")
 HUMAN_OPTIONAL_DUPLICATE_DISPLAY_LIMIT = 20
 HUMAN_RUN_TARGET_DISPLAY_LIMIT = 10
+HUMAN_COMPACT_CHANGED_FILE_THRESHOLD = 8
+PROGRESS_AGGREGATE_CHANGED_FILE_THRESHOLD = 6
+PROGRESS_AGGREGATE_CHANGED_FILE_STEP = 5
 DEFAULT_CHANGED_FILE_EXCLUSION_RULES = {
     "rules": [
         {
@@ -190,12 +229,27 @@ DEFAULT_IMPORT_RE = re.compile(r"""import\s+([A-Za-z_][A-Za-z0-9_]*)\s+from\s+['
 IDENTIFIER_CALL_RE = re.compile(r"""\b([A-Z][A-Za-z0-9_]*)\s*\(""")
 MEMBER_CALL_RE = re.compile(r"""\.([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
 WORD_RE = re.compile(r"""\b[A-Za-z_][A-Za-z0-9_]{2,}\b""")
+PARAM_TYPE_RE = re.compile(r"""[\(,]\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([A-Z][A-Za-z0-9_]*)\b""")
+VAR_TYPE_RE = re.compile(r"""\b(?:const|let|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([A-Z][A-Za-z0-9_]*)\b""")
+MEMBER_ACCESS_RE = re.compile(r"""\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b(?!\s*\()""")
+TYPED_OBJECT_LITERAL_RE = re.compile(
+    r"""\b(?:const|let|var)\s+[A-Za-z_][A-Za-z0-9_]*\s*:\s*([A-Z][A-Za-z0-9_]*)\s*=\s*\{(?P<body>[^{}]*)\}""",
+    re.S,
+)
+OBJECT_LITERAL_FIELD_RE = re.compile(r"""\b([A-Za-z_][A-Za-z0-9_]*)\s*:""")
 OHOS_MODULE_RE = re.compile(r"""@ohos\.[A-Za-z0-9._]+""")
 CPP_IDENTIFIER_RE = re.compile(r"""\b[A-Z][A-Za-z0-9_]{2,}\b""")
 TYPE_MEMBER_CALL_RE = re.compile(r"""\b([A-Z][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
 EXPORT_CLASS_RE = re.compile(r"""\bexport\s+class\s+([A-Z][A-Za-z0-9_]*)\b""")
 EXPORT_INTERFACE_RE = re.compile(r"""\bexport\s+interface\s+([A-Z][A-Za-z0-9_]*)\b""")
+EXPORT_INTERFACE_BLOCK_RE = re.compile(
+    r"""\bexport\s+(?:declare\s+)?interface\s+([A-Z][A-Za-z0-9_]*)[^{]*\{(?P<body>.*?)\}""",
+    re.S,
+)
+INTERFACE_PROPERTY_RE = re.compile(r"""^\s*(?:readonly\s+)?([A-Za-z_][A-Za-z0-9_]*)\??\s*:\s*[^;{}]+;?\s*$""", re.M)
+INTERFACE_METHOD_RE = re.compile(r"""^\s*(?:readonly\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\([^;{}]*\)\s*:\s*[^;]+;?\s*$""", re.M)
 PUBLIC_METHOD_RE = re.compile(r"""\bpublic\s+(?:static\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
+UNIFIED_DIFF_HUNK_RE = re.compile(r"""^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@""", re.M)
 GENERATED_ACCESSOR_NAMESPACE_RE = re.compile(r"""GeneratedModifier::([A-Za-z_][A-Za-z0-9_]*)Accessor\b""")
 GET_ACCESSOR_RE = re.compile(r"""\bGet([A-Za-z_][A-Za-z0-9_]*)Accessor\s*\(""")
 PEER_INCLUDE_RE = re.compile(r"#include\s+\"[^\"]*/([a-z0-9_]+)_peer\.h\"")
@@ -270,6 +324,8 @@ class RankingRulesConfig:
     planner_fallback_no_family_gain: float = 0.1
     rank_weight_power: float = 1.0
     rank_weight_floor: int = 1
+    family_fanout_limits: dict[str, dict[str, int]] = field(default_factory=dict)
+    precision_budget: dict[str, int] = field(default_factory=dict)
 
 
 def _normalize_token_set(values: Iterable[object]) -> set[str]:
@@ -359,6 +415,13 @@ def load_ranking_rules_config(path: Path | None) -> RankingRulesConfig:
         planner_fallback_no_family_gain=float(planner.get("fallback_no_family_gain", 0.1) or 0.0),
         rank_weight_power=float(planner.get("rank_weight_power", 1.0) or 1.0),
         rank_weight_floor=max(1, int(planner.get("rank_weight_floor", 1) or 1)),
+        family_fanout_limits={
+            str(k): {str(kk): int(vv) for kk, vv in dict(v).items()}
+            for k, v in dict(data.get("family_fanout_limits", {})).items()
+        },
+        precision_budget={
+            str(k): int(v) for k, v in dict(data.get("precision_budget", {})).items()
+        },
     )
 
 
@@ -712,6 +775,12 @@ GENERIC_PUBLIC_METHOD_HINTS = {
     "getfinalizer",
     "getpeer",
 }
+GENERIC_TYPED_FIELD_NAMES = {"x", "y", "type"}
+STRUCTURAL_TYPED_CALLBACK_TYPES = {
+    compact_token("BaseEvent"),
+    compact_token("Layoutable"),
+    compact_token("Measurable"),
+}
 
 
 def related_signal_base_token(name: str) -> str:
@@ -914,15 +983,26 @@ def build_source_profile(
         raw_tokens.update(path_component_tokens(path_for_tokens))
     family_keys = sorted(extract_coverage_family_keys(raw_tokens))
     capability_keys = sorted(extract_coverage_capability_keys(raw_tokens))
+    type_hint_keys = sorted(extract_type_hint_keys(signals.get("type_hints", set())))
+    member_hint_keys = sorted(extract_member_hint_keys(signals.get("member_hints", set())))
     if capability_keys and not family_keys:
         family_keys = sorted({capability_family_key(item) for item in capability_keys if capability_family_key(item)})
-    focus_tokens = sorted(extract_focus_tokens(raw_tokens))
+    focus_tokens = sorted(
+        extract_focus_tokens(
+            raw_tokens
+            | set(type_hint_keys)
+            | {item.partition(".")[0] for item in member_hint_keys}
+            | {item.partition(".")[2] for item in member_hint_keys if "." in item}
+        )
+    )
     return {
         "key": f"{source_type}:{source_value}",
         "type": source_type,
         "value": source_value,
         "family_keys": family_keys,
         "capability_keys": capability_keys,
+        "type_hint_keys": type_hint_keys,
+        "member_hint_keys": member_hint_keys,
         "focus_tokens": focus_tokens,
         "fallback_only": not bool(family_keys or capability_keys),
     }
@@ -1288,6 +1368,313 @@ def suite_source_capability_representative_scores(
     return scores
 
 
+def extract_type_hint_keys(values: Iterable[str]) -> set[str]:
+    keys: set[str] = set()
+    for value in values:
+        key = compact_token(value)
+        if (
+            key
+            and key not in GENERIC_COVERAGE_TOKENS
+            and key not in STRUCTURAL_TYPED_CALLBACK_TYPES
+        ):
+            keys.add(key)
+    return keys
+
+
+def normalize_member_hint(value: str) -> str:
+    owner, separator, member = str(value or "").partition(".")
+    owner_token = compact_token(owner)
+    member_token = compact_token(member)
+    if not separator or not owner_token or not member_token:
+        return ""
+    if owner_token in STRUCTURAL_TYPED_CALLBACK_TYPES or member_token in GENERIC_TYPED_FIELD_NAMES:
+        return ""
+    return f"{owner_token}.{member_token}"
+
+
+def extract_member_hint_keys(values: Iterable[str]) -> set[str]:
+    keys: set[str] = set()
+    for value in values:
+        normalized = normalize_member_hint(str(value))
+        if normalized:
+            keys.add(normalized)
+    return keys
+
+
+def _typed_owner_tokens(values: Iterable[str]) -> set[str]:
+    owners: set[str] = set()
+    for value in values:
+        owner, _separator, _member = str(value or "").partition(".")
+        owner_token = compact_token(owner)
+        if owner_token:
+            owners.add(owner_token)
+    return owners
+
+
+def _typed_member_tokens(values: Iterable[str]) -> set[str]:
+    tokens: set[str] = set()
+    for value in values:
+        normalized = normalize_member_hint(str(value))
+        if normalized:
+            tokens.add(normalized)
+    return tokens
+
+
+def extract_exported_type_names(
+    text: str,
+    *,
+    changed_ranges: Iterable[tuple[int, int]] | None = None,
+) -> set[str]:
+    exported: set[str] = set()
+    normalized_ranges = merge_changed_ranges(changed_ranges)
+    line_offsets = build_line_start_offsets(text) if normalized_ranges else []
+    for pattern in (EXPORT_CLASS_RE, EXPORT_INTERFACE_RE):
+        for match in pattern.finditer(text):
+            if normalized_ranges and not span_overlaps_changed_ranges(
+                match.start(),
+                match.end(),
+                line_offsets=line_offsets,
+                changed_ranges=normalized_ranges,
+            ):
+                continue
+            exported.add(match.group(1))
+    return exported
+
+
+def extract_exported_interface_member_hints(
+    text: str,
+    source_families: set[str],
+    *,
+    changed_ranges: Iterable[tuple[int, int]] | None = None,
+) -> set[str]:
+    hints: set[str] = set()
+    normalized_ranges = merge_changed_ranges(changed_ranges)
+    line_offsets = build_line_start_offsets(text) if normalized_ranges else []
+    for interface_match in EXPORT_INTERFACE_BLOCK_RE.finditer(text):
+        owner = interface_match.group(1)
+        body = interface_match.group("body")
+        body_offset = interface_match.start("body")
+        for property_match in INTERFACE_PROPERTY_RE.finditer(body):
+            if normalized_ranges and not span_overlaps_changed_ranges(
+                body_offset + property_match.start(),
+                body_offset + property_match.end(),
+                line_offsets=line_offsets,
+                changed_ranges=normalized_ranges,
+            ):
+                continue
+            member_name = property_match.group(1)
+            normalized = normalize_member_hint(f"{owner}.{member_name}")
+            if normalized:
+                hints.add(f"{owner}.{member_name}")
+        for method_match in INTERFACE_METHOD_RE.finditer(body):
+            method_name = method_match.group(1)
+            if compact_token(method_name) in GENERIC_PUBLIC_METHOD_HINTS:
+                continue
+            if normalized_ranges and not span_overlaps_changed_ranges(
+                body_offset + method_match.start(),
+                body_offset + method_match.end(),
+                line_offsets=line_offsets,
+                changed_ranges=normalized_ranges,
+            ):
+                continue
+            normalized = normalize_member_hint(f"{owner}.{method_name}")
+            if normalized:
+                hints.add(f"{owner}.{method_name}")
+    return hints
+
+
+def infer_project_type_hint_profile(
+    file_hits: list[tuple[int, TestFileIndex, list[str]]],
+    signals: dict[str, set[str]],
+) -> dict[str, object]:
+    source_type_hint_keys = extract_type_hint_keys(signals.get("type_hints", set()))
+    if not source_type_hint_keys:
+        return {
+            "type_hint_keys": [],
+            "direct_type_hint_keys": [],
+            "focus_token_counts": {},
+        }
+
+    matched_type_hints: set[str] = set()
+    direct_type_hints: set[str] = set()
+    focus_token_counts: dict[str, int] = {}
+    for _file_score, test_file, _reasons in file_hits:
+        related_tokens = {
+            compact_token(item)
+            for item in (
+                set(test_file.imported_symbols)
+                | set(test_file.identifier_calls)
+                | set(test_file.words)
+            )
+            if compact_token(item)
+        }
+        related_tokens.update(_typed_owner_tokens(test_file.type_member_calls))
+        direct_tokens = _typed_owner_tokens(test_file.typed_field_accesses)
+        related_tokens.update(direct_tokens)
+        for type_hint_key in source_type_hint_keys:
+            if type_hint_key in related_tokens:
+                matched_type_hints.add(type_hint_key)
+                focus_token_counts[type_hint_key] = focus_token_counts.get(type_hint_key, 0) + 1
+            if type_hint_key in direct_tokens:
+                direct_type_hints.add(type_hint_key)
+                focus_token_counts[type_hint_key] = focus_token_counts.get(type_hint_key, 0) + 2
+    return {
+        "type_hint_keys": sorted(matched_type_hints),
+        "direct_type_hint_keys": sorted(direct_type_hints),
+        "focus_token_counts": focus_token_counts,
+    }
+
+
+def infer_project_member_hint_profile(
+    file_hits: list[tuple[int, TestFileIndex, list[str]]],
+    signals: dict[str, set[str]],
+) -> dict[str, object]:
+    source_member_hint_keys = extract_member_hint_keys(signals.get("member_hints", set()))
+    if not source_member_hint_keys:
+        return {
+            "member_hint_keys": [],
+            "direct_member_hint_keys": [],
+            "focus_token_counts": {},
+        }
+
+    matched_member_hints: set[str] = set()
+    direct_member_hints: set[str] = set()
+    focus_token_counts: dict[str, int] = {}
+    for _file_score, test_file, _reasons in file_hits:
+        direct_members = _typed_member_tokens(test_file.typed_field_accesses)
+        related_members = direct_members | _typed_member_tokens(test_file.type_member_calls)
+        for member_hint_key in source_member_hint_keys:
+            if member_hint_key in related_members:
+                matched_member_hints.add(member_hint_key)
+                focus_token_counts[member_hint_key] = focus_token_counts.get(member_hint_key, 0) + 1
+            if member_hint_key in direct_members:
+                direct_member_hints.add(member_hint_key)
+                focus_token_counts[member_hint_key] = focus_token_counts.get(member_hint_key, 0) + 2
+    return {
+        "member_hint_keys": sorted(matched_member_hints),
+        "direct_member_hint_keys": sorted(direct_member_hints),
+        "focus_token_counts": focus_token_counts,
+    }
+
+
+def suite_source_type_hint_gains(
+    project_entry: dict[str, object],
+    source_profile: dict[str, object],
+) -> dict[str, float]:
+    source_type_hints = set(source_profile.get("type_hint_keys", []))
+    suite_type_hints = set(project_entry.get("type_hint_keys", []))
+    direct_suite_type_hints = set(project_entry.get("direct_type_hint_keys", []))
+    if not source_type_hints:
+        return {}
+
+    scope_multiplier = SCOPE_GAIN_MULTIPLIER.get(str(project_entry.get("scope_tier", "focused")), 1.0)
+    bucket_multiplier = BUCKET_GAIN_MULTIPLIER.get(str(project_entry.get("bucket", "possible related")), 0.65)
+    direct_overlap = source_type_hints & direct_suite_type_hints
+    related_overlap = (source_type_hints & suite_type_hints) - direct_overlap
+
+    gains: dict[str, float] = {}
+    for type_hint_key in direct_overlap:
+        gains[type_hint_key] = round(
+            ACTIVE_RANKING_RULES.family_gain_direct_base * 1.15 * scope_multiplier * bucket_multiplier,
+            6,
+        )
+    for type_hint_key in related_overlap:
+        gains[type_hint_key] = round(
+            ACTIVE_RANKING_RULES.family_gain_related_base * 0.95 * scope_multiplier * bucket_multiplier,
+            6,
+        )
+    return gains
+
+
+def suite_source_member_hint_gains(
+    project_entry: dict[str, object],
+    source_profile: dict[str, object],
+) -> dict[str, float]:
+    source_member_hints = set(source_profile.get("member_hint_keys", []))
+    suite_member_hints = set(project_entry.get("member_hint_keys", []))
+    direct_suite_member_hints = set(project_entry.get("direct_member_hint_keys", []))
+    if not source_member_hints:
+        return {}
+
+    scope_multiplier = SCOPE_GAIN_MULTIPLIER.get(str(project_entry.get("scope_tier", "focused")), 1.0)
+    bucket_multiplier = BUCKET_GAIN_MULTIPLIER.get(str(project_entry.get("bucket", "possible related")), 0.65)
+    direct_overlap = source_member_hints & direct_suite_member_hints
+    related_overlap = (source_member_hints & suite_member_hints) - direct_overlap
+
+    gains: dict[str, float] = {}
+    for member_hint_key in direct_overlap:
+        gains[member_hint_key] = round(
+            ACTIVE_RANKING_RULES.family_gain_direct_base * 1.35 * scope_multiplier * bucket_multiplier,
+            6,
+        )
+    for member_hint_key in related_overlap:
+        gains[member_hint_key] = round(
+            ACTIVE_RANKING_RULES.family_gain_related_base * 1.15 * scope_multiplier * bucket_multiplier,
+            6,
+        )
+    return gains
+
+
+def suite_source_member_hint_representative_scores(
+    project_entry: dict[str, object],
+    source_profile: dict[str, object],
+) -> dict[str, float]:
+    source_member_hints = set(source_profile.get("member_hint_keys", []))
+    suite_member_hints = set(project_entry.get("member_hint_keys", []))
+    direct_suite_member_hints = set(project_entry.get("direct_member_hint_keys", []))
+    focus_token_counts = {
+        str(key): int(value)
+        for key, value in dict(project_entry.get("member_hint_focus_counts") or {}).items()
+    }
+    if not source_member_hints:
+        return {}
+
+    scores: dict[str, float] = {}
+    direct_overlap = source_member_hints & direct_suite_member_hints
+    related_overlap = (source_member_hints & suite_member_hints) - direct_overlap
+    for member_hint_key in direct_overlap:
+        scores[member_hint_key] = round(
+            2.5 + min(1.5, focus_token_counts.get(member_hint_key, 0) * 0.15),
+            6,
+        )
+    for member_hint_key in related_overlap:
+        scores[member_hint_key] = round(
+            1.5 + min(1.0, focus_token_counts.get(member_hint_key, 0) * 0.1),
+            6,
+        )
+    return scores
+
+
+def suite_source_type_hint_representative_scores(
+    project_entry: dict[str, object],
+    source_profile: dict[str, object],
+) -> dict[str, float]:
+    source_type_hints = set(source_profile.get("type_hint_keys", []))
+    suite_type_hints = set(project_entry.get("type_hint_keys", []))
+    direct_suite_type_hints = set(project_entry.get("direct_type_hint_keys", []))
+    focus_token_counts = {
+        str(key): int(value)
+        for key, value in dict(project_entry.get("type_hint_focus_counts") or {}).items()
+    }
+    if not source_type_hints:
+        return {}
+
+    scores: dict[str, float] = {}
+    direct_overlap = source_type_hints & direct_suite_type_hints
+    related_overlap = (source_type_hints & suite_type_hints) - direct_overlap
+    for type_hint_key in direct_overlap:
+        scores[type_hint_key] = round(
+            2.0 + min(1.0, focus_token_counts.get(type_hint_key, 0) * 0.15),
+            6,
+        )
+    for type_hint_key in related_overlap:
+        scores[type_hint_key] = round(
+            1.0 + min(0.6, focus_token_counts.get(type_hint_key, 0) * 0.1),
+            6,
+        )
+    return scores
+
+
 def suite_source_focus_token_overlap(
     project_entry: dict[str, object],
     source_profile: dict[str, object],
@@ -1347,7 +1734,34 @@ def resolve_path(value: str | None, default: Path, repo_root: Path) -> Path:
     return resolve_workspace_path(value=value, default=default, repo_root=repo_root)
 
 
-def load_ini_gitcode_config(path_value: str | None, repo_root: Path) -> tuple[str | None, str | None]:
+def normalize_git_host_kind(value: str | None) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"", "auto"}:
+        return "auto"
+    if normalized in {"gitcode"}:
+        return "gitcode"
+    if normalized in {"codehub", "codehub-y", "cr-y.codehub", "opencodehub"}:
+        return "codehub"
+    return normalized
+
+
+def _load_ini_git_host_section(parser: ConfigParser, section: str) -> tuple[str | None, str | None]:
+    if not parser.has_section(section):
+        return None, None
+    normalized_kind = normalize_git_host_kind(section)
+    option_names: list[str]
+    if normalized_kind == "gitcode":
+        option_names = ["gitcode-url", "url"]
+    elif normalized_kind == "codehub":
+        option_names = [f"{section}-url", "codehub-url", "url"]
+    else:
+        option_names = ["url"]
+    url = next((parser.get(section, option, fallback=None) for option in option_names if parser.has_option(section, option)), None)
+    token = parser.get(section, "token", fallback=None)
+    return url, token
+
+
+def load_ini_git_host_config(path_value: str | None, repo_root: Path, host_kind: str) -> tuple[str | None, str | None]:
     if not path_value:
         return None, None
     path = resolve_path(path_value, repo_root, repo_root)
@@ -1355,10 +1769,22 @@ def load_ini_gitcode_config(path_value: str | None, repo_root: Path) -> tuple[st
         return None, None
     parser = ConfigParser()
     parser.read(path, encoding="utf-8-sig")
-    return (
-        parser.get("gitcode", "gitcode-url", fallback=None),
-        parser.get("gitcode", "token", fallback=None),
-    )
+    normalized_kind = normalize_git_host_kind(host_kind)
+    if normalized_kind == "gitcode":
+        sections_to_try = ("gitcode",)
+    elif normalized_kind == "codehub":
+        sections_to_try = CODEHUB_SECTION_NAMES
+    else:
+        sections_to_try = ("gitcode", *CODEHUB_SECTION_NAMES)
+    for section in sections_to_try:
+        url, token = _load_ini_git_host_section(parser, section)
+        if url or token:
+            return url, token
+    return None, None
+
+
+def load_ini_gitcode_config(path_value: str | None, repo_root: Path) -> tuple[str | None, str | None]:
+    return load_ini_git_host_config(path_value, repo_root, "gitcode")
 
 
 def add_family_symbol(mapping: dict[str, set[str]], family: str, symbol: str) -> None:
@@ -1512,6 +1938,12 @@ class AppConfig:
     git_repo_root: Path
     git_remote: str
     git_base_branch: str
+    git_host_kind: str = "auto"
+    git_host_api_url: str | None = None
+    git_host_token: str | None = None
+    git_host_config_path: Path | None = None
+    server_host: str | None = None
+    server_user: str | None = None
     device: str | None = None
     devices: list[str] = field(default_factory=list)
     gitcode_api_url: str | None = None
@@ -1538,6 +1970,7 @@ class AppConfig:
     daily_prebuilt: PreparedDailyPrebuilt | None = None
     daily_prebuilt_ready: bool = False
     daily_prebuilt_note: str = ""
+    quick_mode: bool = False
     sdk_build_tag: str | None = None
     sdk_component: str = DEFAULT_SDK_COMPONENT
     sdk_branch: str = "master"
@@ -1563,8 +1996,11 @@ class TestFileIndex:
     identifier_calls: set[str] = field(default_factory=set)
     member_calls: set[str] = field(default_factory=set)
     type_member_calls: set[str] = field(default_factory=set)
+    typed_field_accesses: set[str] = field(default_factory=set)
     typed_modifier_bases: set[str] = field(default_factory=set)
     words: set[str] = field(default_factory=set)
+    # Phase 5: evidence kind tracking
+    evidence_kinds: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -1575,8 +2011,10 @@ class TestFileIndex:
             "identifier_calls": sorted(self.identifier_calls),
             "member_calls": sorted(self.member_calls),
             "type_member_calls": sorted(self.type_member_calls),
+            "typed_field_accesses": sorted(self.typed_field_accesses),
             "typed_modifier_bases": sorted(self.typed_modifier_bases),
             "words": sorted(self.words),
+            "evidence_kinds": dict(self.evidence_kinds),
         }
 
     @classmethod
@@ -1589,8 +2027,10 @@ class TestFileIndex:
             identifier_calls=set(data["identifier_calls"]),
             member_calls=set(data["member_calls"]),
             type_member_calls=set(data.get("type_member_calls", [])),
+            typed_field_accesses=set(data.get("typed_field_accesses", [])),
             typed_modifier_bases=set(data.get("typed_modifier_bases", [])),
             words=set(data["words"]),
+            evidence_kinds=data.get("evidence_kinds", {}),
         )
 
 
@@ -1612,11 +2052,15 @@ class TestProjectIndex:
     search_identifier_call_tokens: set[str] = field(default_factory=set)
     search_member_call_tokens: set[str] = field(default_factory=set)
     search_type_owner_tokens: set[str] = field(default_factory=set)
+    search_typed_field_types: set[str] = field(default_factory=set)
+    search_exact_member_keys: set[str] = field(default_factory=set)
     search_typed_modifier_bases: set[str] = field(default_factory=set)
     search_words: set[str] = field(default_factory=set)
     search_path_tokens: set[str] = field(default_factory=set)
     search_project_path_compact: str = ""
     search_file_path_compacts: list[str] = field(default_factory=list)
+    search_evidence_kinds: dict[str, str] = field(default_factory=dict)
+    _serialized_files: list[dict] | None = field(default=None, repr=False, compare=False)
 
     def to_dict(self) -> dict:
         payload = {
@@ -1627,7 +2071,7 @@ class TestProjectIndex:
             "variant": self.variant,
             "surface": self.surface,
             "supported_surfaces": sorted(self.supported_surfaces),
-            "files": [item.to_dict() for item in self.files],
+            "files": self._serialized_files if self._serialized_files is not None else [item.to_dict() for item in self.files],
         }
         if self.search_summary_ready:
             payload["search_summary"] = {
@@ -1638,16 +2082,28 @@ class TestProjectIndex:
                 "identifier_call_tokens": sorted(self.search_identifier_call_tokens),
                 "member_call_tokens": sorted(self.search_member_call_tokens),
                 "type_owner_tokens": sorted(self.search_type_owner_tokens),
+                "typed_field_types": sorted(self.search_typed_field_types),
+                "exact_member_keys": sorted(self.search_exact_member_keys),
                 "typed_modifier_bases": sorted(self.search_typed_modifier_bases),
                 "words": sorted(self.search_words),
                 "path_tokens": sorted(self.search_path_tokens),
                 "project_path_compact": self.search_project_path_compact,
                 "file_path_compacts": list(self.search_file_path_compacts),
+                "evidence_kinds": dict(self.search_evidence_kinds),
             }
         return payload
 
     @classmethod
-    def from_dict(cls, data: dict) -> "TestProjectIndex":
+    def from_dict(cls, data: dict, *, lazy_files: bool = False) -> "TestProjectIndex":
+        summary = data.get("search_summary")
+        raw_files = data.get("files", [])
+        serialized_files = None
+        files: list[TestFileIndex]
+        if lazy_files and isinstance(summary, dict) and isinstance(raw_files, list):
+            files = []
+            serialized_files = raw_files
+        else:
+            files = [TestFileIndex.from_dict(item) for item in raw_files]
         project = cls(
             relative_root=data["relative_root"],
             test_json=data["test_json"],
@@ -1656,9 +2112,9 @@ class TestProjectIndex:
             variant=data.get("variant", "unknown"),
             surface=data.get("surface", data.get("variant", "unknown")),
             supported_surfaces=set(data.get("supported_surfaces", [])),
-            files=[TestFileIndex.from_dict(item) for item in data["files"]],
+            files=files,
+            _serialized_files=serialized_files,
         )
-        summary = data.get("search_summary")
         if isinstance(summary, dict):
             project.search_summary_ready = True
             project.search_imports = set(summary.get("imports", []))
@@ -1668,11 +2124,14 @@ class TestProjectIndex:
             project.search_identifier_call_tokens = set(summary.get("identifier_call_tokens", []))
             project.search_member_call_tokens = set(summary.get("member_call_tokens", []))
             project.search_type_owner_tokens = set(summary.get("type_owner_tokens", []))
+            project.search_typed_field_types = set(summary.get("typed_field_types", []))
+            project.search_exact_member_keys = set(summary.get("exact_member_keys", []))
             project.search_typed_modifier_bases = set(summary.get("typed_modifier_bases", []))
             project.search_words = set(summary.get("words", []))
             project.search_path_tokens = set(summary.get("path_tokens", []))
             project.search_project_path_compact = str(summary.get("project_path_compact", ""))
             project.search_file_path_compacts = [str(item) for item in summary.get("file_path_compacts", [])]
+            project.search_evidence_kinds = dict(summary.get("evidence_kinds", {}))
         return project
 
 
@@ -1731,8 +2190,20 @@ def ensure_project_search_summary(project: TestProjectIndex) -> TestProjectIndex
             owner_token = compact_token(owner)
             if owner_token:
                 project.search_type_owner_tokens.add(owner_token)
+            normalized = normalize_member_hint(entry)
+            if normalized:
+                project.search_exact_member_keys.add(normalized)
+        for entry in file_index.typed_field_accesses:
+            owner, _separator, _field = entry.partition(".")
+            owner_token = compact_token(owner)
+            if owner_token:
+                project.search_typed_field_types.add(owner_token)
+            normalized = normalize_member_hint(entry)
+            if normalized:
+                project.search_exact_member_keys.add(normalized)
         project.search_typed_modifier_bases.update(file_index.typed_modifier_bases)
         project.search_words.update(compact_token(word) for word in file_index.words if compact_token(word))
+        project.search_evidence_kinds.update(file_index.evidence_kinds)
 
     project.search_path_tokens = {token for token in path_tokens if token}
     project.search_project_path_compact = project_path_compact
@@ -1741,8 +2212,61 @@ def ensure_project_search_summary(project: TestProjectIndex) -> TestProjectIndex
     return project
 
 
-def project_might_match(project: TestProjectIndex, signals: dict[str, set[str]]) -> bool:
+def ensure_project_files_loaded(project: TestProjectIndex) -> TestProjectIndex:
+    if project.files or not project._serialized_files:
+        return project
+    project.files = [TestFileIndex.from_dict(item) for item in project._serialized_files if isinstance(item, dict)]
+    return project
+
+
+def project_matches_exact_api_prefilter(project: TestProjectIndex, signals: dict[str, set[str]]) -> bool:
     ensure_project_search_summary(project)
+    exact_api_entities = {str(item) for item in signals.get("exact_api_prefilter_entities", set()) if "." in str(item)}
+    exact_member_hints = extract_member_hint_keys(signals.get("member_hints", set()))
+    if not exact_api_entities and not exact_member_hints:
+        return False
+
+    exact_member_keys = set(project.search_exact_member_keys)
+    for member_hint in sorted(exact_member_hints):
+        if member_hint in exact_member_keys:
+            return True
+    for api_entity in sorted(exact_api_entities):
+        normalized = normalize_member_hint(api_entity)
+        if normalized and normalized in exact_member_keys:
+            return True
+
+    type_tokens = (
+        set(project.search_type_owner_tokens)
+        | set(project.search_imported_symbol_tokens)
+        | set(project.search_identifier_call_tokens)
+    )
+    member_tokens = set(project.search_member_call_tokens)
+    for api_entity in sorted(exact_api_entities):
+        owner, separator, method = api_entity.partition(".")
+        if not separator or not owner or not method:
+            continue
+        owner_token = compact_token(owner)
+        method_token = compact_token(method)
+        if owner_token and method_token and owner_token in type_tokens and method_token in member_tokens:
+            return True
+    return False
+
+
+def project_might_match(
+    project: TestProjectIndex,
+    signals: dict[str, set[str]],
+    *,
+    exact_api_prefilter_mode: bool | None = None,
+) -> bool:
+    ensure_project_search_summary(project)
+    exact_api_prefilter = (
+        bool(signals.get("exact_api_prefilter_entities"))
+        or bool(extract_member_hint_keys(signals.get("member_hints", set())))
+        or any("." in item for item in signals.get("symbols", set()))
+    ) if exact_api_prefilter_mode is None else bool(exact_api_prefilter_mode)
+
+    if exact_api_prefilter:
+        return project_matches_exact_api_prefilter(project, signals)
 
     if signals["modules"] & project.search_imports:
         return True
@@ -1770,6 +2294,7 @@ def project_might_match(project: TestProjectIndex, signals: dict[str, set[str]])
             hint_token in project.search_type_owner_tokens
             or hint_token in project.search_imported_symbol_tokens
             or hint_token in project.search_identifier_call_tokens
+            or hint_token in project.search_typed_field_types
         ):
             return True
 
@@ -1782,6 +2307,7 @@ def project_might_match(project: TestProjectIndex, signals: dict[str, set[str]])
             or symbol_token in project.search_identifier_call_tokens
             or symbol_token in project.search_member_call_tokens
             or symbol_token in project.search_type_owner_tokens
+            or symbol_token in project.search_typed_field_types
             or symbol_token in project.search_words
         ):
             return True
@@ -1799,7 +2325,21 @@ def select_candidate_projects(
     variants_mode: str,
 ) -> tuple[list[TestProjectIndex], list[TestProjectIndex]]:
     variant_projects = [project for project in projects if variant_matches(project.variant, variants_mode)]
-    shortlisted = [project for project in variant_projects if project_might_match(project, signals)]
+    exact_shortlisted: list[TestProjectIndex] = []
+    if signals.get("exact_api_prefilter_entities"):
+        exact_shortlisted = [
+            project
+            for project in variant_projects
+            if project_might_match(project, signals, exact_api_prefilter_mode=True)
+        ]
+        if exact_shortlisted:
+            return variant_projects, exact_shortlisted
+
+    shortlisted = [
+        project
+        for project in variant_projects
+        if project_might_match(project, signals, exact_api_prefilter_mode=False)
+    ]
     if not shortlisted:
         return variant_projects, variant_projects
     return variant_projects, shortlisted
@@ -1828,6 +2368,122 @@ def normalize_changed_files(values: Iterable[str], base_roots: Iterable[Path] | 
         existing = next((candidate for candidate in candidate_paths if candidate.exists()), None)
         result.append(existing or candidate_paths[0])
     return result
+
+
+def parse_changed_ranges(
+    values: Iterable[str],
+    *,
+    changed_files: Iterable[Path],
+    base_roots: Iterable[Path] | None = None,
+) -> dict[Path, list[tuple[int, int]]]:
+    changed_file_list = [path.resolve() for path in changed_files]
+    result: dict[Path, list[tuple[int, int]]] = {}
+    for value in values:
+        raw = str(value or "").strip()
+        if not raw:
+            continue
+        parts = raw.rsplit(":", 2)
+        target_path: Path
+        start_raw: str
+        end_raw: str
+        if len(parts) == 2 and all(part.isdigit() for part in parts):
+            if len(changed_file_list) != 1:
+                raise ValueError(f"Ambiguous changed range '{raw}': file path is required when multiple changed files are present.")
+            target_path = changed_file_list[0]
+            start_raw, end_raw = parts
+        elif len(parts) == 3 and parts[1].isdigit() and parts[2].isdigit():
+            path_value, start_raw, end_raw = parts
+            normalized_paths = normalize_changed_files([path_value], base_roots=base_roots)
+            if not normalized_paths:
+                raise ValueError(f"Unable to resolve changed range path from '{raw}'.")
+            target_path = normalized_paths[0].resolve()
+        else:
+            raise ValueError(f"Invalid changed range '{raw}'. Expected 'start:end' or 'path:start:end'.")
+
+        start = max(1, int(start_raw))
+        end = max(start, int(end_raw))
+        result.setdefault(target_path, []).append((start, end))
+    return result
+
+
+def merge_changed_ranges(ranges: Iterable[tuple[int, int]] | None) -> list[tuple[int, int]]:
+    normalized: list[tuple[int, int]] = []
+    for start, end in ranges or []:
+        start_line = max(1, int(start))
+        end_line = max(start_line, int(end))
+        normalized.append((start_line, end_line))
+    if not normalized:
+        return []
+    normalized.sort()
+    merged = [normalized[0]]
+    for start, end in normalized[1:]:
+        prev_start, prev_end = merged[-1]
+        if start <= prev_end + 1:
+            merged[-1] = (prev_start, max(prev_end, end))
+        else:
+            merged.append((start, end))
+    return merged
+
+
+def merge_changed_range_maps(
+    *range_maps: dict[Path, list[tuple[int, int]]] | None,
+) -> dict[Path, list[tuple[int, int]]]:
+    merged: dict[Path, list[tuple[int, int]]] = {}
+    for range_map in range_maps:
+        for path, ranges in (range_map or {}).items():
+            merged.setdefault(path.resolve(), []).extend(list(ranges or []))
+    return {path: merge_changed_ranges(ranges) for path, ranges in merged.items()}
+
+
+def build_line_start_offsets(text: str) -> list[int]:
+    offsets = [0]
+    for match in re.finditer(r"\n", text):
+        offsets.append(match.end())
+    return offsets
+
+
+def offset_to_line_number(offsets: list[int], offset: int) -> int:
+    return max(1, bisect_right(offsets, max(0, offset)))
+
+
+def span_overlaps_changed_ranges(
+    span_start: int,
+    span_end: int,
+    *,
+    line_offsets: list[int],
+    changed_ranges: Iterable[tuple[int, int]] | None,
+) -> bool:
+    normalized_ranges = merge_changed_ranges(changed_ranges)
+    if not normalized_ranges:
+        return True
+    start_line = offset_to_line_number(line_offsets, span_start)
+    end_line = offset_to_line_number(line_offsets, max(span_start, span_end - 1))
+    return any(not (end_line < range_start or start_line > range_end) for range_start, range_end in normalized_ranges)
+
+
+def parse_unified_diff_changed_ranges(patch_text: str) -> list[tuple[int, int]]:
+    ranges: list[tuple[int, int]] = []
+    for start_raw, count_raw in UNIFIED_DIFF_HUNK_RE.findall(str(patch_text or "")):
+        start = max(1, int(start_raw))
+        count = int(count_raw) if count_raw else 1
+        if count <= 0:
+            ranges.append((start, start))
+            continue
+        ranges.append((start, start + count - 1))
+    return merge_changed_ranges(ranges)
+
+
+def extract_patch_text_from_pr_file_item(item: dict[str, object]) -> str:
+    for key in ("patch", "diff_hunk", "diff", "changes"):
+        raw_value = item.get(key)
+        if isinstance(raw_value, str) and raw_value.strip():
+            return raw_value
+        if isinstance(raw_value, dict):
+            for nested_key in ("diff", "diff_hunk", "patch", "changes"):
+                nested_value = raw_value.get(nested_key)
+                if isinstance(nested_value, str) and nested_value.strip():
+                    return nested_value
+    return ""
 
 
 def load_changed_file_exclusion_config(path_value: Path | None) -> ChangedFileExclusionConfig:
@@ -2043,40 +2699,119 @@ def fetch_pr_changed_files(repo_root: Path, remote: str, base_branch: str, pr_re
     raise RuntimeError(last_error)
 
 
-def fetch_gitcode_api_json(api_url: str, token: str, api_path: str) -> object:
+def infer_git_host_kind(
+    pr_ref: str,
+    *,
+    configured_kind: str | None = None,
+    api_url: str | None = None,
+) -> str:
+    normalized_kind = normalize_git_host_kind(configured_kind)
+    if normalized_kind != "auto":
+        return normalized_kind
+
+    parsed_pr = urlparse(pr_ref) if not str(pr_ref).isdigit() else None
+    if parsed_pr is not None:
+        pr_host = parsed_pr.netloc.lower()
+        pr_path = parsed_pr.path.lower()
+        if "codehub" in pr_host:
+            return "codehub"
+        if "gitcode" in pr_host:
+            return "gitcode"
+        if "/merge_requests/" in pr_path:
+            return "codehub"
+        if re.search(r"/pulls?/\d+", pr_path):
+            return "gitcode"
+
+    parsed_api = urlparse(api_url or "")
+    api_host = parsed_api.netloc.lower()
+    if "codehub" in api_host:
+        return "codehub"
+    if "gitcode" in api_host:
+        return "gitcode"
+    return "gitcode"
+
+
+def resolve_pr_api_credentials(app_config: AppConfig, pr_ref: str) -> tuple[str, str | None, str | None]:
+    host_kind = infer_git_host_kind(
+        pr_ref,
+        configured_kind=app_config.git_host_kind,
+        api_url=app_config.git_host_api_url or app_config.gitcode_api_url,
+    )
+    api_url = app_config.git_host_api_url or app_config.gitcode_api_url
+    token = app_config.git_host_token or app_config.gitcode_token
+    if (not api_url or not token) and app_config.git_host_config_path:
+        ini_url, ini_token = load_ini_git_host_config(
+            str(app_config.git_host_config_path),
+            app_config.repo_root,
+            host_kind,
+        )
+        api_url = api_url or ini_url
+        token = token or ini_token
+    return host_kind, api_url, token
+
+
+def fetch_git_host_api_json(api_kind: str, api_url: str, token: str, api_path: str | Iterable[str]) -> object:
     base = api_url.rstrip("/")
-    separator = "&" if "?" in api_path else "?"
-    requests_to_try = [
-        urllib.request.Request(
-            f"{base}{api_path}{separator}{urllib.parse.urlencode({'access_token': token})}",
-            headers={"Accept": "application/json"},
-        ),
-        urllib.request.Request(
-            f"{base}{api_path}",
-            headers={"Accept": "application/json", "private-token": token},
-        ),
-    ]
-    last_error = "gitcode api failed"
-    for request in requests_to_try:
-        try:
-            with urllib.request.urlopen(request, timeout=20) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except urllib.error.URLError as exc:
-            last_error = f"gitcode api failed: {exc}"
-        except json.JSONDecodeError as exc:
-            last_error = f"gitcode api returned invalid json: {exc}"
+    api_paths = [api_path] if isinstance(api_path, str) else [str(item) for item in api_path if str(item)]
+    last_error = f"{api_kind} api failed"
+    for candidate_path in api_paths:
+        requests_to_try: list[urllib.request.Request]
+        if api_kind == "gitcode":
+            separator = "&" if "?" in candidate_path else "?"
+            requests_to_try = [
+                urllib.request.Request(
+                    f"{base}{candidate_path}{separator}{urllib.parse.urlencode({'access_token': token})}",
+                    headers={"Accept": "application/json"},
+                ),
+                urllib.request.Request(
+                    f"{base}{candidate_path}",
+                    headers={"Accept": "application/json", "private-token": token},
+                ),
+            ]
+        else:
+            requests_to_try = [
+                urllib.request.Request(
+                    f"{base}{candidate_path}",
+                    headers={"Accept": "application/json", "Private-Token": token},
+                ),
+            ]
+        path_missing = True
+        for request in requests_to_try:
+            try:
+                with urllib.request.urlopen(request, timeout=20) as response:
+                    return json.loads(response.read().decode("utf-8"))
+            except urllib.error.HTTPError as exc:
+                last_error = f"{api_kind} api failed: {exc}"
+                path_missing = path_missing and exc.code in {404, 410}
+            except urllib.error.URLError as exc:
+                last_error = f"{api_kind} api failed: {exc}"
+                path_missing = False
+            except json.JSONDecodeError as exc:
+                last_error = f"{api_kind} api returned invalid json: {exc}"
+                path_missing = False
+        if not path_missing:
+            break
     raise RuntimeError(last_error)
 
 
-def fetch_pr_metadata_via_api(api_url: str, token: str, owner: str, repo: str, pr_ref: str) -> dict:
+def fetch_pr_metadata_via_api(api_kind: str, api_url: str, token: str, owner: str, repo: str, pr_ref: str) -> dict:
     pr_number = parse_pr_number(pr_ref)
-    data = fetch_gitcode_api_json(api_url, token, f"/api/v5/repos/{owner}/{repo}/pulls/{pr_number}")
+    if api_kind == "codehub":
+        project_id = urllib.parse.quote(f"{owner}/{repo}", safe="")
+        api_path: str | list[str] = [
+            f"/api/v4/projects/{project_id}/isource/merge_requests/{pr_number}",
+            f"/api/v4/projects/{project_id}/merge_requests/{pr_number}",
+        ]
+    else:
+        api_path = f"/api/v5/repos/{owner}/{repo}/pulls/{pr_number}"
+    data = fetch_git_host_api_json(api_kind, api_url, token, api_path)
     if not isinstance(data, dict):
-        raise RuntimeError(f"gitcode api unexpected PR response: {data}")
+        raise RuntimeError(f"{api_kind} api unexpected PR response: {data}")
     return data
 
 
 def fetch_pr_changed_files_via_api(
+    api_kind: str,
     api_url: str,
     token: str,
     owner: str,
@@ -2084,45 +2819,128 @@ def fetch_pr_changed_files_via_api(
     pr_ref: str,
     repo_root: Path,
 ) -> list[Path]:
-    pr_number = parse_pr_number(pr_ref)
-    data = fetch_gitcode_api_json(api_url, token, f"/api/v5/repos/{owner}/{repo}/pulls/{pr_number}/files")
-    if isinstance(data, dict):
-        data = data.get("files") or data.get("data") or data.get("changed_files")
-    if not isinstance(data, list):
-        raise RuntimeError(f"gitcode api unexpected response: {data}")
+    changed_files, _changed_ranges = fetch_pr_changed_files_and_ranges_via_api(
+        api_kind=api_kind,
+        api_url=api_url,
+        token=token,
+        owner=owner,
+        repo=repo,
+        pr_ref=pr_ref,
+        repo_root=repo_root,
+    )
+    return changed_files
 
-    changed_files: list[str] = []
-    for item in data:
-        if not isinstance(item, dict):
+
+def fetch_pr_changed_files_and_ranges_via_api(
+    api_kind: str,
+    api_url: str,
+    token: str,
+    owner: str,
+    repo: str,
+    pr_ref: str,
+    repo_root: Path,
+) -> tuple[list[Path], dict[Path, list[tuple[int, int]]]]:
+    pr_number = parse_pr_number(pr_ref)
+    changed_files: list[Path] = []
+    changed_ranges_by_file: dict[Path, list[tuple[int, int]]] = {}
+
+    def _append_item(path_value: str | None, item: dict[str, object]) -> None:
+        if not path_value:
+            return
+        normalized_paths = normalize_changed_files([path_value], base_roots=[repo_root])
+        if not normalized_paths:
+            return
+        normalized_path = normalized_paths[0]
+        changed_files.append(normalized_path)
+        patch_text = extract_patch_text_from_pr_file_item(item)
+        parsed_ranges = parse_unified_diff_changed_ranges(patch_text)
+        if parsed_ranges:
+            resolved_path = normalized_path.resolve()
+            changed_ranges_by_file[resolved_path] = merge_changed_ranges(
+                list(changed_ranges_by_file.get(resolved_path, [])) + parsed_ranges
+            )
+
+    if api_kind == "codehub":
+        project_id = urllib.parse.quote(f"{owner}/{repo}", safe="")
+        data = fetch_git_host_api_json(
+            api_kind,
+            api_url,
+            token,
+            [
+                f"/api/v4/projects/{project_id}/isource/merge_requests/{pr_number}/changes",
+                f"/api/v4/projects/{project_id}/merge_requests/{pr_number}/changes",
+            ],
+        )
+        if isinstance(data, dict):
+            data = data.get("changes") or data.get("files") or data.get("data") or data.get("changed_files")
+        if not isinstance(data, list):
+            raise RuntimeError(f"{api_kind} api unexpected response: {data}")
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            _append_item(
+                item.get("new_path") or item.get("old_path") or item.get("filename"),
+                item,
+            )
+    else:
+        data = fetch_git_host_api_json(api_kind, api_url, token, f"/api/v5/repos/{owner}/{repo}/pulls/{pr_number}/files")
+        if isinstance(data, dict):
+            data = data.get("files") or data.get("data") or data.get("changed_files")
+        if not isinstance(data, list):
+            raise RuntimeError(f"{api_kind} api unexpected response: {data}")
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            _append_item(
+                item.get("filename") or item.get("new_path") or item.get("old_path"),
+                item,
+            )
+
+    deduped_files: list[Path] = []
+    seen_paths: set[Path] = set()
+    for changed_file in changed_files:
+        resolved = changed_file.resolve()
+        if resolved in seen_paths:
             continue
-        path_value = item.get("filename") or item.get("new_path") or item.get("old_path")
-        if path_value:
-            changed_files.append(path_value)
-    return normalize_changed_files(changed_files, base_roots=[repo_root])
+        deduped_files.append(changed_file)
+        seen_paths.add(resolved)
+    return deduped_files, changed_ranges_by_file
 
 
 def resolve_pr_changed_files(app_config: AppConfig, pr_ref: str, pr_source: str) -> list[Path]:
+    changed_files, _changed_ranges = resolve_pr_changed_files_with_ranges(app_config, pr_ref, pr_source)
+    return changed_files
+
+
+def resolve_pr_changed_files_with_ranges(
+    app_config: AppConfig,
+    pr_ref: str,
+    pr_source: str,
+) -> tuple[list[Path], dict[Path, list[tuple[int, int]]]]:
     owner_repo = resolve_pr_owner_repo(pr_ref, app_config.git_repo_root, app_config.git_remote)
     api_error: RuntimeError | None = None
     if pr_source in ("auto", "api"):
-        if not app_config.gitcode_api_url or not app_config.gitcode_token:
+        api_kind, api_url, token = resolve_pr_api_credentials(app_config, pr_ref)
+        if not api_url or not token:
             api_error = RuntimeError(
-                "PR API mode requires GitCode credentials; pass --gitcode-token or --git-host-config with [gitcode] token/url."
+                "PR API mode requires git host credentials; pass --git-host-token/--git-host-url or --git-host-config with [gitcode]/[codehub] token/url."
             )
         elif owner_repo is None:
             api_error = RuntimeError("could not determine owner/repo for PR API mode from --pr-url or local git remote")
         else:
             try:
                 fetch_pr_metadata_via_api(
-                    api_url=app_config.gitcode_api_url,
-                    token=app_config.gitcode_token,
+                    api_kind=api_kind,
+                    api_url=api_url,
+                    token=token,
                     owner=owner_repo[0],
                     repo=owner_repo[1],
                     pr_ref=pr_ref,
                 )
-                return fetch_pr_changed_files_via_api(
-                    api_url=app_config.gitcode_api_url,
-                    token=app_config.gitcode_token,
+                return fetch_pr_changed_files_and_ranges_via_api(
+                    api_kind=api_kind,
+                    api_url=api_url,
+                    token=token,
                     owner=owner_repo[0],
                     repo=owner_repo[1],
                     pr_ref=pr_ref,
@@ -2139,43 +2957,35 @@ def resolve_pr_changed_files(app_config: AppConfig, pr_ref: str, pr_source: str)
             remote=app_config.git_remote,
             base_branch=app_config.git_base_branch,
             pr_ref=pr_ref,
-        )
+        ), {}
     except RuntimeError as exc:
         if api_error is not None and pr_source == "auto":
             raise RuntimeError(f"api failed: {api_error}; git failed: {exc}") from exc
         raise
 
 
+def extract_typed_field_accesses(text: str) -> set[str]:
+    # Keep this wrapper for backwards compatibility with existing tests and
+    # call sites while routing extraction to the semantic parser module.
+    return extract_typed_field_accesses_semantic(text)
+
+
 def parse_test_file(path: Path) -> TestFileIndex:
     text = read_text(path)
     surface_profile = classify_xts_file_surface(path, text)
-    imported_symbols: set[str] = set()
-    typed_modifier_bases: set[str] = set()
-    for match in IMPORT_BINDING_RE.finditer(text):
-        for part in match.group(1).split(","):
-            token = part.strip().split(" as ", 1)[0].strip()
-            if token:
-                imported_symbols.add(token)
-    for match in DEFAULT_IMPORT_RE.finditer(text):
-        imported_symbols.add(match.group(1))
-    for raw in TYPED_ATTRIBUTE_MODIFIER_RE.findall(text):
-        base = compact_token(raw)
-        if base:
-            typed_modifier_bases.add(base)
-    for raw in EXTENDS_MODIFIER_RE.findall(text):
-        base = compact_token(raw)
-        if base:
-            typed_modifier_bases.add(base)
+    semantics = extract_consumer_semantics(text)
     return TestFileIndex(
         relative_path=repo_rel(path),
         surface=surface_profile.surface,
-        imports=set(IMPORT_RE.findall(text)),
-        imported_symbols=imported_symbols,
-        identifier_calls=set(IDENTIFIER_CALL_RE.findall(text)),
-        member_calls=set(MEMBER_CALL_RE.findall(text)),
-        type_member_calls={f"{owner}.{member}" for owner, member in TYPE_MEMBER_CALL_RE.findall(text)},
-        typed_modifier_bases=typed_modifier_bases,
-        words={word.lower() for word in WORD_RE.findall(text)},
+        imports=semantics.imports,
+        imported_symbols=semantics.imported_symbols,
+        identifier_calls=semantics.identifier_calls,
+        member_calls=semantics.member_calls,
+        type_member_calls=semantics.type_member_calls,
+        typed_field_accesses=semantics.typed_field_accesses,
+        typed_modifier_bases=semantics.typed_modifier_bases,
+        words=semantics.words,
+        evidence_kinds=semantics.evidence_kinds,
     )
 
 
@@ -2337,15 +3147,56 @@ def discover_projects(xts_root: Path) -> list[TestProjectIndex]:
     return projects
 
 
-def _build_project_hash(project_root: Path, source_files: list[Path]) -> str:
-    """Compute hash for a single project based on its source files."""
+def _build_xts_workspace_signature(xts_root: Path) -> str:
+    return _capture_xts_workspace_snapshot(xts_root).signature
+
+
+def _capture_xts_workspace_snapshot(xts_root: Path) -> XtsWorkspaceSnapshot:
+    skip_dirs = {".git", ".ohpm", "node_modules", "oh_modules", "out"}
     h = hashlib.sha256()
-    for f in sorted(source_files):
+    file_count = 0
+    newest_mtime_ns = 0
+    for dirpath, dirnames, filenames in os.walk(xts_root, topdown=True, onerror=lambda _exc: None):
+        dirnames[:] = sorted(name for name in dirnames if name not in skip_dirs)
         try:
-            stat = f.stat()
-            h.update(f"{f}:{stat.st_mtime_ns}:{stat.st_size}".encode())
+            newest_mtime_ns = max(newest_mtime_ns, int(Path(dirpath).stat().st_mtime_ns))
         except OSError:
-            h.update(f"{f}:missing".encode())
+            pass
+        base = Path(dirpath)
+        for filename in sorted(filenames):
+            if filename != "Test.json" and not filename.endswith((".ets", ".ts", ".js")):
+                continue
+            path = base / filename
+            try:
+                stat = path.stat()
+            except OSError:
+                continue
+            rel = str(path.relative_to(xts_root)).replace(os.sep, "/")
+            h.update(f"{rel}:{stat.st_mtime_ns}:{stat.st_size}\n".encode())
+            file_count += 1
+            newest_mtime_ns = max(newest_mtime_ns, int(stat.st_mtime_ns))
+    return XtsWorkspaceSnapshot(
+        signature=f"{file_count}:{h.hexdigest()}",
+        newest_mtime_ns=newest_mtime_ns,
+    )
+
+
+def _build_project_hash(project_root: Path, skip_dirs: set[str]) -> str:
+    """Compute hash for a single project based on its relevant source files."""
+    h = hashlib.sha256()
+    for dirpath, dirnames, filenames in os.walk(project_root, topdown=True, onerror=lambda _exc: None):
+        dirnames[:] = sorted(name for name in dirnames if name not in skip_dirs)
+        base = Path(dirpath)
+        for filename in sorted(filenames):
+            if filename != "Test.json" and not filename.endswith((".ets", ".ts", ".js")):
+                continue
+            path = base / filename
+            try:
+                stat = path.stat()
+            except OSError:
+                continue
+            rel = str(path.relative_to(project_root)).replace(os.sep, "/")
+            h.update(f"{rel}:{stat.st_mtime_ns}:{stat.st_size}\n".encode())
     return h.hexdigest()
 
 
@@ -2381,11 +3232,65 @@ def _build_single_project(
     )
 
 
+def _projects_from_cache_payload(cache_data: dict[str, object], *, lazy_files: bool) -> list[TestProjectIndex]:
+    return [
+        TestProjectIndex.from_dict(item["data"], lazy_files=lazy_files)
+        for _key, item in sorted((cache_data.get("projects", {}) or {}).items())
+        if isinstance(item, dict) and isinstance(item.get("data"), dict)
+    ]
+
+
 def load_or_build_projects(xts_root: Path, cache_file: Path | None) -> tuple[list[TestProjectIndex], bool]:
-    CACHE_VERSION = 4
+    CACHE_VERSION = 5
 
     if cache_file:
         cache_file.parent.mkdir(parents=True, exist_ok=True)
+    cache_meta_file = default_cache_meta_path(cache_file) if cache_file else None
+
+    # Fast path: validate the workspace against a tiny sidecar metadata file.
+    if cache_file and cache_file.exists() and cache_meta_file and cache_meta_file.exists():
+        try:
+            meta_payload = json.loads(read_text(cache_meta_file))
+            if meta_payload.get("version") == CACHE_VERSION:
+                workspace_snapshot = _capture_xts_workspace_snapshot(xts_root)
+                if meta_payload.get("workspace_signature") == workspace_snapshot.signature:
+                    cache_data = json.loads(read_text(cache_file))
+                    if cache_data.get("version") == CACHE_VERSION:
+                        projects = _projects_from_cache_payload(cache_data, lazy_files=True)
+                        for project in projects:
+                            if not project.search_summary_ready:
+                                ensure_project_search_summary(project)
+                        return projects, len(projects) > 0
+        except (json.JSONDecodeError, KeyError, TypeError, OSError):
+            pass
+
+    # Compatibility fast path: older caches may not have a sidecar yet.
+    # If the workspace-specific cache file is newer than every relevant source
+    # file and directory in the workspace, the cache cannot be stale for this
+    # workspace snapshot, so we can safely restore it and backfill the sidecar.
+    if cache_file and cache_file.exists() and cache_meta_file and not cache_meta_file.exists():
+        try:
+            workspace_snapshot = _capture_xts_workspace_snapshot(xts_root)
+            cache_stat = cache_file.stat()
+            cache_data = json.loads(read_text(cache_file))
+            if cache_data.get("version") == CACHE_VERSION and int(cache_stat.st_mtime_ns) >= workspace_snapshot.newest_mtime_ns:
+                projects = _projects_from_cache_payload(cache_data, lazy_files=True)
+                for project in projects:
+                    if not project.search_summary_ready:
+                        ensure_project_search_summary(project)
+                cache_meta_file.write_text(
+                    json.dumps(
+                        {
+                            "version": CACHE_VERSION,
+                            "workspace_signature": workspace_snapshot.signature,
+                        },
+                        ensure_ascii=False,
+                    ),
+                    encoding="utf-8",
+                )
+                return projects, len(projects) > 0
+        except (json.JSONDecodeError, KeyError, TypeError, OSError):
+            pass
 
     # Discover all project directories
     skip_dirs = {".git", ".ohpm", "node_modules", "oh_modules", "out"}
@@ -2409,23 +3314,20 @@ def load_or_build_projects(xts_root: Path, cache_file: Path | None) -> tuple[lis
     new_cache: dict[str, dict] = {}
     projects: list[TestProjectIndex] = []
     cache_hits = 0
+    cache_changed = False
 
     for test_json, root in project_dirs:
-        source_files = sorted(
-            f.resolve() for f in root.rglob("*")
-            if f.is_file() and (f.name == "Test.json" or f.suffix.lower() in {".ets", ".ts", ".js"})
-            and not any(skip in f.parts for skip in skip_dirs)
-        )
-        proj_hash = _build_project_hash(root, source_files)
+        proj_hash = _build_project_hash(root, skip_dirs)
         rel_key = str(root.relative_to(xts_root)).replace(os.sep, "/")
 
         if rel_key in old_cache and old_cache[rel_key].get("hash") == proj_hash:
             # Cache hit
             try:
                 project = TestProjectIndex.from_dict(old_cache[rel_key]["data"])
-                ensure_project_search_summary(project)
+                if not project.search_summary_ready:
+                    ensure_project_search_summary(project)
                 projects.append(project)
-                new_cache[rel_key] = {"hash": proj_hash, "data": project.to_dict()}
+                new_cache[rel_key] = old_cache[rel_key]
                 cache_hits += 1
                 continue
             except (KeyError, TypeError):
@@ -2436,14 +3338,29 @@ def load_or_build_projects(xts_root: Path, cache_file: Path | None) -> tuple[lis
         ensure_project_search_summary(project)
         projects.append(project)
         new_cache[rel_key] = {"hash": proj_hash, "data": project.to_dict()}
+        cache_changed = True
 
     # Save updated cache
-    if cache_file:
+    if len(old_cache) != len(new_cache):
+        cache_changed = True
+    if cache_file and cache_changed:
         cache_payload = {
             "version": CACHE_VERSION,
             "projects": new_cache,
         }
         cache_file.write_text(json.dumps(cache_payload, ensure_ascii=False), encoding="utf-8")
+    if cache_file and cache_meta_file and (cache_changed or not cache_meta_file.exists()):
+        workspace_signature = _build_xts_workspace_signature(xts_root)
+        cache_meta_file.write_text(
+            json.dumps(
+                {
+                    "version": CACHE_VERSION,
+                    "workspace_signature": workspace_signature,
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
 
     cache_used = cache_hits == len(project_dirs) and len(project_dirs) > 0
     return projects, cache_used
@@ -2599,6 +3516,7 @@ def infer_signals(
     sdk_index: SdkIndex,
     content_index: ContentModifierIndex,
     mapping_config: MappingConfig,
+    changed_ranges: Iterable[tuple[int, int]] | None = None,
 ) -> dict[str, set[str]]:
     rel = repo_rel(changed_file)
     if os.path.isabs(rel):
@@ -2621,6 +3539,7 @@ def infer_signals(
         "project_hints": set(),
         "method_hints": set(),
         "type_hints": set(),
+        "member_hints": set(),
         "raw_tokens": {part for part in parts if len(part) >= 4},
         "family_tokens": set(families),
         "method_hint_required": False,
@@ -2633,6 +3552,7 @@ def infer_signals(
             signals["project_hints"].add(key)
             signals["method_hints"].update(rule.get("method_hints", []))
             signals["type_hints"].update(rule.get("type_hints", []))
+            signals["member_hints"].update(rule.get("member_hints", []))
 
     pattern_match = re.search(r"components_ng/pattern/([^/]+)/", rel)
     if pattern_match:
@@ -2679,6 +3599,7 @@ def infer_signals(
 
     if changed_file.suffix.lower() == ".ets":
         text = read_text(changed_file)
+        normalized_changed_ranges = merge_changed_ranges(changed_ranges)
         source_families = {FAMILY_TOKEN_ALIAS_INDEX.get(family, family) for family in signals["family_tokens"]}
         source_focus = ets_source_focus_tokens(source_families)
         body_text = strip_ets_import_statements(text)
@@ -2716,10 +3637,23 @@ def infer_signals(
                 signals["project_hints"].add(mapped_family)
                 signals["symbols"].update(mapping_config.pattern_alias.get(mapped_family, []))
 
-        exported_type_names = set(EXPORT_CLASS_RE.findall(text)) | set(EXPORT_INTERFACE_RE.findall(text))
+        exported_type_names = extract_exported_type_names(
+            text,
+            changed_ranges=normalized_changed_ranges or None,
+        )
         for name in sorted(exported_type_names):
-            if should_keep_ets_signal_name(name, source_families, allow_source_family_fallback=True):
+            if not source_families or should_keep_ets_signal_name(name, source_families, allow_source_family_fallback=True):
                 _add_ets_type_signal(name, "strong")
+        exported_member_hints = extract_exported_interface_member_hints(
+            text,
+            source_families,
+            changed_ranges=normalized_changed_ranges or None,
+        )
+        signals["member_hints"].update(exported_member_hints)
+        for member_hint in sorted(exported_member_hints):
+            owner, _separator, _member = str(member_hint).partition(".")
+            if owner:
+                _add_ets_type_signal(owner, "strong")
 
         imported_type_names: set[str] = set()
         for match in IMPORT_BINDING_RE.finditer(text):
@@ -2744,15 +3678,24 @@ def infer_signals(
             elif used_in_body and should_keep_ets_signal_name(name, source_families, allow_source_family_fallback=False):
                 _add_ets_type_signal(name, "weak")
 
-        public_methods = [
-            method
-            for method in sorted(set(PUBLIC_METHOD_RE.findall(text)))
-            if compact_token(method) not in GENERIC_PUBLIC_METHOD_HINTS
-        ]
+        public_methods: list[str] = []
+        public_method_line_offsets = build_line_start_offsets(text) if normalized_changed_ranges else []
+        for public_method_match in PUBLIC_METHOD_RE.finditer(text):
+            method_name = public_method_match.group(1)
+            if compact_token(method_name) in GENERIC_PUBLIC_METHOD_HINTS:
+                continue
+            if normalized_changed_ranges and not span_overlaps_changed_ranges(
+                public_method_match.start(),
+                public_method_match.end(),
+                line_offsets=public_method_line_offsets,
+                changed_ranges=normalized_changed_ranges,
+            ):
+                continue
+            public_methods.append(method_name)
         if 1 <= len(public_methods) <= 6 and (
             1 <= len(source_focus) <= 2 or len(exported_type_names) == 1
         ):
-            signals["method_hints"].update(public_methods)
+            signals["method_hints"].update(sorted(set(public_methods)))
 
     native_suffixes = {".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".hh"}
     if changed_file.suffix.lower() in native_suffixes:
@@ -2800,6 +3743,7 @@ def infer_signals(
                 signals["project_hints"].add(key)
                 signals["method_hints"].update(rule.get("method_hints", []))
                 signals["type_hints"].update(rule.get("type_hints", []))
+                signals["member_hints"].update(rule.get("member_hints", []))
 
         for module_name in dynamic_modules:
             family = compact_token(module_name)
@@ -2849,7 +3793,128 @@ def infer_signals(
     }
     signals["method_hints"] = {item for item in signals["method_hints"] if item}
     signals["type_hints"] = {item for item in signals["type_hints"] if item}
+    signals["member_hints"] = {item for item in signals.get("member_hints", set()) if normalize_member_hint(str(item))}
     return signals
+
+
+def apply_api_lineage_signals(
+    changed_file: Path,
+    signals: dict[str, set[str]],
+    api_lineage_map: ApiLineageMap | None,
+    repo_root: Path,
+    changed_symbols: Iterable[str] | None = None,
+    changed_ranges: Iterable[tuple[int, int]] | None = None,
+) -> tuple[list[str], list[str], list[str]]:
+    if api_lineage_map is None:
+        return [], [], []
+
+    file_level_affected_api_entities = api_lineage_map.apis_for_source(changed_file, repo_root=repo_root)
+    derived_source_symbols = [str(item).strip() for item in (changed_symbols or []) if str(item).strip()]
+    if not derived_source_symbols and changed_ranges:
+        derived_source_symbols = api_lineage_map.symbols_for_source_ranges(
+            changed_file,
+            changed_ranges,
+            repo_root=repo_root,
+        )
+    narrowed_api_entities = api_lineage_map.apis_for_source_symbols(
+        changed_file,
+        derived_source_symbols,
+        repo_root=repo_root,
+    ) if derived_source_symbols else []
+    affected_api_entities = narrowed_api_entities or file_level_affected_api_entities
+    lineage_symbols: set[str] = set()
+    lineage_project_hints: set[str] = set()
+    lineage_family_tokens: set[str] = set()
+    lineage_method_hints: set[str] = set()
+    lineage_type_hints: set[str] = set()
+    lineage_member_hints: set[str] = set()
+    exact_api_prefilter_entities: set[str] = set()
+    for api_entity in affected_api_entities:
+        lineage_symbols.add(api_entity)
+        owner, _separator, method_name = str(api_entity).partition(".")
+        if owner:
+            lineage_type_hints.add(owner)
+        if owner and method_name:
+            exact_api_prefilter_entities.add(str(api_entity))
+            lineage_member_hints.add(f"{owner}.{method_name}")
+        for suffix in ("Modifier", "Attribute", "Configuration", "Controller"):
+            owner = owner.replace(suffix, "")
+        base = compact_token(owner)
+        if base:
+            lineage_project_hints.add(base)
+            lineage_family_tokens.add(base)
+        if method_name:
+            lineage_method_hints.add(method_name)
+    if narrowed_api_entities:
+        signals["symbols"] = lineage_symbols
+        signals["project_hints"] = lineage_project_hints
+        signals["family_tokens"] = lineage_family_tokens
+        signals["method_hints"] = lineage_method_hints
+        signals["type_hints"] = lineage_type_hints
+        signals["member_hints"] = lineage_member_hints
+    else:
+        signals["symbols"].update(lineage_symbols)
+        signals["project_hints"].update(lineage_project_hints)
+        signals["family_tokens"].update(lineage_family_tokens)
+        signals["method_hints"].update(lineage_method_hints)
+        signals["type_hints"].update(lineage_type_hints)
+        signals["member_hints"].update(lineage_member_hints)
+    if exact_api_prefilter_entities:
+        signals["exact_api_prefilter_entities"] = exact_api_prefilter_entities
+    return affected_api_entities, file_level_affected_api_entities, derived_source_symbols
+
+
+def collect_source_only_consumers(
+    affected_api_entities: list[str],
+    api_lineage_map: ApiLineageMap | None,
+    *,
+    top_projects: int,
+    top_files: int,
+) -> list[dict[str, object]]:
+    if api_lineage_map is None or not affected_api_entities:
+        return []
+
+    affected_set = set(affected_api_entities)
+    project_entries: dict[str, dict[str, object]] = {}
+    for api_entity in affected_api_entities:
+        for consumer_project in api_lineage_map.consumer_projects_for_api(api_entity, kind="source_only"):
+            entry = project_entries.setdefault(
+                consumer_project,
+                {
+                    "project": consumer_project,
+                    "consumer_kind": "source_only",
+                    "matched_api_entities": set(),
+                    "files": [],
+                },
+            )
+            entry["matched_api_entities"].add(api_entity)
+
+    for consumer_project, entry in project_entries.items():
+        matched_files: list[dict[str, object]] = []
+        for consumer_file in api_lineage_map.consumer_files_for_project(consumer_project):
+            matched_file_apis = sorted(api_lineage_map.consumer_file_to_apis.get(consumer_file, set()) & affected_set)
+            if not matched_file_apis:
+                continue
+            matched_files.append(
+                {
+                    "file": consumer_file,
+                    "matched_api_entities": matched_file_apis,
+                }
+            )
+        matched_files.sort(key=lambda item: (-len(item.get("matched_api_entities", [])), str(item.get("file", ""))))
+        entry["matched_api_entities"] = sorted(entry["matched_api_entities"])
+        entry["files"] = matched_files[:top_files]
+        entry["matched_file_count"] = len(matched_files)
+
+    ordered = sorted(
+        project_entries.values(),
+        key=lambda item: (
+            -len(item.get("matched_api_entities", [])),
+            -int(item.get("matched_file_count", 0)),
+            str(item.get("project", "")),
+        ),
+    )
+    return ordered if top_projects <= 0 else ordered[:top_projects]
 
 
 def symbol_score(
@@ -2916,12 +3981,20 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
     lowered_member_calls = {compact_token(member) for member in file_index.member_calls}
     identifier_call_tokens = {compact_token(identifier) for identifier in file_index.identifier_calls}
     imported_symbol_tokens = {compact_token(symbol) for symbol in file_index.imported_symbols}
+    exact_member_keys = _typed_member_tokens(file_index.typed_field_accesses) | _typed_member_tokens(file_index.type_member_calls)
     type_member_calls_by_token: dict[str, set[str]] = {}
     for entry in file_index.type_member_calls:
         owner, separator, member = entry.partition(".")
         owner_token = compact_token(owner)
         if owner_token and separator and member:
             type_member_calls_by_token.setdefault(owner_token, set()).add(member)
+    typed_field_accesses_by_token: dict[str, set[str]] = {}
+    for entry in file_index.typed_field_accesses:
+        owner, separator, field_name = entry.partition(".")
+        owner_token = compact_token(owner)
+        field_token = compact_token(field_name)
+        if owner_token and separator and field_name and field_token not in GENERIC_TYPED_FIELD_NAMES:
+            typed_field_accesses_by_token.setdefault(owner_token, set()).add(field_name)
 
     for module in sorted(signals["modules"]):
         if module in file_index.imports:
@@ -2978,6 +4051,7 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
     constructor_matches: list[str] = []
     import_matches: list[str] = []
     type_member_matches: list[str] = []
+    typed_field_matches: list[str] = []
     for hint_token, hint in sorted(type_hints_by_token.items()):
         if hint_token in identifier_call_tokens:
             constructor_matches.append(hint)
@@ -2986,6 +4060,9 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
         members = sorted(type_member_calls_by_token.get(hint_token, set()))
         if members:
             type_member_matches.extend(f"{hint}.{member}()" for member in members)
+        fields = sorted(typed_field_accesses_by_token.get(hint_token, set()))
+        if fields:
+            typed_field_matches.extend(f"{hint}.{field}" for field in fields)
 
     if method_member_matches:
         score += 5
@@ -3002,6 +4079,18 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
     if type_member_matches:
         score += 5
         reasons.append(f"calls hinted type member {', '.join(sorted(type_member_matches))}")
+    if typed_field_matches:
+        score += 9
+        reasons.append(f"reads/writes fields of hinted type {', '.join(sorted(typed_field_matches))}")
+
+    exact_member_matches = []
+    for member_hint in sorted(signals.get("member_hints", set())):
+        normalized = normalize_member_hint(member_hint)
+        if normalized and normalized in exact_member_keys:
+            exact_member_matches.append(str(member_hint))
+    if exact_member_matches:
+        score += 11
+        reasons.append(f"matches exact changed member {', '.join(sorted(exact_member_matches))}")
 
     for token in sorted(signals["project_hints"]):
         if token and token in compact_token(file_index.relative_path):
@@ -3049,6 +4138,7 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
 
 
 def score_project(project: TestProjectIndex, signals: dict[str, set[str]]) -> tuple[int, list[str], list[tuple[int, TestFileIndex, list[str]]]]:
+    ensure_project_files_loaded(project)
     project_score = 0
     project_reasons: list[str] = []
     path_key = compact_token(project.path_key)
@@ -3105,6 +4195,7 @@ def project_has_non_lexical_evidence(
                 or reason.startswith('constructs hinted type ')
                 or reason.startswith('imports hinted type ')
                 or reason.startswith('calls hinted type member ')
+                or reason.startswith('reads/writes fields of hinted type ')
             ):
                 return True
     return False
@@ -3201,6 +4292,7 @@ def _is_direct_evidence_reason(reason: str) -> bool:
             "constructs hinted type ",
             "imports hinted type ",
             "calls hinted type member ",
+            "reads/writes fields of hinted type ",
         )
     )
 
@@ -3634,6 +4726,8 @@ def build_global_coverage_recommendations(
             "value": str(source_profile.get("value") or source.get("value") or ""),
             "family_keys": list(source_profile.get("family_keys", [])),
             "capability_keys": list(source_profile.get("capability_keys", [])),
+            "type_hint_keys": list(source_profile.get("type_hint_keys", [])),
+            "member_hint_keys": list(source_profile.get("member_hint_keys", [])),
         }
         target = build_run_target_entry(
             project_entry,
@@ -3675,12 +4769,64 @@ def build_global_coverage_recommendations(
                 "unit_sources": {},
                 "covered_families": set(),
                 "covered_capabilities": set(),
+                "covered_type_hints": set(),
+                "covered_member_hints": set(),
+                "aggregate_type_hint_keys": set(),
+                "aggregate_direct_type_hint_keys": set(),
+                "aggregate_type_hint_focus_counts": {},
+                "aggregate_member_hint_keys": set(),
+                "aggregate_direct_member_hint_keys": set(),
+                "aggregate_member_hint_focus_counts": {},
             },
         )
         existing_target = candidate["target"]
         if project_result_sort_tuple(project_entry) < project_result_sort_tuple(existing_target):
             candidate["target"] = target
             existing_target = target
+        candidate["aggregate_type_hint_keys"].update(
+            str(item)
+            for item in project_entry.get("type_hint_keys", [])
+            if str(item).strip()
+        )
+        candidate["aggregate_direct_type_hint_keys"].update(
+            str(item)
+            for item in project_entry.get("direct_type_hint_keys", [])
+            if str(item).strip()
+        )
+        aggregate_focus_counts = candidate["aggregate_type_hint_focus_counts"]
+        for raw_key, raw_value in dict(project_entry.get("type_hint_focus_counts") or {}).items():
+            normalized_key = str(raw_key).strip()
+            if not normalized_key:
+                continue
+            try:
+                normalized_value = int(raw_value or 0)
+            except (TypeError, ValueError):
+                continue
+            previous_value = int(aggregate_focus_counts.get(normalized_key, 0) or 0)
+            if normalized_value > previous_value:
+                aggregate_focus_counts[normalized_key] = normalized_value
+        candidate["aggregate_member_hint_keys"].update(
+            str(item)
+            for item in project_entry.get("member_hint_keys", [])
+            if str(item).strip()
+        )
+        candidate["aggregate_direct_member_hint_keys"].update(
+            str(item)
+            for item in project_entry.get("direct_member_hint_keys", [])
+            if str(item).strip()
+        )
+        aggregate_member_focus_counts = candidate["aggregate_member_hint_focus_counts"]
+        for raw_key, raw_value in dict(project_entry.get("member_hint_focus_counts") or {}).items():
+            normalized_key = str(raw_key).strip()
+            if not normalized_key:
+                continue
+            try:
+                normalized_value = int(raw_value or 0)
+            except (TypeError, ValueError):
+                continue
+            previous_value = int(aggregate_member_focus_counts.get(normalized_key, 0) or 0)
+            if normalized_value > previous_value:
+                aggregate_member_focus_counts[normalized_key] = normalized_value
         candidate["source_keys"].add(source_key)
         candidate["sources"][source_key] = all_sources[source_key]
         candidate["source_reasons"].setdefault(source_key, list(project_entry.get("scope_reasons", [])))
@@ -3689,13 +4835,112 @@ def build_global_coverage_recommendations(
             int(candidate["source_ranks"].get(source_key, 999) or 999),
             source_rank,
         )
+        member_hint_keys = list(source_profile.get("member_hint_keys", []))
+        type_hint_keys = list(source_profile.get("type_hint_keys", []))
         capability_keys = list(source_profile.get("capability_keys", []))
         family_keys = list(source_profile.get("family_keys", []))
+        member_hint_gains = suite_source_member_hint_gains(project_entry, source_profile)
+        member_hint_representative_scores = suite_source_member_hint_representative_scores(project_entry, source_profile)
+        type_hint_gains = suite_source_type_hint_gains(project_entry, source_profile)
+        type_hint_representative_scores = suite_source_type_hint_representative_scores(project_entry, source_profile)
         capability_gains = suite_source_capability_gains(project_entry, source_profile)
         capability_representative_scores = suite_source_capability_representative_scores(project_entry, source_profile)
         family_gains = suite_source_family_gains(project_entry, source_profile)
         family_representative_scores = suite_source_family_representative_scores(project_entry, source_profile)
         focus_overlap = suite_source_focus_token_overlap(project_entry, source_profile)
+        member_hint_owner_keys = {
+            str(item).partition(".")[0]
+            for item in member_hint_keys
+            if "." in str(item)
+        }
+        if member_hint_keys:
+            for member_hint_key in member_hint_keys:
+                unit_key = _unit_key_for_source(source_profile, member_hint_key, "member")
+                all_units.setdefault(
+                    unit_key,
+                    {
+                        "key": unit_key,
+                        "unit_kind": "member_hint",
+                        "member_hint_key": member_hint_key,
+                        "type_hint_key": str(member_hint_key).partition(".")[0],
+                        "family_key": "",
+                        "capability_key": "",
+                        "type": str(source_profile.get("type") or ""),
+                        "sources": [],
+                    },
+                )
+                source_entry = {
+                    "type": str(source_profile.get("type") or ""),
+                    "value": str(source_profile.get("value") or ""),
+                }
+                if source_entry not in all_units[unit_key]["sources"]:
+                    all_units[unit_key]["sources"].append(source_entry)
+                gain = float(member_hint_gains.get(member_hint_key, 0.0) or 0.0)
+                if gain <= 0:
+                    continue
+                weighted_gain = gain * coverage_rank_weight(source_rank)
+                source_gains = candidate["unit_source_gains"].setdefault(unit_key, {})
+                previous_gain = float(source_gains.get(source_key, 0.0) or 0.0)
+                if weighted_gain > previous_gain:
+                    source_gains[source_key] = weighted_gain
+                    candidate["unit_gains"][unit_key] = round(sum(float(value or 0.0) for value in source_gains.values()), 6)
+                    candidate["unit_sources"][unit_key] = list(all_units[unit_key]["sources"])
+                representative_score = float(member_hint_representative_scores.get(member_hint_key, 0.0) or 0.0)
+                previous_representative_score = float(candidate["unit_representative_scores"].get(unit_key, 0.0) or 0.0)
+                if representative_score > previous_representative_score:
+                    candidate["unit_representative_scores"][unit_key] = representative_score
+                previous_focus_overlap = int(candidate["unit_focus_overlaps"].get(unit_key, 0) or 0)
+                if focus_overlap > previous_focus_overlap:
+                    candidate["unit_focus_overlaps"][unit_key] = focus_overlap
+                candidate["covered_member_hints"].add(member_hint_key)
+        if type_hint_keys:
+            for type_hint_key in type_hint_keys:
+                candidate_member_hint_keys = {
+                    str(item).partition(".")[0]
+                    for item in project_entry.get("member_hint_keys", [])
+                    if "." in str(item)
+                }
+                if type_hint_key in member_hint_owner_keys and type_hint_key not in candidate_member_hint_keys:
+                    continue
+                unit_key = _unit_key_for_source(source_profile, type_hint_key, "type")
+                all_units.setdefault(
+                    unit_key,
+                    {
+                        "key": unit_key,
+                        "unit_kind": "type_hint",
+                        "type_hint_key": type_hint_key,
+                        "family_key": "",
+                        "capability_key": "",
+                        "type": str(source_profile.get("type") or ""),
+                        "sources": [],
+                    },
+                )
+                source_entry = {
+                    "type": str(source_profile.get("type") or ""),
+                    "value": str(source_profile.get("value") or ""),
+                }
+                if source_entry not in all_units[unit_key]["sources"]:
+                    all_units[unit_key]["sources"].append(source_entry)
+                gain = float(type_hint_gains.get(type_hint_key, 0.0) or 0.0)
+                if type_hint_key in member_hint_owner_keys:
+                    gain *= 0.35
+                if gain <= 0:
+                    continue
+                weighted_gain = gain * coverage_rank_weight(source_rank)
+                source_gains = candidate["unit_source_gains"].setdefault(unit_key, {})
+                previous_gain = float(source_gains.get(source_key, 0.0) or 0.0)
+                if weighted_gain > previous_gain:
+                    source_gains[source_key] = weighted_gain
+                    candidate["unit_gains"][unit_key] = round(sum(float(value or 0.0) for value in source_gains.values()), 6)
+                    candidate["unit_sources"][unit_key] = list(all_units[unit_key]["sources"])
+                representative_score = float(type_hint_representative_scores.get(type_hint_key, 0.0) or 0.0)
+                previous_representative_score = float(candidate["unit_representative_scores"].get(unit_key, 0.0) or 0.0)
+                if representative_score > previous_representative_score:
+                    candidate["unit_representative_scores"][unit_key] = representative_score
+                previous_focus_overlap = int(candidate["unit_focus_overlaps"].get(unit_key, 0) or 0)
+                if focus_overlap > previous_focus_overlap:
+                    candidate["unit_focus_overlaps"][unit_key] = focus_overlap
+                candidate["covered_type_hints"].add(type_hint_key)
         if capability_keys:
             for capability_key in capability_keys:
                 unit_key = _unit_key_for_source(source_profile, capability_key, "capability")
@@ -3737,7 +4982,7 @@ def build_global_coverage_recommendations(
                 family_key = capability_family_key(capability_key)
                 if family_key:
                     candidate["covered_families"].add(family_key)
-        elif family_keys:
+        if family_keys and not type_hint_keys and not member_hint_keys:
             for family_key in family_keys:
                 unit_key = _unit_key_for_source(source_profile, family_key, "family")
                 all_units.setdefault(
@@ -3775,7 +5020,7 @@ def build_global_coverage_recommendations(
                 if focus_overlap > previous_focus_overlap:
                     candidate["unit_focus_overlaps"][unit_key] = focus_overlap
                 candidate["covered_families"].add(family_key)
-        else:
+        if not type_hint_keys and not capability_keys and not family_keys:
             unit_key = source_key
             all_units.setdefault(
                 unit_key,
@@ -3926,8 +5171,22 @@ def build_global_coverage_recommendations(
         target["total_coverage_count"] = len(all_covered_units)
         target["new_coverage_score"] = round(sum(float(planning_unit_gains.get(key, 0.0) or 0.0) for key in new_keys), 6)
         target["total_coverage_score"] = round(sum(float(all_unit_gains.get(key, 0.0) or 0.0) for key in all_covered_units), 6)
+        target["type_hint_keys"] = sorted(candidate.get("aggregate_type_hint_keys", set()))
+        target["direct_type_hint_keys"] = sorted(candidate.get("aggregate_direct_type_hint_keys", set()))
+        target["type_hint_focus_counts"] = {
+            str(key): int(value)
+            for key, value in dict(candidate.get("aggregate_type_hint_focus_counts") or {}).items()
+        }
+        target["member_hint_keys"] = sorted(candidate.get("aggregate_member_hint_keys", set()))
+        target["direct_member_hint_keys"] = sorted(candidate.get("aggregate_direct_member_hint_keys", set()))
+        target["member_hint_focus_counts"] = {
+            str(key): int(value)
+            for key, value in dict(candidate.get("aggregate_member_hint_focus_counts") or {}).items()
+        }
         target["covered_families"] = sorted(candidate.get("covered_families", set()))
         target["covered_capabilities"] = sorted(candidate.get("covered_capabilities", set()))
+        target["covered_type_hints"] = sorted(candidate.get("covered_type_hints", set()))
+        target["covered_member_hints"] = sorted(candidate.get("covered_member_hints", set()))
         target["new_families"] = sorted(
             {
                 str(all_units[key].get("family_key") or "")
@@ -3942,12 +5201,28 @@ def build_global_coverage_recommendations(
                 if str(all_units[key].get("capability_key") or "")
             }
         )
+        target["new_type_hints"] = sorted(
+            {
+                str(all_units[key].get("type_hint_key") or "")
+                for key in new_keys
+                if str(all_units[key].get("type_hint_key") or "")
+            }
+        )
+        target["new_member_hints"] = sorted(
+            {
+                str(all_units[key].get("member_hint_key") or "")
+                for key in new_keys
+                if str(all_units[key].get("member_hint_key") or "")
+            }
+        )
         target["covered_units"] = [
             {
                 "type": str(all_units[key].get("type") or ""),
                 "unit_kind": str(all_units[key].get("unit_kind") or ""),
                 "family_key": str(all_units[key].get("family_key") or ""),
                 "capability_key": str(all_units[key].get("capability_key") or ""),
+                "type_hint_key": str(all_units[key].get("type_hint_key") or ""),
+                "member_hint_key": str(all_units[key].get("member_hint_key") or ""),
                 "sources": list(all_units[key].get("sources", [])),
             }
             for key in sorted(all_covered_units)
@@ -3973,12 +5248,101 @@ def build_global_coverage_recommendations(
         }
         ordered_candidates.append(target)
 
+    # Phase 3: Apply fan-out limits from ranking_rules.json
+    fanout_limits = getattr(ACTIVE_RANKING_RULES, "family_fanout_limits", {})
+    default_limit = fanout_limits.get("default", {"max_type_representatives": 5, "max_family_representatives": 10})
+    precision_budget = getattr(ACTIVE_RANKING_RULES, "precision_budget", {})
+    member_max_required = precision_budget.get("member_aware_max_required", 30)
+    type_max_required = precision_budget.get("type_level_max_required", 100)
+    family_max_required = precision_budget.get("family_level_max_required", 200)
+
+    for target in ordered_candidates:
+        covered_type_hints = set(target.get("covered_type_hints", []) or [])
+        covered_families = set(target.get("covered_families", []) or [])
+        covered_member_hints = set(target.get("covered_member_hints", []) or [])
+
+        # Determine precision mode based on evidence level
+        if covered_member_hints:
+            max_required = member_max_required
+            target["precision_mode"] = "member"
+        elif covered_type_hints:
+            max_required = type_max_required
+            target["precision_mode"] = "type"
+        else:
+            max_required = family_max_required
+            target["precision_mode"] = "family"
+
+        # Apply per-family type representative limits
+        for family_key in list(target.get("covered_families", [])):
+            limit = fanout_limits.get(family_key, default_limit)
+            max_types = limit.get("max_type_representatives", default_limit["max_type_representatives"])
+            if len(covered_type_hints) > max_types:
+                # Suppress lowest-scoring type hints by marking excess as suppressed
+                sorted_types = sorted(covered_type_hints)
+                for extra_type in sorted_types[max_types:]:
+                    target.setdefault("suppressed_type_hints", set()).add(extra_type)
+
+        # Apply per-family family representative limits
+        for family_key in list(target.get("covered_families", [])):
+            limit = fanout_limits.get(family_key, default_limit)
+            max_families = limit.get("max_family_representatives", default_limit["max_family_representatives"])
+            if len(covered_families) > max_families:
+                sorted_families = sorted(covered_families)
+                for extra_family in sorted_families[max_families:]:
+                    target.setdefault("suppressed_families", set()).add(extra_family)
+
+        # Convert accumulator sets to sorted lists for JSON serialisation
+        if isinstance(target.get("suppressed_type_hints"), set):
+            target["suppressed_type_hints"] = sorted(target["suppressed_type_hints"])
+        if isinstance(target.get("suppressed_families"), set):
+            target["suppressed_families"] = sorted(target["suppressed_families"])
+
     required: list[dict[str, object]] = []
     recommended_additional: list[dict[str, object]] = []
     optional_duplicates = [target for target in ordered_candidates if int(target.get("new_coverage_count", 0)) <= 0]
     for target in ordered_candidates:
         new_coverage_count = int(target.get("new_coverage_count", 0) or 0)
+        direct_member_hints = set(target.get("direct_member_hint_keys", []) or [])
+        covered_member_hints = set(target.get("covered_member_hints", []) or [])
+        matched_direct_member_hints = sorted(direct_member_hints & covered_member_hints)
+        direct_type_hints = set(target.get("direct_type_hint_keys", []) or [])
+        covered_type_hints = set(target.get("covered_type_hints", []) or [])
+        matched_direct_type_hints = sorted(direct_type_hints & covered_type_hints)
         if new_coverage_count <= 0:
+            if matched_direct_member_hints:
+                if str(target.get("bucket") or "") == "must-run":
+                    target["coverage_status"] = "required"
+                    target["coverage_reason"] = (
+                        "adds no new planner unit, but directly validates changed member(s): "
+                        + ", ".join(matched_direct_member_hints)
+                    )
+                    required.append(target)
+                    continue
+                if str(target.get("bucket") or "") == "high-confidence related":
+                    target["coverage_status"] = "recommended"
+                    target["coverage_reason"] = (
+                        "adds no new planner unit, but directly validates changed member(s): "
+                        + ", ".join(matched_direct_member_hints)
+                    )
+                    recommended_additional.append(target)
+                    continue
+            if matched_direct_type_hints:
+                if str(target.get("bucket") or "") == "must-run":
+                    target["coverage_status"] = "required"
+                    target["coverage_reason"] = (
+                        "adds no new planner unit, but directly reads/writes fields of changed type(s): "
+                        + ", ".join(matched_direct_type_hints)
+                    )
+                    required.append(target)
+                    continue
+                if str(target.get("bucket") or "") == "high-confidence related":
+                    target["coverage_status"] = "recommended"
+                    target["coverage_reason"] = (
+                        "adds no new planner unit, but provides direct field-read/write validation for changed type(s): "
+                        + ", ".join(matched_direct_type_hints)
+                    )
+                    recommended_additional.append(target)
+                    continue
             target["coverage_status"] = "optional"
             target["coverage_reason"] = "covers only functionality already covered by earlier selected suites"
             continue
@@ -4002,7 +5366,12 @@ def build_global_coverage_recommendations(
     uncovered_sources = [
         {
             "type": str(info.get("type") or ""),
-            "value": str(info.get("family_key") or (info.get("sources") or [{"value": ""}])[0].get("value", "")),
+            "value": str(
+                info.get("type_hint_key")
+                or info.get("capability_key")
+                or info.get("family_key")
+                or (info.get("sources") or [{"value": ""}])[0].get("value", "")
+            ),
         }
         for key, info in sorted(all_units.items())
         if key not in covered_unit_keys
@@ -4055,6 +5424,7 @@ def build_query_signals(
         "project_hints": set(),
         "method_hints": set(),
         "type_hints": set(),
+        "member_hints": set(),
         "raw_tokens": set(parts),
         "family_tokens": set(),
         "method_hint_required": False,
@@ -4079,6 +5449,15 @@ def build_query_signals(
 
     if query in sdk_index.component_names or query in sdk_index.modifier_names:
         signals["symbols"].add(query)
+
+    normalized_member = normalize_member_hint(query)
+    if normalized_member:
+        owner, _separator, member = query.partition(".")
+        signals["member_hints"].add(query)
+        if owner:
+            signals["type_hints"].add(owner)
+        if member:
+            signals["method_hints"].add(member)
 
     component_tokens = {
         token for token in query_tokens
@@ -4212,6 +5591,9 @@ def search_code_matches(
 def build_unresolved_analysis(
     signals: dict[str, set[str]],
     project_results: list[dict],
+    *,
+    affected_api_entities: Sequence[str] | None = None,
+    derived_source_symbols: Sequence[str] | None = None,
 ) -> dict:
     top_score = project_results[0]["score"] if project_results else 0
     top_paths = [item["project"].lower() for item in project_results[:5]]
@@ -4228,12 +5610,24 @@ def build_unresolved_analysis(
         "top_paths": top_paths,
         "broad_common_hits": broad_common_hits,
         "has_content_modifier_signal": has_content_modifier_signal,
+        "reason_class": None,
         "reason": None,
     }
+    affected_api_entities = list(affected_api_entities or [])
+    derived_source_symbols = list(derived_source_symbols or [])
     if not project_results:
-        analysis["reason"] = "No XTS usages were found for this file."
+        if affected_api_entities:
+            analysis["reason_class"] = "consumer_evidence_gap"
+            analysis["reason"] = "Changed APIs were mapped, but no XTS consumer evidence was found for them."
+        elif derived_source_symbols:
+            analysis["reason_class"] = "lineage_gap"
+            analysis["reason"] = "Source symbols were detected, but they could not be mapped to XTS-covered APIs."
+        else:
+            analysis["reason_class"] = "no_matches"
+            analysis["reason"] = "No XTS usages were found for this file."
         return analysis
     if top_score < 12:
+        analysis["reason_class"] = "weak_signal"
         analysis["reason"] = "Only weak matches were found; test usage could not be determined reliably."
         return analysis
     if (
@@ -4242,8 +5636,228 @@ def build_unresolved_analysis(
         and broad_common_hits >= min(3, len(top_paths))
         and not any("contentmodifier" in path for path in top_paths)
     ):
+        analysis["reason_class"] = "broad_common_overmatch"
         analysis["reason"] = "Only broad/common ArkUI suites were matched; no reliable content-modifier-specific XTS usage was found."
     return analysis
+
+
+def _classify_unresolved(
+    changed_file: Path,
+    signals: dict[str, set[str]],
+    api_lineage_map: ApiLineageMap | None,
+    consumer_semantics: list[dict],
+) -> dict[str, str | None]:
+    """Classify why a changed file is unresolved.
+
+    Returns a dict with:
+    - reason_class: one of 'no_source_member_mapping', 'no_consumer_member_evidence',
+                    'lineage_gap', 'unsupported_generated_pattern'
+    - reason: human-readable explanation
+    """
+    member_hints = signals.get("member_hints", set())
+    type_hints = signals.get("type_hints", set())
+    symbols = signals.get("symbols", set())
+    project_hints = signals.get("project_hints", set())
+
+    # Check if file is generated
+    file_str = str(changed_file)
+    is_generated = any(p in file_str for p in ("generated", "assembled", "koala"))
+
+    # Check lineage map
+    has_lineage = api_lineage_map is not None
+    has_member_evidence = bool(member_hints)
+    has_consumer_evidence = bool(consumer_semantics)
+
+    # Generated files should be flagged first (before generic "no hints")
+    if is_generated and not has_member_evidence:
+        return {
+            "reason_class": "unsupported_generated_pattern",
+            "reason": "This is a generated file pattern that is not yet supported by the lineage resolver.",
+        }
+
+    if not has_member_evidence and not type_hints and not symbols:
+        return {
+            "reason_class": "lineage_gap",
+            "reason": "No API lineage could be resolved for this file; it may be a framework-internal file without stable API exposure.",
+        }
+
+    if has_member_evidence and not has_consumer_evidence:
+        return {
+            "reason_class": "no_consumer_member_evidence",
+            "reason": "Member-level API entities were resolved, but no XTS consumer evidence was found for them.",
+        }
+
+    if not has_lineage or not has_member_evidence:
+        return {
+            "reason_class": "no_source_member_mapping",
+            "reason": "Source-side member mapping is incomplete for this file; it may require deeper semantic analysis.",
+        }
+
+    return {
+        "reason_class": "lineage_gap",
+        "reason": "Unresolved due to lineage traversal stopping at an unknown boundary.",
+    }
+
+
+def _api_owner_token(api_entity: str) -> str:
+    owner = str(api_entity).partition(".")[0]
+    for suffix in ("Modifier", "Attribute", "Configuration", "Controller"):
+        owner = owner.replace(suffix, "")
+    return compact_token(owner)
+
+
+def build_function_coverage_rows(
+    *,
+    changed_file: Path,
+    derived_source_symbols: list[str],
+    affected_api_entities: list[str],
+    api_lineage_map: ApiLineageMap | None,
+    repo_root: Path,
+    project_results: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    if not derived_source_symbols and not affected_api_entities:
+        return []
+
+    rows: list[dict[str, object]] = []
+    symbol_list = list(derived_source_symbols) if derived_source_symbols else ["<file-level>"]
+    for symbol in symbol_list:
+        symbol_api_entities: list[str]
+        if api_lineage_map is not None and symbol != "<file-level>":
+            symbol_api_entities = api_lineage_map.apis_for_source_symbols(
+                changed_file,
+                [symbol],
+                repo_root=repo_root,
+            )
+        else:
+            symbol_api_entities = list(affected_api_entities)
+
+        if not symbol_api_entities:
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "status": "unresolved",
+                    "mapped_api_entities": [],
+                    "direct_projects": [],
+                    "indirect_projects": [],
+                    "not_covered_api_entities": [],
+                }
+            )
+            continue
+
+        covered_api_entities: set[str] = set()
+        indirectly_covered_api_entities: set[str] = set()
+        not_covered_api_entities: set[str] = set()
+        direct_projects: set[str] = set()
+        indirect_projects: set[str] = set()
+
+        for api_entity in symbol_api_entities:
+            owner_token = _api_owner_token(api_entity)
+            direct_hits: set[str] = set()
+            indirect_hits: set[str] = set()
+            for project in project_results:
+                project_name = str(project.get("project") or "").strip()
+                direct_type_hints = {str(item).strip() for item in project.get("direct_type_hint_keys", []) if str(item).strip()}
+                if owner_token and owner_token in direct_type_hints:
+                    if project_name:
+                        direct_hits.add(project_name)
+                    continue
+                family_keys = {str(item).strip() for item in project.get("family_keys", []) if str(item).strip()}
+                direct_family_keys = {str(item).strip() for item in project.get("direct_family_keys", []) if str(item).strip()}
+                if owner_token and (owner_token in family_keys or owner_token in direct_family_keys):
+                    if project_name:
+                        indirect_hits.add(project_name)
+
+            if direct_hits:
+                covered_api_entities.add(api_entity)
+                direct_projects.update(direct_hits)
+            elif indirect_hits:
+                indirectly_covered_api_entities.add(api_entity)
+                indirect_projects.update(indirect_hits)
+            else:
+                not_covered_api_entities.add(api_entity)
+
+        if covered_api_entities:
+            status = "covered"
+        elif indirectly_covered_api_entities:
+            status = "indirectly_covered"
+        elif not_covered_api_entities:
+            status = "not_covered"
+        else:
+            status = "unresolved"
+
+        rows.append(
+            {
+                "symbol": symbol,
+                "status": status,
+                "mapped_api_entities": sorted(symbol_api_entities),
+                "direct_projects": sorted(direct_projects),
+                "indirect_projects": sorted(indirect_projects),
+                "not_covered_api_entities": sorted(not_covered_api_entities),
+            }
+        )
+    return rows
+
+
+def _build_coverage_gap_report(
+    affected_api_entities: list[str],
+    project_results: list[dict[str, object]],
+    api_lineage_map: "ApiLineageMap | None",
+) -> dict[str, list]:
+    """Classify each affected API entity by coverage evidence quality.
+
+    Returns a dict with four lists:
+    - covered: entities with direct type/member evidence in matched projects
+    - indirectly_covered: entities with only family-level evidence
+    - not_covered: entities with no evidence in any matched project
+    - unresolved: entities with no consumer evidence anywhere in the lineage map
+    """
+    covered: list[str] = []
+    indirectly_covered: list[str] = []
+    not_covered: list[str] = []
+    unresolved: list[dict[str, str]] = []
+
+    all_direct_suites: set[str] = set()
+    all_indirect_suites: set[str] = set()
+
+    for entity in affected_api_entities:
+        owner_token = _api_owner_token(entity)
+        entity_key = normalize_member_hint(entity) if "." in str(entity) else compact_token(str(entity))
+        direct_hits: set[str] = set()
+        indirect_hits: set[str] = set()
+
+        for project in project_results:
+            project_name = str(project.get("project") or "").strip()
+            direct_type_hints = {str(h).strip() for h in project.get("direct_type_hint_keys", []) if str(h).strip()}
+            member_hints = {str(h).strip() for h in project.get("member_hint_keys", []) if str(h).strip()}
+            if (owner_token and owner_token in direct_type_hints) or (entity_key and entity_key in member_hints):
+                if project_name:
+                    direct_hits.add(project_name)
+                continue
+            family_keys = {str(h).strip() for h in project.get("family_keys", []) if str(h).strip()}
+            direct_family_keys = {str(h).strip() for h in project.get("direct_family_keys", []) if str(h).strip()}
+            if owner_token and (owner_token in family_keys or owner_token in direct_family_keys):
+                if project_name:
+                    indirect_hits.add(project_name)
+
+        if direct_hits:
+            covered.append(entity)
+            all_direct_suites.update(direct_hits)
+        elif indirect_hits:
+            indirectly_covered.append(entity)
+            all_indirect_suites.update(indirect_hits)
+        elif api_lineage_map is not None and not api_lineage_map.api_to_consumer_projects.get(entity):
+            unresolved.append({"api_entity": entity, "reason": "no_consumer_evidence"})
+        else:
+            not_covered.append(entity)
+
+    return {
+        "covered": covered,
+        "indirectly_covered": indirectly_covered,
+        "not_covered": not_covered,
+        "unresolved": unresolved,
+        "direct_covering_suites": sorted(all_direct_suites),
+        "indirectly_covering_suites": sorted(all_indirect_suites - all_direct_suites),
+    }
 
 
 def unresolved_reason(
@@ -4267,6 +5881,177 @@ def emit_subprogress(enabled: bool, prefix: str, message: str) -> None:
     print(f"{prefix}: {message}", file=sys.stderr, flush=True)
 
 
+def build_progress_callback(enabled: bool, changed_file_count: int = 0) -> Callable[[str], None] | None:
+    if not enabled:
+        return None
+    if changed_file_count < PROGRESS_AGGREGATE_CHANGED_FILE_THRESHOLD:
+        return lambda message: emit_progress(True, message)
+
+    state = {"seen_changed_files": 0, "last_emitted_changed_file": 0}
+
+    def _callback(message: str) -> None:
+        if message.startswith("scoring changed file "):
+            state["seen_changed_files"] += 1
+            current = state["seen_changed_files"]
+            should_emit = (
+                current == 1
+                or current == changed_file_count
+                or (current - state["last_emitted_changed_file"]) >= PROGRESS_AGGREGATE_CHANGED_FILE_STEP
+            )
+            if should_emit:
+                state["last_emitted_changed_file"] = current
+                emit_progress(True, f"scoring changed files {current}/{changed_file_count}")
+            return
+        emit_progress(True, message)
+
+    return _callback
+
+
+def build_execution_progress_callback(enabled: bool) -> Callable[[dict[str, object]], None] | None:
+    if not enabled:
+        return None
+
+    def _callback(event: dict[str, object]) -> None:
+        kind = str(event.get("event") or "").strip()
+        total = int(event.get("total") or 0)
+        index = int(event.get("index") or event.get("completed") or 0)
+        suite = str(event.get("suite") or "unknown-suite")
+        device = str(event.get("device") or "default")
+        tool = str(event.get("tool") or "-")
+        estimated_duration = _format_duration_seconds(event.get("estimated_duration_s"))
+        remaining_estimate = _format_duration_seconds(event.get("remaining_estimated_duration_s"))
+        estimate_part = ""
+        if estimated_duration != "-":
+            estimate_part = f" est={estimated_duration}"
+        remaining_part = ""
+        if remaining_estimate != "-":
+            remaining_part = f", batch_eta={remaining_estimate}"
+        if kind == "started":
+            print(
+                f"phase: running {index}/{total} [{tool} {device}] {suite}{estimate_part}{remaining_part}",
+                file=sys.stderr,
+                flush=True,
+            )
+            return
+        if kind == "completed":
+            status = str(event.get("status") or "-")
+            duration = _format_duration_seconds(event.get("duration_s"))
+            duration_part = f" {duration}" if duration != "-" else ""
+            summary = event.get("summary") if isinstance(event.get("summary"), dict) else {}
+            case_summary = event.get("case_summary") if isinstance(event.get("case_summary"), dict) else {}
+            counters = (
+                f"passed={summary.get('passed', 0)} "
+                f"failed={summary.get('failed', 0)} "
+                f"blocked={summary.get('blocked', 0)} "
+                f"timeout={summary.get('timeout', 0)} "
+                f"unavailable={summary.get('unavailable', 0)} "
+                f"skipped={summary.get('skipped', 0)}"
+            )
+            case_part = ""
+            rendered_case = _format_case_summary(case_summary)
+            if rendered_case != "-":
+                case_part = f", suite_cases=({rendered_case})"
+            print(
+                f"phase: completed {index}/{total} [{tool} {device}] {suite} -> {status}{duration_part}{remaining_part} ({counters}{case_part})",
+                file=sys.stderr,
+                flush=True,
+            )
+            return
+        if kind == "interrupted":
+            completed = int(event.get("completed") or 0)
+            print(
+                f"phase: execution interrupted after {completed}/{total} completed target(s)",
+                file=sys.stderr,
+                flush=True,
+            )
+
+    return _callback
+
+
+def _execution_artifact_rows(report: dict) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for group in collect_unique_run_targets(report):
+        target = group.get("representative", {})
+        suite = _suite_label(target)
+        candidates = list(target.get("execution_results") or []) or list(target.get("execution_plan") or [])
+        for item in candidates:
+            tool = str(item.get("selected_tool") or "-")
+            device = str(item.get("device_label") or item.get("device") or "default")
+            status = str(item.get("status") or "-")
+            result_path = str(item.get("result_path") or "").strip()
+            if result_path:
+                rows.append([suite, device, tool, status, "result_path", result_path])
+                summary_xml = Path(result_path).expanduser().resolve() / "summary_report.xml"
+                if summary_xml.is_file():
+                    rows.append([suite, device, tool, status, "summary_report_xml", str(summary_xml)])
+                log_root = Path(result_path).expanduser().resolve() / "log"
+                if log_root.is_dir():
+                    for module_log in sorted(log_root.glob("**/module_run.log")):
+                        rows.append([suite, device, tool, status, "module_run_log", str(module_log)])
+    return rows
+
+
+def write_execution_artifact_index(report: dict, output_dir: Path | None) -> Path | None:
+    if output_dir is None:
+        return None
+    rows = _execution_artifact_rows(report)
+    if not rows:
+        return None
+    target = output_dir.resolve() / "execution_artifacts.txt"
+    lines = [
+        f"Run Dir: {report.get('selector_run', {}).get('run_dir', '-')}",
+        f"Report JSON: {report.get('json_output_path', '-')}",
+        f"XDevice Reports Root: {report.get('execution_xdevice_reports_root', '-')}",
+        "",
+        "suite\tdevice\ttool\tstatus\tartifact_kind\tpath",
+    ]
+    lines.extend("\t".join(row) for row in rows)
+    target.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return target
+
+
+def _has_local_acts_artifacts(acts_out_root: Path | None) -> bool:
+    if acts_out_root is None:
+        return False
+    root = acts_out_root.expanduser().absolute()
+    testcases_dir = root / "testcases"
+    if not testcases_dir.is_dir():
+        return False
+    return (testcases_dir / "module_info.list").is_file() or any(testcases_dir.glob("*.json"))
+
+
+def _sync_prebuilt_acts_to_local_root(
+    prepared: PreparedDailyPrebuilt | None,
+    local_acts_root: Path | None,
+    *,
+    progress_enabled: bool,
+) -> Path | None:
+    if prepared is None or prepared.acts_out_root is None or local_acts_root is None:
+        return None
+    source = prepared.acts_out_root.expanduser().absolute()
+    destination = local_acts_root.expanduser().absolute()
+    if source == destination:
+        return destination
+
+    print(
+        "warning: syncing downloaded ACTS artifacts to local output root and replacing existing contents: "
+        f"{destination}",
+        file=sys.stderr,
+        flush=True,
+    )
+    emit_progress(progress_enabled, f"syncing acts artifacts to {destination}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        shutil.rmtree(destination)
+    shutil.copytree(source, destination)
+
+    extracted_root = prepared.extracted_root.expanduser().absolute()
+    if extracted_root.exists() and extracted_root != destination:
+        emit_progress(progress_enabled, f"cleaning extracted daily cache {extracted_root}")
+        shutil.rmtree(extracted_root)
+    return destination
+
+
 def prepare_daily_prebuilt_from_config(app_config: AppConfig) -> PreparedDailyPrebuilt | None:
     if not app_config.daily_build_tag and not app_config.daily_date:
         return None
@@ -4285,10 +6070,13 @@ def prepare_daily_prebuilt_from_config(app_config: AppConfig) -> PreparedDailyPr
     if prepared.acts_out_root is not None:
         app_config.acts_out_root = prepared.acts_out_root
         app_config.daily_prebuilt_ready = True
-        app_config.daily_prebuilt_note = (
+        base_note = (
             f"Using prebuilt ACTS artifacts from daily build {prepared.build.tag} "
             f"({prepared.acts_out_root})."
         )
+        if prepared.note:
+            base_note = f"{prepared.note} {base_note}"
+        app_config.daily_prebuilt_note = base_note
     else:
         app_config.daily_prebuilt_ready = False
         app_config.daily_prebuilt_note = (
@@ -4377,14 +6165,17 @@ def run_list_tags_mode(args: argparse.Namespace, app_config: "AppConfig") -> int
         component = app_config.sdk_component
         branch = app_config.sdk_branch
         label = "SDK"
+        component_role = "sdk"
     elif tag_type == "firmware":
         component = app_config.firmware_component
         branch = app_config.firmware_branch
         label = "firmware"
+        component_role = "firmware"
     else:
         component = app_config.daily_component
         branch = app_config.daily_branch
         label = "XTS tests"
+        component_role = "xts"
 
     count = max(1, args.list_tags_count)
     after_date = args.list_tags_after or None
@@ -4403,6 +6194,7 @@ def run_list_tags_mode(args: argparse.Namespace, app_config: "AppConfig") -> int
             after_date=after_date,
             before_date=before_date,
             lookback_days=lookback,
+            component_role=component_role,
         )
     except Exception as exc:
         print(f"error: failed to fetch tag list: {exc}", file=sys.stderr)
@@ -4450,16 +6242,169 @@ def write_and_render_utility_report(
         print(f"{name}: {status}")
         if payload.get("error"):
             print(f"  error: {payload['error']}")
-        for key in ("tag", "component", "role", "package_kind", "archive_path", "extracted_root", "primary_root"):
+        for key in ("tag", "component", "role", "package_kind", "cache_root", "archive_path", "extracted_root", "primary_root"):
             value = payload.get(key)
             if value:
                 print(f"  {key}: {value}")
+        if payload.get("note"):
+            print(f"  note: {payload['note']}")
         if payload.get("output_tail"):
             print("  output_tail:")
             for line in str(payload["output_tail"]).splitlines():
                 print(f"    {line}")
     if written_json_path is not None:
         print(f"json_output_path: {written_json_path}")
+
+
+def run_benchmark_mode(args: argparse.Namespace, app_config: AppConfig) -> int:
+    """Run benchmark cases from canonical corpus and report results.
+
+    Returns 0 if all cases pass, 1 if any fail.
+    """
+    from .benchmark import BenchmarkRunner, BenchmarkResult
+
+    fixtures_dir = Path(args.benchmark_fixtures_dir) if args.benchmark_fixtures_dir else None
+    if not fixtures_dir:
+        fixtures_dir = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "canonical_corpus"
+
+    if not fixtures_dir.exists():
+        print(f"error: benchmark fixtures directory not found: {fixtures_dir}", file=sys.stderr)
+        return 2
+
+    runner = BenchmarkRunner(fixtures_dir)
+    cases = runner.load_all_cases()
+
+    if not cases:
+        print("error: no benchmark cases found", file=sys.stderr)
+        return 2
+
+    results: list[BenchmarkResult] = []
+    overall_pass = True
+
+    for case in cases:
+        # Build a minimal report for evaluation
+        # We need to run the selector to get a real report
+        # For now, evaluate with empty report if workspace unavailable
+        ws = _workspace()
+        if ws is None:
+            # No workspace available — skip evaluation but still report structure
+            results.append(BenchmarkResult(
+                case_name=case.name,
+                family=case.family,
+                pass_fail=False,
+                notes=f"SKIPPED: workspace not available for case {case.name!r}",
+            ))
+            continue
+
+        # Run selector for this case
+        try:
+            extra_args: list[str] = []
+            for changed_file in case.input_changed_files:
+                full_path = ws["repo_root"].parent / changed_file
+                if full_path.exists():
+                    extra_args.extend(["--changed-file", str(full_path)])
+                else:
+                    extra_args.extend(["--changed-file", changed_file])
+
+            report = _run_selector(ws, extra_args)
+            result = runner.evaluate(case, report)
+            results.append(result)
+        except RuntimeError as exc:
+            results.append(BenchmarkResult(
+                case_name=case.name,
+                family=case.family,
+                pass_fail=False,
+                notes=f"ERROR: {exc}",
+            ))
+
+    # Print summary
+    print("\n=== Benchmark Results ===")
+    for result in results:
+        status = "PASS" if result.pass_fail else "FAIL"
+        print(f"  [{status}] {result.case_name}: {result.notes}")
+        if result.noise_violations:
+            for v in result.noise_violations:
+                print(f"    noise: {v}")
+        if result.recall < 0.9 and result.recall > 0:
+            print(f"    WARNING: recall {result.recall:.2f} below 0.9 threshold")
+        if result.recall == 0.0:
+            print(f"    SKIPPED (no workspace)")
+        if result.notes.startswith("ERROR"):
+            print(f"    ERROR: {result.notes}")
+        if result.notes.startswith("SKIPPED"):
+            continue
+        if not result.pass_fail:
+            overall_pass = False
+
+    print(f"\nTotal: {len(results)} cases, {'ALL PASS' if overall_pass else 'SOME FAILED'}")
+    return 0 if overall_pass else 1
+
+
+def run_inspect_mode(args: argparse.Namespace, app_config: AppConfig) -> int:
+    """Inspect the persisted dependency/lineage map."""
+    from .api_lineage import read_api_lineage_map, default_api_lineage_map_file
+
+    lineage_path = default_api_lineage_map_file(app_config.runtime_state_root)
+    if not lineage_path.exists():
+        print(f"error: lineage map not found at {lineage_path}", file=sys.stderr)
+        return 2
+
+    lineage_map = read_api_lineage_map(lineage_path)
+
+    if args.inspect_api_entity:
+        entity = args.inspect_api_entity
+        result = {
+            "api_entity": entity,
+            "source_files": sorted(lineage_map.api_to_sources.get(entity, set())),
+            "families": sorted(lineage_map.api_to_families.get(entity, set())),
+            "surfaces": sorted(lineage_map.api_to_surfaces.get(entity, set())),
+            "consumer_files": sorted(lineage_map.api_to_consumer_files.get(entity, set())),
+            "consumer_projects": sorted(lineage_map.api_to_consumer_projects.get(entity, set())),
+        }
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.inspect_source_file:
+        source = args.inspect_source_file
+        result = {
+            "source_file": source,
+            "api_entities": sorted(lineage_map.source_to_apis.get(source, set())),
+            "consumer_files": [],
+            "consumer_projects": [],
+        }
+        for api in result["api_entities"]:
+            result["consumer_files"].extend(lineage_map.api_to_consumer_files.get(api, set()))
+            result["consumer_projects"].extend(lineage_map.api_to_consumer_projects.get(api, set()))
+        result["consumer_files"] = sorted(set(result["consumer_files"]))
+        result["consumer_projects"] = sorted(set(result["consumer_projects"]))
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.inspect_consumer_project:
+        project = args.inspect_consumer_project
+        result = {
+            "consumer_project": project,
+            "api_entities": sorted(lineage_map.consumer_project_to_apis.get(project, set())),
+            "source_files": [],
+        }
+        for api in result["api_entities"]:
+            result["source_files"].extend(lineage_map.api_to_sources.get(api, set()))
+        result["source_files"] = sorted(set(result["source_files"]))
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
+
+    # No specific query — print map summary
+    result = {
+        "schema_version": lineage_map.schema_version,
+        "metadata": lineage_map.metadata,
+        "source_to_api_count": len(lineage_map.source_to_apis),
+        "api_to_source_count": len(lineage_map.api_to_sources),
+        "api_to_family_count": len(lineage_map.api_to_families),
+        "consumer_file_count": len(lineage_map.consumer_file_to_apis),
+        "consumer_project_count": len(lineage_map.consumer_project_to_apis),
+    }
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    return 0
 
 
 def run_utility_mode(
@@ -4586,6 +6531,17 @@ def resolve_selected_tests_output_path(selector_report_path: Path | None) -> Pat
     if selector_report_path is None:
         return None
     return selector_report_path.resolve().with_name(SELECTED_TESTS_FILE_NAME)
+
+
+def resolve_selected_tests_report_base_path(
+    run_session: RunSession | None,
+    json_output_path: Path | None,
+) -> Path | None:
+    if run_session is not None:
+        return run_session.selector_report_path.resolve()
+    if json_output_path is not None:
+        return json_output_path.resolve()
+    return None
 
 
 def _selected_test_aliases(entry: dict[str, object]) -> list[str]:
@@ -4741,6 +6697,10 @@ def format_report(
     runtime_history_index: RuntimeHistoryIndex | None = None,
     requested_run_tool: str = "auto",
     progress_callback: Callable[[str], None] | None = None,
+    api_lineage_map: ApiLineageMap | None = None,
+    api_lineage_map_path: Path | None = None,
+    changed_symbols: list[str] | None = None,
+    changed_ranges_by_file: dict[Path, list[tuple[int, int]]] | None = None,
 ) -> dict:
     setup_started = time.perf_counter()
     built_artifacts = inspect_built_artifacts(REPO_ROOT, acts_out_root)
@@ -4770,8 +6730,28 @@ def format_report(
         "symbol_queries": [],
         "code_queries": [],
         "unresolved_files": [],
+        "coverage_gap": [],
+        "affected_api_entities": [],
+        "lineage_hops": [],
+        "lineage_gaps": [],
+        "source_only_consumers": [],
         "timings_ms": {},
     }
+    if api_lineage_map is not None:
+        report["api_lineage_map"] = {
+            "schema_version": api_lineage_map.schema_version,
+            "path": str(api_lineage_map_path) if api_lineage_map_path else None,
+            "api_entity_count": len(api_lineage_map.api_to_sources),
+            "source_count": len(api_lineage_map.source_to_apis),
+            "consumer_file_count": len(api_lineage_map.consumer_file_to_apis),
+            "consumer_project_count": len(api_lineage_map.consumer_project_to_apis),
+            "source_only_consumer_file_count": sum(
+                1 for kind in api_lineage_map.consumer_file_kinds.values() if kind == "source_only"
+            ),
+            "source_only_consumer_project_count": sum(
+                1 for kind in api_lineage_map.consumer_project_kinds.values() if kind == "source_only"
+            ),
+        }
     coverage_candidates: list[dict[str, object]] = []
     report["timings_ms"]["report_setup"] = round((time.perf_counter() - setup_started) * 1000, 3)
     selected_build_targets: list[str] = []
@@ -4780,7 +6760,28 @@ def format_report(
         if progress_callback:
             progress_callback(f"scoring changed file {repo_rel(changed_file)}")
         rel = repo_rel(changed_file)
-        signals = infer_signals(changed_file, sdk_index, content_index, mapping_config)
+        changed_ranges = list((changed_ranges_by_file or {}).get(changed_file.resolve(), []))
+        signals = infer_signals(
+            changed_file,
+            sdk_index,
+            content_index,
+            mapping_config,
+            changed_ranges=changed_ranges,
+        )
+        affected_api_entities, file_level_affected_api_entities, derived_source_symbols = apply_api_lineage_signals(
+            changed_file,
+            signals,
+            api_lineage_map,
+            app_config.repo_root,
+            changed_symbols=changed_symbols,
+            changed_ranges=changed_ranges,
+        )
+        source_only_consumers = collect_source_only_consumers(
+            affected_api_entities,
+            api_lineage_map,
+            top_projects=top_projects,
+            top_files=top_files,
+        )
         effective_variants_mode = resolve_variants_mode(variants_mode, changed_file)
         source_profile = build_source_profile(
             "changed_file",
@@ -4788,6 +6789,16 @@ def format_report(
             signals,
             raw_path=changed_file,
         )
+        if affected_api_entities:
+            source_profile["affected_api_entities"] = affected_api_entities
+        if changed_symbols:
+            source_profile["changed_symbols"] = sorted(changed_symbols)
+        if changed_ranges:
+            source_profile["changed_ranges"] = [f"{start}:{end}" for start, end in changed_ranges]
+        if derived_source_symbols:
+            source_profile["derived_source_symbols"] = derived_source_symbols
+        if file_level_affected_api_entities != affected_api_entities:
+            source_profile["file_level_affected_api_entities"] = file_level_affected_api_entities
         project_results = []
         all_variant_projects, candidate_projects = select_candidate_projects(
             projects,
@@ -4810,6 +6821,8 @@ def format_report(
                 file_hits,
             )
             family_profile = infer_project_family_profile(project, project_reasons, file_hits)
+            type_hint_profile = infer_project_type_hint_profile(file_hits, signals)
+            member_hint_profile = infer_project_member_hint_profile(file_hits, signals)
             project_entry = {
                 # Only 'possible related' suites (call-only, no explicit import)
                 # are eligible for coverage deduplication. Must-run and
@@ -4841,6 +6854,12 @@ def format_report(
                 "direct_capability_keys": family_profile["direct_capability_keys"],
                 "capability_quality": family_profile["capability_quality"],
                 "capability_representative_quality": family_profile["capability_representative_quality"],
+                "type_hint_keys": type_hint_profile["type_hint_keys"],
+                "direct_type_hint_keys": type_hint_profile["direct_type_hint_keys"],
+                "type_hint_focus_counts": type_hint_profile["focus_token_counts"],
+                "member_hint_keys": member_hint_profile["member_hint_keys"],
+                "direct_member_hint_keys": member_hint_profile["direct_member_hint_keys"],
+                "member_hint_focus_counts": member_hint_profile["focus_token_counts"],
                 "focus_token_counts": family_profile["focus_token_counts"],
                 "umbrella_penalty": family_profile["umbrella_penalty"],
                 "reasons": project_reasons,
@@ -4874,8 +6893,42 @@ def format_report(
             }
             for index, item in enumerate(filtered_project_results, start=1)
         )
+        function_coverage = build_function_coverage_rows(
+            changed_file=changed_file,
+            derived_source_symbols=derived_source_symbols,
+            affected_api_entities=affected_api_entities,
+            api_lineage_map=api_lineage_map,
+            repo_root=app_config.repo_root,
+            project_results=filtered_project_results,
+        )
+        api_coverage = _build_coverage_gap_report(
+            affected_api_entities,
+            filtered_project_results,
+            api_lineage_map,
+        )
+        uncovered_functions = [
+            row["symbol"] for row in function_coverage
+            if row.get("status") not in {"covered", "indirectly_covered"}
+        ]
+        uncovered_apis = (
+            api_coverage["not_covered"]
+            + [e["api_entity"] for e in api_coverage["unresolved"]]
+        )
         result_item = {
             "changed_file": rel,
+            "changed_symbols": sorted(changed_symbols or []),
+            "changed_ranges": [f"{start}:{end}" for start, end in changed_ranges],
+            "derived_source_symbols": derived_source_symbols,
+            "touched_source_functions": derived_source_symbols,
+            "affected_api_entities": affected_api_entities,
+            "file_level_affected_api_entities": file_level_affected_api_entities,
+            "api_coverage": api_coverage,
+            "direct_covering_suites": api_coverage["direct_covering_suites"],
+            "indirectly_covering_suites": api_coverage["indirectly_covering_suites"],
+            "uncovered_functions": uncovered_functions,
+            "uncovered_apis": uncovered_apis,
+            "function_coverage": function_coverage,
+            "source_only_consumers": source_only_consumers,
             "signals": {
                 "modules": sorted(signals["modules"]),
                 "weak_modules": sorted(signals.get("weak_modules", set())),
@@ -4884,6 +6937,7 @@ def format_report(
                 "project_hints": sorted(signals["project_hints"]),
                 "method_hints": sorted(signals.get("method_hints", set())),
                 "type_hints": sorted(signals.get("type_hints", set())),
+                "member_hints": sorted(signals.get("member_hints", set())),
                 "family_tokens": sorted(signals["family_tokens"]),
             },
             "coverage_families": source_profile["family_keys"],
@@ -4915,19 +6969,35 @@ def format_report(
                     "matched_project_count": len(filtered_project_results),
                 }
         selected_build_targets.extend(guess_build_target(item["project"]) for item in shown_project_results)
-        unresolved = build_unresolved_analysis(signals, project_results)
+        unresolved = build_unresolved_analysis(
+            signals,
+            project_results,
+            affected_api_entities=affected_api_entities,
+            derived_source_symbols=derived_source_symbols,
+        )
         if debug_trace:
             result_item["unresolved_debug"] = unresolved
         if unresolved["reason"]:
             result_item["unresolved_reason"] = unresolved["reason"]
+            if unresolved.get("reason_class"):
+                result_item["unresolved_reason_class"] = unresolved["reason_class"]
             unresolved_entry = {
                 "changed_file": rel,
                 "reason": unresolved["reason"],
+                "reason_class": unresolved.get("reason_class"),
                 "signals": result_item["signals"],
             }
             if debug_trace:
                 unresolved_entry["debug"] = unresolved
             report["unresolved_files"].append(unresolved_entry)
+        for entity in affected_api_entities:
+            report["lineage_hops"].append(f"{rel} -> {entity}")
+            if entity not in report["affected_api_entities"]:
+                report["affected_api_entities"].append(entity)
+        if api_lineage_map is not None and not affected_api_entities:
+            report["lineage_gaps"].append(rel)
+        report["source_only_consumers"].extend(source_only_consumers)
+        report["coverage_gap"].extend(api_coverage["not_covered"])
         report["results"].append(result_item)
     report["timings_ms"]["changed_file_analysis"] = round((time.perf_counter() - changed_started) * 1000, 3)
     symbol_started = time.perf_counter()
@@ -4962,6 +7032,8 @@ def format_report(
                 file_hits,
             )
             family_profile = infer_project_family_profile(project, project_reasons, file_hits)
+            type_hint_profile = infer_project_type_hint_profile(file_hits, signals)
+            member_hint_profile = infer_project_member_hint_profile(file_hits, signals)
             project_entry = {
                 "_coverage_sig": coverage_signature(file_hits, project_path_key=project.path_key) if _bucket == "possible related" else None,
                 "score": score,
@@ -4990,6 +7062,12 @@ def format_report(
                 "direct_capability_keys": family_profile["direct_capability_keys"],
                 "capability_quality": family_profile["capability_quality"],
                 "capability_representative_quality": family_profile["capability_representative_quality"],
+                "type_hint_keys": type_hint_profile["type_hint_keys"],
+                "direct_type_hint_keys": type_hint_profile["direct_type_hint_keys"],
+                "type_hint_focus_counts": type_hint_profile["focus_token_counts"],
+                "member_hint_keys": member_hint_profile["member_hint_keys"],
+                "direct_member_hint_keys": member_hint_profile["direct_member_hint_keys"],
+                "member_hint_focus_counts": member_hint_profile["focus_token_counts"],
                 "focus_token_counts": family_profile["focus_token_counts"],
                 "umbrella_penalty": family_profile["umbrella_penalty"],
                 "test_files": [
@@ -5040,6 +7118,7 @@ def format_report(
                 "project_hints": sorted(signals["project_hints"]),
                 "method_hints": sorted(signals.get("method_hints", set())),
                 "type_hints": sorted(signals.get("type_hints", set())),
+                "member_hints": sorted(signals.get("member_hints", set())),
                 "family_tokens": sorted(signals["family_tokens"]),
             },
             "coverage_families": source_profile["family_keys"],
@@ -5241,13 +7320,17 @@ def _print_key_value_section(title: str, rows: list[tuple[object, object]]) -> N
 def _format_case_summary(summary: dict | None) -> str:
     if not summary:
         return "-"
-    return (
-        f"total={summary.get('total_tests', 0)}, "
-        f"passed={summary.get('pass_count', 0)}, "
-        f"failed={summary.get('fail_count', 0)}, "
-        f"blocked={summary.get('blocked_count', 0)}, "
-        f"unknown={summary.get('unknown_count', 0)}"
-    )
+    parts = [
+        f"total={summary.get('total_tests', 0)}",
+        f"passed={summary.get('pass_count', 0)}",
+        f"failed={summary.get('fail_count', 0)}",
+        f"blocked={summary.get('blocked_count', 0)}",
+        f"unknown={summary.get('unknown_count', 0)}",
+    ]
+    unavailable = int(summary.get("unavailable_count", 0) or 0)
+    if unavailable:
+        parts.append(f"unavailable={unavailable}")
+    return ", ".join(parts)
 
 
 def _tail_hint(result: dict) -> str:
@@ -5273,6 +7356,46 @@ def _format_duration_seconds(value: object) -> str:
     if minutes > 0:
         return f"~{minutes}m {secs:02d}s"
     return f"~{secs}s"
+
+
+class _ProgressTracker:
+    """Phase progress tracker with optional ETA estimation."""
+
+    def __init__(self, enabled: bool = True) -> None:
+        self._enabled = enabled
+        self._phase_started = 0.0
+
+    def start(self, phase_name: str, estimated_seconds: float | None = None) -> None:
+        self._phase_started = time.perf_counter()
+        if not self._enabled:
+            return
+        suffix = ""
+        if estimated_seconds and estimated_seconds > 0:
+            suffix = f" (est. {_format_duration_seconds(estimated_seconds)})"
+        print(f"phase: {phase_name}{suffix}", file=sys.stderr, flush=True)
+
+    def update(self, message: str, progress_percent: float | None = None) -> None:
+        if not self._enabled:
+            return
+        elapsed = time.perf_counter() - self._phase_started
+        pct_part = f" [{progress_percent:.0f}%]" if progress_percent is not None else ""
+        eta_part = ""
+        if progress_percent is not None and progress_percent > 0 and elapsed > 1.0:
+            total_estimate = elapsed / (progress_percent / 100.0)
+            remaining = max(0.0, total_estimate - elapsed)
+            if remaining > 0:
+                eta_part = f" ETA: {_format_duration_seconds(remaining)}"
+        print(f"phase: {message}{pct_part}{eta_part}", file=sys.stderr, flush=True)
+
+    def complete(self, phase_name: str) -> None:
+        if not self._enabled:
+            return
+        elapsed = time.perf_counter() - self._phase_started
+        print(
+            f"phase: {phase_name} done ({_format_duration_seconds(elapsed)})",
+            file=sys.stderr,
+            flush=True,
+        )
 
 
 def _format_estimate_label(entry: dict[str, object]) -> str:
@@ -5341,6 +7464,38 @@ def _wrapper_or_direct_command_tokens(wrapper_subcommand: str | None = None) -> 
     tokens: list[object] = list(_selector_command_prefix_tokens())
     if _uses_wrapper_commands() and wrapper_subcommand:
         tokens.append(wrapper_subcommand)
+    return tokens
+
+
+def _wrapper_download_command_tokens(download_subcommand: str) -> list[object]:
+    if not _uses_wrapper_commands():
+        return list(_selector_command_prefix_tokens())
+    tokens: list[object] = list(_selector_command_prefix_tokens())
+    compact_tokens = [compact_token(token) for token in tokens]
+    if compact_tokens:
+        if compact_tokens[-1] == "xts":
+            tokens[-1] = "download"
+        elif compact_tokens[-1] != "download":
+            tokens.append("download")
+    else:
+        tokens = ["ohos", "download"]
+    tokens.append(download_subcommand)
+    return tokens
+
+
+def _wrapper_device_flash_command_tokens() -> list[object]:
+    if not _uses_wrapper_commands():
+        return list(_selector_command_prefix_tokens())
+    tokens: list[object] = list(_selector_command_prefix_tokens())
+    compact_tokens = [compact_token(token) for token in tokens]
+    if compact_tokens:
+        if compact_tokens[-1] == "xts":
+            tokens[-1] = "device"
+        elif compact_tokens[-1] != "device":
+            tokens.append("device")
+    else:
+        tokens = ["ohos", "device"]
+    tokens.append("flash")
     return tokens
 
 
@@ -5437,6 +7592,10 @@ def _base_selector_run_command(report: dict, app_config: AppConfig, args: argpar
     else:
         for changed_file in args.changed_file:
             run_command.extend(["--changed-file", changed_file])
+        for changed_symbol in getattr(args, "changed_symbol", []):
+            run_command.extend(["--changed-symbol", changed_symbol])
+        for changed_range in getattr(args, "changed_range", []):
+            run_command.extend(["--changed-range", changed_range])
         for symbol_query in args.symbol_query:
             run_command.extend(["--symbol-query", symbol_query])
         for code_query in args.code_query:
@@ -5451,8 +7610,12 @@ def _base_selector_run_command(report: dict, app_config: AppConfig, args: argpar
             run_command.extend(["--pr-number", args.pr_number])
         if args.pr_source != "auto":
             run_command.extend(["--pr-source", args.pr_source])
+        if getattr(args, "git_host_kind", "auto") != "auto":
+            run_command.extend(["--git-host-kind", args.git_host_kind])
         if args.git_host_config:
             run_command.extend(["--git-host-config", args.git_host_config])
+        if getattr(args, "git_host_url", None):
+            run_command.extend(["--git-host-url", args.git_host_url])
         if args.gitcode_api_url:
             run_command.extend(["--gitcode-api-url", args.gitcode_api_url])
         run_command.extend(["--variants", args.variants, "--relevance-mode", args.relevance_mode])
@@ -5462,6 +7625,10 @@ def _base_selector_run_command(report: dict, app_config: AppConfig, args: argpar
             run_command.extend(["--keep-per-signature", args.keep_per_signature])
     if app_config.runtime_state_root and app_config.runtime_state_root != default_runtime_state_root():
         run_command.extend(["--runtime-state-root", app_config.runtime_state_root])
+    if app_config.server_host:
+        run_command.extend(["--server-host", app_config.server_host])
+    if app_config.server_user:
+        run_command.extend(["--server-user", app_config.server_user])
     if app_config.hdc_path and not _uses_wrapper_commands():
         run_command.extend(["--hdc-path", app_config.hdc_path])
     if app_config.hdc_endpoint:
@@ -5478,6 +7645,34 @@ def _base_selector_run_command(report: dict, app_config: AppConfig, args: argpar
     if getattr(args, "show_source_evidence", False):
         run_command.append("--show-source-evidence")
     return run_command
+
+
+def _repeat_this_run_command_tokens(report: dict, app_config: AppConfig, args: argparse.Namespace) -> list[object]:
+    """Shell tokens to replay the current run: same report, devices, HDC, and run flags."""
+    command = list(_base_selector_run_command(report, app_config, args))
+    if not _uses_wrapper_commands():
+        command.append("--run-now")
+    command.extend(["--run-tool", str(getattr(args, "run_tool", "auto") or "auto")])
+    command.extend(["--run-priority", str(getattr(args, "run_priority", "recommended") or "recommended")])
+    rtp = int(getattr(args, "run_top_targets", 0) or 0)
+    if rtp > 0:
+        command.extend(["--run-top-targets", str(rtp)])
+    pj = int(getattr(args, "parallel_jobs", 1) or 1)
+    if pj > 1:
+        command.extend(["--parallel-jobs", str(pj)])
+    shard = str(getattr(app_config, "shard_mode", None) or "mirror")
+    if shard and shard != "mirror":
+        command.extend(["--shard-mode", shard])
+    rto = float(getattr(args, "run_timeout", 0.0) or 0.0)
+    if rto > 0:
+        command.extend(["--run-timeout", str(rto)])
+    dlt = float(getattr(app_config, "device_lock_timeout", 30.0) or 30.0)
+    if dlt != 30.0:
+        command.extend(["--device-lock-timeout", str(dlt)])
+    run_label = str(getattr(args, "run_label", None) or "").strip() or str(getattr(app_config, "run_label", None) or "").strip()
+    if run_label:
+        command.extend(["--run-label", run_label])
+    return command
 
 
 def _run_priority_target_count(coverage: dict[str, object], priority: str) -> int:
@@ -5610,7 +7805,18 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
         else "ACTS artifacts are missing; download tests or prepare build artifacts first."
     )
 
+    repeat_tokens = _repeat_this_run_command_tokens(report, app_config, args)
+    report["repeat_run_command"] = _shell_join(repeat_tokens)
+
     steps: list[dict[str, str]] = []
+    steps.append(
+        {
+            "step": "Repeat this run",
+            "status": "ready",
+            "why": "Re-execute with the same report path, devices, HDC settings, and run flags as this invocation.",
+            "command": report["repeat_run_command"],
+        }
+    )
     if not run_only_flow:
         steps.append(
             {
@@ -5623,7 +7829,7 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
                 ),
                 "command": _shell_join(
                     [
-                        *_wrapper_or_direct_command_tokens("sdk" if _uses_wrapper_commands() else None),
+                        *(_wrapper_download_command_tokens("sdk") if _uses_wrapper_commands() else _wrapper_or_direct_command_tokens(None)),
                         *([] if _uses_wrapper_commands() else ["--download-daily-sdk"]),
                         "--sdk-component",
                         app_config.sdk_component,
@@ -5652,7 +7858,7 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             ),
             "command": _shell_join(
                 [
-                    *_wrapper_or_direct_command_tokens("tests" if _uses_wrapper_commands() else None),
+                    *(_wrapper_download_command_tokens("tests") if _uses_wrapper_commands() else _wrapper_or_direct_command_tokens(None)),
                     *([] if _uses_wrapper_commands() else ["--download-daily-tests"]),
                     "--daily-component",
                     app_config.daily_component,
@@ -5677,7 +7883,7 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             "why": "Use this when you need a matching daily firmware image package.",
             "command": _shell_join(
                 [
-                    *_wrapper_or_direct_command_tokens("firmware" if _uses_wrapper_commands() else None),
+                    *(_wrapper_download_command_tokens("firmware") if _uses_wrapper_commands() else _wrapper_or_direct_command_tokens(None)),
                     *([] if _uses_wrapper_commands() else ["--download-daily-firmware"]),
                     "--firmware-component",
                     app_config.firmware_component,
@@ -5702,7 +7908,7 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             "why": "Download and flash a daily firmware package to the connected device.",
             "command": _shell_join(
                 [
-                    *_wrapper_or_direct_command_tokens("flash" if _uses_wrapper_commands() else None),
+                    *(_wrapper_device_flash_command_tokens() if _uses_wrapper_commands() else _wrapper_or_direct_command_tokens(None)),
                     *([] if _uses_wrapper_commands() else ["--flash-daily-firmware"]),
                     "--firmware-component",
                     app_config.firmware_component,
@@ -5796,10 +8002,109 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
     return steps
 
 
+def print_executive_summary(report: dict, json_report_path: Path | None = None) -> None:
+    """Print a compact summary before the detailed report."""
+    coverage = report.get("coverage_recommendations", {})
+    results = list(report.get("results", []))
+    changed_file_count = sum(
+        1
+        for result in results
+        if str((result.get("source_profile") or result.get("source") or {}).get("type", "")) == "changed_file"
+    )
+
+    seen_families: set[str] = set()
+    affected_families: list[str] = []
+    for result in results:
+        source_profile = result.get("source_profile") or result.get("source") or {}
+        for family_key in list(source_profile.get("family_keys", []))[:3]:
+            token = str(family_key).split("/")[-1]
+            if not token or token in seen_families:
+                continue
+            seen_families.add(token)
+            affected_families.append(token.replace("_", " ").title())
+            if len(affected_families) >= 8:
+                break
+
+    required_targets = list(coverage.get("required", []))
+    recommended_targets = list(coverage.get("recommended_additional", []))
+    optional_targets = list(coverage.get("optional_duplicates", []))
+    est_required = _format_duration_seconds(coverage.get("estimated_required_duration_s"))
+    est_recommended = _format_duration_seconds(coverage.get("estimated_recommended_duration_s"))
+    est_all = _format_duration_seconds(coverage.get("estimated_all_duration_s"))
+    coverage_commands = list(report.get("coverage_run_commands", []))
+    selected_tests_path = str(report.get("selected_tests_json_path", "")).strip()
+    repeat_run_command = str(report.get("repeat_run_command", "")).strip()
+
+    separator = "═" * 63
+    thin_separator = "─" * 63
+
+    print()
+    print(separator)
+    print(" EXECUTIVE SUMMARY")
+    print(separator)
+    print()
+
+    info_lines: list[str] = []
+    if changed_file_count:
+        suffix = "s" if changed_file_count != 1 else ""
+        info_lines.append(f"Changed: {changed_file_count} file{suffix} analyzed")
+    if affected_families:
+        families = ", ".join(affected_families[:5])
+        if len(affected_families) > 5:
+            families += f", +{len(affected_families) - 5} more"
+        info_lines.append(f"APIs Affected: {families}")
+    for line in info_lines:
+        print(line)
+    if info_lines:
+        print()
+
+    total_suites = len(required_targets) + len(recommended_targets) + len(optional_targets)
+    if total_suites > 0:
+        total_duration = est_all if est_all != "-" else (est_recommended if est_recommended != "-" else "-")
+        duration_note = f", {total_duration} estimated" if total_duration != "-" else ""
+        suite_suffix = "s" if total_suites != 1 else ""
+        print(f"TESTS TO RUN ({total_suites} suite{suite_suffix}{duration_note})")
+        print(thin_separator)
+        print(f" {'Priority':<10}  {'Suites':>6}  {'Est. Time':>10}")
+        print(f" {'─' * 10}  {'─' * 6}  {'─' * 10}")
+        if required_targets:
+            print(f" {'MUST RUN':<10}  {len(required_targets):>6}  {est_required:>10}")
+        if recommended_targets:
+            high_duration = est_recommended if est_recommended != "-" and not required_targets else "-"
+            print(f" {'HIGH':<10}  {len(recommended_targets):>6}  {high_duration:>10}")
+        if optional_targets:
+            print(f" {'OPTIONAL':<10}  {len(optional_targets):>6}  {'':>10}")
+        print()
+
+    if coverage_commands:
+        print("RUN COMMANDS:")
+        for command_entry in coverage_commands[:3]:
+            label = str(command_entry.get("label", "")).strip()
+            command = str(command_entry.get("command", "")).strip()
+            count = str(command_entry.get("count", "")).strip()
+            if not label or not command:
+                continue
+            count_note = f" ({count} suites)" if count and count != "0" else ""
+            print(f"  {label + count_note:<40}  {command}")
+    elif repeat_run_command:
+        print("RUN COMMANDS:")
+        print(f"  Repeat this run:                          {repeat_run_command}")
+
+    if selected_tests_path:
+        print(f"  Full JSON:                                cat {selected_tests_path}")
+    elif json_report_path is not None:
+        print(f"  Full JSON:                                cat {json_report_path}")
+
+    print()
+    print(separator)
+    print()
+
+
 def print_human(report: dict, cache_used: bool | None = None, json_report_path: Path | None = None) -> None:
     selected_tests_json_path = str(report.get("selected_tests_json_path", "")).strip()
     unique_run_targets = collect_unique_run_targets(report)
     selected_target_count = len(report.get("execution_overview", {}).get("selected_target_keys", []))
+    compact_changed_file_sections = len(report.get("results", [])) >= HUMAN_COMPACT_CHANGED_FILE_THRESHOLD
 
     def _selected_run_target_groups() -> list[dict]:
         selected_keys = {
@@ -5815,6 +8120,16 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             if str(group.get("key") or "").strip() in selected_keys
         ]
         return filtered or list(unique_run_targets)
+
+    def _run_target_has_inventory(group: dict[str, object]) -> bool:
+        candidates = list(group.get("targets", []))
+        representative = group.get("representative", {})
+        if representative:
+            candidates.append(representative)
+        for target in candidates:
+            if str(target.get("artifact_status") or "").strip() != "missing":
+                return True
+        return False
 
     def _print_run_only_human() -> None:
         selected_groups = _selected_run_target_groups()
@@ -5835,11 +8150,19 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             summary_rows.append(("Report JSON", json_report_path))
         if selected_tests_json_path:
             summary_rows.append(("Selected Tests JSON", selected_tests_json_path))
+        if report.get("execution_artifact_index_path"):
+            summary_rows.append(("Execution Artifact Index", report["execution_artifact_index_path"]))
+        if report.get("execution_xdevice_reports_root"):
+            summary_rows.append(("XDevice Reports Root", report["execution_xdevice_reports_root"]))
         requested_names = list(report.get("execution_overview", {}).get("requested_test_names", []))
         if requested_names:
             summary_rows.append(("Requested Names", _human_join(requested_names)))
         if report.get("requested_devices"):
             summary_rows.append(("Devices", _human_join(report["requested_devices"])))
+        if report.get("execution_server_host"):
+            summary_rows.append(("Execution Host", report["execution_server_host"]))
+        if report.get("execution_server_user"):
+            summary_rows.append(("Execution User", report["execution_server_user"]))
         if report.get("daily_prebuilt", {}).get("note"):
             summary_rows.append(("Daily Note", report["daily_prebuilt"]["note"]))
         _print_key_value_section("Run Summary", summary_rows)
@@ -5923,7 +8246,9 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         f"failed={summary.get('failed', 0)}, "
                         f"blocked={summary.get('blocked', 0)}, "
                         f"timeout={summary.get('timeout', 0)}, "
-                        f"unavailable={summary.get('unavailable', 0)}"
+                        f"unavailable={summary.get('unavailable', 0)}, "
+                        f"skipped={summary.get('skipped', 0)}, "
+                        f"interrupted={_human_value(summary.get('interrupted'))}"
                     ),
                 )
             )
@@ -5980,14 +8305,26 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                 indent=2,
             )
             print()
-        elif plan_rows:
-            print("Execution Plan")
+        if plan_rows and (not result_rows or report.get("execution_interrupted")):
+            print("Execution Plan" if not report.get("execution_interrupted") else "Remaining Execution Plan")
             _print_human_table(
                 ["#", "Suite", "Device", "Status", "Tool", "Reason"],
                 plan_rows,
                 indent=2,
             )
             print()
+
+        next_steps = list(report.get("next_steps") or [])
+        if next_steps:
+            status_rank = {"recommended": 0, "ready": 1, "follow-up": 2, "optional": 3, "blocked": 4}
+
+            def _next_step_sort_key(item: dict[str, object]) -> tuple[object, ...]:
+                step = str(item.get("step", ""))
+                prefix = 0 if step == "Repeat this run" else 1
+                return (prefix, status_rank.get(str(item.get("status", "")), 99), step)
+
+            ordered_next_steps = sorted(next_steps, key=_next_step_sort_key)
+            _print_actionable_command_list("Next Steps", ordered_next_steps)
 
     if str(report.get("human_mode", "")).strip() == "run_only":
         _print_run_only_human()
@@ -6388,27 +8725,36 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
     next_steps = report.get("next_steps", [])
     if next_steps:
         status_rank = {"recommended": 0, "ready": 1, "follow-up": 2, "optional": 3, "blocked": 4}
-        ordered_next_steps = sorted(
-            next_steps,
-            key=lambda item: (
-                status_rank.get(str(item.get("status", "")), 99),
-                str(item.get("step", "")),
-            ),
-        )
+
+        def _next_step_sort_key_main(item: dict[str, object]) -> tuple[object, ...]:
+            step = str(item.get("step", ""))
+            prefix = 0 if step == "Repeat this run" else 1
+            return (prefix, status_rank.get(str(item.get("status", "")), 99), step)
+
+        ordered_next_steps = sorted(next_steps, key=_next_step_sort_key_main)
         _print_actionable_command_list("Next Steps", ordered_next_steps)
 
     if unique_run_targets:
+        runnable_inventory_count = sum(1 for group in unique_run_targets if _run_target_has_inventory(group))
+        unavailable_inventory_count = max(len(unique_run_targets) - runnable_inventory_count, 0)
         runnable_rows: list[tuple[object, object]] = [
-            ("Available", len(unique_run_targets)),
-            ("Selected By Default", selected_target_count),
+            ("Selected Inventory Entries", len(unique_run_targets)),
+            ("Selected By Analysis", selected_target_count),
+            ("Runnable In Current Inventory", runnable_inventory_count),
+            (
+                "Meaning",
+                "\"Runnable Tests\" is shorthand only: selection comes from source/API analysis, and actual execution still depends on the current ACTS/build artifacts.",
+            ),
             ("Manual Selection", "Use --run-test-name <name> or --run-test-names-file <file> with the run command."),
         ]
+        if unavailable_inventory_count > 0:
+            runnable_rows.append(("Unavailable In Current Inventory", unavailable_inventory_count))
         if selected_tests_json_path:
             runnable_rows.append(("JSON", selected_tests_json_path))
         requested_names = list(report.get("execution_overview", {}).get("requested_test_names", []))
         if requested_names:
             runnable_rows.append(("Requested Names", _human_join(requested_names)))
-        _print_key_value_section("Runnable Tests", runnable_rows)
+        _print_key_value_section("Selected Test Inventory", runnable_rows)
 
     coverage_recommendations = report.get("coverage_recommendations", {})
     if coverage_recommendations:
@@ -6463,7 +8809,8 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                     f"failed={summary.get('failed', 0)}, "
                     f"blocked={summary.get('blocked', 0)}, "
                     f"timeout={summary.get('timeout', 0)}, "
-                    f"unavailable={summary.get('unavailable', 0)}"
+                    f"unavailable={summary.get('unavailable', 0)}, "
+                    f"skipped={summary.get('skipped', 0)}"
                 ),
             )
         )
@@ -6511,7 +8858,43 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             "Source Evidence",
             [("Visibility", "hidden by default; use --show-source-evidence to inspect matching source files")],
         )
+    if compact_changed_file_sections and report["results"]:
+        print("Changed Files Summary")
+        changed_summary_rows: list[list[object]] = []
+        for index, item in enumerate(report["results"], start=1):
+            primary_projects, broader_projects = split_scope_groups(item.get("projects", []))
+            affected_apis = list(item.get("affected_api_entities", [])) or list(item.get("file_level_affected_api_entities", []))
+            changed_summary_rows.append(
+                [
+                    index,
+                    item.get("changed_file", "-"),
+                    _human_preview(affected_apis, limit=3),
+                    len(item.get("projects", [])),
+                    len(item.get("run_targets", [])),
+                    len(primary_projects),
+                    len(broader_projects),
+                    "see JSON",
+                ]
+            )
+        _print_human_table(
+            ["#", "Changed File", "APIs", "Tests", "Run Targets", "Primary", "Broader", "Detail"],
+            changed_summary_rows,
+            indent=2,
+        )
+        print()
+        compact_note_rows: list[tuple[object, object]] = [
+            ("Mode", f"compact (auto-enabled for {len(report['results'])} changed files)"),
+            (
+                "Why",
+                "Per-file suite tables are omitted to keep multi-file PR output readable; full per-file detail remains in the JSON report.",
+            ),
+        ]
+        if json_report_path is not None:
+            compact_note_rows.append(("JSON", json_report_path))
+        _print_key_value_section("Changed Files Note", compact_note_rows)
     for item in report["results"]:
+        if compact_changed_file_sections:
+            continue
         signals = item["signals"]
         relevance_summary = item.get("relevance_summary", {})
         primary_projects, broader_projects = split_scope_groups(item.get("projects", []))
@@ -6529,6 +8912,53 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             ("Primary", len(primary_projects)),
             ("Broader", len(broader_projects)),
         ]
+        source_only_consumers = list(item.get("source_only_consumers", []))
+        if source_only_consumers:
+            changed_rows.append(("Source-only Apps", len(source_only_consumers)))
+            changed_rows.append(
+                (
+                    "Source-only Preview",
+                    _human_preview([entry.get("project", "-") for entry in source_only_consumers], limit=4),
+                )
+            )
+        if item.get("changed_symbols"):
+            changed_rows.append(("Changed Symbols", _human_preview(item.get("changed_symbols", []), limit=4)))
+        if item.get("changed_ranges"):
+            changed_rows.append(("Changed Ranges", _human_preview(item.get("changed_ranges", []), limit=4)))
+        if item.get("derived_source_symbols"):
+            changed_rows.append(("Derived Symbols", _human_preview(item.get("derived_source_symbols", []), limit=4)))
+        if item.get("affected_api_entities"):
+            changed_rows.append(("Affected APIs", _human_preview(item.get("affected_api_entities", []), limit=4)))
+        file_level_apis = list(item.get("file_level_affected_api_entities", []))
+        if file_level_apis and file_level_apis != item.get("affected_api_entities", []):
+            changed_rows.append(("File-level APIs", _human_preview(file_level_apis, limit=4)))
+        function_coverage = list(item.get("function_coverage", []))
+        if function_coverage:
+            status_counts: dict[str, int] = {}
+            not_covered_symbols: list[str] = []
+            unresolved_symbols: list[str] = []
+            for entry in function_coverage:
+                status = str(entry.get("status") or "unresolved")
+                status_counts[status] = status_counts.get(status, 0) + 1
+                symbol = str(entry.get("symbol") or "")
+                if status == "not_covered" and symbol:
+                    not_covered_symbols.append(symbol)
+                if status == "unresolved" and symbol:
+                    unresolved_symbols.append(symbol)
+            changed_rows.append(
+                (
+                    "Function Coverage",
+                    ", ".join(f"{key}={value}" for key, value in sorted(status_counts.items())),
+                )
+            )
+            if not_covered_symbols:
+                changed_rows.append(
+                    ("Not Covered", _human_preview(not_covered_symbols, limit=4))
+                )
+            if unresolved_symbols:
+                changed_rows.append(
+                    ("Unresolved Functions", _human_preview(unresolved_symbols, limit=4))
+                )
         if report.get("debug_trace"):
             changed_rows.extend(
                 [
@@ -6539,6 +8969,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                     ("Project Hints", _human_preview(signals.get("project_hints", []))),
                     ("Method Hints", _human_preview(signals.get("method_hints", []))),
                     ("Type Hints", _human_preview(signals.get("type_hints", []))),
+                    ("Member Hints", _human_preview(signals.get("member_hints", []))),
                     ("Families", _human_preview(signals.get("family_tokens", []))),
                 ]
             )
@@ -6570,9 +9001,17 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
 
     if report["unresolved_files"]:
         print("Unresolved Files")
+        has_reason_class = any(item.get("reason_class") for item in report["unresolved_files"])
+        headers = ["Changed File", "Reason", "Class"] if has_reason_class else ["Changed File", "Reason"]
+        rows = []
+        for item in report["unresolved_files"]:
+            base = [item.get("changed_file", "-"), item.get("reason", "-")]
+            if has_reason_class:
+                base.append(item.get("reason_class", "-"))
+            rows.append(base)
         _print_human_table(
-            ["Changed File", "Reason"],
-            [[item.get("changed_file", "-"), item.get("reason", "-")] for item in report["unresolved_files"]],
+            headers,
+            rows,
             indent=2,
         )
         print()
@@ -6602,6 +9041,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                     ("Project Hints", _human_preview(item["signals"].get("project_hints", []))),
                     ("Method Hints", _human_preview(item["signals"].get("method_hints", []))),
                     ("Type Hints", _human_preview(item["signals"].get("type_hints", []))),
+                    ("Member Hints", _human_preview(item["signals"].get("member_hints", []))),
                 ]
             )
         if item.get("debug"):
@@ -6656,24 +9096,29 @@ def parse_args() -> argparse.Namespace:
     json_group = parser.add_mutually_exclusive_group()
     parser.add_argument("--config", help="JSON config file.")
     parser.add_argument("--changed-file", action="append", default=[], help="Changed file path. Can be repeated.")
+    parser.add_argument("--changed-symbol", action="append", default=[], help="Optional changed symbol/function name used to narrow affected APIs for changed-file analysis. Can be repeated.")
+    parser.add_argument("--changed-range", action="append", default=[], help="Optional changed line range used to derive touched source symbols, in 'start:end' or 'path:start:end' form. Can be repeated.")
     parser.add_argument("--symbol-query", action="append", default=[], help="Find XTS tests by component/symbol name, e.g. ButtonModifier.")
     parser.add_argument("--code-query", action="append", default=[], help="Find code files by keyword, e.g. ButtonModifier.")
     parser.add_argument("--changed-files-from", help="Text file with one changed file path per line.")
     parser.add_argument("--git-diff", help="Optional git diff ref, for example HEAD~1..HEAD.")
     parser.add_argument("--git-root", help="Git root to use with --git-diff.")
-    parser.add_argument("--pr-url", help="GitCode PR URL, for example https://gitcode.com/.../pull/82225")
-    parser.add_argument("--pr-number", help="GitCode PR number.")
+    parser.add_argument("--pr-url", help="GitCode/CodeHub PR or MR URL, for example https://gitcode.com/.../pull/82225 or https://codehub.example.com/.../merge_requests/12")
+    parser.add_argument("--pr-number", help="Git host PR/MR number.")
     parser.add_argument(
         "--pr-source",
         choices=PR_SOURCE_CHOICES,
         default="auto",
-        help="How to resolve PR changed files: auto prefers GitCode API when token/config is available, api forces API mode, git forces git-fetch mode.",
+        help="How to resolve PR/MR changed files: auto prefers the detected host API when token/config is available, api forces API mode, git forces git-fetch mode.",
     )
     parser.add_argument("--git-remote", help="Git remote for PR fetching.")
     parser.add_argument("--git-base-branch", help="Base branch for PR diff. Default: master.")
-    parser.add_argument("--gitcode-api-url", help="GitCode base URL for API mode, for example https://gitcode.com")
-    parser.add_argument("--gitcode-token", help="GitCode access token for API mode.")
-    parser.add_argument("--git-host-config", help="Path to gitee_util/config.ini with [gitcode] token/url.")
+    parser.add_argument("--git-host-kind", choices=GIT_HOST_KIND_CHOICES, default="auto", help="PR API host kind. auto detects from the PR URL and falls back to GitCode-compatible behavior.")
+    parser.add_argument("--git-host-url", help="Git host base URL for API mode, for example https://gitcode.com or https://codehub.example.com")
+    parser.add_argument("--git-host-token", help="Git host access token for API mode.")
+    parser.add_argument("--gitcode-api-url", help="Deprecated alias for --git-host-url, kept for backward compatibility.")
+    parser.add_argument("--gitcode-token", help="Deprecated alias for --git-host-token, kept for backward compatibility.")
+    parser.add_argument("--git-host-config", help="Path to INI config with [gitcode] or [codehub] token/url entries.")
     parser.add_argument("--repo-root", help="Explicit OHOS workspace root. By default the CLI auto-discovers the workspace, including sibling ohos_master trees.")
     parser.add_argument("--xts-root", help="Absolute or relative path to XTS root.")
     parser.add_argument("--sdk-api-root", help="Absolute or relative path to SDK api root.")
@@ -6685,6 +9130,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", help="Optional device serial/connect key visible from the selected HDC server.")
     parser.add_argument("--devices", action="append", default=[], help="Comma-separated device serial list for command generation and execution.")
     parser.add_argument("--devices-from", help="File with one device serial per line (comments with # are ignored).")
+    parser.add_argument("--server-host", help="Optional remote Linux execution host for wrapper-driven `ohos xts ...` flows.")
+    parser.add_argument("--server-user", help="Optional remote Linux user for --server-host. Default: current user on the caller side.")
     parser.add_argument("--product-name", help="Product name for build guidance. Default: rk3568.")
     parser.add_argument("--system-size", help="System size for build guidance. Default: standard.")
     parser.add_argument("--xts-suitetype", help="Optional xts_suitetype for build guidance, for example hap_static or hap_dynamic.")
@@ -6705,7 +9152,14 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--daily-branch", help="Daily build branch filter. Default: master.")
     parser.add_argument("--daily-date", help="Daily build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --daily-build-tag.")
-    parser.add_argument("--daily-cache-root", help="Cache directory for downloaded/extracted daily full packages. Default: /tmp/arkui_xts_selector_daily_cache")
+    parser.add_argument("--daily-cache-root", help=f"Cache directory for downloaded/extracted daily full packages. Default: {DEFAULT_DAILY_CACHE_ROOT}")
+    parser.add_argument("--quick", action="store_true", help="Quick mode: skip daily download and use only local ACTS artifacts. Use when you have a built tree or want fast analysis with reduced accuracy.")
+    parser.add_argument("--benchmark", action="store_true", help="Run benchmark cases from canonical corpus and exit with code 1 if any fail.")
+    parser.add_argument("--benchmark-fixtures-dir", help="Directory containing canonical corpus benchmark fixtures. Default: tests/fixtures/canonical_corpus")
+    parser.add_argument("--inspect", action="store_true", help="Enable inspect mode for querying the persisted dependency/lineage map.")
+    parser.add_argument("--inspect-api-entity", help="Inspect mode: show all source files, consumers, and projects that reference this API entity.")
+    parser.add_argument("--inspect-source-file", help="Inspect mode: show all API entities and consumers reachable from this source file.")
+    parser.add_argument("--inspect-consumer-project", help="Inspect mode: show all API entities and source files reachable from this consumer project.")
     parser.add_argument("--download-daily-tests", action="store_true", help="Download and extract the daily XTS package described by --daily-* options, then exit.")
     parser.add_argument("--download-daily-sdk", action="store_true", help="Download and extract the daily SDK package described by --sdk-* options, then exit.")
     parser.add_argument("--download-daily-firmware", action="store_true", help="Download and extract the daily firmware image package described by --firmware-* options, then exit.")
@@ -6714,12 +9168,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sdk-component", help=f"Daily SDK component name. Default: {DEFAULT_SDK_COMPONENT}.")
     parser.add_argument("--sdk-branch", help="Daily SDK branch filter. Default: master.")
     parser.add_argument("--sdk-date", help="Daily SDK build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --sdk-build-tag.")
-    parser.add_argument("--sdk-cache-root", help="Cache directory for downloaded/extracted daily SDK packages. Default: --daily-cache-root")
+    parser.add_argument("--sdk-cache-root", help=f"Cache directory for downloaded/extracted daily SDK packages. Default: {DEFAULT_SDK_CACHE_ROOT}")
     parser.add_argument("--firmware-build-tag", help="Daily firmware build tag, for example 20260404_120244.")
     parser.add_argument("--firmware-component", help=f"Daily firmware component name. Default: {DEFAULT_FIRMWARE_COMPONENT}.")
     parser.add_argument("--firmware-branch", help="Daily firmware branch filter. Default: master.")
     parser.add_argument("--firmware-date", help="Daily firmware build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --firmware-build-tag.")
-    parser.add_argument("--firmware-cache-root", help="Cache directory for downloaded/extracted daily firmware packages. Default: --daily-cache-root")
+    parser.add_argument("--firmware-cache-root", help=f"Cache directory for downloaded/extracted daily firmware packages. Default: {DEFAULT_FIRMWARE_CACHE_ROOT}")
     parser.add_argument("--flash-firmware-path", help="Path to an unpacked local firmware image bundle root, or a parent directory containing one, to flash directly.")
     parser.add_argument(
         "--list-daily-tags", metavar="TYPE",
@@ -6776,7 +9230,14 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         explicit_root=args.repo_root or cfg.get("repo_root"),
         selector_repo_root=selector_repo_root,
     )
-    ini_url, ini_token = load_ini_gitcode_config(args.git_host_config or cfg.get("git_host_config"), repo_root)
+    git_host_kind = normalize_git_host_kind(args.git_host_kind or cfg.get("git_host_kind"))
+    git_host_config_value = args.git_host_config or cfg.get("git_host_config")
+    git_host_config_path = resolve_path(git_host_config_value, repo_root, repo_root) if git_host_config_value else None
+    ini_url, ini_token = load_ini_git_host_config(
+        git_host_config_value,
+        repo_root,
+        git_host_kind if git_host_kind != "auto" else "gitcode",
+    )
     xts_root = resolve_path(args.xts_root or cfg.get("xts_root"), default_xts_root(repo_root), repo_root)
     sdk_api_root = resolve_path(args.sdk_api_root or cfg.get("sdk_api_root"), default_sdk_api_root(repo_root), repo_root)
     git_repo_root = resolve_path(args.git_root or cfg.get("git_repo_root"), default_git_repo_root(repo_root), repo_root)
@@ -6799,6 +9260,8 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         config_device=cfg.get("device"),
     )
     device = devices[0] if devices else None
+    server_host = str(args.server_host or cfg.get("server_host") or "").strip() or None
+    server_user = str(args.server_user or cfg.get("server_user") or "").strip() or None
     product_name = args.product_name or cfg.get("product_name") or "rk3568"
     system_size = args.system_size or cfg.get("system_size") or "standard"
     xts_suitetype = args.xts_suitetype or cfg.get("xts_suitetype")
@@ -6839,13 +9302,13 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         selector_repo_root,
     )
     sdk_cache_root = resolve_path(
-        args.sdk_cache_root or cfg.get("sdk_cache_root") or str(daily_cache_root),
-        daily_cache_root,
+        args.sdk_cache_root or cfg.get("sdk_cache_root") or str(DEFAULT_SDK_CACHE_ROOT),
+        DEFAULT_SDK_CACHE_ROOT,
         selector_repo_root,
     )
     firmware_cache_root = resolve_path(
-        args.firmware_cache_root or cfg.get("firmware_cache_root") or str(daily_cache_root),
-        daily_cache_root,
+        args.firmware_cache_root or cfg.get("firmware_cache_root") or str(DEFAULT_FIRMWARE_CACHE_ROOT),
+        DEFAULT_FIRMWARE_CACHE_ROOT,
         selector_repo_root,
     )
     flash_py_path = resolve_path(
@@ -6864,6 +9327,8 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         selector_repo_root,
     ) if (args.hdc_path or cfg.get("hdc_path")) else None
     hdc_endpoint = args.hdc_endpoint or cfg.get("hdc_endpoint")
+    git_host_api_url = args.git_host_url or cfg.get("git_host_api_url") or args.gitcode_api_url or cfg.get("gitcode_api_url") or ini_url
+    git_host_token = args.git_host_token or cfg.get("git_host_token") or args.gitcode_token or cfg.get("gitcode_token") or ini_token
     gitcode_api_url = args.gitcode_api_url or cfg.get("gitcode_api_url") or ini_url
     gitcode_token = args.gitcode_token or cfg.get("gitcode_token") or ini_token
     cache_value = None if args.no_cache else (args.cache_file or cfg.get("cache_file"))
@@ -6881,6 +9346,12 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         git_repo_root=git_repo_root,
         git_remote=git_remote,
         git_base_branch=git_base_branch,
+        git_host_kind=git_host_kind,
+        git_host_api_url=git_host_api_url,
+        git_host_token=git_host_token,
+        git_host_config_path=git_host_config_path,
+        server_host=server_host,
+        server_user=server_user,
         device=device,
         devices=devices,
         gitcode_api_url=gitcode_api_url,
@@ -6904,6 +9375,7 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         daily_branch=args.daily_branch or cfg.get("daily_branch") or "master",
         daily_date=args.daily_date or cfg.get("daily_date"),
         daily_cache_root=daily_cache_root,
+        quick_mode=bool(args.quick),
         sdk_build_tag=args.sdk_build_tag or cfg.get("sdk_build_tag"),
         sdk_component=args.sdk_component or cfg.get("sdk_component") or DEFAULT_SDK_COMPONENT,
         sdk_branch=args.sdk_branch or cfg.get("sdk_branch") or "master",
@@ -6919,6 +9391,21 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         hdc_path=hdc_path,
         hdc_endpoint=hdc_endpoint,
     )
+
+
+def validate_inputs(args: argparse.Namespace, app_config: AppConfig) -> list[str]:
+    """Return early syntax-level input errors only."""
+    del app_config
+    errors: list[str] = []
+    pr_url = str(getattr(args, "pr_url", None) or "").strip()
+    if not pr_url:
+        return errors
+    parsed = urlparse(pr_url)
+    if not parsed.scheme or not parsed.netloc:
+        errors.append(f"invalid PR URL format: {pr_url!r} - expected https://gitcode.com/.../pull/NNN")
+    elif "/pull/" not in parsed.path and "/pulls/" not in parsed.path:
+        errors.append(f"PR URL does not look like a pull request URL: {pr_url!r}")
+    return errors
 
 
 def main() -> int:
@@ -6947,13 +9434,79 @@ def main() -> int:
             json_to_stdout=json_to_stdout,
             json_output_path=json_output_path,
         )
-    if app_config.daily_build_tag or app_config.daily_date:
+    if args.benchmark:
+        return run_benchmark_mode(args, app_config)
+    if args.inspect:
+        return run_inspect_mode(args, app_config)
+    validation_errors = validate_inputs(args, app_config)
+    if validation_errors:
+        for err in validation_errors:
+            print(f"error: {err}", file=sys.stderr)
+        return 2
+    if app_config.quick_mode:
+        # Quick mode: skip daily download, use only local artifacts
+        emit_progress(progress_enabled, "quick mode enabled (using local ACTS artifacts only)")
+        if not _has_local_acts_artifacts(app_config.acts_out_root):
+            print(
+                "warning: --quick mode active but no local ACTS artifacts found. "
+                f"Expected under: {app_config.acts_out_root or '<unset>'}",
+                file=sys.stderr,
+                flush=True,
+            )
+            print(
+                "Options: (1) Build tests: ohos build --product-name rk3568 --build-target ohos_test\n"
+                "         (2) Download daily: ohos download tests\n"
+                "         (3) Run without --quick to auto-download daily prebuilt\n"
+                "Proceeding with API/SDK analysis only (reduced accuracy).",
+                file=sys.stderr,
+                flush=True,
+            )
+    elif app_config.daily_build_tag or app_config.daily_date:
         emit_progress(progress_enabled, f"preparing daily prebuilt {app_config.daily_build_tag or app_config.daily_date}")
         try:
             prepare_daily_prebuilt_from_config(app_config)
         except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
             print(f"daily prebuilt preparation failed: {exc}", file=sys.stderr)
             return 2
+    elif not _has_local_acts_artifacts(app_config.acts_out_root):
+        warning_root = str(app_config.acts_out_root or "")
+        if args.run_now:
+            preferred_local_acts_root = app_config.acts_out_root
+            app_config.daily_date = time.strftime("%Y%m%d")
+            print(
+                "warning: local ACTS artifacts were not found under "
+                f"{warning_root or '<unset>'}; auto-downloading daily tests for {app_config.daily_date}.",
+                file=sys.stderr,
+                flush=True,
+            )
+            emit_progress(progress_enabled, f"preparing daily prebuilt {app_config.daily_date}")
+            try:
+                prepared = prepare_daily_prebuilt_from_config(app_config)
+            except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
+                print(f"daily prebuilt preparation failed: {exc}", file=sys.stderr)
+                return 2
+            if preferred_local_acts_root is not None:
+                try:
+                    synced_root = _sync_prebuilt_acts_to_local_root(
+                        prepared,
+                        preferred_local_acts_root,
+                        progress_enabled=progress_enabled,
+                    )
+                except OSError as exc:
+                    print(f"daily prebuilt sync failed: {exc}", file=sys.stderr)
+                    return 2
+                if synced_root is not None:
+                    app_config.acts_out_root = synced_root
+                    app_config.daily_prebuilt_note = (
+                        f"{app_config.daily_prebuilt_note} Synced to local ACTS root {synced_root}."
+                    ).strip()
+        else:
+            print(
+                "warning: local ACTS artifacts were not found under "
+                f"{warning_root or '<unset>'}; continuing with selection-only analysis and current inventory gaps.",
+                file=sys.stderr,
+                flush=True,
+            )
     source_report_path = resolve_selector_report_input(
         args.from_report,
         bool(args.last_report),
@@ -6980,6 +9533,7 @@ def main() -> int:
             json_output_path = resolve_json_output_path(None)
     xdevice_reports_root = (run_session.run_dir / "xdevice_reports") if run_session is not None else None
     changed_inputs = list(args.changed_file)
+    changed_symbols = [item.strip() for item in args.changed_symbol if item and item.strip()]
     symbol_queries = [item.strip() for item in args.symbol_query if item and item.strip()]
     code_queries = [item.strip() for item in args.code_query if item and item.strip()]
     requested_test_names_path = (
@@ -6993,6 +9547,7 @@ def main() -> int:
             *read_requested_test_names(requested_test_names_path),
         ]
     )
+    execution_progress_callback = build_execution_progress_callback(progress_enabled)
 
     if args.changed_files_from:
         changed_inputs.extend(read_text(resolve_path(args.changed_files_from, app_config.repo_root, app_config.repo_root)).splitlines())
@@ -7003,10 +9558,14 @@ def main() -> int:
         report["timings_ms"] = {}
         report["json_output_mode"] = "stdout" if json_to_stdout else "file"
         report["requested_devices"] = list(app_config.devices)
+        report["execution_server_host"] = app_config.server_host or ""
+        report["execution_server_user"] = app_config.server_user or ""
+        report["execution_xdevice_reports_root"] = str(xdevice_reports_root) if xdevice_reports_root is not None else ""
         report["execution_summary"] = {}
+        selected_tests_report_base_path = resolve_selected_tests_report_base_path(run_session, json_output_path)
         if json_output_path is not None:
             report["json_output_path"] = str(json_output_path)
-            selected_tests_json_path = resolve_selected_tests_output_path(json_output_path)
+            selected_tests_json_path = resolve_selected_tests_output_path(selected_tests_report_base_path)
             if selected_tests_json_path is not None:
                 report["selected_tests_json_path"] = str(selected_tests_json_path)
         if run_session is not None:
@@ -7019,6 +9578,12 @@ def main() -> int:
                 "run_store_root": str((app_config.run_store_root or default_run_store_root(PROJECT_ROOT)).resolve()),
                 "selector_report_path": str(run_session.selector_report_path),
                 "manifest_path": str(run_session.manifest_path),
+            }
+
+        if app_config.daily_prebuilt is not None:
+            report["daily_prebuilt"] = {
+                **app_config.daily_prebuilt.to_dict(),
+                "note": app_config.daily_prebuilt_note,
             }
 
         emit_progress(progress_enabled, "planning target execution from saved report")
@@ -7043,6 +9608,7 @@ def main() -> int:
         execution_summary = None
         execution_preflight = None
         preflight_failed = False
+        execution_interrupted = False
         if args.run_now:
             emit_progress(progress_enabled, "preflighting execution")
             execution_preflight = preflight_execution(
@@ -7057,22 +9623,30 @@ def main() -> int:
                 preflight_failed = True
             else:
                 emit_progress(progress_enabled, "running selected targets")
-                execution_summary = execute_planned_targets(
-                    report,
-                    repo_root=app_config.repo_root,
-                    acts_out_root=app_config.acts_out_root,
-                    devices=app_config.devices,
-                    run_tool=args.run_tool,
-                    run_top_targets=args.run_top_targets,
-                    run_timeout=args.run_timeout,
-                    shard_mode=app_config.shard_mode,
-                    xdevice_reports_root=xdevice_reports_root,
-                    run_priority=args.run_priority,
-                    parallel_jobs=args.parallel_jobs,
-                    runtime_state_root=app_config.runtime_state_root,
-                    device_lock_timeout=app_config.device_lock_timeout,
-                    requested_test_names=requested_test_names,
-                )
+                try:
+                    execution_summary = execute_planned_targets(
+                        report,
+                        repo_root=app_config.repo_root,
+                        acts_out_root=app_config.acts_out_root,
+                        devices=app_config.devices,
+                        run_tool=args.run_tool,
+                        run_top_targets=args.run_top_targets,
+                        run_timeout=args.run_timeout,
+                        shard_mode=app_config.shard_mode,
+                        xdevice_reports_root=xdevice_reports_root,
+                        run_priority=args.run_priority,
+                        parallel_jobs=args.parallel_jobs,
+                        runtime_state_root=app_config.runtime_state_root,
+                        device_lock_timeout=app_config.device_lock_timeout,
+                        requested_test_names=requested_test_names,
+                        hdc_path=app_config.hdc_path,
+                        hdc_endpoint=app_config.hdc_endpoint,
+                        progress_callback=execution_progress_callback,
+                    )
+                except KeyboardInterrupt:
+                    execution_interrupted = True
+                    report["execution_interrupted"] = True
+                    execution_summary = dict(report.get("execution_summary") or {})
         else:
             report["execution_preflight"] = {}
 
@@ -7080,6 +9654,8 @@ def main() -> int:
             status = "planned"
             if preflight_failed:
                 status = "failed_preflight"
+            elif execution_interrupted:
+                status = "interrupted"
             elif execution_summary is not None:
                 status = "completed_with_failures" if execution_summary.get("has_failures") else "completed"
             report["selector_run"]["status"] = status
@@ -7097,10 +9673,20 @@ def main() -> int:
                 "significant_updates": 0,
             }
 
+        artifact_output_dir = run_session.run_dir if run_session is not None else (json_output_path.parent if json_output_path is not None else None)
+        artifact_index_path = write_execution_artifact_index(report, artifact_output_dir)
+        if artifact_index_path is not None:
+            report["execution_artifact_index_path"] = str(artifact_index_path)
+
         emit_progress(progress_enabled, "writing JSON report")
         written_json_path = write_json_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)
-        if written_json_path is not None:
-            write_selected_tests_report(report, written_json_path)
+        selected_tests_report_base_path = resolve_selected_tests_report_base_path(run_session, written_json_path)
+        if selected_tests_report_base_path is not None:
+            selected_tests_path = write_selected_tests_report(report, selected_tests_report_base_path)
+            if selected_tests_path is not None:
+                report["selected_tests_json_path"] = str(selected_tests_path)
+                if written_json_path is not None:
+                    write_json_report(report, json_to_stdout=False, json_output_path=written_json_path)
         if run_session is not None:
             manifest = build_run_manifest(
                 report,
@@ -7114,7 +9700,10 @@ def main() -> int:
             write_run_artifacts(run_session, report, manifest)
         if not json_to_stdout:
             emit_progress(progress_enabled, "rendering human report")
+            print_executive_summary(report, written_json_path)
             print_human(report, None, written_json_path)
+        if execution_interrupted:
+            return 130
         if args.run_now and preflight_failed:
             return 2
         if args.run_now and execution_summary and execution_summary.get("has_failures"):
@@ -7126,14 +9715,31 @@ def main() -> int:
         try:
             changed_files.extend(git_changed_files(app_config.git_repo_root, args.git_diff))
         except RuntimeError as exc:
-            print(f"git diff failed: {exc}", file=sys.stderr)
+            print(f"error: git diff failed: {exc}", file=sys.stderr)
             return 2
+    inferred_changed_ranges_by_file: dict[Path, list[tuple[int, int]]] = {}
     if args.pr_url or args.pr_number:
         try:
             pr_ref = args.pr_url or args.pr_number
-            changed_files.extend(resolve_pr_changed_files(app_config, pr_ref, args.pr_source))
+            pr_changed_files, pr_changed_ranges = resolve_pr_changed_files_with_ranges(
+                app_config,
+                pr_ref,
+                args.pr_source,
+            )
+            changed_files.extend(pr_changed_files)
+            inferred_changed_ranges_by_file = merge_changed_range_maps(
+                inferred_changed_ranges_by_file,
+                pr_changed_ranges,
+            )
         except RuntimeError as exc:
-            print(f"pr diff failed: {exc}", file=sys.stderr)
+            message = str(exc)
+            if "403" in message or "401" in message or "token" in message.lower():
+                hint = "The Git host token may be missing or expired. Run: ohos pr setup-token"
+            elif "404" in message or "not found" in message.lower():
+                hint = f"PR not found. Check the PR URL or number: {getattr(args, 'pr_url', None) or getattr(args, 'pr_number', None)}"
+            else:
+                hint = "Check the PR URL, configured git host credentials, and network access."
+            print(f"error: {XtsUserError(f'cannot fetch PR diff: {message}', hint=hint)}", file=sys.stderr)
             return 2
 
     deduped: list[Path] = []
@@ -7143,6 +9749,19 @@ def main() -> int:
             deduped.append(item)
             seen.add(item)
     changed_files = deduped
+
+    try:
+        changed_ranges_by_file = merge_changed_range_maps(
+            inferred_changed_ranges_by_file,
+            parse_changed_ranges(
+                args.changed_range,
+                changed_files=changed_files,
+                base_roots=[app_config.repo_root, app_config.git_repo_root],
+            ),
+        )
+    except ValueError as exc:
+        print(f"changed range parsing failed: {exc}", file=sys.stderr)
+        return 2
 
     if not changed_files and not symbol_queries and not code_queries:
         print("No changed files, symbol queries, or code queries were provided.", file=sys.stderr)
@@ -7157,7 +9776,7 @@ def main() -> int:
     )
     changed_file_filtering_ms = round((time.perf_counter() - exclusion_started) * 1000, 3)
 
-    progress_callback = (lambda message: emit_progress(progress_enabled, message)) if progress_enabled else None
+    progress_callback = build_progress_callback(progress_enabled, len(changed_files))
 
     emit_progress(progress_enabled, "loading XTS project index")
     load_started = time.perf_counter()
@@ -7182,10 +9801,27 @@ def main() -> int:
     runtime_history_started = time.perf_counter()
     runtime_history_index = build_runtime_history_index(default_runtime_history_file(app_config.runtime_state_root))
     load_runtime_history_ms = round((time.perf_counter() - runtime_history_started) * 1000, 3)
+    api_lineage_map = None
+    api_lineage_map_path = None
+    build_api_lineage_map_ms = 0.0
+    if changed_files:
+        emit_progress(progress_enabled, "building api lineage map")
+        lineage_started = time.perf_counter()
+        api_lineage_map, api_lineage_map_path = build_api_lineage_map(
+            repo_root=app_config.repo_root,
+            ace_engine_root=app_config.git_repo_root,
+            sdk_api_root=app_config.sdk_api_root,
+            projects=projects,
+            runtime_state_root=app_config.runtime_state_root,
+            project_cache_file=app_config.cache_file,
+        )
+        build_api_lineage_map_ms = round((time.perf_counter() - lineage_started) * 1000, 3)
     emit_progress(progress_enabled, "building report")
     report_started = time.perf_counter()
     report = format_report(
         changed_files=changed_files,
+        changed_symbols=changed_symbols,
+        changed_ranges_by_file=changed_ranges_by_file,
         symbol_queries=symbol_queries,
         code_queries=code_queries,
         projects=projects,
@@ -7208,6 +9844,8 @@ def main() -> int:
         runtime_history_index=runtime_history_index,
         requested_run_tool=args.run_tool,
         progress_callback=progress_callback,
+        api_lineage_map=api_lineage_map,
+        api_lineage_map_path=api_lineage_map_path,
     )
     report["acts_out_root"] = str(app_config.acts_out_root or (app_config.repo_root / "out/release/suites/acts"))
     report["excluded_inputs"] = excluded_inputs
@@ -7218,19 +9856,24 @@ def main() -> int:
         "build_content_modifier_index": build_content_modifier_index_ms,
         "load_mapping_config": load_mapping_config_ms,
         "load_runtime_history": load_runtime_history_ms,
+        "build_api_lineage_map": build_api_lineage_map_ms,
         "main_report_call": round((time.perf_counter() - report_started) * 1000, 3),
     })
     report["timings_ms"]["total_runtime"] = round((time.perf_counter() - runtime_started) * 1000, 3)
     report["json_output_mode"] = "stdout" if json_to_stdout else "file"
     report["requested_devices"] = list(app_config.devices)
+    report["execution_server_host"] = app_config.server_host or ""
+    report["execution_server_user"] = app_config.server_user or ""
+    report["execution_xdevice_reports_root"] = str(xdevice_reports_root) if xdevice_reports_root is not None else ""
     if app_config.daily_prebuilt is not None:
         report["daily_prebuilt"] = {
             **app_config.daily_prebuilt.to_dict(),
             "note": app_config.daily_prebuilt_note,
         }
+    selected_tests_report_base_path = resolve_selected_tests_report_base_path(run_session, json_output_path)
     if json_output_path is not None:
         report["json_output_path"] = str(json_output_path)
-        selected_tests_json_path = resolve_selected_tests_output_path(json_output_path)
+        selected_tests_json_path = resolve_selected_tests_output_path(selected_tests_report_base_path)
         if selected_tests_json_path is not None:
             report["selected_tests_json_path"] = str(selected_tests_json_path)
     if run_session is not None:
@@ -7269,6 +9912,7 @@ def main() -> int:
     execution_summary = None
     execution_preflight = None
     preflight_failed = False
+    execution_interrupted = False
     if args.run_now:
         emit_progress(progress_enabled, "preflighting execution")
         execution_preflight = preflight_execution(
@@ -7283,22 +9927,30 @@ def main() -> int:
             preflight_failed = True
         else:
             emit_progress(progress_enabled, "running selected targets")
-            execution_summary = execute_planned_targets(
-                report,
-                repo_root=app_config.repo_root,
-                acts_out_root=app_config.acts_out_root,
-                devices=app_config.devices,
-                run_tool=args.run_tool,
-                run_top_targets=args.run_top_targets,
-                run_timeout=args.run_timeout,
-                shard_mode=app_config.shard_mode,
-                xdevice_reports_root=xdevice_reports_root,
-                run_priority=args.run_priority,
-                parallel_jobs=args.parallel_jobs,
-                runtime_state_root=app_config.runtime_state_root,
-                device_lock_timeout=app_config.device_lock_timeout,
-                requested_test_names=requested_test_names,
-            )
+            try:
+                execution_summary = execute_planned_targets(
+                    report,
+                    repo_root=app_config.repo_root,
+                    acts_out_root=app_config.acts_out_root,
+                    devices=app_config.devices,
+                    run_tool=args.run_tool,
+                    run_top_targets=args.run_top_targets,
+                    run_timeout=args.run_timeout,
+                    shard_mode=app_config.shard_mode,
+                    xdevice_reports_root=xdevice_reports_root,
+                    run_priority=args.run_priority,
+                    parallel_jobs=args.parallel_jobs,
+                    runtime_state_root=app_config.runtime_state_root,
+                    device_lock_timeout=app_config.device_lock_timeout,
+                    requested_test_names=requested_test_names,
+                    hdc_path=app_config.hdc_path,
+                    hdc_endpoint=app_config.hdc_endpoint,
+                    progress_callback=execution_progress_callback,
+                )
+            except KeyboardInterrupt:
+                execution_interrupted = True
+                report["execution_interrupted"] = True
+                execution_summary = dict(report.get("execution_summary") or {})
     else:
         report["execution_preflight"] = {}
 
@@ -7306,6 +9958,8 @@ def main() -> int:
         status = "planned"
         if preflight_failed:
             status = "failed_preflight"
+        elif execution_interrupted:
+            status = "interrupted"
         elif execution_summary is not None:
             status = "completed_with_failures" if execution_summary.get("has_failures") else "completed"
         report["selector_run"]["status"] = status
@@ -7323,10 +9977,20 @@ def main() -> int:
             "significant_updates": 0,
         }
 
+    artifact_output_dir = run_session.run_dir if run_session is not None else (json_output_path.parent if json_output_path is not None else None)
+    artifact_index_path = write_execution_artifact_index(report, artifact_output_dir)
+    if artifact_index_path is not None:
+        report["execution_artifact_index_path"] = str(artifact_index_path)
+
     emit_progress(progress_enabled, "writing JSON report")
     written_json_path = write_json_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)
-    if written_json_path is not None:
-        write_selected_tests_report(report, written_json_path)
+    selected_tests_report_base_path = resolve_selected_tests_report_base_path(run_session, written_json_path)
+    if selected_tests_report_base_path is not None:
+        selected_tests_path = write_selected_tests_report(report, selected_tests_report_base_path)
+        if selected_tests_path is not None:
+            report["selected_tests_json_path"] = str(selected_tests_path)
+            if written_json_path is not None:
+                write_json_report(report, json_to_stdout=False, json_output_path=written_json_path)
     if run_session is not None:
         manifest = build_run_manifest(
             report,
@@ -7341,7 +10005,10 @@ def main() -> int:
 
     if not json_to_stdout:
         emit_progress(progress_enabled, "rendering human report")
+        print_executive_summary(report, written_json_path)
         print_human(report, cache_used, written_json_path)
+    if execution_interrupted:
+        return 130
     if args.run_now and preflight_failed:
         return 2
     if args.run_now and execution_summary and execution_summary.get("has_failures"):

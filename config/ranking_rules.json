@@ -208,5 +208,26 @@
     "fallback_no_family_gain": 0.1,
     "rank_weight_power": 1.0,
     "rank_weight_floor": 1
+  },
+  "family_fanout_limits": {
+    "button": {"max_type_representatives": 3, "max_family_representatives": 5},
+    "checkbox": {"max_type_representatives": 2, "max_family_representatives": 4},
+    "checkboxgroup": {"max_type_representatives": 2, "max_family_representatives": 4},
+    "image": {"max_type_representatives": 3, "max_family_representatives": 5},
+    "list": {"max_type_representatives": 3, "max_family_representatives": 6},
+    "menu": {"max_type_representatives": 3, "max_family_representatives": 5},
+    "navigation": {"max_type_representatives": 3, "max_family_representatives": 5},
+    "richeditor": {"max_type_representatives": 2, "max_family_representatives": 4},
+    "slider": {"max_type_representatives": 2, "max_family_representatives": 4},
+    "swiper": {"max_type_representatives": 2, "max_family_representatives": 4},
+    "text": {"max_type_representatives": 4, "max_family_representatives": 8},
+    "textinput": {"max_type_representatives": 2, "max_family_representatives": 4},
+    "web": {"max_type_representatives": 3, "max_family_representatives": 5},
+    "default": {"max_type_representatives": 5, "max_family_representatives": 10}
+  },
+  "precision_budget": {
+    "member_aware_max_required": 30,
+    "type_level_max_required": 100,
+    "family_level_max_required": 200
   }
 }

@@ -1,0 +1,18 @@
+{
+  "family": "slider",
+  "input_changed_files": [
+    "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/slider_pattern.cpp"
+  ],
+  "expected_variant": "static",
+  "expected_surface": "static",
+  "expected_abstention": false,
+  "precision_budget": {
+    "max_required_count": 50,
+    "max_top5_unrelated_noise": 0
+  },
+  "must_have_source": "tests/fixtures/slider_changed_file/must_have.txt",
+  "reference_set": {
+    "note": "Verified against real XTS workspace (ohos_master), 2026-03-23",
+    "description": "slider_pattern.cpp is the C++ implementation of Slider component. Changes affect tests using Slider, SliderModifier, and related content modifier patterns."
+  }
+}
