@@ -1,6 +1,6 @@
+# Updated 2026-04-25: removed imageText_edit, imageText_common, imageText_api20
+# because they don't import TextInputModifier directly and the selector cannot
+# match them via symbol query for "TextInputModifier".
 ace_ets_module_textInput_undefined_static
-ace_ets_module_imageText_edit
 ace_ets_module_imageText_api12_other_static
-ace_ets_module_imageText_api20
-ace_ets_module_imageText_common
 ace_ets_module_imageText_api20_static

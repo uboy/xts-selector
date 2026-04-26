@@ -1,0 +1,18 @@
+{
+  "family": "content_modifier",
+  "input_changed_files": [
+    "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/content_modifier_helper_accessor.cpp"
+  ],
+  "expected_variant": "static",
+  "expected_surface": "static",
+  "expected_abstention": false,
+  "precision_budget": {
+    "max_required_count": 100,
+    "max_top5_unrelated_noise": 0
+  },
+  "must_have_source": "tests/fixtures/content_modifier_changed_file/must_have.txt",
+  "reference_set": {
+    "note": "Shared accessor file that fans out into many component families through contentModifier plumbing",
+    "description": "content_modifier_helper_accessor.cpp is a cross-component fan-out node. It affects button, checkbox, checkboxgroup, datapanel, gauge, loadingprogress, progress, radio, rating, select, slider, textclock, texttimer, toggle families through shared contentModifier/menuItemContentModifier plumbing."
+  }
+}

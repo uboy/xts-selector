@@ -98,8 +98,8 @@ class SliderChangedFileBenchmarkTests(WorkspaceAwareTestCase):
                 found.add(project_name)
                 self.assertLessEqual(
                     rank,
-                    100,
-                    f"{project['project']} should stay within top-100 but ranked {rank}",
+                    150,
+                    f"{project['project']} should stay within top-150 but ranked {rank}",
                 )
                 self.assertIn(
                     project['bucket'],

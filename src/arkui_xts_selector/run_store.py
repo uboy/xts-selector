@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import socket
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +15,12 @@ from .workspace import discover_selector_repo_root
 RUN_STORE_ENV = "ARKUI_XTS_SELECTOR_RUN_STORE_ROOT"
 COMPLETED_RUN_STATUSES = {"completed", "completed_with_failures"}
 _LABEL_SANITIZE_RE = re.compile(r"[^a-z0-9._-]+")
+
+
+def _safe_hostname() -> str:
+    raw = socket.gethostname().lower().strip()
+    safe = re.sub(r"[^a-z0-9._-]", "-", raw)
+    return safe.strip("-.") or "unknown"
 
 
 @dataclass(frozen=True)
@@ -53,7 +60,8 @@ def create_run_session(
     root = (run_store_root or default_run_store_root(selector_repo_root)).resolve()
     label_key = normalize_run_label(label)
     session_timestamp = timestamp or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    run_dir = (root / label_key / session_timestamp).resolve()
+    hostname = _safe_hostname()
+    run_dir = (root / hostname / label_key / session_timestamp).resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
     return RunSession(
         label=label,

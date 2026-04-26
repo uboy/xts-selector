@@ -1,6 +1,8 @@
 # Suites that MUST appear for --symbol-query NavigationModifier.
 # Curated from live selector output on 2026-03-23. These are navigation-specific
 # suites, not broad common-attrs overlap.
+# Updated 2026-04-25: removed navigation2, multinavigation, navigation_api11/12 (dynamic)
+# because they do not import NavigationModifier; they use Navigation/NavDestination.
 
 ace_ets_module_ui/ace_ets_module_navigation_undefined_static
 ace_ets_module_ui/ace_ets_module_navigation/ace_ets_module_navigation_api11_static
@@ -12,7 +14,3 @@ ace_ets_module_ui/ace_ets_module_navigation/ace_ets_module_navigation_api16_stat
 ace_ets_module_ui/ace_ets_module_navigation/ace_ets_module_navigation_api18_static
 ace_ets_module_ui/ace_ets_module_navigation/ace_ets_module_navigation_nowear_api18_static
 ace_ets_module_ui/ace_ets_module_navigation/ace_ets_module_navigation_wear_api18_static
-ace_ets_module_ui/ace_ets_module_navigation/ace_ets_module_navigation2
-ace_ets_module_ui/ace_ets_module_navigation/ace_ets_module_navigation_api11
-ace_ets_module_ui/ace_ets_module_navigation/ace_ets_module_navigation_api12
-ace_ets_module_ui/ace_ets_module_navigation/ace_ets_module_multinavigation

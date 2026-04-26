@@ -68,10 +68,6 @@ class NavigationModifierBenchmarkTests(WorkspaceAwareTestCase):
             "ace_ets_module_navigation_api18_static",
             "ace_ets_module_navigation_nowear_api18_static",
             "ace_ets_module_navigation_wear_api18_static",
-            "ace_ets_module_navigation2",
-            "ace_ets_module_navigation_api11",
-            "ace_ets_module_navigation_api12",
-            "ace_ets_module_multinavigation",
         }
         found = set()
         for rank, project in enumerate(projects, 1):

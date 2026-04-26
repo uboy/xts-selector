@@ -11,6 +11,7 @@ This is impact analysis, not runtime coverage. It correlates:
 from __future__ import annotations
 
 import argparse
+from bisect import bisect_right
 import hashlib
 import json
 import math
@@ -52,7 +53,9 @@ from .built_artifacts import inspect_built_artifacts, load_built_artifact_index
 from .daily_prebuilt import (
     DEFAULT_DAILY_COMPONENT,
     DEFAULT_DAILY_CACHE_ROOT,
+    DEFAULT_FIRMWARE_CACHE_ROOT,
     DEFAULT_FIRMWARE_COMPONENT,
+    DEFAULT_SDK_CACHE_ROOT,
     DEFAULT_SDK_COMPONENT,
     PreparedDailyArtifact,
     PreparedDailyPrebuilt,
@@ -80,6 +83,10 @@ from .execution import (
     resolve_devices,
 )
 from .flashing import flash_image_bundle
+from .consumer_semantics import (
+    extract_consumer_semantics,
+    extract_typed_field_accesses as extract_typed_field_accesses_semantic,
+)
 from .run_store import (
     COMPLETED_RUN_STATUSES,
     RunSession,
@@ -222,16 +229,47 @@ DEFAULT_IMPORT_RE = re.compile(r"""import\s+([A-Za-z_][A-Za-z0-9_]*)\s+from\s+['
 IDENTIFIER_CALL_RE = re.compile(r"""\b([A-Z][A-Za-z0-9_]*)\s*\(""")
 MEMBER_CALL_RE = re.compile(r"""\.([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
 WORD_RE = re.compile(r"""\b[A-Za-z_][A-Za-z0-9_]{2,}\b""")
+PARAM_TYPE_RE = re.compile(r"""[\(,]\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([A-Z][A-Za-z0-9_]*)\b""")
+VAR_TYPE_RE = re.compile(r"""\b(?:const|let|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([A-Z][A-Za-z0-9_]*)\b""")
+MEMBER_ACCESS_RE = re.compile(r"""\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b(?!\s*\()""")
+TYPED_OBJECT_LITERAL_RE = re.compile(
+    r"""\b(?:const|let|var)\s+[A-Za-z_][A-Za-z0-9_]*\s*:\s*([A-Z][A-Za-z0-9_]*)\s*=\s*\{(?P<body>[^{}]*)\}""",
+    re.S,
+)
+OBJECT_LITERAL_FIELD_RE = re.compile(r"""\b([A-Za-z_][A-Za-z0-9_]*)\s*:""")
 OHOS_MODULE_RE = re.compile(r"""@ohos\.[A-Za-z0-9._]+""")
 CPP_IDENTIFIER_RE = re.compile(r"""\b[A-Z][A-Za-z0-9_]{2,}\b""")
 TYPE_MEMBER_CALL_RE = re.compile(r"""\b([A-Z][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
 EXPORT_CLASS_RE = re.compile(r"""\bexport\s+class\s+([A-Z][A-Za-z0-9_]*)\b""")
 EXPORT_INTERFACE_RE = re.compile(r"""\bexport\s+interface\s+([A-Z][A-Za-z0-9_]*)\b""")
+EXPORT_INTERFACE_BLOCK_RE = re.compile(
+    r"""\bexport\s+(?:declare\s+)?interface\s+([A-Z][A-Za-z0-9_]*)[^{]*\{(?P<body>.*?)\}""",
+    re.S,
+)
+INTERFACE_PROPERTY_RE = re.compile(r"""^\s*(?:readonly\s+)?([A-Za-z_][A-Za-z0-9_]*)\??\s*:\s*[^;{}]+;?\s*$""", re.M)
+INTERFACE_METHOD_RE = re.compile(r"""^\s*(?:readonly\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\([^;{}]*\)\s*:\s*[^;]+;?\s*$""", re.M)
 PUBLIC_METHOD_RE = re.compile(r"""\bpublic\s+(?:static\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
+UNIFIED_DIFF_HUNK_RE = re.compile(r"""^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@""", re.M)
 GENERATED_ACCESSOR_NAMESPACE_RE = re.compile(r"""GeneratedModifier::([A-Za-z_][A-Za-z0-9_]*)Accessor\b""")
 GET_ACCESSOR_RE = re.compile(r"""\bGet([A-Za-z_][A-Za-z0-9_]*)Accessor\s*\(""")
 PEER_INCLUDE_RE = re.compile(r"#include\s+\"[^\"]*/([a-z0-9_]+)_peer\.h\"")
 DYNAMIC_MODULE_RE = re.compile(r"""GetDynamicModule\("([A-Za-z0-9_]+)"\)""")
+DECLARE_INTERFACE_RE = re.compile(r"""\bdeclare\s+interface\s+([A-Z][A-Za-z0-9_]*)\b""")
+DECLARE_TYPE_RE = re.compile(r"""\bdeclare\s+(?:type|typedef)\s+([A-Z][A-Za-z0-9_]*)\b""")
+DECLARE_FUNCTION_RE = re.compile(r"""\bdeclare\s+function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
+DECLARE_MODULE_RE = re.compile(r"""declare\s+module\s+['"]([^'"]+)['"]""")
+TS_EXPORT_TYPE_RE = re.compile(r"""\bexport\s+(?:type|interface|class|const|function)\s+([A-Za-z_][A-Za-z0-9_]*)\b""")
+CPP_FUNCTION_DEF_RE = re.compile(
+    r"""(?:(?:const\s+)?(?:void|bool|int|auto|static|RefPtr|AceType|"""
+    r"""std::(?:optional|string|pair|shared_ptr|unique_ptr)|"""
+    r"""Color|Dimension|Offset|Size|Rect|PointF|Matrix4|Matrix44|"""
+    r"""std::pair|std::tuple|std::function|"""
+    r"""std::variant|std::monostate|std::any|"""
+    r"""Template\s*<[^>]*>|"""
+    r"""typename\s+\w+)\s+)?"""
+    r"""(\b[A-Z][A-Za-z0-9_]{2,}\b)\s*\("""
+)
+CPP_METHOD_DEF_RE = re.compile(r"""(\b[A-Z][A-Za-z0-9_]{2,})::([A-Z][A-Za-z0-9_]{2,})\s*\(""")
 TYPED_ATTRIBUTE_MODIFIER_RE = re.compile(r"""AttributeModifier<([A-Za-z_][A-Za-z0-9_]*)Attribute>""")
 EXTENDS_MODIFIER_RE = re.compile(r"""extends\s+([A-Za-z_][A-Za-z0-9_]*)Modifier\b""")
 HOOK_CONTENT_MODIFIER_RE = re.compile(r"""\bhook([A-Za-z0-9]+)ContentModifier\b""")
@@ -302,6 +340,8 @@ class RankingRulesConfig:
     planner_fallback_no_family_gain: float = 0.1
     rank_weight_power: float = 1.0
     rank_weight_floor: int = 1
+    family_fanout_limits: dict[str, dict[str, int]] = field(default_factory=dict)
+    precision_budget: dict[str, int] = field(default_factory=dict)
 
 
 def _normalize_token_set(values: Iterable[object]) -> set[str]:
@@ -391,6 +431,13 @@ def load_ranking_rules_config(path: Path | None) -> RankingRulesConfig:
         planner_fallback_no_family_gain=float(planner.get("fallback_no_family_gain", 0.1) or 0.0),
         rank_weight_power=float(planner.get("rank_weight_power", 1.0) or 1.0),
         rank_weight_floor=max(1, int(planner.get("rank_weight_floor", 1) or 1)),
+        family_fanout_limits={
+            str(k): {str(kk): int(vv) for kk, vv in dict(v).items()}
+            for k, v in dict(data.get("family_fanout_limits", {})).items()
+        },
+        precision_budget={
+            str(k): int(v) for k, v in dict(data.get("precision_budget", {})).items()
+        },
     )
 
 
@@ -661,11 +708,25 @@ def coverage_family_key(token: str) -> str:
     elif normalized in COVERAGE_FAMILY_GROUP_OVERRIDES:
         canonical = normalized
     else:
-        return ""
+        # Fallback for unregistered tokens: allow them as family keys only if
+        # they look like reasonable component names (not path concatenations).
+        _MAX_FAMILY_TOKEN_LEN = 18
+        _PATH_NOISE_PREFIXES = ("arkts", "static", "declarative")
+        if len(normalized) > _MAX_FAMILY_TOKEN_LEN or any(normalized.startswith(p) for p in _PATH_NOISE_PREFIXES):
+            return ""
+        canonical = normalized
     grouped = COVERAGE_FAMILY_GROUP_OVERRIDES.get(canonical, canonical)
     if not grouped or grouped in GENERIC_COVERAGE_TOKENS:
         return ""
     return grouped
+
+
+def is_registered_family_token(token: str) -> bool:
+    """Return True if the token is a known, registered family key (not a fallback)."""
+    normalized = compact_token(token)
+    if not normalized or normalized in GENERIC_COVERAGE_TOKENS:
+        return False
+    return normalized in FAMILY_TOKEN_ALIAS_INDEX or normalized in COVERAGE_FAMILY_GROUP_OVERRIDES
 
 
 def capability_family_key(capability: str) -> str:
@@ -743,6 +804,12 @@ GENERIC_PUBLIC_METHOD_HINTS = {
     "fromptr",
     "getfinalizer",
     "getpeer",
+}
+GENERIC_TYPED_FIELD_NAMES = {"x", "y", "type"}
+STRUCTURAL_TYPED_CALLBACK_TYPES = {
+    compact_token("BaseEvent"),
+    compact_token("Layoutable"),
+    compact_token("Measurable"),
 }
 
 
@@ -903,7 +970,7 @@ def should_keep_ets_signal_name(
     family_token = related_signal_family_token(name)
     if not family_token:
         return False
-    if family_token in source_families or coverage_family_key(family_token):
+    if family_token in source_families or is_registered_family_token(family_token):
         return True
     if coverage_capability_key(family_token) or coverage_capability_key(base_token):
         return True
@@ -946,15 +1013,26 @@ def build_source_profile(
         raw_tokens.update(path_component_tokens(path_for_tokens))
     family_keys = sorted(extract_coverage_family_keys(raw_tokens))
     capability_keys = sorted(extract_coverage_capability_keys(raw_tokens))
+    type_hint_keys = sorted(extract_type_hint_keys(signals.get("type_hints", set())))
+    member_hint_keys = sorted(extract_member_hint_keys(signals.get("member_hints", set())))
     if capability_keys and not family_keys:
         family_keys = sorted({capability_family_key(item) for item in capability_keys if capability_family_key(item)})
-    focus_tokens = sorted(extract_focus_tokens(raw_tokens))
+    focus_tokens = sorted(
+        extract_focus_tokens(
+            raw_tokens
+            | set(type_hint_keys)
+            | {item.partition(".")[0] for item in member_hint_keys}
+            | {item.partition(".")[2] for item in member_hint_keys if "." in item}
+        )
+    )
     return {
         "key": f"{source_type}:{source_value}",
         "type": source_type,
         "value": source_value,
         "family_keys": family_keys,
         "capability_keys": capability_keys,
+        "type_hint_keys": type_hint_keys,
+        "member_hint_keys": member_hint_keys,
         "focus_tokens": focus_tokens,
         "fallback_only": not bool(family_keys or capability_keys),
     }
@@ -1320,6 +1398,313 @@ def suite_source_capability_representative_scores(
     return scores
 
 
+def extract_type_hint_keys(values: Iterable[str]) -> set[str]:
+    keys: set[str] = set()
+    for value in values:
+        key = compact_token(value)
+        if (
+            key
+            and key not in GENERIC_COVERAGE_TOKENS
+            and key not in STRUCTURAL_TYPED_CALLBACK_TYPES
+        ):
+            keys.add(key)
+    return keys
+
+
+def normalize_member_hint(value: str) -> str:
+    owner, separator, member = str(value or "").partition(".")
+    owner_token = compact_token(owner)
+    member_token = compact_token(member)
+    if not separator or not owner_token or not member_token:
+        return ""
+    if owner_token in STRUCTURAL_TYPED_CALLBACK_TYPES or member_token in GENERIC_TYPED_FIELD_NAMES:
+        return ""
+    return f"{owner_token}.{member_token}"
+
+
+def extract_member_hint_keys(values: Iterable[str]) -> set[str]:
+    keys: set[str] = set()
+    for value in values:
+        normalized = normalize_member_hint(str(value))
+        if normalized:
+            keys.add(normalized)
+    return keys
+
+
+def _typed_owner_tokens(values: Iterable[str]) -> set[str]:
+    owners: set[str] = set()
+    for value in values:
+        owner, _separator, _member = str(value or "").partition(".")
+        owner_token = compact_token(owner)
+        if owner_token:
+            owners.add(owner_token)
+    return owners
+
+
+def _typed_member_tokens(values: Iterable[str]) -> set[str]:
+    tokens: set[str] = set()
+    for value in values:
+        normalized = normalize_member_hint(str(value))
+        if normalized:
+            tokens.add(normalized)
+    return tokens
+
+
+def extract_exported_type_names(
+    text: str,
+    *,
+    changed_ranges: Iterable[tuple[int, int]] | None = None,
+) -> set[str]:
+    exported: set[str] = set()
+    normalized_ranges = merge_changed_ranges(changed_ranges)
+    line_offsets = build_line_start_offsets(text) if normalized_ranges else []
+    for pattern in (EXPORT_CLASS_RE, EXPORT_INTERFACE_RE):
+        for match in pattern.finditer(text):
+            if normalized_ranges and not span_overlaps_changed_ranges(
+                match.start(),
+                match.end(),
+                line_offsets=line_offsets,
+                changed_ranges=normalized_ranges,
+            ):
+                continue
+            exported.add(match.group(1))
+    return exported
+
+
+def extract_exported_interface_member_hints(
+    text: str,
+    source_families: set[str],
+    *,
+    changed_ranges: Iterable[tuple[int, int]] | None = None,
+) -> set[str]:
+    hints: set[str] = set()
+    normalized_ranges = merge_changed_ranges(changed_ranges)
+    line_offsets = build_line_start_offsets(text) if normalized_ranges else []
+    for interface_match in EXPORT_INTERFACE_BLOCK_RE.finditer(text):
+        owner = interface_match.group(1)
+        body = interface_match.group("body")
+        body_offset = interface_match.start("body")
+        for property_match in INTERFACE_PROPERTY_RE.finditer(body):
+            if normalized_ranges and not span_overlaps_changed_ranges(
+                body_offset + property_match.start(),
+                body_offset + property_match.end(),
+                line_offsets=line_offsets,
+                changed_ranges=normalized_ranges,
+            ):
+                continue
+            member_name = property_match.group(1)
+            normalized = normalize_member_hint(f"{owner}.{member_name}")
+            if normalized:
+                hints.add(f"{owner}.{member_name}")
+        for method_match in INTERFACE_METHOD_RE.finditer(body):
+            method_name = method_match.group(1)
+            if compact_token(method_name) in GENERIC_PUBLIC_METHOD_HINTS:
+                continue
+            if normalized_ranges and not span_overlaps_changed_ranges(
+                body_offset + method_match.start(),
+                body_offset + method_match.end(),
+                line_offsets=line_offsets,
+                changed_ranges=normalized_ranges,
+            ):
+                continue
+            normalized = normalize_member_hint(f"{owner}.{method_name}")
+            if normalized:
+                hints.add(f"{owner}.{method_name}")
+    return hints
+
+
+def infer_project_type_hint_profile(
+    file_hits: list[tuple[int, TestFileIndex, list[str]]],
+    signals: dict[str, set[str]],
+) -> dict[str, object]:
+    source_type_hint_keys = extract_type_hint_keys(signals.get("type_hints", set()))
+    if not source_type_hint_keys:
+        return {
+            "type_hint_keys": [],
+            "direct_type_hint_keys": [],
+            "focus_token_counts": {},
+        }
+
+    matched_type_hints: set[str] = set()
+    direct_type_hints: set[str] = set()
+    focus_token_counts: dict[str, int] = {}
+    for _file_score, test_file, _reasons in file_hits:
+        related_tokens = {
+            compact_token(item)
+            for item in (
+                set(test_file.imported_symbols)
+                | set(test_file.identifier_calls)
+                | set(test_file.words)
+            )
+            if compact_token(item)
+        }
+        related_tokens.update(_typed_owner_tokens(test_file.type_member_calls))
+        direct_tokens = _typed_owner_tokens(test_file.typed_field_accesses)
+        related_tokens.update(direct_tokens)
+        for type_hint_key in source_type_hint_keys:
+            if type_hint_key in related_tokens:
+                matched_type_hints.add(type_hint_key)
+                focus_token_counts[type_hint_key] = focus_token_counts.get(type_hint_key, 0) + 1
+            if type_hint_key in direct_tokens:
+                direct_type_hints.add(type_hint_key)
+                focus_token_counts[type_hint_key] = focus_token_counts.get(type_hint_key, 0) + 2
+    return {
+        "type_hint_keys": sorted(matched_type_hints),
+        "direct_type_hint_keys": sorted(direct_type_hints),
+        "focus_token_counts": focus_token_counts,
+    }
+
+
+def infer_project_member_hint_profile(
+    file_hits: list[tuple[int, TestFileIndex, list[str]]],
+    signals: dict[str, set[str]],
+) -> dict[str, object]:
+    source_member_hint_keys = extract_member_hint_keys(signals.get("member_hints", set()))
+    if not source_member_hint_keys:
+        return {
+            "member_hint_keys": [],
+            "direct_member_hint_keys": [],
+            "focus_token_counts": {},
+        }
+
+    matched_member_hints: set[str] = set()
+    direct_member_hints: set[str] = set()
+    focus_token_counts: dict[str, int] = {}
+    for _file_score, test_file, _reasons in file_hits:
+        direct_members = _typed_member_tokens(test_file.typed_field_accesses)
+        related_members = direct_members | _typed_member_tokens(test_file.type_member_calls)
+        for member_hint_key in source_member_hint_keys:
+            if member_hint_key in related_members:
+                matched_member_hints.add(member_hint_key)
+                focus_token_counts[member_hint_key] = focus_token_counts.get(member_hint_key, 0) + 1
+            if member_hint_key in direct_members:
+                direct_member_hints.add(member_hint_key)
+                focus_token_counts[member_hint_key] = focus_token_counts.get(member_hint_key, 0) + 2
+    return {
+        "member_hint_keys": sorted(matched_member_hints),
+        "direct_member_hint_keys": sorted(direct_member_hints),
+        "focus_token_counts": focus_token_counts,
+    }
+
+
+def suite_source_type_hint_gains(
+    project_entry: dict[str, object],
+    source_profile: dict[str, object],
+) -> dict[str, float]:
+    source_type_hints = set(source_profile.get("type_hint_keys", []))
+    suite_type_hints = set(project_entry.get("type_hint_keys", []))
+    direct_suite_type_hints = set(project_entry.get("direct_type_hint_keys", []))
+    if not source_type_hints:
+        return {}
+
+    scope_multiplier = SCOPE_GAIN_MULTIPLIER.get(str(project_entry.get("scope_tier", "focused")), 1.0)
+    bucket_multiplier = BUCKET_GAIN_MULTIPLIER.get(str(project_entry.get("bucket", "possible related")), 0.65)
+    direct_overlap = source_type_hints & direct_suite_type_hints
+    related_overlap = (source_type_hints & suite_type_hints) - direct_overlap
+
+    gains: dict[str, float] = {}
+    for type_hint_key in direct_overlap:
+        gains[type_hint_key] = round(
+            ACTIVE_RANKING_RULES.family_gain_direct_base * 1.15 * scope_multiplier * bucket_multiplier,
+            6,
+        )
+    for type_hint_key in related_overlap:
+        gains[type_hint_key] = round(
+            ACTIVE_RANKING_RULES.family_gain_related_base * 0.95 * scope_multiplier * bucket_multiplier,
+            6,
+        )
+    return gains
+
+
+def suite_source_member_hint_gains(
+    project_entry: dict[str, object],
+    source_profile: dict[str, object],
+) -> dict[str, float]:
+    source_member_hints = set(source_profile.get("member_hint_keys", []))
+    suite_member_hints = set(project_entry.get("member_hint_keys", []))
+    direct_suite_member_hints = set(project_entry.get("direct_member_hint_keys", []))
+    if not source_member_hints:
+        return {}
+
+    scope_multiplier = SCOPE_GAIN_MULTIPLIER.get(str(project_entry.get("scope_tier", "focused")), 1.0)
+    bucket_multiplier = BUCKET_GAIN_MULTIPLIER.get(str(project_entry.get("bucket", "possible related")), 0.65)
+    direct_overlap = source_member_hints & direct_suite_member_hints
+    related_overlap = (source_member_hints & suite_member_hints) - direct_overlap
+
+    gains: dict[str, float] = {}
+    for member_hint_key in direct_overlap:
+        gains[member_hint_key] = round(
+            ACTIVE_RANKING_RULES.family_gain_direct_base * 1.35 * scope_multiplier * bucket_multiplier,
+            6,
+        )
+    for member_hint_key in related_overlap:
+        gains[member_hint_key] = round(
+            ACTIVE_RANKING_RULES.family_gain_related_base * 1.15 * scope_multiplier * bucket_multiplier,
+            6,
+        )
+    return gains
+
+
+def suite_source_member_hint_representative_scores(
+    project_entry: dict[str, object],
+    source_profile: dict[str, object],
+) -> dict[str, float]:
+    source_member_hints = set(source_profile.get("member_hint_keys", []))
+    suite_member_hints = set(project_entry.get("member_hint_keys", []))
+    direct_suite_member_hints = set(project_entry.get("direct_member_hint_keys", []))
+    focus_token_counts = {
+        str(key): int(value)
+        for key, value in dict(project_entry.get("member_hint_focus_counts") or {}).items()
+    }
+    if not source_member_hints:
+        return {}
+
+    scores: dict[str, float] = {}
+    direct_overlap = source_member_hints & direct_suite_member_hints
+    related_overlap = (source_member_hints & suite_member_hints) - direct_overlap
+    for member_hint_key in direct_overlap:
+        scores[member_hint_key] = round(
+            2.5 + min(1.5, focus_token_counts.get(member_hint_key, 0) * 0.15),
+            6,
+        )
+    for member_hint_key in related_overlap:
+        scores[member_hint_key] = round(
+            1.5 + min(1.0, focus_token_counts.get(member_hint_key, 0) * 0.1),
+            6,
+        )
+    return scores
+
+
+def suite_source_type_hint_representative_scores(
+    project_entry: dict[str, object],
+    source_profile: dict[str, object],
+) -> dict[str, float]:
+    source_type_hints = set(source_profile.get("type_hint_keys", []))
+    suite_type_hints = set(project_entry.get("type_hint_keys", []))
+    direct_suite_type_hints = set(project_entry.get("direct_type_hint_keys", []))
+    focus_token_counts = {
+        str(key): int(value)
+        for key, value in dict(project_entry.get("type_hint_focus_counts") or {}).items()
+    }
+    if not source_type_hints:
+        return {}
+
+    scores: dict[str, float] = {}
+    direct_overlap = source_type_hints & direct_suite_type_hints
+    related_overlap = (source_type_hints & suite_type_hints) - direct_overlap
+    for type_hint_key in direct_overlap:
+        scores[type_hint_key] = round(
+            2.0 + min(1.0, focus_token_counts.get(type_hint_key, 0) * 0.15),
+            6,
+        )
+    for type_hint_key in related_overlap:
+        scores[type_hint_key] = round(
+            1.0 + min(0.6, focus_token_counts.get(type_hint_key, 0) * 0.1),
+            6,
+        )
+    return scores
+
+
 def suite_source_focus_token_overlap(
     project_entry: dict[str, object],
     source_profile: dict[str, object],
@@ -1527,6 +1912,8 @@ def default_changed_file_exclusions_file() -> Path | None:
 def load_mapping_config(
     path_rules_file: Path | None,
     composite_mappings_file: Path | None,
+    *,
+    lineage_auto_alias: dict[str, list[str]] | None = None,
 ) -> MappingConfig:
     path_rules_data = load_json_if_exists(path_rules_file)
     composite_data = load_json_if_exists(composite_mappings_file)
@@ -1538,6 +1925,17 @@ def load_mapping_config(
         pattern_alias = merge_mapping_dict(PATTERN_ALIAS, config_pattern_alias)
     else:
         pattern_alias = dict(PATTERN_ALIAS)
+    # Merge auto-derived aliases from lineage map as fallback (lower priority).
+    # Manual entries always take precedence; auto entries fill gaps.
+    if lineage_auto_alias:
+        for family, symbols in lineage_auto_alias.items():
+            if family not in pattern_alias:
+                pattern_alias[family] = list(symbols)
+            else:
+                existing = set(pattern_alias[family])
+                for sym in symbols:
+                    if sym not in existing:
+                        pattern_alias[family] = pattern_alias[family] + [sym]
     composite_mappings = merge_mapping_dict(DEFAULT_COMPOSITE_MAPPINGS, composite_data.get("composite_mappings", {}))
     return MappingConfig(
         special_path_rules=special_path_rules,
@@ -1587,6 +1985,8 @@ class AppConfig:
     git_host_api_url: str | None = None
     git_host_token: str | None = None
     git_host_config_path: Path | None = None
+    server_host: str | None = None
+    server_user: str | None = None
     device: str | None = None
     devices: list[str] = field(default_factory=list)
     gitcode_api_url: str | None = None
@@ -1639,8 +2039,11 @@ class TestFileIndex:
     identifier_calls: set[str] = field(default_factory=set)
     member_calls: set[str] = field(default_factory=set)
     type_member_calls: set[str] = field(default_factory=set)
+    typed_field_accesses: set[str] = field(default_factory=set)
     typed_modifier_bases: set[str] = field(default_factory=set)
     words: set[str] = field(default_factory=set)
+    # Phase 5: evidence kind tracking
+    evidence_kinds: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -1651,8 +2054,10 @@ class TestFileIndex:
             "identifier_calls": sorted(self.identifier_calls),
             "member_calls": sorted(self.member_calls),
             "type_member_calls": sorted(self.type_member_calls),
+            "typed_field_accesses": sorted(self.typed_field_accesses),
             "typed_modifier_bases": sorted(self.typed_modifier_bases),
             "words": sorted(self.words),
+            "evidence_kinds": dict(self.evidence_kinds),
         }
 
     @classmethod
@@ -1665,8 +2070,10 @@ class TestFileIndex:
             identifier_calls=set(data["identifier_calls"]),
             member_calls=set(data["member_calls"]),
             type_member_calls=set(data.get("type_member_calls", [])),
+            typed_field_accesses=set(data.get("typed_field_accesses", [])),
             typed_modifier_bases=set(data.get("typed_modifier_bases", [])),
             words=set(data["words"]),
+            evidence_kinds=data.get("evidence_kinds", {}),
         )
 
 
@@ -1688,11 +2095,14 @@ class TestProjectIndex:
     search_identifier_call_tokens: set[str] = field(default_factory=set)
     search_member_call_tokens: set[str] = field(default_factory=set)
     search_type_owner_tokens: set[str] = field(default_factory=set)
+    search_typed_field_types: set[str] = field(default_factory=set)
+    search_exact_member_keys: set[str] = field(default_factory=set)
     search_typed_modifier_bases: set[str] = field(default_factory=set)
     search_words: set[str] = field(default_factory=set)
     search_path_tokens: set[str] = field(default_factory=set)
     search_project_path_compact: str = ""
     search_file_path_compacts: list[str] = field(default_factory=list)
+    search_evidence_kinds: dict[str, str] = field(default_factory=dict)
     _serialized_files: list[dict] | None = field(default=None, repr=False, compare=False)
 
     def to_dict(self) -> dict:
@@ -1715,11 +2125,14 @@ class TestProjectIndex:
                 "identifier_call_tokens": sorted(self.search_identifier_call_tokens),
                 "member_call_tokens": sorted(self.search_member_call_tokens),
                 "type_owner_tokens": sorted(self.search_type_owner_tokens),
+                "typed_field_types": sorted(self.search_typed_field_types),
+                "exact_member_keys": sorted(self.search_exact_member_keys),
                 "typed_modifier_bases": sorted(self.search_typed_modifier_bases),
                 "words": sorted(self.search_words),
                 "path_tokens": sorted(self.search_path_tokens),
                 "project_path_compact": self.search_project_path_compact,
                 "file_path_compacts": list(self.search_file_path_compacts),
+                "evidence_kinds": dict(self.search_evidence_kinds),
             }
         return payload
 
@@ -1754,11 +2167,14 @@ class TestProjectIndex:
             project.search_identifier_call_tokens = set(summary.get("identifier_call_tokens", []))
             project.search_member_call_tokens = set(summary.get("member_call_tokens", []))
             project.search_type_owner_tokens = set(summary.get("type_owner_tokens", []))
+            project.search_typed_field_types = set(summary.get("typed_field_types", []))
+            project.search_exact_member_keys = set(summary.get("exact_member_keys", []))
             project.search_typed_modifier_bases = set(summary.get("typed_modifier_bases", []))
             project.search_words = set(summary.get("words", []))
             project.search_path_tokens = set(summary.get("path_tokens", []))
             project.search_project_path_compact = str(summary.get("project_path_compact", ""))
             project.search_file_path_compacts = [str(item) for item in summary.get("file_path_compacts", [])]
+            project.search_evidence_kinds = dict(summary.get("evidence_kinds", {}))
         return project
 
 
@@ -1817,8 +2233,20 @@ def ensure_project_search_summary(project: TestProjectIndex) -> TestProjectIndex
             owner_token = compact_token(owner)
             if owner_token:
                 project.search_type_owner_tokens.add(owner_token)
+            normalized = normalize_member_hint(entry)
+            if normalized:
+                project.search_exact_member_keys.add(normalized)
+        for entry in file_index.typed_field_accesses:
+            owner, _separator, _field = entry.partition(".")
+            owner_token = compact_token(owner)
+            if owner_token:
+                project.search_typed_field_types.add(owner_token)
+            normalized = normalize_member_hint(entry)
+            if normalized:
+                project.search_exact_member_keys.add(normalized)
         project.search_typed_modifier_bases.update(file_index.typed_modifier_bases)
         project.search_words.update(compact_token(word) for word in file_index.words if compact_token(word))
+        project.search_evidence_kinds.update(file_index.evidence_kinds)
 
     project.search_path_tokens = {token for token in path_tokens if token}
     project.search_project_path_compact = project_path_compact
@@ -1837,8 +2265,18 @@ def ensure_project_files_loaded(project: TestProjectIndex) -> TestProjectIndex:
 def project_matches_exact_api_prefilter(project: TestProjectIndex, signals: dict[str, set[str]]) -> bool:
     ensure_project_search_summary(project)
     exact_api_entities = {str(item) for item in signals.get("exact_api_prefilter_entities", set()) if "." in str(item)}
-    if not exact_api_entities:
+    exact_member_hints = extract_member_hint_keys(signals.get("member_hints", set()))
+    if not exact_api_entities and not exact_member_hints:
         return False
+
+    exact_member_keys = set(project.search_exact_member_keys)
+    for member_hint in sorted(exact_member_hints):
+        if member_hint in exact_member_keys:
+            return True
+    for api_entity in sorted(exact_api_entities):
+        normalized = normalize_member_hint(api_entity)
+        if normalized and normalized in exact_member_keys:
+            return True
 
     type_tokens = (
         set(project.search_type_owner_tokens)
@@ -1866,6 +2304,7 @@ def project_might_match(
     ensure_project_search_summary(project)
     exact_api_prefilter = (
         bool(signals.get("exact_api_prefilter_entities"))
+        or bool(extract_member_hint_keys(signals.get("member_hints", set())))
         or any("." in item for item in signals.get("symbols", set()))
     ) if exact_api_prefilter_mode is None else bool(exact_api_prefilter_mode)
 
@@ -1898,6 +2337,7 @@ def project_might_match(
             hint_token in project.search_type_owner_tokens
             or hint_token in project.search_imported_symbol_tokens
             or hint_token in project.search_identifier_call_tokens
+            or hint_token in project.search_typed_field_types
         ):
             return True
 
@@ -1910,6 +2350,7 @@ def project_might_match(
             or symbol_token in project.search_identifier_call_tokens
             or symbol_token in project.search_member_call_tokens
             or symbol_token in project.search_type_owner_tokens
+            or symbol_token in project.search_typed_field_types
             or symbol_token in project.search_words
         ):
             return True
@@ -1917,6 +2358,13 @@ def project_might_match(
             base_token = compact_token(symbol[:-8])
             if base_token and base_token in project.search_typed_modifier_bases:
                 return True
+
+    # Weak symbol fallback — only check if no strong match yet
+    weak_symbols = signals.get("weak_symbols", set())
+    if weak_symbols:
+        project_identifier_calls = project.search_identifier_calls
+        if weak_symbols & project_identifier_calls:
+            return True
 
     return False
 
@@ -2006,6 +2454,97 @@ def parse_changed_ranges(
         end = max(start, int(end_raw))
         result.setdefault(target_path, []).append((start, end))
     return result
+
+
+def merge_changed_ranges(ranges: Iterable[tuple[int, int]] | None) -> list[tuple[int, int]]:
+    normalized: list[tuple[int, int]] = []
+    for start, end in ranges or []:
+        start_line = max(1, int(start))
+        end_line = max(start_line, int(end))
+        normalized.append((start_line, end_line))
+    if not normalized:
+        return []
+    normalized.sort()
+    merged = [normalized[0]]
+    for start, end in normalized[1:]:
+        prev_start, prev_end = merged[-1]
+        if start <= prev_end + 1:
+            merged[-1] = (prev_start, max(prev_end, end))
+        else:
+            merged.append((start, end))
+    return merged
+
+
+def merge_changed_range_maps(
+    *range_maps: dict[Path, list[tuple[int, int]]] | None,
+) -> dict[Path, list[tuple[int, int]]]:
+    merged: dict[Path, list[tuple[int, int]]] = {}
+    for range_map in range_maps:
+        for path, ranges in (range_map or {}).items():
+            merged.setdefault(path.resolve(), []).extend(list(ranges or []))
+    return {path: merge_changed_ranges(ranges) for path, ranges in merged.items()}
+
+
+def build_line_start_offsets(text: str) -> list[int]:
+    offsets = [0]
+    for match in re.finditer(r"\n", text):
+        offsets.append(match.end())
+    return offsets
+
+
+def offset_to_line_number(offsets: list[int], offset: int) -> int:
+    return max(1, bisect_right(offsets, max(0, offset)))
+
+
+def span_overlaps_changed_ranges(
+    span_start: int,
+    span_end: int,
+    *,
+    line_offsets: list[int],
+    changed_ranges: Iterable[tuple[int, int]] | None,
+) -> bool:
+    normalized_ranges = merge_changed_ranges(changed_ranges)
+    if not normalized_ranges:
+        return True
+    start_line = offset_to_line_number(line_offsets, span_start)
+    end_line = offset_to_line_number(line_offsets, max(span_start, span_end - 1))
+    return any(not (end_line < range_start or start_line > range_end) for range_start, range_end in normalized_ranges)
+
+
+def extract_text_in_changed_ranges(text: str, changed_ranges: list[tuple[int, int]] | None) -> str:
+    if not changed_ranges:
+        return text
+    lines = text.split("\n")
+    selected: list[str] = []
+    for start, end in changed_ranges:
+        for i in range(max(0, start - 1), min(len(lines), end)):
+            selected.append(lines[i])
+    return "\n".join(selected)
+
+
+def parse_unified_diff_changed_ranges(patch_text: str) -> list[tuple[int, int]]:
+    ranges: list[tuple[int, int]] = []
+    for start_raw, count_raw in UNIFIED_DIFF_HUNK_RE.findall(str(patch_text or "")):
+        start = max(1, int(start_raw))
+        count = int(count_raw) if count_raw else 1
+        if count <= 0:
+            ranges.append((start, start))
+            continue
+        ranges.append((start, start + count - 1))
+    return merge_changed_ranges(ranges)
+
+
+def extract_patch_text_from_pr_file_item(item: dict[str, object]) -> str:
+    for key in ("patch", "diff_hunk", "diff", "changes"):
+        raw_value = item.get(key)
+        if isinstance(raw_value, str) and raw_value.strip():
+            return raw_value
+        if isinstance(raw_value, dict):
+            for nested_key in ("diff", "diff_hunk", "patch", "changes"):
+                nested_value = raw_value.get(nested_key)
+                if isinstance(nested_value, str) and nested_value.strip():
+                    return nested_value
+    return ""
 
 
 def load_changed_file_exclusion_config(path_value: Path | None) -> ChangedFileExclusionConfig:
@@ -2341,8 +2880,47 @@ def fetch_pr_changed_files_via_api(
     pr_ref: str,
     repo_root: Path,
 ) -> list[Path]:
+    changed_files, _changed_ranges = fetch_pr_changed_files_and_ranges_via_api(
+        api_kind=api_kind,
+        api_url=api_url,
+        token=token,
+        owner=owner,
+        repo=repo,
+        pr_ref=pr_ref,
+        repo_root=repo_root,
+    )
+    return changed_files
+
+
+def fetch_pr_changed_files_and_ranges_via_api(
+    api_kind: str,
+    api_url: str,
+    token: str,
+    owner: str,
+    repo: str,
+    pr_ref: str,
+    repo_root: Path,
+) -> tuple[list[Path], dict[Path, list[tuple[int, int]]]]:
     pr_number = parse_pr_number(pr_ref)
-    changed_files: list[str] = []
+    changed_files: list[Path] = []
+    changed_ranges_by_file: dict[Path, list[tuple[int, int]]] = {}
+
+    def _append_item(path_value: str | None, item: dict[str, object]) -> None:
+        if not path_value:
+            return
+        normalized_paths = normalize_changed_files([path_value], base_roots=[repo_root])
+        if not normalized_paths:
+            return
+        normalized_path = normalized_paths[0]
+        changed_files.append(normalized_path)
+        patch_text = extract_patch_text_from_pr_file_item(item)
+        parsed_ranges = parse_unified_diff_changed_ranges(patch_text)
+        if parsed_ranges:
+            resolved_path = normalized_path.resolve()
+            changed_ranges_by_file[resolved_path] = merge_changed_ranges(
+                list(changed_ranges_by_file.get(resolved_path, [])) + parsed_ranges
+            )
+
     if api_kind == "codehub":
         project_id = urllib.parse.quote(f"{owner}/{repo}", safe="")
         data = fetch_git_host_api_json(
@@ -2361,9 +2939,10 @@ def fetch_pr_changed_files_via_api(
         for item in data:
             if not isinstance(item, dict):
                 continue
-            path_value = item.get("new_path") or item.get("old_path") or item.get("filename")
-            if path_value:
-                changed_files.append(path_value)
+            _append_item(
+                item.get("new_path") or item.get("old_path") or item.get("filename"),
+                item,
+            )
     else:
         data = fetch_git_host_api_json(api_kind, api_url, token, f"/api/v5/repos/{owner}/{repo}/pulls/{pr_number}/files")
         if isinstance(data, dict):
@@ -2373,13 +2952,32 @@ def fetch_pr_changed_files_via_api(
         for item in data:
             if not isinstance(item, dict):
                 continue
-            path_value = item.get("filename") or item.get("new_path") or item.get("old_path")
-            if path_value:
-                changed_files.append(path_value)
-    return normalize_changed_files(changed_files, base_roots=[repo_root])
+            _append_item(
+                item.get("filename") or item.get("new_path") or item.get("old_path"),
+                item,
+            )
+
+    deduped_files: list[Path] = []
+    seen_paths: set[Path] = set()
+    for changed_file in changed_files:
+        resolved = changed_file.resolve()
+        if resolved in seen_paths:
+            continue
+        deduped_files.append(changed_file)
+        seen_paths.add(resolved)
+    return deduped_files, changed_ranges_by_file
 
 
 def resolve_pr_changed_files(app_config: AppConfig, pr_ref: str, pr_source: str) -> list[Path]:
+    changed_files, _changed_ranges = resolve_pr_changed_files_with_ranges(app_config, pr_ref, pr_source)
+    return changed_files
+
+
+def resolve_pr_changed_files_with_ranges(
+    app_config: AppConfig,
+    pr_ref: str,
+    pr_source: str,
+) -> tuple[list[Path], dict[Path, list[tuple[int, int]]]]:
     owner_repo = resolve_pr_owner_repo(pr_ref, app_config.git_repo_root, app_config.git_remote)
     api_error: RuntimeError | None = None
     if pr_source in ("auto", "api"):
@@ -2400,7 +2998,7 @@ def resolve_pr_changed_files(app_config: AppConfig, pr_ref: str, pr_source: str)
                     repo=owner_repo[1],
                     pr_ref=pr_ref,
                 )
-                return fetch_pr_changed_files_via_api(
+                return fetch_pr_changed_files_and_ranges_via_api(
                     api_kind=api_kind,
                     api_url=api_url,
                     token=token,
@@ -2420,43 +3018,35 @@ def resolve_pr_changed_files(app_config: AppConfig, pr_ref: str, pr_source: str)
             remote=app_config.git_remote,
             base_branch=app_config.git_base_branch,
             pr_ref=pr_ref,
-        )
+        ), {}
     except RuntimeError as exc:
         if api_error is not None and pr_source == "auto":
             raise RuntimeError(f"api failed: {api_error}; git failed: {exc}") from exc
         raise
 
 
+def extract_typed_field_accesses(text: str) -> set[str]:
+    # Keep this wrapper for backwards compatibility with existing tests and
+    # call sites while routing extraction to the semantic parser module.
+    return extract_typed_field_accesses_semantic(text)
+
+
 def parse_test_file(path: Path) -> TestFileIndex:
     text = read_text(path)
     surface_profile = classify_xts_file_surface(path, text)
-    imported_symbols: set[str] = set()
-    typed_modifier_bases: set[str] = set()
-    for match in IMPORT_BINDING_RE.finditer(text):
-        for part in match.group(1).split(","):
-            token = part.strip().split(" as ", 1)[0].strip()
-            if token:
-                imported_symbols.add(token)
-    for match in DEFAULT_IMPORT_RE.finditer(text):
-        imported_symbols.add(match.group(1))
-    for raw in TYPED_ATTRIBUTE_MODIFIER_RE.findall(text):
-        base = compact_token(raw)
-        if base:
-            typed_modifier_bases.add(base)
-    for raw in EXTENDS_MODIFIER_RE.findall(text):
-        base = compact_token(raw)
-        if base:
-            typed_modifier_bases.add(base)
+    semantics = extract_consumer_semantics(text)
     return TestFileIndex(
         relative_path=repo_rel(path),
         surface=surface_profile.surface,
-        imports=set(IMPORT_RE.findall(text)),
-        imported_symbols=imported_symbols,
-        identifier_calls=set(IDENTIFIER_CALL_RE.findall(text)),
-        member_calls=set(MEMBER_CALL_RE.findall(text)),
-        type_member_calls={f"{owner}.{member}" for owner, member in TYPE_MEMBER_CALL_RE.findall(text)},
-        typed_modifier_bases=typed_modifier_bases,
-        words={word.lower() for word in WORD_RE.findall(text)},
+        imports=semantics.imports,
+        imported_symbols=semantics.imported_symbols,
+        identifier_calls=semantics.identifier_calls,
+        member_calls=semantics.member_calls,
+        type_member_calls=semantics.type_member_calls,
+        typed_field_accesses=semantics.typed_field_accesses,
+        typed_modifier_bases=semantics.typed_modifier_bases,
+        words=semantics.words,
+        evidence_kinds=semantics.evidence_kinds,
     )
 
 
@@ -2712,7 +3302,7 @@ def _projects_from_cache_payload(cache_data: dict[str, object], *, lazy_files: b
 
 
 def load_or_build_projects(xts_root: Path, cache_file: Path | None) -> tuple[list[TestProjectIndex], bool]:
-    CACHE_VERSION = 4
+    CACHE_VERSION = 5
 
     if cache_file:
         cache_file.parent.mkdir(parents=True, exist_ok=True)
@@ -2987,6 +3577,9 @@ def infer_signals(
     sdk_index: SdkIndex,
     content_index: ContentModifierIndex,
     mapping_config: MappingConfig,
+    changed_ranges: Iterable[tuple[int, int]] | None = None,
+    api_lineage_map: ApiLineageMap | None = None,
+    repo_root: Path | None = None,
 ) -> dict[str, set[str]]:
     rel = repo_rel(changed_file)
     if os.path.isabs(rel):
@@ -3009,6 +3602,7 @@ def infer_signals(
         "project_hints": set(),
         "method_hints": set(),
         "type_hints": set(),
+        "member_hints": set(),
         "raw_tokens": {part for part in parts if len(part) >= 4},
         "family_tokens": set(families),
         "method_hint_required": False,
@@ -3021,6 +3615,7 @@ def infer_signals(
             signals["project_hints"].add(key)
             signals["method_hints"].update(rule.get("method_hints", []))
             signals["type_hints"].update(rule.get("type_hints", []))
+            signals["member_hints"].update(rule.get("member_hints", []))
 
     pattern_match = re.search(r"components_ng/pattern/([^/]+)/", rel)
     if pattern_match:
@@ -3067,6 +3662,7 @@ def infer_signals(
 
     if changed_file.suffix.lower() == ".ets":
         text = read_text(changed_file)
+        normalized_changed_ranges = merge_changed_ranges(changed_ranges)
         source_families = {FAMILY_TOKEN_ALIAS_INDEX.get(family, family) for family in signals["family_tokens"]}
         source_focus = ets_source_focus_tokens(source_families)
         body_text = strip_ets_import_statements(text)
@@ -3104,10 +3700,23 @@ def infer_signals(
                 signals["project_hints"].add(mapped_family)
                 signals["symbols"].update(mapping_config.pattern_alias.get(mapped_family, []))
 
-        exported_type_names = set(EXPORT_CLASS_RE.findall(text)) | set(EXPORT_INTERFACE_RE.findall(text))
+        exported_type_names = extract_exported_type_names(
+            text,
+            changed_ranges=normalized_changed_ranges or None,
+        )
         for name in sorted(exported_type_names):
-            if should_keep_ets_signal_name(name, source_families, allow_source_family_fallback=True):
+            if not source_families or should_keep_ets_signal_name(name, source_families, allow_source_family_fallback=True):
                 _add_ets_type_signal(name, "strong")
+        exported_member_hints = extract_exported_interface_member_hints(
+            text,
+            source_families,
+            changed_ranges=normalized_changed_ranges or None,
+        )
+        signals["member_hints"].update(exported_member_hints)
+        for member_hint in sorted(exported_member_hints):
+            owner, _separator, _member = str(member_hint).partition(".")
+            if owner:
+                _add_ets_type_signal(owner, "strong")
 
         imported_type_names: set[str] = set()
         for match in IMPORT_BINDING_RE.finditer(text):
@@ -3132,34 +3741,121 @@ def infer_signals(
             elif used_in_body and should_keep_ets_signal_name(name, source_families, allow_source_family_fallback=False):
                 _add_ets_type_signal(name, "weak")
 
-        public_methods = [
-            method
-            for method in sorted(set(PUBLIC_METHOD_RE.findall(text)))
-            if compact_token(method) not in GENERIC_PUBLIC_METHOD_HINTS
-        ]
+        public_methods: list[str] = []
+        public_method_line_offsets = build_line_start_offsets(text) if normalized_changed_ranges else []
+        for public_method_match in PUBLIC_METHOD_RE.finditer(text):
+            method_name = public_method_match.group(1)
+            if compact_token(method_name) in GENERIC_PUBLIC_METHOD_HINTS:
+                continue
+            if normalized_changed_ranges and not span_overlaps_changed_ranges(
+                public_method_match.start(),
+                public_method_match.end(),
+                line_offsets=public_method_line_offsets,
+                changed_ranges=normalized_changed_ranges,
+            ):
+                continue
+            public_methods.append(method_name)
         if 1 <= len(public_methods) <= 6 and (
             1 <= len(source_focus) <= 2 or len(exported_type_names) == 1
         ):
-            signals["method_hints"].update(public_methods)
+            signals["method_hints"].update(sorted(set(public_methods)))
+
+    ts_suffixes = {".ts"}
+    is_ts = changed_file.suffix.lower() in ts_suffixes
+    is_dts = changed_file.name.endswith(".d.ts")
+    if is_ts or is_dts:
+        text = read_text(changed_file)
+        normalized_ts_ranges = merge_changed_ranges(changed_ranges)
+        source_families = {FAMILY_TOKEN_ALIAS_INDEX.get(family, family) for family in signals["family_tokens"]}
+        source_focus = ets_source_focus_tokens(source_families)
+
+        # Extract @ohos.* module references
+        for match in OHOS_MODULE_RE.findall(text):
+            module_names = {match}
+            normalized_module = normalize_ohos_module(match, sdk_index.top_level_modules)
+            if normalized_module:
+                module_names.add(normalized_module)
+            for module_name in module_names:
+                strength = classify_ohos_module_signal_strength(module_name, source_focus, source_families)
+                if strength == "strong":
+                    signals["modules"].add(module_name)
+                elif strength == "weak":
+                    signals["weak_modules"].add(module_name)
+
+        # Extract exported interface/type names
+        for pattern in (EXPORT_CLASS_RE, EXPORT_INTERFACE_RE, TS_EXPORT_TYPE_RE):
+            for match in pattern.finditer(text):
+                name = match.group(1)
+                if name and name[:1].isupper():
+                    signals["type_hints"].add(name)
+                    signals["symbols"].add(name)
+                    family_token = related_signal_family_token(name)
+                    mapped_family = coverage_family_key(family_token) or coverage_family_key(related_signal_base_token(name))
+                    if mapped_family:
+                        signals["family_tokens"].add(mapped_family)
+                        signals["project_hints"].add(mapped_family)
+
+        # Extract interface member declarations → member_hints
+        exported_member_hints = extract_exported_interface_member_hints(
+            text,
+            source_families,
+            changed_ranges=normalized_ts_ranges or None,
+        )
+        signals["member_hints"].update(exported_member_hints)
+        for member_hint in sorted(exported_member_hints):
+            owner, _separator, _member = str(member_hint).partition(".")
+            if owner:
+                signals["type_hints"].add(owner)
+                signals["symbols"].add(owner)
+
+        # Extract declare function signatures → method_hints
+        scan_text = extract_text_in_changed_ranges(text, normalized_ts_ranges) if normalized_ts_ranges else text
+        for match in DECLARE_FUNCTION_RE.finditer(scan_text):
+            func_name = match.group(1)
+            if func_name:
+                signals["method_hints"].add(func_name)
+
+        # For .d.ts files, also extract declare interface/type as strong signals
+        if is_dts:
+            for match in DECLARE_INTERFACE_RE.finditer(scan_text):
+                name = match.group(1)
+                if name:
+                    signals["type_hints"].add(name)
+                    signals["symbols"].add(name)
+            for match in DECLARE_TYPE_RE.finditer(scan_text):
+                name = match.group(1)
+                if name:
+                    signals["type_hints"].add(name)
+                    signals["symbols"].add(name)
+            for match in DECLARE_MODULE_RE.finditer(scan_text):
+                module_name = match.group(1)
+                if module_name:
+                    signals["modules"].add(module_name)
 
     native_suffixes = {".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".hh"}
     if changed_file.suffix.lower() in native_suffixes:
         text = read_text(changed_file)
         text_lower = text.lower()
+        normalized_native_ranges = merge_changed_ranges(changed_ranges)
+        # When ranges are provided, scan only the changed lines for identifier-level signals.
+        # File-level structural signals (includes, dynamic modules) remain full-file.
+        scan_text = extract_text_in_changed_ranges(text, normalized_native_ranges) if normalized_native_ranges else text
+        scan_text_lower = scan_text.lower()
+
         dynamic_modules = {match for match in DYNAMIC_MODULE_RE.findall(text)}
 
-        for match in OHOS_MODULE_RE.findall(text):
+        for match in OHOS_MODULE_RE.findall(scan_text):
             signals["modules"].add(match)
             module = normalize_ohos_module(match, sdk_index.top_level_modules)
             if module:
                 signals["modules"].add(module)
 
-        for ident in CPP_IDENTIFIER_RE.findall(text):
+        for ident in CPP_IDENTIFIER_RE.findall(scan_text):
             compact_ident = compact_token(ident.replace("Modifier", ""))
             if compact_ident in families:
                 signals["symbols"].add(ident)
 
-        accessor_type_hints = extract_native_accessor_type_hints(text)
+        accessor_type_hints = extract_native_accessor_type_hints(scan_text)
         if accessor_type_hints:
             signals["type_hints"].update(accessor_type_hints)
             signals["symbols"].update(accessor_type_hints)
@@ -3167,13 +3863,13 @@ def infer_signals(
                 compact_token(hint) for hint in accessor_type_hints if compact_token(hint)
             )
 
-        for include_family in INCLUDE_PATTERN_COMPONENT_RE.findall(text):
+        for include_family in INCLUDE_PATTERN_COMPONENT_RE.findall(scan_text):
             family = compact_token(include_family)
             if family:
                 signals["family_tokens"].add(family)
 
         for family in families:
-            if family and family in text_lower:
+            if family and family in scan_text_lower:
                 signals["project_hints"].add(family)
 
         for raw, aliases in mapping_config.pattern_alias.items():
@@ -3182,12 +3878,13 @@ def infer_signals(
                 signals["symbols"].update(aliases)
 
         for key, rule in mapping_config.special_path_rules.items():
-            if key in text_lower:
+            if key in scan_text_lower:
                 signals["modules"].update(rule.get("modules", []))
                 signals["symbols"].update(rule.get("symbols", []))
                 signals["project_hints"].add(key)
                 signals["method_hints"].update(rule.get("method_hints", []))
                 signals["type_hints"].update(rule.get("type_hints", []))
+                signals["member_hints"].update(rule.get("member_hints", []))
 
         for module_name in dynamic_modules:
             family = compact_token(module_name)
@@ -3217,6 +3914,36 @@ def infer_signals(
                     signals["family_tokens"].add(family)
                     signals["symbols"].update(content_index.family_to_symbols.get(family, set()))
 
+        # When changed_ranges are provided, extract function names from changed lines
+        # and add them as method hints to narrow matching for wide-scope files like
+        # common_method_modifier.cpp (e.g. SetOnClick → onClick, SetGesture → gesture).
+        if normalized_native_ranges:
+            cpp_func_names = CPP_FUNCTION_DEF_RE.findall(scan_text)
+            for func_name in cpp_func_names:
+                stripped = func_name.strip()
+                if not stripped or len(stripped) < 3:
+                    continue
+                # Common patterns: SetOnClick → onClick, SetGesture → gesture
+                # Also keep the raw name as a symbol hint
+                signals["symbols"].add(stripped)
+                compact_func = compact_token(stripped)
+                if compact_func in families:
+                    signals["project_hints"].add(compact_func)
+                # Map SetXxx → xxx as a method hint
+                if stripped.startswith("Set"):
+                    method_hint = stripped[3:]
+                    if method_hint and method_hint[0].isupper():
+                        method_hint = method_hint[0].lower() + method_hint[1:]
+                    if method_hint:
+                        signals["method_hints"].add(method_hint)
+            cpp_method_names = CPP_METHOD_DEF_RE.findall(scan_text)
+            for class_name, method_name in cpp_method_names:
+                signals["symbols"].add(class_name.strip())
+                compact_class = compact_token(class_name.strip())
+                if compact_class in families:
+                    signals["project_hints"].add(compact_class)
+                signals["method_hints"].add(method_name.strip())
+
     apply_composite_mapping(changed_file, rel_lower, signals, content_index, mapping_config)
 
     signals["modules"] = {item for item in signals["modules"] if item}
@@ -3237,6 +3964,7 @@ def infer_signals(
     }
     signals["method_hints"] = {item for item in signals["method_hints"] if item}
     signals["type_hints"] = {item for item in signals["type_hints"] if item}
+    signals["member_hints"] = {item for item in signals.get("member_hints", set()) if normalize_member_hint(str(item))}
     return signals
 
 
@@ -3270,6 +3998,7 @@ def apply_api_lineage_signals(
     lineage_family_tokens: set[str] = set()
     lineage_method_hints: set[str] = set()
     lineage_type_hints: set[str] = set()
+    lineage_member_hints: set[str] = set()
     exact_api_prefilter_entities: set[str] = set()
     for api_entity in affected_api_entities:
         lineage_symbols.add(api_entity)
@@ -3278,6 +4007,7 @@ def apply_api_lineage_signals(
             lineage_type_hints.add(owner)
         if owner and method_name:
             exact_api_prefilter_entities.add(str(api_entity))
+            lineage_member_hints.add(f"{owner}.{method_name}")
         for suffix in ("Modifier", "Attribute", "Configuration", "Controller"):
             owner = owner.replace(suffix, "")
         base = compact_token(owner)
@@ -3292,12 +4022,14 @@ def apply_api_lineage_signals(
         signals["family_tokens"] = lineage_family_tokens
         signals["method_hints"] = lineage_method_hints
         signals["type_hints"] = lineage_type_hints
+        signals["member_hints"] = lineage_member_hints
     else:
         signals["symbols"].update(lineage_symbols)
         signals["project_hints"].update(lineage_project_hints)
         signals["family_tokens"].update(lineage_family_tokens)
         signals["method_hints"].update(lineage_method_hints)
         signals["type_hints"].update(lineage_type_hints)
+        signals["member_hints"].update(lineage_member_hints)
     if exact_api_prefilter_entities:
         signals["exact_api_prefilter_entities"] = exact_api_prefilter_entities
     return affected_api_entities, file_level_affected_api_entities, derived_source_symbols
@@ -3420,12 +4152,20 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
     lowered_member_calls = {compact_token(member) for member in file_index.member_calls}
     identifier_call_tokens = {compact_token(identifier) for identifier in file_index.identifier_calls}
     imported_symbol_tokens = {compact_token(symbol) for symbol in file_index.imported_symbols}
+    exact_member_keys = _typed_member_tokens(file_index.typed_field_accesses) | _typed_member_tokens(file_index.type_member_calls)
     type_member_calls_by_token: dict[str, set[str]] = {}
     for entry in file_index.type_member_calls:
         owner, separator, member = entry.partition(".")
         owner_token = compact_token(owner)
         if owner_token and separator and member:
             type_member_calls_by_token.setdefault(owner_token, set()).add(member)
+    typed_field_accesses_by_token: dict[str, set[str]] = {}
+    for entry in file_index.typed_field_accesses:
+        owner, separator, field_name = entry.partition(".")
+        owner_token = compact_token(owner)
+        field_token = compact_token(field_name)
+        if owner_token and separator and field_name and field_token not in GENERIC_TYPED_FIELD_NAMES:
+            typed_field_accesses_by_token.setdefault(owner_token, set()).add(field_name)
 
     for module in sorted(signals["modules"]):
         if module in file_index.imports:
@@ -3482,6 +4222,7 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
     constructor_matches: list[str] = []
     import_matches: list[str] = []
     type_member_matches: list[str] = []
+    typed_field_matches: list[str] = []
     for hint_token, hint in sorted(type_hints_by_token.items()):
         if hint_token in identifier_call_tokens:
             constructor_matches.append(hint)
@@ -3490,6 +4231,9 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
         members = sorted(type_member_calls_by_token.get(hint_token, set()))
         if members:
             type_member_matches.extend(f"{hint}.{member}()" for member in members)
+        fields = sorted(typed_field_accesses_by_token.get(hint_token, set()))
+        if fields:
+            typed_field_matches.extend(f"{hint}.{field}" for field in fields)
 
     if method_member_matches:
         score += 5
@@ -3506,6 +4250,18 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
     if type_member_matches:
         score += 5
         reasons.append(f"calls hinted type member {', '.join(sorted(type_member_matches))}")
+    if typed_field_matches:
+        score += 9
+        reasons.append(f"reads/writes fields of hinted type {', '.join(sorted(typed_field_matches))}")
+
+    exact_member_matches = []
+    for member_hint in sorted(signals.get("member_hints", set())):
+        normalized = normalize_member_hint(member_hint)
+        if normalized and normalized in exact_member_keys:
+            exact_member_matches.append(str(member_hint))
+    if exact_member_matches:
+        score += 11
+        reasons.append(f"matches exact changed member {', '.join(sorted(exact_member_matches))}")
 
     for token in sorted(signals["project_hints"]):
         if token and token in compact_token(file_index.relative_path):
@@ -3610,6 +4366,7 @@ def project_has_non_lexical_evidence(
                 or reason.startswith('constructs hinted type ')
                 or reason.startswith('imports hinted type ')
                 or reason.startswith('calls hinted type member ')
+                or reason.startswith('reads/writes fields of hinted type ')
             ):
                 return True
     return False
@@ -3706,6 +4463,7 @@ def _is_direct_evidence_reason(reason: str) -> bool:
             "constructs hinted type ",
             "imports hinted type ",
             "calls hinted type member ",
+            "reads/writes fields of hinted type ",
         )
     )
 
@@ -4090,6 +4848,60 @@ def coverage_rank_weight(rank: int) -> float:
     return 1.0 / float(normalized ** ACTIVE_RANKING_RULES.rank_weight_power)
 
 
+def _build_selection_signals(candidate: dict, target: dict) -> list[dict[str, object]]:
+    signals: list[dict[str, object]] = []
+    source_reasons = dict(candidate.get("source_reasons") or {})
+    sources = dict(candidate.get("sources") or {})
+
+    for source_key in sorted(set(str(k) for k in source_reasons.keys())):
+        source_info = sources.get(source_key, {})
+        reasons = source_reasons.get(source_key, [])
+        signal: dict[str, object] = {
+            "source_key": source_key,
+            "source_type": str(source_info.get("type") or ""),
+            "source_value": str(source_info.get("value") or ""),
+        }
+        match_types: list[str] = []
+        matched_keys: list[str] = []
+        for reason in reasons:
+            reason_str = str(reason or "")
+            if not reason_str:
+                continue
+            reason_lower = reason_str.lower()
+            if "family" in reason_lower:
+                match_types.append("family")
+            elif "capability" in reason_lower:
+                match_types.append("capability")
+            elif "type_hint" in reason_lower or "type hint" in reason_lower:
+                match_types.append("type_hint")
+            elif "member" in reason_lower:
+                match_types.append("member_hint")
+            else:
+                match_types.append(reason_str)
+            matched_keys.append(reason_str)
+        if match_types:
+            signal["match_types"] = sorted(set(match_types))
+        if matched_keys:
+            signal["matched_keys"] = matched_keys
+        signals.append(signal)
+
+    covered_families = sorted(candidate.get("covered_families", set()))
+    covered_capabilities = sorted(candidate.get("covered_capabilities", set()))
+    covered_type_hints = sorted(candidate.get("covered_type_hints", set()))
+    covered_member_hints = sorted(candidate.get("covered_member_hints", set()))
+
+    if covered_families:
+        signals.append({"match_type": "family", "matched_keys": covered_families})
+    if covered_capabilities:
+        signals.append({"match_type": "capability", "matched_keys": covered_capabilities})
+    if covered_type_hints:
+        signals.append({"match_type": "type_hint", "matched_keys": covered_type_hints})
+    if covered_member_hints:
+        signals.append({"match_type": "member_hint", "matched_keys": covered_member_hints})
+
+    return signals
+
+
 def build_global_coverage_recommendations(
     candidate_entries: list[dict[str, object]],
     repo_root: Path,
@@ -4139,6 +4951,8 @@ def build_global_coverage_recommendations(
             "value": str(source_profile.get("value") or source.get("value") or ""),
             "family_keys": list(source_profile.get("family_keys", [])),
             "capability_keys": list(source_profile.get("capability_keys", [])),
+            "type_hint_keys": list(source_profile.get("type_hint_keys", [])),
+            "member_hint_keys": list(source_profile.get("member_hint_keys", [])),
         }
         target = build_run_target_entry(
             project_entry,
@@ -4180,12 +4994,64 @@ def build_global_coverage_recommendations(
                 "unit_sources": {},
                 "covered_families": set(),
                 "covered_capabilities": set(),
+                "covered_type_hints": set(),
+                "covered_member_hints": set(),
+                "aggregate_type_hint_keys": set(),
+                "aggregate_direct_type_hint_keys": set(),
+                "aggregate_type_hint_focus_counts": {},
+                "aggregate_member_hint_keys": set(),
+                "aggregate_direct_member_hint_keys": set(),
+                "aggregate_member_hint_focus_counts": {},
             },
         )
         existing_target = candidate["target"]
         if project_result_sort_tuple(project_entry) < project_result_sort_tuple(existing_target):
             candidate["target"] = target
             existing_target = target
+        candidate["aggregate_type_hint_keys"].update(
+            str(item)
+            for item in project_entry.get("type_hint_keys", [])
+            if str(item).strip()
+        )
+        candidate["aggregate_direct_type_hint_keys"].update(
+            str(item)
+            for item in project_entry.get("direct_type_hint_keys", [])
+            if str(item).strip()
+        )
+        aggregate_focus_counts = candidate["aggregate_type_hint_focus_counts"]
+        for raw_key, raw_value in dict(project_entry.get("type_hint_focus_counts") or {}).items():
+            normalized_key = str(raw_key).strip()
+            if not normalized_key:
+                continue
+            try:
+                normalized_value = int(raw_value or 0)
+            except (TypeError, ValueError):
+                continue
+            previous_value = int(aggregate_focus_counts.get(normalized_key, 0) or 0)
+            if normalized_value > previous_value:
+                aggregate_focus_counts[normalized_key] = normalized_value
+        candidate["aggregate_member_hint_keys"].update(
+            str(item)
+            for item in project_entry.get("member_hint_keys", [])
+            if str(item).strip()
+        )
+        candidate["aggregate_direct_member_hint_keys"].update(
+            str(item)
+            for item in project_entry.get("direct_member_hint_keys", [])
+            if str(item).strip()
+        )
+        aggregate_member_focus_counts = candidate["aggregate_member_hint_focus_counts"]
+        for raw_key, raw_value in dict(project_entry.get("member_hint_focus_counts") or {}).items():
+            normalized_key = str(raw_key).strip()
+            if not normalized_key:
+                continue
+            try:
+                normalized_value = int(raw_value or 0)
+            except (TypeError, ValueError):
+                continue
+            previous_value = int(aggregate_member_focus_counts.get(normalized_key, 0) or 0)
+            if normalized_value > previous_value:
+                aggregate_member_focus_counts[normalized_key] = normalized_value
         candidate["source_keys"].add(source_key)
         candidate["sources"][source_key] = all_sources[source_key]
         candidate["source_reasons"].setdefault(source_key, list(project_entry.get("scope_reasons", [])))
@@ -4194,13 +5060,112 @@ def build_global_coverage_recommendations(
             int(candidate["source_ranks"].get(source_key, 999) or 999),
             source_rank,
         )
+        member_hint_keys = list(source_profile.get("member_hint_keys", []))
+        type_hint_keys = list(source_profile.get("type_hint_keys", []))
         capability_keys = list(source_profile.get("capability_keys", []))
         family_keys = list(source_profile.get("family_keys", []))
+        member_hint_gains = suite_source_member_hint_gains(project_entry, source_profile)
+        member_hint_representative_scores = suite_source_member_hint_representative_scores(project_entry, source_profile)
+        type_hint_gains = suite_source_type_hint_gains(project_entry, source_profile)
+        type_hint_representative_scores = suite_source_type_hint_representative_scores(project_entry, source_profile)
         capability_gains = suite_source_capability_gains(project_entry, source_profile)
         capability_representative_scores = suite_source_capability_representative_scores(project_entry, source_profile)
         family_gains = suite_source_family_gains(project_entry, source_profile)
         family_representative_scores = suite_source_family_representative_scores(project_entry, source_profile)
         focus_overlap = suite_source_focus_token_overlap(project_entry, source_profile)
+        member_hint_owner_keys = {
+            str(item).partition(".")[0]
+            for item in member_hint_keys
+            if "." in str(item)
+        }
+        if member_hint_keys:
+            for member_hint_key in member_hint_keys:
+                unit_key = _unit_key_for_source(source_profile, member_hint_key, "member")
+                all_units.setdefault(
+                    unit_key,
+                    {
+                        "key": unit_key,
+                        "unit_kind": "member_hint",
+                        "member_hint_key": member_hint_key,
+                        "type_hint_key": str(member_hint_key).partition(".")[0],
+                        "family_key": "",
+                        "capability_key": "",
+                        "type": str(source_profile.get("type") or ""),
+                        "sources": [],
+                    },
+                )
+                source_entry = {
+                    "type": str(source_profile.get("type") or ""),
+                    "value": str(source_profile.get("value") or ""),
+                }
+                if source_entry not in all_units[unit_key]["sources"]:
+                    all_units[unit_key]["sources"].append(source_entry)
+                gain = float(member_hint_gains.get(member_hint_key, 0.0) or 0.0)
+                if gain <= 0:
+                    continue
+                weighted_gain = gain * coverage_rank_weight(source_rank)
+                source_gains = candidate["unit_source_gains"].setdefault(unit_key, {})
+                previous_gain = float(source_gains.get(source_key, 0.0) or 0.0)
+                if weighted_gain > previous_gain:
+                    source_gains[source_key] = weighted_gain
+                    candidate["unit_gains"][unit_key] = round(sum(float(value or 0.0) for value in source_gains.values()), 6)
+                    candidate["unit_sources"][unit_key] = list(all_units[unit_key]["sources"])
+                representative_score = float(member_hint_representative_scores.get(member_hint_key, 0.0) or 0.0)
+                previous_representative_score = float(candidate["unit_representative_scores"].get(unit_key, 0.0) or 0.0)
+                if representative_score > previous_representative_score:
+                    candidate["unit_representative_scores"][unit_key] = representative_score
+                previous_focus_overlap = int(candidate["unit_focus_overlaps"].get(unit_key, 0) or 0)
+                if focus_overlap > previous_focus_overlap:
+                    candidate["unit_focus_overlaps"][unit_key] = focus_overlap
+                candidate["covered_member_hints"].add(member_hint_key)
+        if type_hint_keys:
+            for type_hint_key in type_hint_keys:
+                candidate_member_hint_keys = {
+                    str(item).partition(".")[0]
+                    for item in project_entry.get("member_hint_keys", [])
+                    if "." in str(item)
+                }
+                if type_hint_key in member_hint_owner_keys and type_hint_key not in candidate_member_hint_keys:
+                    continue
+                unit_key = _unit_key_for_source(source_profile, type_hint_key, "type")
+                all_units.setdefault(
+                    unit_key,
+                    {
+                        "key": unit_key,
+                        "unit_kind": "type_hint",
+                        "type_hint_key": type_hint_key,
+                        "family_key": "",
+                        "capability_key": "",
+                        "type": str(source_profile.get("type") or ""),
+                        "sources": [],
+                    },
+                )
+                source_entry = {
+                    "type": str(source_profile.get("type") or ""),
+                    "value": str(source_profile.get("value") or ""),
+                }
+                if source_entry not in all_units[unit_key]["sources"]:
+                    all_units[unit_key]["sources"].append(source_entry)
+                gain = float(type_hint_gains.get(type_hint_key, 0.0) or 0.0)
+                if type_hint_key in member_hint_owner_keys:
+                    gain *= 0.35
+                if gain <= 0:
+                    continue
+                weighted_gain = gain * coverage_rank_weight(source_rank)
+                source_gains = candidate["unit_source_gains"].setdefault(unit_key, {})
+                previous_gain = float(source_gains.get(source_key, 0.0) or 0.0)
+                if weighted_gain > previous_gain:
+                    source_gains[source_key] = weighted_gain
+                    candidate["unit_gains"][unit_key] = round(sum(float(value or 0.0) for value in source_gains.values()), 6)
+                    candidate["unit_sources"][unit_key] = list(all_units[unit_key]["sources"])
+                representative_score = float(type_hint_representative_scores.get(type_hint_key, 0.0) or 0.0)
+                previous_representative_score = float(candidate["unit_representative_scores"].get(unit_key, 0.0) or 0.0)
+                if representative_score > previous_representative_score:
+                    candidate["unit_representative_scores"][unit_key] = representative_score
+                previous_focus_overlap = int(candidate["unit_focus_overlaps"].get(unit_key, 0) or 0)
+                if focus_overlap > previous_focus_overlap:
+                    candidate["unit_focus_overlaps"][unit_key] = focus_overlap
+                candidate["covered_type_hints"].add(type_hint_key)
         if capability_keys:
             for capability_key in capability_keys:
                 unit_key = _unit_key_for_source(source_profile, capability_key, "capability")
@@ -4242,7 +5207,7 @@ def build_global_coverage_recommendations(
                 family_key = capability_family_key(capability_key)
                 if family_key:
                     candidate["covered_families"].add(family_key)
-        elif family_keys:
+        if family_keys:
             for family_key in family_keys:
                 unit_key = _unit_key_for_source(source_profile, family_key, "family")
                 all_units.setdefault(
@@ -4280,7 +5245,7 @@ def build_global_coverage_recommendations(
                 if focus_overlap > previous_focus_overlap:
                     candidate["unit_focus_overlaps"][unit_key] = focus_overlap
                 candidate["covered_families"].add(family_key)
-        else:
+        if not type_hint_keys and not capability_keys and not family_keys:
             unit_key = source_key
             all_units.setdefault(
                 unit_key,
@@ -4431,8 +5396,22 @@ def build_global_coverage_recommendations(
         target["total_coverage_count"] = len(all_covered_units)
         target["new_coverage_score"] = round(sum(float(planning_unit_gains.get(key, 0.0) or 0.0) for key in new_keys), 6)
         target["total_coverage_score"] = round(sum(float(all_unit_gains.get(key, 0.0) or 0.0) for key in all_covered_units), 6)
+        target["type_hint_keys"] = sorted(candidate.get("aggregate_type_hint_keys", set()))
+        target["direct_type_hint_keys"] = sorted(candidate.get("aggregate_direct_type_hint_keys", set()))
+        target["type_hint_focus_counts"] = {
+            str(key): int(value)
+            for key, value in dict(candidate.get("aggregate_type_hint_focus_counts") or {}).items()
+        }
+        target["member_hint_keys"] = sorted(candidate.get("aggregate_member_hint_keys", set()))
+        target["direct_member_hint_keys"] = sorted(candidate.get("aggregate_direct_member_hint_keys", set()))
+        target["member_hint_focus_counts"] = {
+            str(key): int(value)
+            for key, value in dict(candidate.get("aggregate_member_hint_focus_counts") or {}).items()
+        }
         target["covered_families"] = sorted(candidate.get("covered_families", set()))
         target["covered_capabilities"] = sorted(candidate.get("covered_capabilities", set()))
+        target["covered_type_hints"] = sorted(candidate.get("covered_type_hints", set()))
+        target["covered_member_hints"] = sorted(candidate.get("covered_member_hints", set()))
         target["new_families"] = sorted(
             {
                 str(all_units[key].get("family_key") or "")
@@ -4447,12 +5426,28 @@ def build_global_coverage_recommendations(
                 if str(all_units[key].get("capability_key") or "")
             }
         )
+        target["new_type_hints"] = sorted(
+            {
+                str(all_units[key].get("type_hint_key") or "")
+                for key in new_keys
+                if str(all_units[key].get("type_hint_key") or "")
+            }
+        )
+        target["new_member_hints"] = sorted(
+            {
+                str(all_units[key].get("member_hint_key") or "")
+                for key in new_keys
+                if str(all_units[key].get("member_hint_key") or "")
+            }
+        )
         target["covered_units"] = [
             {
                 "type": str(all_units[key].get("type") or ""),
                 "unit_kind": str(all_units[key].get("unit_kind") or ""),
                 "family_key": str(all_units[key].get("family_key") or ""),
                 "capability_key": str(all_units[key].get("capability_key") or ""),
+                "type_hint_key": str(all_units[key].get("type_hint_key") or ""),
+                "member_hint_key": str(all_units[key].get("member_hint_key") or ""),
                 "sources": list(all_units[key].get("sources", [])),
             }
             for key in sorted(all_covered_units)
@@ -4476,14 +5471,127 @@ def build_global_coverage_recommendations(
             key: candidate["source_reasons"].get(key, [])
             for key in sorted(source_keys)
         }
+        target["selection_signals"] = _build_selection_signals(candidate, target)
         ordered_candidates.append(target)
+
+    # Phase 3: Apply fan-out limits from ranking_rules.json
+    fanout_limits = getattr(ACTIVE_RANKING_RULES, "family_fanout_limits", {})
+    default_limit = fanout_limits.get("default", {"max_type_representatives": 5, "max_family_representatives": 10})
+    precision_budget = getattr(ACTIVE_RANKING_RULES, "precision_budget", {})
+    member_max_required = precision_budget.get("member_aware_max_required", 30)
+    type_max_required = precision_budget.get("type_level_max_required", 100)
+    family_max_required = precision_budget.get("family_level_max_required", 200)
+
+    for target in ordered_candidates:
+        covered_type_hints = set(target.get("covered_type_hints", []) or [])
+        covered_families = set(target.get("covered_families", []) or [])
+        covered_member_hints = set(target.get("covered_member_hints", []) or [])
+
+        # Extract component families from the changed source file paths
+        # (e.g. components_ng/pattern/toast/ → "toast")
+        source_comp_families: set[str] = set()
+        for src in target.get("execution_sources", []):
+            src_str = str(src)
+            m = re.search(r"components_ng/(?:pattern|render|event)/([^/]+)/", src_str)
+            if m:
+                source_comp_families.add(compact_token(m.group(1)))
+        target["source_component_families"] = sorted(source_comp_families)
+
+        # Determine precision mode based on evidence level
+        if covered_member_hints:
+            max_required = member_max_required
+            target["precision_mode"] = "member"
+        elif covered_type_hints:
+            max_required = type_max_required
+            target["precision_mode"] = "type"
+        else:
+            max_required = family_max_required
+            target["precision_mode"] = "family"
+
+        # Apply per-family type representative limits
+        for family_key in list(target.get("covered_families", [])):
+            limit = fanout_limits.get(family_key, default_limit)
+            max_types = limit.get("max_type_representatives", default_limit["max_type_representatives"])
+            if len(covered_type_hints) > max_types:
+                # Suppress lowest-scoring type hints by marking excess as suppressed
+                sorted_types = sorted(covered_type_hints)
+                for extra_type in sorted_types[max_types:]:
+                    target.setdefault("suppressed_type_hints", set()).add(extra_type)
+
+        # Apply per-family family representative limits
+        for family_key in list(target.get("covered_families", [])):
+            limit = fanout_limits.get(family_key, default_limit)
+            max_families = limit.get("max_family_representatives", default_limit["max_family_representatives"])
+            if len(covered_families) > max_families:
+                sorted_families = sorted(covered_families)
+                for extra_family in sorted_families[max_families:]:
+                    target.setdefault("suppressed_families", set()).add(extra_family)
+
+        # Convert accumulator sets to sorted lists for JSON serialisation
+        if isinstance(target.get("suppressed_type_hints"), set):
+            target["suppressed_type_hints"] = sorted(target["suppressed_type_hints"])
+        if isinstance(target.get("suppressed_families"), set):
+            target["suppressed_families"] = sorted(target["suppressed_families"])
 
     required: list[dict[str, object]] = []
     recommended_additional: list[dict[str, object]] = []
     optional_duplicates = [target for target in ordered_candidates if int(target.get("new_coverage_count", 0)) <= 0]
     for target in ordered_candidates:
         new_coverage_count = int(target.get("new_coverage_count", 0) or 0)
+        direct_member_hints = set(target.get("direct_member_hint_keys", []) or [])
+        covered_member_hints = set(target.get("covered_member_hints", []) or [])
+        matched_direct_member_hints = sorted(direct_member_hints & covered_member_hints)
+        direct_type_hints = set(target.get("direct_type_hint_keys", []) or [])
+        covered_type_hints = set(target.get("covered_type_hints", []) or [])
+        matched_direct_type_hints = sorted(direct_type_hints & covered_type_hints)
         if new_coverage_count <= 0:
+            # Direct component path match boost: if the test's project family
+            # directly matches the component directory in the changed file path,
+            # elevate to required even without new coverage or member hints.
+            source_component_families = set(target.get("source_component_families", []) or [])
+            target_project_families = covered_families
+            direct_path_match = bool(source_component_families & target_project_families)
+            if direct_path_match and str(target.get("bucket") or "") == "must-run":
+                target["coverage_status"] = "required"
+                target["coverage_reason"] = (
+                    "direct component path match: test project covers the same component family as the changed file"
+                )
+                required.append(target)
+                continue
+            if matched_direct_member_hints:
+                if str(target.get("bucket") or "") == "must-run":
+                    target["coverage_status"] = "required"
+                    target["coverage_reason"] = (
+                        "adds no new planner unit, but directly validates changed member(s): "
+                        + ", ".join(matched_direct_member_hints)
+                    )
+                    required.append(target)
+                    continue
+                if str(target.get("bucket") or "") == "high-confidence related":
+                    target["coverage_status"] = "recommended"
+                    target["coverage_reason"] = (
+                        "adds no new planner unit, but directly validates changed member(s): "
+                        + ", ".join(matched_direct_member_hints)
+                    )
+                    recommended_additional.append(target)
+                    continue
+            if matched_direct_type_hints:
+                if str(target.get("bucket") or "") == "must-run":
+                    target["coverage_status"] = "required"
+                    target["coverage_reason"] = (
+                        "adds no new planner unit, but directly reads/writes fields of changed type(s): "
+                        + ", ".join(matched_direct_type_hints)
+                    )
+                    required.append(target)
+                    continue
+                if str(target.get("bucket") or "") == "high-confidence related":
+                    target["coverage_status"] = "recommended"
+                    target["coverage_reason"] = (
+                        "adds no new planner unit, but provides direct field-read/write validation for changed type(s): "
+                        + ", ".join(matched_direct_type_hints)
+                    )
+                    recommended_additional.append(target)
+                    continue
             target["coverage_status"] = "optional"
             target["coverage_reason"] = "covers only functionality already covered by earlier selected suites"
             continue
@@ -4507,7 +5615,12 @@ def build_global_coverage_recommendations(
     uncovered_sources = [
         {
             "type": str(info.get("type") or ""),
-            "value": str(info.get("family_key") or (info.get("sources") or [{"value": ""}])[0].get("value", "")),
+            "value": str(
+                info.get("type_hint_key")
+                or info.get("capability_key")
+                or info.get("family_key")
+                or (info.get("sources") or [{"value": ""}])[0].get("value", "")
+            ),
         }
         for key, info in sorted(all_units.items())
         if key not in covered_unit_keys
@@ -4560,6 +5673,7 @@ def build_query_signals(
         "project_hints": set(),
         "method_hints": set(),
         "type_hints": set(),
+        "member_hints": set(),
         "raw_tokens": set(parts),
         "family_tokens": set(),
         "method_hint_required": False,
@@ -4584,6 +5698,15 @@ def build_query_signals(
 
     if query in sdk_index.component_names or query in sdk_index.modifier_names:
         signals["symbols"].add(query)
+
+    normalized_member = normalize_member_hint(query)
+    if normalized_member:
+        owner, _separator, member = query.partition(".")
+        signals["member_hints"].add(query)
+        if owner:
+            signals["type_hints"].add(owner)
+        if member:
+            signals["method_hints"].add(member)
 
     component_tokens = {
         token for token in query_tokens
@@ -4717,6 +5840,9 @@ def search_code_matches(
 def build_unresolved_analysis(
     signals: dict[str, set[str]],
     project_results: list[dict],
+    *,
+    affected_api_entities: Sequence[str] | None = None,
+    derived_source_symbols: Sequence[str] | None = None,
 ) -> dict:
     top_score = project_results[0]["score"] if project_results else 0
     top_paths = [item["project"].lower() for item in project_results[:5]]
@@ -4733,12 +5859,24 @@ def build_unresolved_analysis(
         "top_paths": top_paths,
         "broad_common_hits": broad_common_hits,
         "has_content_modifier_signal": has_content_modifier_signal,
+        "reason_class": None,
         "reason": None,
     }
+    affected_api_entities = list(affected_api_entities or [])
+    derived_source_symbols = list(derived_source_symbols or [])
     if not project_results:
-        analysis["reason"] = "No XTS usages were found for this file."
+        if affected_api_entities:
+            analysis["reason_class"] = "consumer_evidence_gap"
+            analysis["reason"] = "Changed APIs were mapped, but no XTS consumer evidence was found for them."
+        elif derived_source_symbols:
+            analysis["reason_class"] = "lineage_gap"
+            analysis["reason"] = "Source symbols were detected, but they could not be mapped to XTS-covered APIs."
+        else:
+            analysis["reason_class"] = "no_matches"
+            analysis["reason"] = "No XTS usages were found for this file."
         return analysis
     if top_score < 12:
+        analysis["reason_class"] = "weak_signal"
         analysis["reason"] = "Only weak matches were found; test usage could not be determined reliably."
         return analysis
     if (
@@ -4747,8 +5885,228 @@ def build_unresolved_analysis(
         and broad_common_hits >= min(3, len(top_paths))
         and not any("contentmodifier" in path for path in top_paths)
     ):
+        analysis["reason_class"] = "broad_common_overmatch"
         analysis["reason"] = "Only broad/common ArkUI suites were matched; no reliable content-modifier-specific XTS usage was found."
     return analysis
+
+
+def _classify_unresolved(
+    changed_file: Path,
+    signals: dict[str, set[str]],
+    api_lineage_map: ApiLineageMap | None,
+    consumer_semantics: list[dict],
+) -> dict[str, str | None]:
+    """Classify why a changed file is unresolved.
+
+    Returns a dict with:
+    - reason_class: one of 'no_source_member_mapping', 'no_consumer_member_evidence',
+                    'lineage_gap', 'unsupported_generated_pattern'
+    - reason: human-readable explanation
+    """
+    member_hints = signals.get("member_hints", set())
+    type_hints = signals.get("type_hints", set())
+    symbols = signals.get("symbols", set())
+    project_hints = signals.get("project_hints", set())
+
+    # Check if file is generated
+    file_str = str(changed_file)
+    is_generated = any(p in file_str for p in ("generated", "assembled", "koala"))
+
+    # Check lineage map
+    has_lineage = api_lineage_map is not None
+    has_member_evidence = bool(member_hints)
+    has_consumer_evidence = bool(consumer_semantics)
+
+    # Generated files should be flagged first (before generic "no hints")
+    if is_generated and not has_member_evidence:
+        return {
+            "reason_class": "unsupported_generated_pattern",
+            "reason": "This is a generated file pattern that is not yet supported by the lineage resolver.",
+        }
+
+    if not has_member_evidence and not type_hints and not symbols:
+        return {
+            "reason_class": "lineage_gap",
+            "reason": "No API lineage could be resolved for this file; it may be a framework-internal file without stable API exposure.",
+        }
+
+    if has_member_evidence and not has_consumer_evidence:
+        return {
+            "reason_class": "no_consumer_member_evidence",
+            "reason": "Member-level API entities were resolved, but no XTS consumer evidence was found for them.",
+        }
+
+    if not has_lineage or not has_member_evidence:
+        return {
+            "reason_class": "no_source_member_mapping",
+            "reason": "Source-side member mapping is incomplete for this file; it may require deeper semantic analysis.",
+        }
+
+    return {
+        "reason_class": "lineage_gap",
+        "reason": "Unresolved due to lineage traversal stopping at an unknown boundary.",
+    }
+
+
+def _api_owner_token(api_entity: str) -> str:
+    owner = str(api_entity).partition(".")[0]
+    for suffix in ("Modifier", "Attribute", "Configuration", "Controller"):
+        owner = owner.replace(suffix, "")
+    return compact_token(owner)
+
+
+def build_function_coverage_rows(
+    *,
+    changed_file: Path,
+    derived_source_symbols: list[str],
+    affected_api_entities: list[str],
+    api_lineage_map: ApiLineageMap | None,
+    repo_root: Path,
+    project_results: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    if not derived_source_symbols and not affected_api_entities:
+        return []
+
+    rows: list[dict[str, object]] = []
+    symbol_list = list(derived_source_symbols) if derived_source_symbols else ["<file-level>"]
+    for symbol in symbol_list:
+        symbol_api_entities: list[str]
+        if api_lineage_map is not None and symbol != "<file-level>":
+            symbol_api_entities = api_lineage_map.apis_for_source_symbols(
+                changed_file,
+                [symbol],
+                repo_root=repo_root,
+            )
+        else:
+            symbol_api_entities = list(affected_api_entities)
+
+        if not symbol_api_entities:
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "status": "unresolved",
+                    "mapped_api_entities": [],
+                    "direct_projects": [],
+                    "indirect_projects": [],
+                    "not_covered_api_entities": [],
+                }
+            )
+            continue
+
+        covered_api_entities: set[str] = set()
+        indirectly_covered_api_entities: set[str] = set()
+        not_covered_api_entities: set[str] = set()
+        direct_projects: set[str] = set()
+        indirect_projects: set[str] = set()
+
+        for api_entity in symbol_api_entities:
+            owner_token = _api_owner_token(api_entity)
+            direct_hits: set[str] = set()
+            indirect_hits: set[str] = set()
+            for project in project_results:
+                project_name = str(project.get("project") or "").strip()
+                direct_type_hints = {str(item).strip() for item in project.get("direct_type_hint_keys", []) if str(item).strip()}
+                if owner_token and owner_token in direct_type_hints:
+                    if project_name:
+                        direct_hits.add(project_name)
+                    continue
+                family_keys = {str(item).strip() for item in project.get("family_keys", []) if str(item).strip()}
+                direct_family_keys = {str(item).strip() for item in project.get("direct_family_keys", []) if str(item).strip()}
+                if owner_token and (owner_token in family_keys or owner_token in direct_family_keys):
+                    if project_name:
+                        indirect_hits.add(project_name)
+
+            if direct_hits:
+                covered_api_entities.add(api_entity)
+                direct_projects.update(direct_hits)
+            elif indirect_hits:
+                indirectly_covered_api_entities.add(api_entity)
+                indirect_projects.update(indirect_hits)
+            else:
+                not_covered_api_entities.add(api_entity)
+
+        if covered_api_entities:
+            status = "covered"
+        elif indirectly_covered_api_entities:
+            status = "indirectly_covered"
+        elif not_covered_api_entities:
+            status = "not_covered"
+        else:
+            status = "unresolved"
+
+        rows.append(
+            {
+                "symbol": symbol,
+                "status": status,
+                "mapped_api_entities": sorted(symbol_api_entities),
+                "direct_projects": sorted(direct_projects),
+                "indirect_projects": sorted(indirect_projects),
+                "not_covered_api_entities": sorted(not_covered_api_entities),
+            }
+        )
+    return rows
+
+
+def _build_coverage_gap_report(
+    affected_api_entities: list[str],
+    project_results: list[dict[str, object]],
+    api_lineage_map: "ApiLineageMap | None",
+) -> dict[str, list]:
+    """Classify each affected API entity by coverage evidence quality.
+
+    Returns a dict with four lists:
+    - covered: entities with direct type/member evidence in matched projects
+    - indirectly_covered: entities with only family-level evidence
+    - not_covered: entities with no evidence in any matched project
+    - unresolved: entities with no consumer evidence anywhere in the lineage map
+    """
+    covered: list[str] = []
+    indirectly_covered: list[str] = []
+    not_covered: list[str] = []
+    unresolved: list[dict[str, str]] = []
+
+    all_direct_suites: set[str] = set()
+    all_indirect_suites: set[str] = set()
+
+    for entity in affected_api_entities:
+        owner_token = _api_owner_token(entity)
+        entity_key = normalize_member_hint(entity) if "." in str(entity) else compact_token(str(entity))
+        direct_hits: set[str] = set()
+        indirect_hits: set[str] = set()
+
+        for project in project_results:
+            project_name = str(project.get("project") or "").strip()
+            direct_type_hints = {str(h).strip() for h in project.get("direct_type_hint_keys", []) if str(h).strip()}
+            member_hints = {str(h).strip() for h in project.get("member_hint_keys", []) if str(h).strip()}
+            if (owner_token and owner_token in direct_type_hints) or (entity_key and entity_key in member_hints):
+                if project_name:
+                    direct_hits.add(project_name)
+                continue
+            family_keys = {str(h).strip() for h in project.get("family_keys", []) if str(h).strip()}
+            direct_family_keys = {str(h).strip() for h in project.get("direct_family_keys", []) if str(h).strip()}
+            if owner_token and (owner_token in family_keys or owner_token in direct_family_keys):
+                if project_name:
+                    indirect_hits.add(project_name)
+
+        if direct_hits:
+            covered.append(entity)
+            all_direct_suites.update(direct_hits)
+        elif indirect_hits:
+            indirectly_covered.append(entity)
+            all_indirect_suites.update(indirect_hits)
+        elif api_lineage_map is not None and not api_lineage_map.api_to_consumer_projects.get(entity):
+            unresolved.append({"api_entity": entity, "reason": "no_consumer_evidence"})
+        else:
+            not_covered.append(entity)
+
+    return {
+        "covered": covered,
+        "indirectly_covered": indirectly_covered,
+        "not_covered": not_covered,
+        "unresolved": unresolved,
+        "direct_covering_suites": sorted(all_direct_suites),
+        "indirectly_covering_suites": sorted(all_indirect_suites - all_direct_suites),
+    }
 
 
 def unresolved_reason(
@@ -4798,10 +6156,113 @@ def build_progress_callback(enabled: bool, changed_file_count: int = 0) -> Calla
     return _callback
 
 
+def build_execution_progress_callback(enabled: bool) -> Callable[[dict[str, object]], None] | None:
+    if not enabled:
+        return None
+
+    def _callback(event: dict[str, object]) -> None:
+        kind = str(event.get("event") or "").strip()
+        total = int(event.get("total") or 0)
+        index = int(event.get("index") or event.get("completed") or 0)
+        suite = str(event.get("suite") or "unknown-suite")
+        device = str(event.get("device") or "default")
+        tool = str(event.get("tool") or "-")
+        estimated_duration = _format_duration_seconds(event.get("estimated_duration_s"))
+        remaining_estimate = _format_duration_seconds(event.get("remaining_estimated_duration_s"))
+        estimate_part = ""
+        if estimated_duration != "-":
+            estimate_part = f" est={estimated_duration}"
+        remaining_part = ""
+        if remaining_estimate != "-":
+            remaining_part = f", batch_eta={remaining_estimate}"
+        if kind == "started":
+            print(
+                f"phase: running {index}/{total} [{tool} {device}] {suite}{estimate_part}{remaining_part}",
+                file=sys.stderr,
+                flush=True,
+            )
+            return
+        if kind == "completed":
+            status = str(event.get("status") or "-")
+            duration = _format_duration_seconds(event.get("duration_s"))
+            duration_part = f" {duration}" if duration != "-" else ""
+            summary = event.get("summary") if isinstance(event.get("summary"), dict) else {}
+            case_summary = event.get("case_summary") if isinstance(event.get("case_summary"), dict) else {}
+            counters = (
+                f"passed={summary.get('passed', 0)} "
+                f"failed={summary.get('failed', 0)} "
+                f"blocked={summary.get('blocked', 0)} "
+                f"timeout={summary.get('timeout', 0)} "
+                f"unavailable={summary.get('unavailable', 0)} "
+                f"skipped={summary.get('skipped', 0)}"
+            )
+            case_part = ""
+            rendered_case = _format_case_summary(case_summary)
+            if rendered_case != "-":
+                case_part = f", suite_cases=({rendered_case})"
+            print(
+                f"phase: completed {index}/{total} [{tool} {device}] {suite} -> {status}{duration_part}{remaining_part} ({counters}{case_part})",
+                file=sys.stderr,
+                flush=True,
+            )
+            return
+        if kind == "interrupted":
+            completed = int(event.get("completed") or 0)
+            print(
+                f"phase: execution interrupted after {completed}/{total} completed target(s)",
+                file=sys.stderr,
+                flush=True,
+            )
+
+    return _callback
+
+
+def _execution_artifact_rows(report: dict) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for group in collect_unique_run_targets(report):
+        target = group.get("representative", {})
+        suite = _suite_label(target)
+        candidates = list(target.get("execution_results") or []) or list(target.get("execution_plan") or [])
+        for item in candidates:
+            tool = str(item.get("selected_tool") or "-")
+            device = str(item.get("device_label") or item.get("device") or "default")
+            status = str(item.get("status") or "-")
+            result_path = str(item.get("result_path") or "").strip()
+            if result_path:
+                rows.append([suite, device, tool, status, "result_path", result_path])
+                summary_xml = Path(result_path).expanduser().resolve() / "summary_report.xml"
+                if summary_xml.is_file():
+                    rows.append([suite, device, tool, status, "summary_report_xml", str(summary_xml)])
+                log_root = Path(result_path).expanduser().resolve() / "log"
+                if log_root.is_dir():
+                    for module_log in sorted(log_root.glob("**/module_run.log")):
+                        rows.append([suite, device, tool, status, "module_run_log", str(module_log)])
+    return rows
+
+
+def write_execution_artifact_index(report: dict, output_dir: Path | None) -> Path | None:
+    if output_dir is None:
+        return None
+    rows = _execution_artifact_rows(report)
+    if not rows:
+        return None
+    target = output_dir.resolve() / "execution_artifacts.txt"
+    lines = [
+        f"Run Dir: {report.get('selector_run', {}).get('run_dir', '-')}",
+        f"Report JSON: {report.get('json_output_path', '-')}",
+        f"XDevice Reports Root: {report.get('execution_xdevice_reports_root', '-')}",
+        "",
+        "suite\tdevice\ttool\tstatus\tartifact_kind\tpath",
+    ]
+    lines.extend("\t".join(row) for row in rows)
+    target.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return target
+
+
 def _has_local_acts_artifacts(acts_out_root: Path | None) -> bool:
     if acts_out_root is None:
         return False
-    root = acts_out_root.expanduser().resolve()
+    root = acts_out_root.expanduser().absolute()
     testcases_dir = root / "testcases"
     if not testcases_dir.is_dir():
         return False
@@ -4816,8 +6277,8 @@ def _sync_prebuilt_acts_to_local_root(
 ) -> Path | None:
     if prepared is None or prepared.acts_out_root is None or local_acts_root is None:
         return None
-    source = prepared.acts_out_root.expanduser().resolve()
-    destination = local_acts_root.expanduser().resolve()
+    source = prepared.acts_out_root.expanduser().absolute()
+    destination = local_acts_root.expanduser().absolute()
     if source == destination:
         return destination
 
@@ -4833,7 +6294,7 @@ def _sync_prebuilt_acts_to_local_root(
         shutil.rmtree(destination)
     shutil.copytree(source, destination)
 
-    extracted_root = prepared.extracted_root.expanduser().resolve()
+    extracted_root = prepared.extracted_root.expanduser().absolute()
     if extracted_root.exists() and extracted_root != destination:
         emit_progress(progress_enabled, f"cleaning extracted daily cache {extracted_root}")
         shutil.rmtree(extracted_root)
@@ -4858,10 +6319,13 @@ def prepare_daily_prebuilt_from_config(app_config: AppConfig) -> PreparedDailyPr
     if prepared.acts_out_root is not None:
         app_config.acts_out_root = prepared.acts_out_root
         app_config.daily_prebuilt_ready = True
-        app_config.daily_prebuilt_note = (
+        base_note = (
             f"Using prebuilt ACTS artifacts from daily build {prepared.build.tag} "
             f"({prepared.acts_out_root})."
         )
+        if prepared.note:
+            base_note = f"{prepared.note} {base_note}"
+        app_config.daily_prebuilt_note = base_note
     else:
         app_config.daily_prebuilt_ready = False
         app_config.daily_prebuilt_note = (
@@ -5027,16 +6491,169 @@ def write_and_render_utility_report(
         print(f"{name}: {status}")
         if payload.get("error"):
             print(f"  error: {payload['error']}")
-        for key in ("tag", "component", "role", "package_kind", "archive_path", "extracted_root", "primary_root"):
+        for key in ("tag", "component", "role", "package_kind", "cache_root", "archive_path", "extracted_root", "primary_root"):
             value = payload.get(key)
             if value:
                 print(f"  {key}: {value}")
+        if payload.get("note"):
+            print(f"  note: {payload['note']}")
         if payload.get("output_tail"):
             print("  output_tail:")
             for line in str(payload["output_tail"]).splitlines():
                 print(f"    {line}")
     if written_json_path is not None:
         print(f"json_output_path: {written_json_path}")
+
+
+def run_benchmark_mode(args: argparse.Namespace, app_config: AppConfig) -> int:
+    """Run benchmark cases from canonical corpus and report results.
+
+    Returns 0 if all cases pass, 1 if any fail.
+    """
+    from .benchmark import BenchmarkRunner, BenchmarkResult
+
+    fixtures_dir = Path(args.benchmark_fixtures_dir) if args.benchmark_fixtures_dir else None
+    if not fixtures_dir:
+        fixtures_dir = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "canonical_corpus"
+
+    if not fixtures_dir.exists():
+        print(f"error: benchmark fixtures directory not found: {fixtures_dir}", file=sys.stderr)
+        return 2
+
+    runner = BenchmarkRunner(fixtures_dir)
+    cases = runner.load_all_cases()
+
+    if not cases:
+        print("error: no benchmark cases found", file=sys.stderr)
+        return 2
+
+    results: list[BenchmarkResult] = []
+    overall_pass = True
+
+    for case in cases:
+        # Build a minimal report for evaluation
+        # We need to run the selector to get a real report
+        # For now, evaluate with empty report if workspace unavailable
+        ws = _workspace()
+        if ws is None:
+            # No workspace available — skip evaluation but still report structure
+            results.append(BenchmarkResult(
+                case_name=case.name,
+                family=case.family,
+                pass_fail=False,
+                notes=f"SKIPPED: workspace not available for case {case.name!r}",
+            ))
+            continue
+
+        # Run selector for this case
+        try:
+            extra_args: list[str] = []
+            for changed_file in case.input_changed_files:
+                full_path = ws["repo_root"].parent / changed_file
+                if full_path.exists():
+                    extra_args.extend(["--changed-file", str(full_path)])
+                else:
+                    extra_args.extend(["--changed-file", changed_file])
+
+            report = _run_selector(ws, extra_args)
+            result = runner.evaluate(case, report)
+            results.append(result)
+        except RuntimeError as exc:
+            results.append(BenchmarkResult(
+                case_name=case.name,
+                family=case.family,
+                pass_fail=False,
+                notes=f"ERROR: {exc}",
+            ))
+
+    # Print summary
+    print("\n=== Benchmark Results ===")
+    for result in results:
+        status = "PASS" if result.pass_fail else "FAIL"
+        print(f"  [{status}] {result.case_name}: {result.notes}")
+        if result.noise_violations:
+            for v in result.noise_violations:
+                print(f"    noise: {v}")
+        if result.recall < 0.9 and result.recall > 0:
+            print(f"    WARNING: recall {result.recall:.2f} below 0.9 threshold")
+        if result.recall == 0.0:
+            print(f"    SKIPPED (no workspace)")
+        if result.notes.startswith("ERROR"):
+            print(f"    ERROR: {result.notes}")
+        if result.notes.startswith("SKIPPED"):
+            continue
+        if not result.pass_fail:
+            overall_pass = False
+
+    print(f"\nTotal: {len(results)} cases, {'ALL PASS' if overall_pass else 'SOME FAILED'}")
+    return 0 if overall_pass else 1
+
+
+def run_inspect_mode(args: argparse.Namespace, app_config: AppConfig) -> int:
+    """Inspect the persisted dependency/lineage map."""
+    from .api_lineage import read_api_lineage_map, default_api_lineage_map_file
+
+    lineage_path = default_api_lineage_map_file(app_config.runtime_state_root)
+    if not lineage_path.exists():
+        print(f"error: lineage map not found at {lineage_path}", file=sys.stderr)
+        return 2
+
+    lineage_map = read_api_lineage_map(lineage_path)
+
+    if args.inspect_api_entity:
+        entity = args.inspect_api_entity
+        result = {
+            "api_entity": entity,
+            "source_files": sorted(lineage_map.api_to_sources.get(entity, set())),
+            "families": sorted(lineage_map.api_to_families.get(entity, set())),
+            "surfaces": sorted(lineage_map.api_to_surfaces.get(entity, set())),
+            "consumer_files": sorted(lineage_map.api_to_consumer_files.get(entity, set())),
+            "consumer_projects": sorted(lineage_map.api_to_consumer_projects.get(entity, set())),
+        }
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.inspect_source_file:
+        source = args.inspect_source_file
+        result = {
+            "source_file": source,
+            "api_entities": sorted(lineage_map.source_to_apis.get(source, set())),
+            "consumer_files": [],
+            "consumer_projects": [],
+        }
+        for api in result["api_entities"]:
+            result["consumer_files"].extend(lineage_map.api_to_consumer_files.get(api, set()))
+            result["consumer_projects"].extend(lineage_map.api_to_consumer_projects.get(api, set()))
+        result["consumer_files"] = sorted(set(result["consumer_files"]))
+        result["consumer_projects"] = sorted(set(result["consumer_projects"]))
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.inspect_consumer_project:
+        project = args.inspect_consumer_project
+        result = {
+            "consumer_project": project,
+            "api_entities": sorted(lineage_map.consumer_project_to_apis.get(project, set())),
+            "source_files": [],
+        }
+        for api in result["api_entities"]:
+            result["source_files"].extend(lineage_map.api_to_sources.get(api, set()))
+        result["source_files"] = sorted(set(result["source_files"]))
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
+
+    # No specific query — print map summary
+    result = {
+        "schema_version": lineage_map.schema_version,
+        "metadata": lineage_map.metadata,
+        "source_to_api_count": len(lineage_map.source_to_apis),
+        "api_to_source_count": len(lineage_map.api_to_sources),
+        "api_to_family_count": len(lineage_map.api_to_families),
+        "consumer_file_count": len(lineage_map.consumer_file_to_apis),
+        "consumer_project_count": len(lineage_map.consumer_project_to_apis),
+    }
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    return 0
 
 
 def run_utility_mode(
@@ -5163,6 +6780,17 @@ def resolve_selected_tests_output_path(selector_report_path: Path | None) -> Pat
     if selector_report_path is None:
         return None
     return selector_report_path.resolve().with_name(SELECTED_TESTS_FILE_NAME)
+
+
+def resolve_selected_tests_report_base_path(
+    run_session: RunSession | None,
+    json_output_path: Path | None,
+) -> Path | None:
+    if run_session is not None:
+        return run_session.selector_report_path.resolve()
+    if json_output_path is not None:
+        return json_output_path.resolve()
+    return None
 
 
 def _selected_test_aliases(entry: dict[str, object]) -> list[str]:
@@ -5351,6 +6979,11 @@ def format_report(
         "symbol_queries": [],
         "code_queries": [],
         "unresolved_files": [],
+        "coverage_gap": [],
+        "affected_api_entities": [],
+        "lineage_hops": [],
+        "lineage_gaps": [],
+        "source_only_consumers": [],
         "timings_ms": {},
     }
     if api_lineage_map is not None:
@@ -5376,8 +7009,16 @@ def format_report(
         if progress_callback:
             progress_callback(f"scoring changed file {repo_rel(changed_file)}")
         rel = repo_rel(changed_file)
-        signals = infer_signals(changed_file, sdk_index, content_index, mapping_config)
         changed_ranges = list((changed_ranges_by_file or {}).get(changed_file.resolve(), []))
+        signals = infer_signals(
+            changed_file,
+            sdk_index,
+            content_index,
+            mapping_config,
+            changed_ranges=changed_ranges,
+            api_lineage_map=api_lineage_map,
+            repo_root=app_config.repo_root,
+        )
         affected_api_entities, file_level_affected_api_entities, derived_source_symbols = apply_api_lineage_signals(
             changed_file,
             signals,
@@ -5431,6 +7072,8 @@ def format_report(
                 file_hits,
             )
             family_profile = infer_project_family_profile(project, project_reasons, file_hits)
+            type_hint_profile = infer_project_type_hint_profile(file_hits, signals)
+            member_hint_profile = infer_project_member_hint_profile(file_hits, signals)
             project_entry = {
                 # Only 'possible related' suites (call-only, no explicit import)
                 # are eligible for coverage deduplication. Must-run and
@@ -5462,6 +7105,12 @@ def format_report(
                 "direct_capability_keys": family_profile["direct_capability_keys"],
                 "capability_quality": family_profile["capability_quality"],
                 "capability_representative_quality": family_profile["capability_representative_quality"],
+                "type_hint_keys": type_hint_profile["type_hint_keys"],
+                "direct_type_hint_keys": type_hint_profile["direct_type_hint_keys"],
+                "type_hint_focus_counts": type_hint_profile["focus_token_counts"],
+                "member_hint_keys": member_hint_profile["member_hint_keys"],
+                "direct_member_hint_keys": member_hint_profile["direct_member_hint_keys"],
+                "member_hint_focus_counts": member_hint_profile["focus_token_counts"],
                 "focus_token_counts": family_profile["focus_token_counts"],
                 "umbrella_penalty": family_profile["umbrella_penalty"],
                 "reasons": project_reasons,
@@ -5495,13 +7144,41 @@ def format_report(
             }
             for index, item in enumerate(filtered_project_results, start=1)
         )
+        function_coverage = build_function_coverage_rows(
+            changed_file=changed_file,
+            derived_source_symbols=derived_source_symbols,
+            affected_api_entities=affected_api_entities,
+            api_lineage_map=api_lineage_map,
+            repo_root=app_config.repo_root,
+            project_results=filtered_project_results,
+        )
+        api_coverage = _build_coverage_gap_report(
+            affected_api_entities,
+            filtered_project_results,
+            api_lineage_map,
+        )
+        uncovered_functions = [
+            row["symbol"] for row in function_coverage
+            if row.get("status") not in {"covered", "indirectly_covered"}
+        ]
+        uncovered_apis = (
+            api_coverage["not_covered"]
+            + [e["api_entity"] for e in api_coverage["unresolved"]]
+        )
         result_item = {
             "changed_file": rel,
             "changed_symbols": sorted(changed_symbols or []),
             "changed_ranges": [f"{start}:{end}" for start, end in changed_ranges],
             "derived_source_symbols": derived_source_symbols,
+            "touched_source_functions": derived_source_symbols,
             "affected_api_entities": affected_api_entities,
             "file_level_affected_api_entities": file_level_affected_api_entities,
+            "api_coverage": api_coverage,
+            "direct_covering_suites": api_coverage["direct_covering_suites"],
+            "indirectly_covering_suites": api_coverage["indirectly_covering_suites"],
+            "uncovered_functions": uncovered_functions,
+            "uncovered_apis": uncovered_apis,
+            "function_coverage": function_coverage,
             "source_only_consumers": source_only_consumers,
             "signals": {
                 "modules": sorted(signals["modules"]),
@@ -5511,6 +7188,7 @@ def format_report(
                 "project_hints": sorted(signals["project_hints"]),
                 "method_hints": sorted(signals.get("method_hints", set())),
                 "type_hints": sorted(signals.get("type_hints", set())),
+                "member_hints": sorted(signals.get("member_hints", set())),
                 "family_tokens": sorted(signals["family_tokens"]),
             },
             "coverage_families": source_profile["family_keys"],
@@ -5542,19 +7220,35 @@ def format_report(
                     "matched_project_count": len(filtered_project_results),
                 }
         selected_build_targets.extend(guess_build_target(item["project"]) for item in shown_project_results)
-        unresolved = build_unresolved_analysis(signals, project_results)
+        unresolved = build_unresolved_analysis(
+            signals,
+            project_results,
+            affected_api_entities=affected_api_entities,
+            derived_source_symbols=derived_source_symbols,
+        )
         if debug_trace:
             result_item["unresolved_debug"] = unresolved
         if unresolved["reason"]:
             result_item["unresolved_reason"] = unresolved["reason"]
+            if unresolved.get("reason_class"):
+                result_item["unresolved_reason_class"] = unresolved["reason_class"]
             unresolved_entry = {
                 "changed_file": rel,
                 "reason": unresolved["reason"],
+                "reason_class": unresolved.get("reason_class"),
                 "signals": result_item["signals"],
             }
             if debug_trace:
                 unresolved_entry["debug"] = unresolved
             report["unresolved_files"].append(unresolved_entry)
+        for entity in affected_api_entities:
+            report["lineage_hops"].append(f"{rel} -> {entity}")
+            if entity not in report["affected_api_entities"]:
+                report["affected_api_entities"].append(entity)
+        if api_lineage_map is not None and not affected_api_entities:
+            report["lineage_gaps"].append(rel)
+        report["source_only_consumers"].extend(source_only_consumers)
+        report["coverage_gap"].extend(api_coverage["not_covered"])
         report["results"].append(result_item)
     report["timings_ms"]["changed_file_analysis"] = round((time.perf_counter() - changed_started) * 1000, 3)
     symbol_started = time.perf_counter()
@@ -5589,6 +7283,8 @@ def format_report(
                 file_hits,
             )
             family_profile = infer_project_family_profile(project, project_reasons, file_hits)
+            type_hint_profile = infer_project_type_hint_profile(file_hits, signals)
+            member_hint_profile = infer_project_member_hint_profile(file_hits, signals)
             project_entry = {
                 "_coverage_sig": coverage_signature(file_hits, project_path_key=project.path_key) if _bucket == "possible related" else None,
                 "score": score,
@@ -5617,6 +7313,12 @@ def format_report(
                 "direct_capability_keys": family_profile["direct_capability_keys"],
                 "capability_quality": family_profile["capability_quality"],
                 "capability_representative_quality": family_profile["capability_representative_quality"],
+                "type_hint_keys": type_hint_profile["type_hint_keys"],
+                "direct_type_hint_keys": type_hint_profile["direct_type_hint_keys"],
+                "type_hint_focus_counts": type_hint_profile["focus_token_counts"],
+                "member_hint_keys": member_hint_profile["member_hint_keys"],
+                "direct_member_hint_keys": member_hint_profile["direct_member_hint_keys"],
+                "member_hint_focus_counts": member_hint_profile["focus_token_counts"],
                 "focus_token_counts": family_profile["focus_token_counts"],
                 "umbrella_penalty": family_profile["umbrella_penalty"],
                 "test_files": [
@@ -5667,6 +7369,7 @@ def format_report(
                 "project_hints": sorted(signals["project_hints"]),
                 "method_hints": sorted(signals.get("method_hints", set())),
                 "type_hints": sorted(signals.get("type_hints", set())),
+                "member_hints": sorted(signals.get("member_hints", set())),
                 "family_tokens": sorted(signals["family_tokens"]),
             },
             "coverage_families": source_profile["family_keys"],
@@ -5868,13 +7571,17 @@ def _print_key_value_section(title: str, rows: list[tuple[object, object]]) -> N
 def _format_case_summary(summary: dict | None) -> str:
     if not summary:
         return "-"
-    return (
-        f"total={summary.get('total_tests', 0)}, "
-        f"passed={summary.get('pass_count', 0)}, "
-        f"failed={summary.get('fail_count', 0)}, "
-        f"blocked={summary.get('blocked_count', 0)}, "
-        f"unknown={summary.get('unknown_count', 0)}"
-    )
+    parts = [
+        f"total={summary.get('total_tests', 0)}",
+        f"passed={summary.get('pass_count', 0)}",
+        f"failed={summary.get('fail_count', 0)}",
+        f"blocked={summary.get('blocked_count', 0)}",
+        f"unknown={summary.get('unknown_count', 0)}",
+    ]
+    unavailable = int(summary.get("unavailable_count", 0) or 0)
+    if unavailable:
+        parts.append(f"unavailable={unavailable}")
+    return ", ".join(parts)
 
 
 def _tail_hint(result: dict) -> str:
@@ -6011,6 +7718,38 @@ def _wrapper_or_direct_command_tokens(wrapper_subcommand: str | None = None) -> 
     return tokens
 
 
+def _wrapper_download_command_tokens(download_subcommand: str) -> list[object]:
+    if not _uses_wrapper_commands():
+        return list(_selector_command_prefix_tokens())
+    tokens: list[object] = list(_selector_command_prefix_tokens())
+    compact_tokens = [compact_token(token) for token in tokens]
+    if compact_tokens:
+        if compact_tokens[-1] == "xts":
+            tokens[-1] = "download"
+        elif compact_tokens[-1] != "download":
+            tokens.append("download")
+    else:
+        tokens = ["ohos", "download"]
+    tokens.append(download_subcommand)
+    return tokens
+
+
+def _wrapper_device_flash_command_tokens() -> list[object]:
+    if not _uses_wrapper_commands():
+        return list(_selector_command_prefix_tokens())
+    tokens: list[object] = list(_selector_command_prefix_tokens())
+    compact_tokens = [compact_token(token) for token in tokens]
+    if compact_tokens:
+        if compact_tokens[-1] == "xts":
+            tokens[-1] = "device"
+        elif compact_tokens[-1] != "device":
+            tokens.append("device")
+    else:
+        tokens = ["ohos", "device"]
+    tokens.append("flash")
+    return tokens
+
+
 def _showing_summary_text(relevance_summary: dict[str, object], shown_count: int) -> str:
     shown = int(relevance_summary.get("shown", shown_count))
     total_after = int(relevance_summary.get("total_after", shown_count))
@@ -6137,6 +7876,10 @@ def _base_selector_run_command(report: dict, app_config: AppConfig, args: argpar
             run_command.extend(["--keep-per-signature", args.keep_per_signature])
     if app_config.runtime_state_root and app_config.runtime_state_root != default_runtime_state_root():
         run_command.extend(["--runtime-state-root", app_config.runtime_state_root])
+    if app_config.server_host:
+        run_command.extend(["--server-host", app_config.server_host])
+    if app_config.server_user:
+        run_command.extend(["--server-user", app_config.server_user])
     if app_config.hdc_path and not _uses_wrapper_commands():
         run_command.extend(["--hdc-path", app_config.hdc_path])
     if app_config.hdc_endpoint:
@@ -6337,7 +8080,7 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
                 ),
                 "command": _shell_join(
                     [
-                        *_wrapper_or_direct_command_tokens("sdk" if _uses_wrapper_commands() else None),
+                        *(_wrapper_download_command_tokens("sdk") if _uses_wrapper_commands() else _wrapper_or_direct_command_tokens(None)),
                         *([] if _uses_wrapper_commands() else ["--download-daily-sdk"]),
                         "--sdk-component",
                         app_config.sdk_component,
@@ -6366,7 +8109,7 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             ),
             "command": _shell_join(
                 [
-                    *_wrapper_or_direct_command_tokens("tests" if _uses_wrapper_commands() else None),
+                    *(_wrapper_download_command_tokens("tests") if _uses_wrapper_commands() else _wrapper_or_direct_command_tokens(None)),
                     *([] if _uses_wrapper_commands() else ["--download-daily-tests"]),
                     "--daily-component",
                     app_config.daily_component,
@@ -6391,7 +8134,7 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             "why": "Use this when you need a matching daily firmware image package.",
             "command": _shell_join(
                 [
-                    *_wrapper_or_direct_command_tokens("firmware" if _uses_wrapper_commands() else None),
+                    *(_wrapper_download_command_tokens("firmware") if _uses_wrapper_commands() else _wrapper_or_direct_command_tokens(None)),
                     *([] if _uses_wrapper_commands() else ["--download-daily-firmware"]),
                     "--firmware-component",
                     app_config.firmware_component,
@@ -6416,7 +8159,7 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             "why": "Download and flash a daily firmware package to the connected device.",
             "command": _shell_join(
                 [
-                    *_wrapper_or_direct_command_tokens("flash" if _uses_wrapper_commands() else None),
+                    *(_wrapper_device_flash_command_tokens() if _uses_wrapper_commands() else _wrapper_or_direct_command_tokens(None)),
                     *([] if _uses_wrapper_commands() else ["--flash-daily-firmware"]),
                     "--firmware-component",
                     app_config.firmware_component,
@@ -6658,11 +8401,19 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             summary_rows.append(("Report JSON", json_report_path))
         if selected_tests_json_path:
             summary_rows.append(("Selected Tests JSON", selected_tests_json_path))
+        if report.get("execution_artifact_index_path"):
+            summary_rows.append(("Execution Artifact Index", report["execution_artifact_index_path"]))
+        if report.get("execution_xdevice_reports_root"):
+            summary_rows.append(("XDevice Reports Root", report["execution_xdevice_reports_root"]))
         requested_names = list(report.get("execution_overview", {}).get("requested_test_names", []))
         if requested_names:
             summary_rows.append(("Requested Names", _human_join(requested_names)))
         if report.get("requested_devices"):
             summary_rows.append(("Devices", _human_join(report["requested_devices"])))
+        if report.get("execution_server_host"):
+            summary_rows.append(("Execution Host", report["execution_server_host"]))
+        if report.get("execution_server_user"):
+            summary_rows.append(("Execution User", report["execution_server_user"]))
         if report.get("daily_prebuilt", {}).get("note"):
             summary_rows.append(("Daily Note", report["daily_prebuilt"]["note"]))
         _print_key_value_section("Run Summary", summary_rows)
@@ -6747,7 +8498,8 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         f"blocked={summary.get('blocked', 0)}, "
                         f"timeout={summary.get('timeout', 0)}, "
                         f"unavailable={summary.get('unavailable', 0)}, "
-                        f"skipped={summary.get('skipped', 0)}"
+                        f"skipped={summary.get('skipped', 0)}, "
+                        f"interrupted={_human_value(summary.get('interrupted'))}"
                     ),
                 )
             )
@@ -6804,8 +8556,8 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                 indent=2,
             )
             print()
-        elif plan_rows:
-            print("Execution Plan")
+        if plan_rows and (not result_rows or report.get("execution_interrupted")):
+            print("Execution Plan" if not report.get("execution_interrupted") else "Remaining Execution Plan")
             _print_human_table(
                 ["#", "Suite", "Device", "Status", "Tool", "Reason"],
                 plan_rows,
@@ -7431,6 +9183,33 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         file_level_apis = list(item.get("file_level_affected_api_entities", []))
         if file_level_apis and file_level_apis != item.get("affected_api_entities", []):
             changed_rows.append(("File-level APIs", _human_preview(file_level_apis, limit=4)))
+        function_coverage = list(item.get("function_coverage", []))
+        if function_coverage:
+            status_counts: dict[str, int] = {}
+            not_covered_symbols: list[str] = []
+            unresolved_symbols: list[str] = []
+            for entry in function_coverage:
+                status = str(entry.get("status") or "unresolved")
+                status_counts[status] = status_counts.get(status, 0) + 1
+                symbol = str(entry.get("symbol") or "")
+                if status == "not_covered" and symbol:
+                    not_covered_symbols.append(symbol)
+                if status == "unresolved" and symbol:
+                    unresolved_symbols.append(symbol)
+            changed_rows.append(
+                (
+                    "Function Coverage",
+                    ", ".join(f"{key}={value}" for key, value in sorted(status_counts.items())),
+                )
+            )
+            if not_covered_symbols:
+                changed_rows.append(
+                    ("Not Covered", _human_preview(not_covered_symbols, limit=4))
+                )
+            if unresolved_symbols:
+                changed_rows.append(
+                    ("Unresolved Functions", _human_preview(unresolved_symbols, limit=4))
+                )
         if report.get("debug_trace"):
             changed_rows.extend(
                 [
@@ -7441,6 +9220,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                     ("Project Hints", _human_preview(signals.get("project_hints", []))),
                     ("Method Hints", _human_preview(signals.get("method_hints", []))),
                     ("Type Hints", _human_preview(signals.get("type_hints", []))),
+                    ("Member Hints", _human_preview(signals.get("member_hints", []))),
                     ("Families", _human_preview(signals.get("family_tokens", []))),
                 ]
             )
@@ -7472,9 +9252,17 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
 
     if report["unresolved_files"]:
         print("Unresolved Files")
+        has_reason_class = any(item.get("reason_class") for item in report["unresolved_files"])
+        headers = ["Changed File", "Reason", "Class"] if has_reason_class else ["Changed File", "Reason"]
+        rows = []
+        for item in report["unresolved_files"]:
+            base = [item.get("changed_file", "-"), item.get("reason", "-")]
+            if has_reason_class:
+                base.append(item.get("reason_class", "-"))
+            rows.append(base)
         _print_human_table(
-            ["Changed File", "Reason"],
-            [[item.get("changed_file", "-"), item.get("reason", "-")] for item in report["unresolved_files"]],
+            headers,
+            rows,
             indent=2,
         )
         print()
@@ -7504,6 +9292,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                     ("Project Hints", _human_preview(item["signals"].get("project_hints", []))),
                     ("Method Hints", _human_preview(item["signals"].get("method_hints", []))),
                     ("Type Hints", _human_preview(item["signals"].get("type_hints", []))),
+                    ("Member Hints", _human_preview(item["signals"].get("member_hints", []))),
                 ]
             )
         if item.get("debug"):
@@ -7592,6 +9381,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", help="Optional device serial/connect key visible from the selected HDC server.")
     parser.add_argument("--devices", action="append", default=[], help="Comma-separated device serial list for command generation and execution.")
     parser.add_argument("--devices-from", help="File with one device serial per line (comments with # are ignored).")
+    parser.add_argument("--server-host", help="Optional remote Linux execution host for wrapper-driven `ohos xts ...` flows.")
+    parser.add_argument("--server-user", help="Optional remote Linux user for --server-host. Default: current user on the caller side.")
     parser.add_argument("--product-name", help="Product name for build guidance. Default: rk3568.")
     parser.add_argument("--system-size", help="System size for build guidance. Default: standard.")
     parser.add_argument("--xts-suitetype", help="Optional xts_suitetype for build guidance, for example hap_static or hap_dynamic.")
@@ -7612,8 +9403,14 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--daily-branch", help="Daily build branch filter. Default: master.")
     parser.add_argument("--daily-date", help="Daily build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --daily-build-tag.")
-    parser.add_argument("--daily-cache-root", help="Cache directory for downloaded/extracted daily full packages. Default: /tmp/arkui_xts_selector_daily_cache")
+    parser.add_argument("--daily-cache-root", help=f"Cache directory for downloaded/extracted daily full packages. Default: {DEFAULT_DAILY_CACHE_ROOT}")
     parser.add_argument("--quick", action="store_true", help="Quick mode: skip daily download and use only local ACTS artifacts. Use when you have a built tree or want fast analysis with reduced accuracy.")
+    parser.add_argument("--benchmark", action="store_true", help="Run benchmark cases from canonical corpus and exit with code 1 if any fail.")
+    parser.add_argument("--benchmark-fixtures-dir", help="Directory containing canonical corpus benchmark fixtures. Default: tests/fixtures/canonical_corpus")
+    parser.add_argument("--inspect", action="store_true", help="Enable inspect mode for querying the persisted dependency/lineage map.")
+    parser.add_argument("--inspect-api-entity", help="Inspect mode: show all source files, consumers, and projects that reference this API entity.")
+    parser.add_argument("--inspect-source-file", help="Inspect mode: show all API entities and consumers reachable from this source file.")
+    parser.add_argument("--inspect-consumer-project", help="Inspect mode: show all API entities and source files reachable from this consumer project.")
     parser.add_argument("--download-daily-tests", action="store_true", help="Download and extract the daily XTS package described by --daily-* options, then exit.")
     parser.add_argument("--download-daily-sdk", action="store_true", help="Download and extract the daily SDK package described by --sdk-* options, then exit.")
     parser.add_argument("--download-daily-firmware", action="store_true", help="Download and extract the daily firmware image package described by --firmware-* options, then exit.")
@@ -7622,12 +9419,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sdk-component", help=f"Daily SDK component name. Default: {DEFAULT_SDK_COMPONENT}.")
     parser.add_argument("--sdk-branch", help="Daily SDK branch filter. Default: master.")
     parser.add_argument("--sdk-date", help="Daily SDK build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --sdk-build-tag.")
-    parser.add_argument("--sdk-cache-root", help="Cache directory for downloaded/extracted daily SDK packages. Default: --daily-cache-root")
+    parser.add_argument("--sdk-cache-root", help=f"Cache directory for downloaded/extracted daily SDK packages. Default: {DEFAULT_SDK_CACHE_ROOT}")
     parser.add_argument("--firmware-build-tag", help="Daily firmware build tag, for example 20260404_120244.")
     parser.add_argument("--firmware-component", help=f"Daily firmware component name. Default: {DEFAULT_FIRMWARE_COMPONENT}.")
     parser.add_argument("--firmware-branch", help="Daily firmware branch filter. Default: master.")
     parser.add_argument("--firmware-date", help="Daily firmware build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --firmware-build-tag.")
-    parser.add_argument("--firmware-cache-root", help="Cache directory for downloaded/extracted daily firmware packages. Default: --daily-cache-root")
+    parser.add_argument("--firmware-cache-root", help=f"Cache directory for downloaded/extracted daily firmware packages. Default: {DEFAULT_FIRMWARE_CACHE_ROOT}")
     parser.add_argument("--flash-firmware-path", help="Path to an unpacked local firmware image bundle root, or a parent directory containing one, to flash directly.")
     parser.add_argument(
         "--list-daily-tags", metavar="TYPE",
@@ -7645,6 +9442,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hdc-path", help="Path to hdc used for generated commands, execution preflight, and flashing.")
     parser.add_argument("--hdc-endpoint", help="Remote HDC server endpoint HOST:PORT used for generated commands, preflight, and execution.")
     parser.add_argument("--run-tool", choices=RUN_TOOL_CHOICES, default="auto", help="Execution tool to use for --run-now. Default: auto.")
+    parser.add_argument("--skip-install", action="store_true", default=False, help="Skip automatic HAP installation before aa_test execution. Use when HAPs are already installed on the device.")
     parser.add_argument("--run-priority", choices=RUN_PRIORITY_CHOICES, default="recommended", help="Execution priority for --run-now. required = strongest unique coverage, recommended = required plus additional unique coverage, all = include duplicate fallback coverage.")
     parser.add_argument("--shard-mode", choices=SHARD_MODE_CHOICES, default="mirror", help="Execution distribution mode. mirror = all selected targets on every device; split = shard unique targets across devices.")
     parser.add_argument("--parallel-jobs", type=int, default=1, help="Maximum number of device queues to execute in parallel for --run-now. Same-device commands stay sequential.")
@@ -7714,6 +9512,8 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         config_device=cfg.get("device"),
     )
     device = devices[0] if devices else None
+    server_host = str(args.server_host or cfg.get("server_host") or "").strip() or None
+    server_user = str(args.server_user or cfg.get("server_user") or "").strip() or None
     product_name = args.product_name or cfg.get("product_name") or "rk3568"
     system_size = args.system_size or cfg.get("system_size") or "standard"
     xts_suitetype = args.xts_suitetype or cfg.get("xts_suitetype")
@@ -7754,13 +9554,13 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         selector_repo_root,
     )
     sdk_cache_root = resolve_path(
-        args.sdk_cache_root or cfg.get("sdk_cache_root") or str(daily_cache_root),
-        daily_cache_root,
+        args.sdk_cache_root or cfg.get("sdk_cache_root") or str(DEFAULT_SDK_CACHE_ROOT),
+        DEFAULT_SDK_CACHE_ROOT,
         selector_repo_root,
     )
     firmware_cache_root = resolve_path(
-        args.firmware_cache_root or cfg.get("firmware_cache_root") or str(daily_cache_root),
-        daily_cache_root,
+        args.firmware_cache_root or cfg.get("firmware_cache_root") or str(DEFAULT_FIRMWARE_CACHE_ROOT),
+        DEFAULT_FIRMWARE_CACHE_ROOT,
         selector_repo_root,
     )
     flash_py_path = resolve_path(
@@ -7802,6 +9602,8 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         git_host_api_url=git_host_api_url,
         git_host_token=git_host_token,
         git_host_config_path=git_host_config_path,
+        server_host=server_host,
+        server_user=server_user,
         device=device,
         devices=devices,
         gitcode_api_url=gitcode_api_url,
@@ -7884,6 +9686,10 @@ def main() -> int:
             json_to_stdout=json_to_stdout,
             json_output_path=json_output_path,
         )
+    if args.benchmark:
+        return run_benchmark_mode(args, app_config)
+    if args.inspect:
+        return run_inspect_mode(args, app_config)
     validation_errors = validate_inputs(args, app_config)
     if validation_errors:
         for err in validation_errors:
@@ -7916,43 +9722,63 @@ def main() -> int:
             return 2
     elif not _has_local_acts_artifacts(app_config.acts_out_root):
         warning_root = str(app_config.acts_out_root or "")
-        if args.run_now:
-            preferred_local_acts_root = app_config.acts_out_root
-            app_config.daily_date = time.strftime("%Y%m%d")
-            print(
-                "warning: local ACTS artifacts were not found under "
-                f"{warning_root or '<unset>'}; auto-downloading daily tests for {app_config.daily_date}.",
-                file=sys.stderr,
-                flush=True,
-            )
-            emit_progress(progress_enabled, f"preparing daily prebuilt {app_config.daily_date}")
-            try:
-                prepared = prepare_daily_prebuilt_from_config(app_config)
-            except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
+        preferred_local_acts_root = app_config.acts_out_root
+        app_config.daily_date = time.strftime("%Y%m%d")
+        print(
+            "warning: local ACTS artifacts were not found under "
+            f"{warning_root or '<unset>'}; auto-downloading daily tests for {app_config.daily_date}.",
+            file=sys.stderr,
+            flush=True,
+        )
+        emit_progress(progress_enabled, f"preparing daily prebuilt {app_config.daily_date}")
+        try:
+            prepared = prepare_daily_prebuilt_from_config(app_config)
+        except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
+            if args.run_now:
                 print(f"daily prebuilt preparation failed: {exc}", file=sys.stderr)
                 return 2
-            if preferred_local_acts_root is not None:
-                try:
-                    synced_root = _sync_prebuilt_acts_to_local_root(
-                        prepared,
-                        preferred_local_acts_root,
-                        progress_enabled=progress_enabled,
-                    )
-                except OSError as exc:
+            else:
+                print(
+                    f"warning: daily prebuilt preparation failed: {exc}; "
+                    "continuing with selection-only analysis and current inventory gaps.",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                prepared = None
+        if prepared is not None and preferred_local_acts_root is not None:
+            try:
+                synced_root = _sync_prebuilt_acts_to_local_root(
+                    prepared,
+                    preferred_local_acts_root,
+                    progress_enabled=progress_enabled,
+                )
+            except OSError as exc:
+                if args.run_now:
                     print(f"daily prebuilt sync failed: {exc}", file=sys.stderr)
                     return 2
-                if synced_root is not None:
-                    app_config.acts_out_root = synced_root
-                    app_config.daily_prebuilt_note = (
-                        f"{app_config.daily_prebuilt_note} Synced to local ACTS root {synced_root}."
-                    ).strip()
-        else:
-            print(
-                "warning: local ACTS artifacts were not found under "
-                f"{warning_root or '<unset>'}; continuing with selection-only analysis and current inventory gaps.",
-                file=sys.stderr,
-                flush=True,
-            )
+                else:
+                    print(f"warning: daily prebuilt sync failed: {exc}", file=sys.stderr)
+                    synced_root = None
+            if synced_root is not None:
+                app_config.acts_out_root = synced_root
+                app_config.daily_prebuilt_note = (
+                    f"{app_config.daily_prebuilt_note} Synced to local ACTS root {synced_root}."
+                ).strip()
+
+    # Auto-download SDK if sdk_api_root is empty or has no SDK API files
+    sdk_component_root = app_config.sdk_api_root / "arkui" / "component"
+    if not sdk_component_root.is_dir() or not any(sdk_component_root.glob("*.d.ets")):
+        if app_config.sdk_date is None and app_config.sdk_build_tag is None:
+            app_config.sdk_date = time.strftime("%Y%m%d")
+        if app_config.sdk_date or app_config.sdk_build_tag:
+            emit_progress(progress_enabled, f"auto-downloading daily SDK {app_config.sdk_build_tag or app_config.sdk_date}")
+            try:
+                prepared_sdk = prepare_daily_sdk_from_config(app_config)
+                if prepared_sdk.primary_root is not None:
+                    app_config.sdk_api_root = prepared_sdk.primary_root
+            except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
+                print(f"warning: SDK auto-download failed: {exc}", file=sys.stderr)
+
     source_report_path = resolve_selector_report_input(
         args.from_report,
         bool(args.last_report),
@@ -7993,6 +9819,7 @@ def main() -> int:
             *read_requested_test_names(requested_test_names_path),
         ]
     )
+    execution_progress_callback = build_execution_progress_callback(progress_enabled)
 
     if args.changed_files_from:
         changed_inputs.extend(read_text(resolve_path(args.changed_files_from, app_config.repo_root, app_config.repo_root)).splitlines())
@@ -8003,10 +9830,14 @@ def main() -> int:
         report["timings_ms"] = {}
         report["json_output_mode"] = "stdout" if json_to_stdout else "file"
         report["requested_devices"] = list(app_config.devices)
+        report["execution_server_host"] = app_config.server_host or ""
+        report["execution_server_user"] = app_config.server_user or ""
+        report["execution_xdevice_reports_root"] = str(xdevice_reports_root) if xdevice_reports_root is not None else ""
         report["execution_summary"] = {}
+        selected_tests_report_base_path = resolve_selected_tests_report_base_path(run_session, json_output_path)
         if json_output_path is not None:
             report["json_output_path"] = str(json_output_path)
-            selected_tests_json_path = resolve_selected_tests_output_path(json_output_path)
+            selected_tests_json_path = resolve_selected_tests_output_path(selected_tests_report_base_path)
             if selected_tests_json_path is not None:
                 report["selected_tests_json_path"] = str(selected_tests_json_path)
         if run_session is not None:
@@ -8044,11 +9875,13 @@ def main() -> int:
             hdc_path=app_config.hdc_path,
             hdc_endpoint=app_config.hdc_endpoint,
             requested_test_names=requested_test_names,
+            skip_install=args.skip_install,
         )
         report["next_steps"] = build_next_steps(report, app_config, args)
         execution_summary = None
         execution_preflight = None
         preflight_failed = False
+        execution_interrupted = False
         if args.run_now:
             emit_progress(progress_enabled, "preflighting execution")
             execution_preflight = preflight_execution(
@@ -8063,31 +9896,39 @@ def main() -> int:
                 preflight_failed = True
             else:
                 emit_progress(progress_enabled, "running selected targets")
-                execution_summary = execute_planned_targets(
-                    report,
-                    repo_root=app_config.repo_root,
-                    acts_out_root=app_config.acts_out_root,
-                    devices=app_config.devices,
-                    run_tool=args.run_tool,
-                    run_top_targets=args.run_top_targets,
-                    run_timeout=args.run_timeout,
-                    shard_mode=app_config.shard_mode,
-                    xdevice_reports_root=xdevice_reports_root,
-                    run_priority=args.run_priority,
-                    parallel_jobs=args.parallel_jobs,
-                    runtime_state_root=app_config.runtime_state_root,
-                    device_lock_timeout=app_config.device_lock_timeout,
-                    requested_test_names=requested_test_names,
-                    hdc_path=app_config.hdc_path,
-                    hdc_endpoint=app_config.hdc_endpoint,
-                )
+                try:
+                    execution_summary = execute_planned_targets(
+                        report,
+                        repo_root=app_config.repo_root,
+                        acts_out_root=app_config.acts_out_root,
+                        devices=app_config.devices,
+                        run_tool=args.run_tool,
+                        run_top_targets=args.run_top_targets,
+                        run_timeout=args.run_timeout,
+                        shard_mode=app_config.shard_mode,
+                        xdevice_reports_root=xdevice_reports_root,
+                        run_priority=args.run_priority,
+                        parallel_jobs=args.parallel_jobs,
+                        runtime_state_root=app_config.runtime_state_root,
+                        device_lock_timeout=app_config.device_lock_timeout,
+                        requested_test_names=requested_test_names,
+                        hdc_path=app_config.hdc_path,
+                        hdc_endpoint=app_config.hdc_endpoint,
+                        progress_callback=execution_progress_callback,
+                        skip_install=args.skip_install,
+                    )
+                except KeyboardInterrupt:
+                    execution_interrupted = True
+                    report["execution_interrupted"] = True
+                    execution_summary = dict(report.get("execution_summary") or {})
         else:
             report["execution_preflight"] = {}
-
         if run_session is not None:
             status = "planned"
             if preflight_failed:
                 status = "failed_preflight"
+            elif execution_interrupted:
+                status = "interrupted"
             elif execution_summary is not None:
                 status = "completed_with_failures" if execution_summary.get("has_failures") else "completed"
             report["selector_run"]["status"] = status
@@ -8105,10 +9946,20 @@ def main() -> int:
                 "significant_updates": 0,
             }
 
+        artifact_output_dir = run_session.run_dir if run_session is not None else (json_output_path.parent if json_output_path is not None else None)
+        artifact_index_path = write_execution_artifact_index(report, artifact_output_dir)
+        if artifact_index_path is not None:
+            report["execution_artifact_index_path"] = str(artifact_index_path)
+
         emit_progress(progress_enabled, "writing JSON report")
         written_json_path = write_json_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)
-        if written_json_path is not None:
-            write_selected_tests_report(report, written_json_path)
+        selected_tests_report_base_path = resolve_selected_tests_report_base_path(run_session, written_json_path)
+        if selected_tests_report_base_path is not None:
+            selected_tests_path = write_selected_tests_report(report, selected_tests_report_base_path)
+            if selected_tests_path is not None:
+                report["selected_tests_json_path"] = str(selected_tests_path)
+                if written_json_path is not None:
+                    write_json_report(report, json_to_stdout=False, json_output_path=written_json_path)
         if run_session is not None:
             manifest = build_run_manifest(
                 report,
@@ -8124,6 +9975,8 @@ def main() -> int:
             emit_progress(progress_enabled, "rendering human report")
             print_executive_summary(report, written_json_path)
             print_human(report, None, written_json_path)
+        if execution_interrupted:
+            return 130
         if args.run_now and preflight_failed:
             return 2
         if args.run_now and execution_summary and execution_summary.get("has_failures"):
@@ -8137,10 +9990,20 @@ def main() -> int:
         except RuntimeError as exc:
             print(f"error: git diff failed: {exc}", file=sys.stderr)
             return 2
+    inferred_changed_ranges_by_file: dict[Path, list[tuple[int, int]]] = {}
     if args.pr_url or args.pr_number:
         try:
             pr_ref = args.pr_url or args.pr_number
-            changed_files.extend(resolve_pr_changed_files(app_config, pr_ref, args.pr_source))
+            pr_changed_files, pr_changed_ranges = resolve_pr_changed_files_with_ranges(
+                app_config,
+                pr_ref,
+                args.pr_source,
+            )
+            changed_files.extend(pr_changed_files)
+            inferred_changed_ranges_by_file = merge_changed_range_maps(
+                inferred_changed_ranges_by_file,
+                pr_changed_ranges,
+            )
         except RuntimeError as exc:
             message = str(exc)
             if "403" in message or "401" in message or "token" in message.lower():
@@ -8161,10 +10024,13 @@ def main() -> int:
     changed_files = deduped
 
     try:
-        changed_ranges_by_file = parse_changed_ranges(
-            args.changed_range,
-            changed_files=changed_files,
-            base_roots=[app_config.repo_root, app_config.git_repo_root],
+        changed_ranges_by_file = merge_changed_range_maps(
+            inferred_changed_ranges_by_file,
+            parse_changed_ranges(
+                args.changed_range,
+                changed_files=changed_files,
+                base_roots=[app_config.repo_root, app_config.git_repo_root],
+            ),
         )
     except ValueError as exc:
         print(f"changed range parsing failed: {exc}", file=sys.stderr)
@@ -8199,9 +10065,28 @@ def main() -> int:
     build_content_modifier_index_ms = round((time.perf_counter() - content_started) * 1000, 3)
     emit_progress(progress_enabled, "loading mapping config")
     mapping_started = time.perf_counter()
+    api_lineage_map = None
+    api_lineage_map_path = None
+    build_api_lineage_map_ms = 0.0
+    lineage_auto_alias = None
+    if changed_files:
+        emit_progress(progress_enabled, "building api lineage map")
+        lineage_started = time.perf_counter()
+        api_lineage_map, api_lineage_map_path = build_api_lineage_map(
+            repo_root=app_config.repo_root,
+            ace_engine_root=app_config.git_repo_root,
+            sdk_api_root=app_config.sdk_api_root,
+            projects=projects,
+            runtime_state_root=app_config.runtime_state_root,
+            project_cache_file=app_config.cache_file,
+        )
+        build_api_lineage_map_ms = round((time.perf_counter() - lineage_started) * 1000, 3)
+        if api_lineage_map is not None:
+            lineage_auto_alias = api_lineage_map.auto_pattern_alias()
     mapping_config = load_mapping_config(
         path_rules_file=app_config.path_rules_file,
         composite_mappings_file=app_config.composite_mappings_file,
+        lineage_auto_alias=lineage_auto_alias,
     )
     load_mapping_config_ms = round((time.perf_counter() - mapping_started) * 1000, 3)
     emit_progress(progress_enabled, "loading runtime history")
@@ -8269,14 +10154,18 @@ def main() -> int:
     report["timings_ms"]["total_runtime"] = round((time.perf_counter() - runtime_started) * 1000, 3)
     report["json_output_mode"] = "stdout" if json_to_stdout else "file"
     report["requested_devices"] = list(app_config.devices)
+    report["execution_server_host"] = app_config.server_host or ""
+    report["execution_server_user"] = app_config.server_user or ""
+    report["execution_xdevice_reports_root"] = str(xdevice_reports_root) if xdevice_reports_root is not None else ""
     if app_config.daily_prebuilt is not None:
         report["daily_prebuilt"] = {
             **app_config.daily_prebuilt.to_dict(),
             "note": app_config.daily_prebuilt_note,
         }
+    selected_tests_report_base_path = resolve_selected_tests_report_base_path(run_session, json_output_path)
     if json_output_path is not None:
         report["json_output_path"] = str(json_output_path)
-        selected_tests_json_path = resolve_selected_tests_output_path(json_output_path)
+        selected_tests_json_path = resolve_selected_tests_output_path(selected_tests_report_base_path)
         if selected_tests_json_path is not None:
             report["selected_tests_json_path"] = str(selected_tests_json_path)
     if run_session is not None:
@@ -8308,6 +10197,7 @@ def main() -> int:
         hdc_path=app_config.hdc_path,
         hdc_endpoint=app_config.hdc_endpoint,
         requested_test_names=requested_test_names,
+        skip_install=args.skip_install,
     )
     report["show_source_evidence"] = bool(args.show_source_evidence or args.debug_trace)
     report["coverage_run_commands"] = build_coverage_run_commands(report, app_config, args)
@@ -8315,6 +10205,7 @@ def main() -> int:
     execution_summary = None
     execution_preflight = None
     preflight_failed = False
+    execution_interrupted = False
     if args.run_now:
         emit_progress(progress_enabled, "preflighting execution")
         execution_preflight = preflight_execution(
@@ -8329,24 +10220,31 @@ def main() -> int:
             preflight_failed = True
         else:
             emit_progress(progress_enabled, "running selected targets")
-            execution_summary = execute_planned_targets(
-                report,
-                repo_root=app_config.repo_root,
-                acts_out_root=app_config.acts_out_root,
-                devices=app_config.devices,
-                run_tool=args.run_tool,
-                run_top_targets=args.run_top_targets,
-                run_timeout=args.run_timeout,
-                shard_mode=app_config.shard_mode,
-                xdevice_reports_root=xdevice_reports_root,
-                run_priority=args.run_priority,
-                parallel_jobs=args.parallel_jobs,
-                runtime_state_root=app_config.runtime_state_root,
-                device_lock_timeout=app_config.device_lock_timeout,
-                requested_test_names=requested_test_names,
-                hdc_path=app_config.hdc_path,
-                hdc_endpoint=app_config.hdc_endpoint,
-            )
+            try:
+                execution_summary = execute_planned_targets(
+                    report,
+                    repo_root=app_config.repo_root,
+                    acts_out_root=app_config.acts_out_root,
+                    devices=app_config.devices,
+                    run_tool=args.run_tool,
+                    run_top_targets=args.run_top_targets,
+                    run_timeout=args.run_timeout,
+                    shard_mode=app_config.shard_mode,
+                    xdevice_reports_root=xdevice_reports_root,
+                    run_priority=args.run_priority,
+                    parallel_jobs=args.parallel_jobs,
+                    runtime_state_root=app_config.runtime_state_root,
+                    device_lock_timeout=app_config.device_lock_timeout,
+                    requested_test_names=requested_test_names,
+                    hdc_path=app_config.hdc_path,
+                    hdc_endpoint=app_config.hdc_endpoint,
+                    progress_callback=execution_progress_callback,
+                    skip_install=args.skip_install,
+                )
+            except KeyboardInterrupt:
+                execution_interrupted = True
+                report["execution_interrupted"] = True
+                execution_summary = dict(report.get("execution_summary") or {})
     else:
         report["execution_preflight"] = {}
 
@@ -8354,6 +10252,8 @@ def main() -> int:
         status = "planned"
         if preflight_failed:
             status = "failed_preflight"
+        elif execution_interrupted:
+            status = "interrupted"
         elif execution_summary is not None:
             status = "completed_with_failures" if execution_summary.get("has_failures") else "completed"
         report["selector_run"]["status"] = status
@@ -8371,10 +10271,20 @@ def main() -> int:
             "significant_updates": 0,
         }
 
+    artifact_output_dir = run_session.run_dir if run_session is not None else (json_output_path.parent if json_output_path is not None else None)
+    artifact_index_path = write_execution_artifact_index(report, artifact_output_dir)
+    if artifact_index_path is not None:
+        report["execution_artifact_index_path"] = str(artifact_index_path)
+
     emit_progress(progress_enabled, "writing JSON report")
     written_json_path = write_json_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)
-    if written_json_path is not None:
-        write_selected_tests_report(report, written_json_path)
+    selected_tests_report_base_path = resolve_selected_tests_report_base_path(run_session, written_json_path)
+    if selected_tests_report_base_path is not None:
+        selected_tests_path = write_selected_tests_report(report, selected_tests_report_base_path)
+        if selected_tests_path is not None:
+            report["selected_tests_json_path"] = str(selected_tests_path)
+            if written_json_path is not None:
+                write_json_report(report, json_to_stdout=False, json_output_path=written_json_path)
     if run_session is not None:
         manifest = build_run_manifest(
             report,
@@ -8391,6 +10301,8 @@ def main() -> int:
         emit_progress(progress_enabled, "rendering human report")
         print_executive_summary(report, written_json_path)
         print_human(report, cache_used, written_json_path)
+    if execution_interrupted:
+        return 130
     if args.run_now and preflight_failed:
         return 2
     if args.run_now and execution_summary and execution_summary.get("has_failures"):

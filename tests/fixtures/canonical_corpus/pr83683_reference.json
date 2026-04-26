@@ -1,0 +1,21 @@
+{
+  "family": "pr83683",
+  "input_changed_files": [
+    "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_model_static.cpp",
+    "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/menu/menu_item/menu_item_pattern.cpp"
+  ],
+  "expected_variant": "static",
+  "expected_surface": "static",
+  "expected_abstention": false,
+  "precision_budget": {
+    "max_required_count": 100,
+    "max_top5_unrelated_noise": 0
+  },
+  "reference_set": {
+    "note": "Real-world benchmark from MR 83683",
+    "description": "PR 83683 changed button and menu item files. User provided 23-suite reference set. Patchdict replay found 11/23 overlap. Baseline: 24 required suites, 27 recommended.",
+    "target_recall": 13,
+    "target_recall_total": 23,
+    "max_required_suites": 100
+  }
+}

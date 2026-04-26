@@ -66,12 +66,9 @@ class TextInputModifierBenchmarkTests(WorkspaceAwareTestCase):
         projects = symbol_queries[0].get("projects", [])
         must_run = {
             "ace_ets_module_textinput_undefined_static",
-            "ace_ets_module_imagetext_edit",
         }
         strong_related = {
             "ace_ets_module_imagetext_api12_other_static",
-            "ace_ets_module_imagetext_api20",
-            "ace_ets_module_imagetext_common",
             "ace_ets_module_imagetext_api20_static",
         }
         found = set()

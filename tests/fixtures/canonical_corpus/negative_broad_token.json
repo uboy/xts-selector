@@ -1,0 +1,17 @@
+{
+  "family": "negative_broad",
+  "input_changed_files": [
+    "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/common/base_pattern.cpp"
+  ],
+  "expected_variant": null,
+  "expected_surface": null,
+  "expected_abstention": true,
+  "precision_budget": {
+    "max_required_count": 10,
+    "max_top5_unrelated_noise": 0
+  },
+  "reference_set": {
+    "note": "Negative test case",
+    "description": "A broad common/base file with lexical overlap across many families. The selector should abstain or return very few results, not flood the output with unrelated suites."
+  }
+}

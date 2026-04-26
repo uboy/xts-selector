@@ -1,0 +1,18 @@
+{
+  "family": "inspector",
+  "input_changed_files": [
+    "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/inspector/inspector_composed_element.cpp"
+  ],
+  "expected_variant": "static",
+  "expected_surface": "static",
+  "expected_abstention": false,
+  "precision_budget": {
+    "max_required_count": 30,
+    "max_top5_unrelated_noise": 0
+  },
+  "must_have_source": "tests/fixtures/inspector_changed_file/must_have.txt",
+  "reference_set": {
+    "note": "PR !84033 inspector changes, verified 2026-04",
+    "description": "inspector_composed_element.cpp handles the Inspector component for devtools. Changes affect inspector-related test suites."
+  }
+}

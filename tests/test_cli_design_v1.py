@@ -342,7 +342,7 @@ class CliDesignV1Tests(unittest.TestCase):
         expected = [Path("frameworks/core/components_ng/pattern/button/button_pattern.cpp")]
         with mock.patch("arkui_xts_selector.cli.resolve_pr_owner_repo", return_value=("openharmony", "arkui_ace_engine")), \
                 mock.patch("arkui_xts_selector.cli.fetch_pr_metadata_via_api", return_value={"number": 83145}), \
-                mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files_via_api", return_value=expected) as api_fetch, \
+                mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files_and_ranges_via_api", return_value=(expected, {})) as api_fetch, \
                 mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files") as git_fetch:
             resolved = resolve_pr_changed_files(
                 app_config,
@@ -1211,10 +1211,10 @@ class FancySliderModifier extends SliderModifier {}
             steps = build_next_steps(report, app_config, self._build_next_steps_args())
 
         step_commands = {step["step"]: step["command"] for step in steps}
-        self.assertTrue(step_commands["Download SDK For Selection"].startswith("ohos xts sdk "))
-        self.assertTrue(step_commands["Download tests"].startswith("ohos xts tests "))
-        self.assertTrue(step_commands["Download firmware"].startswith("ohos xts firmware "))
-        self.assertTrue(step_commands["Flash daily firmware"].startswith("ohos xts flash "))
+        self.assertTrue(step_commands["Download SDK For Selection"].startswith("ohos download sdk "))
+        self.assertTrue(step_commands["Download tests"].startswith("ohos download tests "))
+        self.assertTrue(step_commands["Download firmware"].startswith("ohos download firmware "))
+        self.assertTrue(step_commands["Flash daily firmware"].startswith("ohos device flash "))
         self.assertTrue(step_commands["Run required tests"].startswith("ohos xts run "))
         self.assertNotIn("--run-now", step_commands["Run required tests"])
 

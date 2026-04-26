@@ -100,6 +100,25 @@ CONTROL_FLOW_SYMBOLS = {
     "do",
 }
 
+# Phase 2 P2-003: Source member extraction patterns
+# Parse export interface TypeName { method1(): void; method2(value: X): this; }
+SOURCE_MEMBER_DECL_RE = re.compile(
+    r"^\s*(?:default\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\([^;{}]*\)\s*:\s*[^;]+;\s*$",
+    re.M,
+)
+# Parse export function someFunction(): void
+SOURCE_FUNCTION_DECL_RE = re.compile(
+    r"export\s+function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(",
+)
+# Parse proxy bind methods: bindPopup, bindSheet, bindContextMenu
+PROXY_BIND_METHOD_RE = re.compile(
+    r"\b(bind[A-Z][A-Za-z0-9_]*)\s*\(",
+)
+# Parse event declarations in interfaces: eventType?: ClickEvent
+EVENT_DECL_RE = re.compile(
+    r"(?:readonly\s+)?(\w+)\s*:\s*(ClickEvent|KeyEvent|TouchEvent|LongPressEvent|PanGesture|PinchGesture|RotationGesture|SwipeGesture)\b",
+)
+
 
 @dataclass(frozen=True)
 class ExplicitSourceFanoutRule:
@@ -293,6 +312,122 @@ def _parse_interface_blocks(path: Path) -> dict[str, dict[str, object]]:
     return interfaces
 
 
+def extract_source_members(text: str) -> dict[str, dict[str, object]]:
+    """Extract member-level source semantics from generated .ets interface files.
+
+    Parses koala-generated static interface files to find:
+    - export interface TypeName { method1(): void; method2(value: X): this; }
+    - export function someFunction(): void
+    - event declarations in interfaces
+
+    Returns a dict mapping type name -> {methods, functions, events}.
+    """
+    result: dict[str, dict[str, object]] = {}
+
+    # First pass: find all interface declarations
+    for match in INTERFACE_DECL_RE.finditer(text):
+        type_name = match.group(1)
+        body_start = match.end() - 1
+        depth = 0
+        body_end = None
+        for index in range(body_start, len(text)):
+            char = text[index]
+            if char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    body_end = index
+                    break
+        if body_end is None:
+            continue
+        body = text[match.end():body_end]
+
+        result[type_name] = {
+            "methods": set(),
+            "functions": set(),
+            "events": set(),
+        }
+
+        # Extract methods from this interface body
+        for method_match in SOURCE_MEMBER_DECL_RE.finditer(body):
+            result[type_name]["methods"].add(method_match.group(1))
+
+        # Extract event declarations from this interface body
+        for event_match in EVENT_DECL_RE.finditer(body):
+            field_name = event_match.group(1)
+            event_type = event_match.group(2)
+            result[type_name]["events"].add(f"{event_type}.{field_name}")
+
+    # Second pass: extract standalone function declarations
+    functions: set[str] = set()
+    for match in SOURCE_FUNCTION_DECL_RE.finditer(text):
+        functions.add(match.group(1))
+    if functions:
+        result["__functions__"] = {"methods": set(), "functions": functions, "events": set()}
+
+    return result
+
+
+def extract_proxy_members(text: str) -> dict[str, set[str]]:
+    """Extract proxy bind methods from koala-generated proxy files.
+
+    Parses patterns like:
+    - proxy.bindPopup(content)
+    - proxy.bindSheet(menu)
+    - proxy.bindContextMenu(context)
+
+    Returns a dict mapping proxy variable name -> set of bind method names.
+    """
+    result: dict[str, set[str]] = {}
+    for match in PROXY_BIND_METHOD_RE.finditer(text):
+        bind_method = match.group(1)
+        # Try to find the proxy variable name from context
+        # Look backwards for a variable assignment
+        start = max(0, match.start() - 200)
+        context = text[start:match.start()]
+        proxy_var = None
+        # Pattern 1: let/var/const x = ...; x.bind*
+        for var_match in re.finditer(r"\b(let|var|const)\s+(\w+)\s*=", context):
+            proxy_var = var_match.group(2)
+        # Pattern 2: x.bind* (direct usage)
+        if proxy_var is None:
+            for var_match in re.finditer(r"\b(\w+)\s*\.bind", context):
+                proxy_var = var_match.group(1)
+        if proxy_var is None:
+            proxy_var = "proxy"
+        result.setdefault(proxy_var, set()).add(bind_method)
+    return result
+
+
+def build_source_member_index(repo_root: Path) -> dict[str, dict[str, object]]:
+    """Build a source member index from SDK static declaration files.
+
+    Walks interface/sdk-js/api/**/*.static.d.ets files and extracts
+    member-level semantics for each API entity.
+
+    Returns a flat dict mapping type_name -> member info.
+    """
+    sdk_api = repo_root / "interface" / "sdk-js" / "api"
+    if not sdk_api.exists():
+        return {}
+
+    index: dict[str, dict[str, object]] = {}
+    for ets_path in sdk_api.rglob("*.static.d.ets"):
+        text = ets_path.read_text(encoding="utf-8")
+        members = extract_source_members(text)
+        for type_name, info in members.items():
+            if type_name == "__functions__":
+                continue
+            index[type_name] = {
+                "file": str(ets_path.relative_to(repo_root)),
+                "methods": sorted(info.get("methods", set())),
+                "functions": sorted(info.get("functions", set())),
+                "events": sorted(info.get("events", set())),
+            }
+    return index
+
+
 def _matching_interface_name(interfaces: dict[str, dict[str, object]], family: str, suffix: str) -> str | None:
     family_key = compact_token(family)
     matches = [
@@ -383,6 +518,7 @@ class ApiLineageMap:
     consumer_project_kinds: dict[str, str] = field(default_factory=dict)
     consumer_file_to_project: dict[str, str] = field(default_factory=dict)
     consumer_project_to_files: dict[str, set[str]] = field(default_factory=dict)
+    source_member_index: dict[str, dict[str, object]] = field(default_factory=dict)
 
     def record_source_api(self, source_path: str | Path, api_entity: str, *, family: str | None = None) -> None:
         source_key = normalize_repo_rel(source_path)
@@ -462,6 +598,28 @@ class ApiLineageMap:
         source_key = normalize_repo_rel(source_path, repo_root=repo_root)
         return sorted(self.source_to_apis.get(source_key, set()))
 
+    def auto_pattern_alias(self) -> dict[str, list[str]]:
+        """Derive family → [symbols] mapping from the lineage map.
+
+        Inverts api_to_families to produce a pattern_alias-style dict where
+        each family maps to all API entities that belong to it.  Entries with
+        empty families are grouped under their own key (the entity name
+        stripped of suffixes).
+
+        This can be used as a fallback to fill gaps in the manual
+        PATTERN_ALIAS configuration.
+        """
+        family_to_symbols: dict[str, set[str]] = {}
+        for api_entity, families in self.api_to_families.items():
+            if families:
+                for family in families:
+                    family_to_symbols.setdefault(family, set()).add(api_entity)
+            else:
+                family = _family_token_from_entity_name(api_entity)
+                if family:
+                    family_to_symbols.setdefault(family, set()).add(api_entity)
+        return {family: sorted(symbols) for family, symbols in sorted(family_to_symbols.items())}
+
     def apis_for_source_symbols(
         self,
         source_path: str | Path,
@@ -527,6 +685,15 @@ class ApiLineageMap:
             "consumer_project_kinds": dict(sorted(self.consumer_project_kinds.items())),
             "consumer_file_to_project": dict(sorted(self.consumer_file_to_project.items())),
             "consumer_project_to_files": _serialize(self.consumer_project_to_files),
+            "source_member_index": {
+                type_name: {
+                    "file": str(info.get("file", "")),
+                    "methods": sorted(info.get("methods", set())),
+                    "functions": sorted(info.get("functions", set())),
+                    "events": sorted(info.get("events", set())),
+                }
+                for type_name, info in sorted(self.source_member_index.items())
+            },
         }
 
     @classmethod
@@ -574,6 +741,16 @@ class ApiLineageMap:
                 for key, value in (data.get("consumer_file_to_project", {}) or {}).items()
             } if isinstance(data.get("consumer_file_to_project"), dict) else {},
             consumer_project_to_files=_restore(data.get("consumer_project_to_files")),
+            source_member_index={
+                str(type_name): {
+                    "file": str(info.get("file", "")),
+                    "methods": list(info.get("methods", [])),
+                    "functions": list(info.get("functions", [])),
+                    "events": list(info.get("events", [])),
+                }
+                for type_name, info in (data.get("source_member_index") or {}).items()
+                if isinstance(info, dict)
+            } if isinstance(data.get("source_member_index"), dict) else {},
         )
 
 
@@ -619,7 +796,7 @@ def _load_sdk_entities(
         symbol = snake_to_pascal(base)
         component_symbols_by_family.setdefault(family, set()).add(symbol)
         family_to_api_symbols.setdefault(family, set()).add(symbol)
-        lineage_map.record_source_api(path.relative_to(repo_root), symbol, family=family)
+        lineage_map.record_source_api(path, symbol, family=family)
         lineage_map.record_api_surface(symbol, "static")
         attribute_name = _matching_interface_name(_parse_interface_blocks(path), family, "Attribute")
         if attribute_name:
@@ -640,15 +817,23 @@ def _load_sdk_entities(
             continue
         modifier_symbols_by_family.setdefault(family, set()).add(symbol)
         family_to_api_symbols.setdefault(family, set()).add(symbol)
-        lineage_map.record_source_api(path.relative_to(repo_root), symbol, family=family)
+        lineage_map.record_source_api(path, symbol, family=family)
         lineage_map.record_api_surface(symbol, surface)
 
     common_static_path = sdk_component_root / "common.static.d.ets"
     common_interfaces = _parse_interface_blocks(common_static_path)
     common_method_methods = set(common_interfaces.get("CommonMethod", {}).get("methods", set()) or set())
 
-    for family, allowed_methods in sorted(COMPONENT_ATTRIBUTE_METHOD_ALLOWLIST.items()):
+    # Auto-derive attribute methods for ALL component families, not just
+    # the ones in COMPONENT_ATTRIBUTE_METHOD_ALLOWLIST.  The allowlist is
+    # kept as a priority filter for backward compatibility: families that
+    # are listed there use the allowlisted subset; unlisted families get
+    # ALL their methods extracted automatically.
+    all_families = sorted(set(component_symbols_by_family) | set(modifier_symbols_by_family))
+    for family in all_families:
         component_static_path = sdk_component_root / f"{family}.static.d.ets"
+        if not component_static_path.exists():
+            continue
         interfaces = _parse_interface_blocks(component_static_path)
         attribute_name = attribute_interface_names_by_family.get(family) or _matching_interface_name(
             interfaces,
@@ -659,10 +844,13 @@ def _load_sdk_entities(
         if not attribute_data:
             continue
         direct_methods = set(attribute_data.get("methods", set()) or set())
-        for method_name in sorted(direct_methods & allowed_methods):
+        # If the family has an explicit allowlist, use it; otherwise extract all methods.
+        allowed_methods = COMPONENT_ATTRIBUTE_METHOD_ALLOWLIST.get(family)
+        methods_to_record = (direct_methods & allowed_methods) if allowed_methods else direct_methods
+        for method_name in sorted(methods_to_record):
             api_entity = f"{attribute_name}.{method_name}"
             method_entities_by_family.setdefault(family, set()).add(api_entity)
-            lineage_map.record_source_api(component_static_path.relative_to(repo_root), api_entity, family=family)
+            lineage_map.record_source_api(component_static_path, api_entity, family=family)
             lineage_map.record_api_surface(api_entity, "static")
 
     for family, allowed_methods in sorted(INHERITED_COMMON_METHOD_ALLOWLIST.items()):
@@ -672,14 +860,60 @@ def _load_sdk_entities(
         for method_name in sorted(common_method_methods & allowed_methods):
             api_entity = f"{attribute_name}.{method_name}"
             method_entities_by_family.setdefault(family, set()).add(api_entity)
-            lineage_map.record_source_api(common_static_path.relative_to(repo_root), api_entity, family=family)
+            lineage_map.record_source_api(common_static_path, api_entity, family=family)
             lineage_map.record_api_surface(api_entity, "static")
 
     return component_symbols_by_family, modifier_symbols_by_family, family_to_api_symbols, method_entities_by_family
 
 
+def discover_source_scan_roots(ace_engine_root: Path) -> list[Path]:
+    """Auto-discover source scan roots under ace_engine.
+
+    Always includes the hardcoded SOURCE_SCAN_ROOTS as a base. Then walks
+    additional directories that may contain component-like source files:
+    - frameworks/ subdirs containing ``components_ng/pattern/*/``
+    - adapter/ directories
+    - bridge/declarative_frontend/jsview/
+    """
+    base = list(SOURCE_SCAN_ROOTS)
+
+    frameworks = ace_engine_root / "frameworks"
+    if frameworks.is_dir():
+        # Walk for components_ng/pattern/*/ directories
+        components_ng = frameworks / "core" / "components_ng" / "pattern"
+        if components_ng.is_dir():
+            for child in sorted(components_ng.iterdir()):
+                if child.is_dir() and (frameworks / "core" / "components_ng" / "pattern") not in base:
+                    # Already covered by SOURCE_SCAN_ROOTS entry
+                    pass
+
+        # Discover adapter directories
+        adapter = ace_engine_root / "adapter"
+        if adapter.is_dir():
+            for child in sorted(adapter.iterdir()):
+                if child.is_dir():
+                    candidate = child.resolve().relative_to(ace_engine_root.resolve())
+                    candidate_path = Path(str(candidate))
+                    if candidate_path not in base:
+                        base.append(candidate_path)
+
+        # Discover bridge/declarative_frontend/jsview/
+        jsview = Path("bridge/declarative_frontend/jsview")
+        jsview_full = ace_engine_root / jsview
+        if jsview_full.is_dir() and jsview not in base:
+            base.append(jsview)
+
+        # Discover core/pipeline/
+        pipeline = Path("core/pipeline")
+        pipeline_full = frameworks / pipeline
+        if pipeline_full.is_dir() and Path("frameworks") / pipeline not in base:
+            base.append(Path("frameworks") / pipeline)
+
+    return base
+
+
 def _iter_source_files(ace_engine_root: Path) -> Iterable[Path]:
-    for relative_root in SOURCE_SCAN_ROOTS:
+    for relative_root in discover_source_scan_roots(ace_engine_root):
         root = ace_engine_root / relative_root
         if not root.exists():
             continue
@@ -832,6 +1066,67 @@ def _record_explicit_source_fanout(
                 lineage_map.record_source_symbol_api(rel_path, symbol_hint, api_entity)
 
 
+# Regex patterns for auto-detecting fan-out from C++ source files.
+# Match patterns like: ContentModifierButtonImpl, ResetContentModifierButtonImpl
+_FANOUT_IMPL_RE = re.compile(
+    r"\b(?:ContentModifier|ResetContentModifier|SetContentModifier)"
+    r"([A-Z][A-Za-z0-9_]*)\s*(?:Impl)?\s*\("
+)
+# Match menuItemContentModifier variant
+_FANOUT_MENU_ITEM_RE = re.compile(
+    r"\b(?:ContentModifier|ResetContentModifier|SetContentModifier)"
+    r"MenuItem\s*(?:Impl)?\s*\("
+    r"|ContentModifierMenuItemImpl|ResetContentModifierMenuItemImpl",
+    re.IGNORECASE,
+)
+
+
+def _detect_source_fanout(
+    source_text: str,
+    family_to_api_symbols: dict[str, set[str]],
+    method_entities_by_family: dict[str, set[str]],
+    lineage_map: ApiLineageMap,
+    rel_path: str,
+) -> None:
+    """Auto-detect fan-out from shared accessor files.
+
+    When a source file contains Set/Reset/ContentModifier patterns for
+    multiple components, automatically record edges to all those
+    components' families.  This replaces the hardcoded
+    EXPLICIT_SOURCE_FANOUT_RULES.
+    """
+    # Find component names mentioned in ContentModifier*Impl patterns
+    detected_families: set[str] = set()
+    for match in _FANOUT_IMPL_RE.finditer(source_text):
+        component_name = match.group(1) if match.lastindex else ""
+        if not component_name:
+            continue
+        family = compact_token(component_name)
+        if family in family_to_api_symbols:
+            detected_families.add(family)
+
+    # Check for menuItemContentModifier variant
+    if _FANOUT_MENU_ITEM_RE.search(source_text):
+        for family in ("menuitem", "select"):
+            if family in family_to_api_symbols:
+                detected_families.add(family)
+
+    for family in sorted(detected_families):
+        # Find contentModifier method entities for this family
+        matched_entities = [
+            api_entity
+            for api_entity in sorted(method_entities_by_family.get(family, set()))
+            if api_entity.endswith(".contentModifier") or api_entity.endswith(".menuItemContentModifier")
+        ]
+        for api_entity in matched_entities:
+            lineage_map.record_source_api(rel_path, api_entity, family=family)
+            # Record symbol hints for narrowing
+            property_name = camel_to_pascal(api_entity.rsplit(".", 1)[-1])
+            for symbol_hint in (f"ContentModifier{snake_to_pascal(family)}Impl",
+                                f"ResetContentModifier{snake_to_pascal(family)}Impl"):
+                lineage_map.record_source_symbol_api(rel_path, symbol_hint, api_entity)
+
+
 def _build_source_edges(
     repo_root: Path,
     ace_engine_root: Path,
@@ -853,6 +1148,9 @@ def _build_source_edges(
             }
         )
         needs_source_text = bool(relevant_method_entities) or rel_path in EXPLICIT_SOURCE_FANOUT_RULES
+        # Also check if the file might contain fan-out patterns
+        if not needs_source_text and "accessor" in rel_path.lower():
+            needs_source_text = True
         if not needs_source_text:
             continue
         try:
@@ -862,6 +1160,9 @@ def _build_source_edges(
         for symbol_name, start_line, end_line in _extract_source_symbol_spans(path, source_text):
             lineage_map.record_source_symbol_span(rel_path, symbol_name, start_line, end_line)
         _record_explicit_source_fanout(rel_path, lineage_map, method_entities_by_family)
+        # Auto-detect fan-out from accessor files that aren't in explicit rules
+        if rel_path not in EXPLICIT_SOURCE_FANOUT_RULES:
+            _detect_source_fanout(source_text, family_to_api_symbols, method_entities_by_family, lineage_map, rel_path)
         for api_entity in relevant_method_entities:
             if _source_matches_method_entity(source_text, api_entity):
                 lineage_map.record_source_api(rel_path, api_entity, family=_family_token_from_entity_name(api_entity))
@@ -1069,7 +1370,7 @@ def _lineage_input_signatures(
             (ace_engine_root / relative_root).resolve(),
             file_suffixes=SOURCE_FILE_SUFFIXES,
         )
-        for relative_root in SOURCE_SCAN_ROOTS
+        for relative_root in discover_source_scan_roots(ace_engine_root)
     ]
     sdk_roots = [
         _build_tree_signature(
@@ -1149,5 +1450,6 @@ def build_api_lineage_map(
         method_entities_by_family,
         source_consumer_roots,
     )
+    lineage_map.source_member_index = build_source_member_index(repo_root)
     write_api_lineage_map(target_path, lineage_map)
     return lineage_map, target_path
