@@ -1,0 +1,8 @@
+# Suites that MUST appear when chip_model_static.cpp changes.
+# Source: PR !84065 chip/chipgroup changes, verified 2026-04
+#
+# chip_model_static.cpp is the C++ implementation of Chip/ChipGroup components.
+# Changes affect tests that use Chip, ChipGroup, or advanced chip patterns.
+
+ace_ets_component_advanced/ace_ets_module_advance_chip_static
+ace_ets_module_ui/ace_ets_module_modifier_static

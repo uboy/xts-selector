@@ -1,0 +1,8 @@
+# Suites that MUST appear when calendar_picker_pattern.cpp changes.
+# Source: PR !84111 calendar/text_picker changes, verified 2026-04
+#
+# calendar_picker_pattern.cpp is the C++ implementation of CalendarPicker.
+# Changes affect tests that use CalendarPicker, TextPicker, and DatePicker.
+
+ace_ets_module_ui/ace_ets_module_dialog/ace_ets_module_picker_text_picker_static
+ace_ets_module_ui/ace_ets_module_dialog/ace_ets_module_picker_text_picker_dialog_static

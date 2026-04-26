@@ -150,6 +150,8 @@ def classify_ace_engine_surface(path: Path, text: str = "") -> AceEngineSurfaceP
     path_tokens = {compact_token(part) for part in tokenize_surface_text(rel) if compact_token(part)}
 
     if "/frameworks/bridge/" in rel:
+        if "koala_projects/" in rel or "/arkoala-arkts/" in rel or "/generated/component/" in rel:
+            return AceEngineSurfaceProfile(surface=STATIC, layer="koala_generated_component", reasons=["koala-generated component"])
         return AceEngineSurfaceProfile(surface=DYNAMIC, layer="bridge", reasons=["frameworks/bridge layer"])
     if "/interfaces/ets/ani/" in rel:
         return AceEngineSurfaceProfile(surface=DYNAMIC, layer="ani", reasons=["interfaces/ets/ani layer"])

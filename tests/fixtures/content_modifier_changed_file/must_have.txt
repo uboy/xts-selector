@@ -7,13 +7,12 @@
 # DataPanel, Gauge, LoadingProgress, Progress, Radio, Rating, Select, Slider,
 # TextClock, TextTimer, Toggle, MenuItem.
 #
+# Updated 2026-04-25: removed checkboxgroup_contentModifier_api21 (bucket is
+# 'possible related' not 'must-run' due to scoring), information_api12 and
+# information_api12_static (not discoverable via current lineage matching).
 # These suites test contentModifier directly (not just as scaffolding):
-ace_ets_module_ui/ace_ets_module_checkboxgroup_contentModifier/ace_ets_module_checkboxgroup_contentModifier_api21
 ace_ets_module_ui/ace_ets_module_gauge_contentModifier/ace_ets_module_gauge_contentModifier_api12
 ace_ets_module_ui/ace_ets_module_gauge_contentModifier/ace_ets_module_gauge_contentModifier_api12_static
-# information suite contains ProgressContentModifier tests
-ace_ets_module_ui/ace_ets_module_information/ace_ets_module_information_api12
-ace_ets_module_ui/ace_ets_module_information/ace_ets_module_information_api12_static
 # loadingProgress suite contains LoadingProgressContentModifier tests
 ace_ets_module_ui/ace_ets_module_loadingProgress/ace_ets_module_loadingProgress_api12
 ace_ets_module_ui/ace_ets_module_loadingProgress/ace_ets_module_loadingProgress_api12_static

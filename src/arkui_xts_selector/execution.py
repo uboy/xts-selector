@@ -11,6 +11,7 @@ from xml.etree.ElementTree import iterparse
 
 from .build_state import (
     build_aa_test_command,
+    build_hdc_install_command,
     build_runtest_command,
     build_xdevice_command,
 )
@@ -317,6 +318,7 @@ def build_execution_plan(
     plan_index: int = 0,
     hdc_path: Path | str | None = None,
     hdc_endpoint: str | None = None,
+    skip_install: bool = False,
 ) -> list[dict[str, Any]]:
     plans: list[dict[str, Any]] = []
     device_slots: list[str | None] = devices if devices else [None]
@@ -341,11 +343,22 @@ def build_execution_plan(
         selected_tool, command = _select_tool(commands, run_tool)
         status = "pending" if selected_tool and command else "unavailable"
         reason = ""
+        install_command = None
+        if selected_tool == "aa_test" and not skip_install:
+            install_command = build_hdc_install_command(
+                bundle_name=target.get("bundle_name"),
+                module_name=target.get("driver_module_name") or target.get("xdevice_module_name"),
+                acts_out_root=acts_out_root,
+                hdc_path=hdc_path,
+                hdc_endpoint=hdc_endpoint,
+                device=device,
+            )
         if str(target.get("artifact_status") or "") == "missing":
             status = "unavailable"
             reason = str(target.get("artifact_reason") or "target is absent from the current ACTS artifacts")
             selected_tool = None
             command = ""
+            install_command = None
         elif status == "unavailable":
             if run_tool == "runtest" and target.get("build_target") and device is None:
                 reason = "runtest requires an explicit device"
@@ -359,6 +372,8 @@ def build_execution_plan(
                 "device_label": device_label,
                 "selected_tool": selected_tool or "",
                 "command": command or "",
+                "install_command": install_command or "",
+                "skip_install": skip_install,
                 "status": status,
                 "reason": reason,
                 "available_tools": sorted(commands.keys()),
@@ -454,6 +469,7 @@ def attach_execution_plan(
     hdc_path: Path | str | None = None,
     hdc_endpoint: str | None = None,
     requested_test_names: list[str] | None = None,
+    skip_install: bool = False,
 ) -> None:
     groups = collect_unique_run_targets(report)
     coverage_recommendations = report.get("coverage_recommendations", {})
@@ -501,6 +517,7 @@ def attach_execution_plan(
             plan_index=group_index,
             hdc_path=hdc_path,
             hdc_endpoint=hdc_endpoint,
+            skip_install=skip_install,
         )
         for target in group["targets"]:
             target["execution_sources"] = list(group["sources"])
@@ -574,6 +591,64 @@ def _aa_test_has_success_evidence(text: str) -> bool:
 def _execute_plan_item(item: dict[str, Any], timeout_value: float | None) -> tuple[dict[str, Any], dict[str, int] | None]:
     started_at = _utc_now()
     started_monotonic = time.monotonic()
+
+    # HAP install step for aa_test runs
+    install_result: dict[str, Any] | None = None
+    if (
+        item.get("selected_tool") == "aa_test"
+        and not item.get("skip_install")
+        and item.get("install_command")
+    ):
+        install_started = time.monotonic()
+        try:
+            install_completed = subprocess.run(
+                item["install_command"],
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=60.0,
+                check=False,
+            )
+            install_result = {
+                "returncode": install_completed.returncode,
+                "stdout_tail": _tail_text(install_completed.stdout),
+                "stderr_tail": _tail_text(install_completed.stderr),
+                "duration_s": round(time.monotonic() - install_started, 3),
+            }
+            if install_completed.returncode != 0:
+                install_stderr = _tail_text(install_completed.stderr or install_completed.stdout)
+                duration_s = round(time.monotonic() - started_monotonic, 3)
+                outcome = {
+                    **item,
+                    "status": "failed",
+                    "returncode": install_completed.returncode,
+                    "timed_out": False,
+                    "stdout_tail": _tail_text(install_completed.stdout),
+                    "stderr_tail": f"HAP install failed: {install_stderr}",
+                    "case_summary": {},
+                    "install_result": install_result,
+                    "started_at": started_at,
+                    "finished_at": _utc_now(),
+                    "duration_s": duration_s,
+                }
+                return outcome, None
+        except subprocess.TimeoutExpired:
+            duration_s = round(time.monotonic() - started_monotonic, 3)
+            outcome = {
+                **item,
+                "status": "failed",
+                "returncode": None,
+                "timed_out": False,
+                "stdout_tail": "",
+                "stderr_tail": "HAP install timed out (60s)",
+                "case_summary": {},
+                "install_result": {"status": "timeout"},
+                "started_at": started_at,
+                "finished_at": _utc_now(),
+                "duration_s": duration_s,
+            }
+            return outcome, None
+
     try:
         completed = subprocess.run(
             item["command"],
@@ -593,6 +668,7 @@ def _execute_plan_item(item: dict[str, Any], timeout_value: float | None) -> tup
             "stdout_tail": _tail_text(exc.stdout),
             "stderr_tail": _tail_text(exc.stderr),
             "case_summary": {},
+            "install_result": install_result,
             "started_at": started_at,
             "finished_at": _utc_now(),
             "duration_s": duration_s,
@@ -625,6 +701,7 @@ def _execute_plan_item(item: dict[str, Any], timeout_value: float | None) -> tup
         "stdout_tail": _tail_text(completed.stdout),
         "stderr_tail": _tail_text(completed.stderr),
         "case_summary": case_summary or {},
+        "install_result": install_result,
         "started_at": started_at,
         "finished_at": _utc_now(),
         "duration_s": round(time.monotonic() - started_monotonic, 3),
@@ -835,6 +912,30 @@ def preflight_execution(
     if not plans:
         warnings.append("no selected execution plans were found")
 
+    if "xdevice" in selected_tools:
+        checked_tc_paths: set[str] = set()
+        for plan_item in plans:
+            if plan_item.get("selected_tool") != "xdevice":
+                continue
+            cmd = str(plan_item.get("command", ""))
+            if "-tcpath" not in cmd:
+                continue
+            import shlex
+            try:
+                parts = shlex.split(cmd)
+            except ValueError:
+                continue
+            for i, part in enumerate(parts):
+                if part == "-tcpath" and i + 1 < len(parts):
+                    tc_path_str = parts[i + 1]
+                    if tc_path_str in checked_tc_paths:
+                        break
+                    checked_tc_paths.add(tc_path_str)
+                    tc_path = Path(tc_path_str)
+                    if not tc_path.is_dir():
+                        errors.append(f"ACTS inventory is unavailable: {tc_path} does not exist")
+                    break
+
     return {
         "status": "failed" if errors else "passed",
         "plan_count": len(plans),
@@ -862,6 +963,10 @@ def execute_planned_targets(
     runtime_state_root: Path | None = None,
     device_lock_timeout: float = 30.0,
     requested_test_names: list[str] | None = None,
+    hdc_path: Path | str | None = None,
+    hdc_endpoint: str | None = None,
+    progress_callback: Any | None = None,
+    skip_install: bool = False,
 ) -> dict[str, Any]:
     attach_execution_plan(
         report,
@@ -877,6 +982,7 @@ def execute_planned_targets(
         runtime_state_root=runtime_state_root,
         device_lock_timeout=device_lock_timeout,
         requested_test_names=requested_test_names,
+        skip_install=skip_install,
     )
     groups = collect_unique_run_targets(report)
     selected_keys = set(report.get("execution_overview", {}).get("selected_target_keys", []))
@@ -959,34 +1065,44 @@ def execute_planned_targets(
         return outcomes
 
     queue_items = list(pending_queues.items())
-    if parallel_jobs > 1 and len(queue_items) > 1:
-        max_workers = max(1, min(parallel_jobs, len(queue_items)))
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = [executor.submit(_run_device_queue, queue_label, items) for queue_label, items in queue_items]
-            for future in futures:
-                for group_key, item_index, outcome in future.result():
+    try:
+        if parallel_jobs > 1 and len(queue_items) > 1:
+            max_workers = max(1, min(parallel_jobs, len(queue_items)))
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = [executor.submit(_run_device_queue, queue_label, items) for queue_label, items in queue_items]
+                for future in futures:
+                    for group_key, item_index, outcome in future.result():
+                        group_results.setdefault(group_key, []).append((item_index, outcome))
+                        _merge_outcome_into_summary(summary, outcome)
+        else:
+            for queue_label, items in queue_items:
+                for group_key, item_index, outcome in _run_device_queue(queue_label, items):
                     group_results.setdefault(group_key, []).append((item_index, outcome))
                     _merge_outcome_into_summary(summary, outcome)
-    else:
-        for queue_label, items in queue_items:
-            for group_key, item_index, outcome in _run_device_queue(queue_label, items):
-                group_results.setdefault(group_key, []).append((item_index, outcome))
-                _merge_outcome_into_summary(summary, outcome)
 
-    for group in groups:
-        group_key = str(group["key"])
-        if group_key not in selected_keys:
-            continue
-        ordered_results = [
-            dict(outcome)
-            for _, outcome in sorted(group_results.get(group_key, []), key=lambda item: item[0])
-        ]
-        for target in group["targets"]:
-            target["execution_results"] = ordered_results
+        for group in groups:
+            group_key = str(group["key"])
+            if group_key not in selected_keys:
+                continue
+            ordered_results = [
+                dict(outcome)
+                for _, outcome in sorted(group_results.get(group_key, []), key=lambda item: item[0])
+            ]
+            for target in group["targets"]:
+                target["execution_results"] = ordered_results
 
-    summary["has_failures"] = bool(summary["failed"] or summary["blocked"] or summary["timeout"] or summary["unavailable"])
-    report["execution_summary"] = summary
-    overview = report.get("execution_overview", {})
-    overview["executed"] = True
-    report["execution_overview"] = overview
-    return summary
+        summary["has_failures"] = bool(summary["failed"] or summary["blocked"] or summary["timeout"] or summary["unavailable"])
+        report["execution_summary"] = summary
+        overview = report.get("execution_overview", {})
+        overview["executed"] = True
+        report["execution_overview"] = overview
+        return summary
+    except KeyboardInterrupt:
+        summary["interrupted"] = True
+        summary["has_failures"] = True
+        report["execution_summary"] = summary
+        overview = report.get("execution_overview", {})
+        overview["interrupted"] = True
+        overview["executed"] = False
+        report["execution_overview"] = overview
+        raise

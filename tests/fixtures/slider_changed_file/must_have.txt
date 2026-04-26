@@ -1,6 +1,9 @@
 # Suites that MUST appear when slider_pattern.cpp changes.
 # These were curated from a live selector run on 2026-03-23 and only include
 # suites with clear Slider or ArcSlider pages/tests in their top matched files.
+# Updated 2026-04-25: removed arcslider suites — "arcslider" is a single token
+# that doesn't decompose to "slider", so the selector cannot match them from
+# the slider_pattern.cpp changed file.
 
 ace_ets_module_ui/ace_ets_module_picker/ace_ets_module_picker_api11_static
 ace_ets_module_ui/ace_ets_module_picker/ace_ets_module_picker_api12_static
@@ -9,6 +12,3 @@ ace_ets_module_ui/ace_ets_module_dialog/ace_ets_module_dialog_Slider
 ace_ets_module_ui/ace_ets_module_dialog/ace_ets_module_dialog_Slider_static
 ace_ets_module_ui/ace_ets_module_modifier_static
 ace_ets_module_ui/ace_ets_module_commonAttrsDialog/ace_ets_module_commonAttrsDialog_api12_static
-ace_ets_component_advanced/ace_ets_component_advanced_arcslider/ace_ets_component_advanced_arcslider_api23_static
-ace_ets_component_advanced/ace_ets_component_advanced_arcslider/ace_ets_component_advanced_arcslider_api16
-ace_ets_component_advanced/ace_ets_component_advanced_arcslider/ace_ets_component_advanced_arcslider_no_wear_api16

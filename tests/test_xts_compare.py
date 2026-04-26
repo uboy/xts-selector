@@ -1366,14 +1366,14 @@ class TestCliParser(unittest.TestCase):
         with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
             code = _run_compare(args)
         self.assertEqual(code, 2)
-        self.assertIn("--json and --html cannot be used together", stderr.getvalue())
+        self.assertIn("--json, --html, and --markdown are mutually exclusive", stderr.getvalue())
 
     def test_run_timeline_rejects_html(self):
         args = self.parser.parse_args(["--timeline", "a", "b", "--html"])
         with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
             code = _run_timeline(args)
         self.assertEqual(code, 2)
-        self.assertIn("--html is only supported in compare mode", stderr.getvalue())
+        self.assertIn("--html and --markdown are only supported in compare or single-run mode", stderr.getvalue())
 
 
 # ---------------------------------------------------------------------------

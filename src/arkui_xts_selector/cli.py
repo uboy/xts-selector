@@ -254,6 +254,22 @@ GENERATED_ACCESSOR_NAMESPACE_RE = re.compile(r"""GeneratedModifier::([A-Za-z_][A
 GET_ACCESSOR_RE = re.compile(r"""\bGet([A-Za-z_][A-Za-z0-9_]*)Accessor\s*\(""")
 PEER_INCLUDE_RE = re.compile(r"#include\s+\"[^\"]*/([a-z0-9_]+)_peer\.h\"")
 DYNAMIC_MODULE_RE = re.compile(r"""GetDynamicModule\("([A-Za-z0-9_]+)"\)""")
+DECLARE_INTERFACE_RE = re.compile(r"""\bdeclare\s+interface\s+([A-Z][A-Za-z0-9_]*)\b""")
+DECLARE_TYPE_RE = re.compile(r"""\bdeclare\s+(?:type|typedef)\s+([A-Z][A-Za-z0-9_]*)\b""")
+DECLARE_FUNCTION_RE = re.compile(r"""\bdeclare\s+function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
+DECLARE_MODULE_RE = re.compile(r"""declare\s+module\s+['"]([^'"]+)['"]""")
+TS_EXPORT_TYPE_RE = re.compile(r"""\bexport\s+(?:type|interface|class|const|function)\s+([A-Za-z_][A-Za-z0-9_]*)\b""")
+CPP_FUNCTION_DEF_RE = re.compile(
+    r"""(?:(?:const\s+)?(?:void|bool|int|auto|static|RefPtr|AceType|"""
+    r"""std::(?:optional|string|pair|shared_ptr|unique_ptr)|"""
+    r"""Color|Dimension|Offset|Size|Rect|PointF|Matrix4|Matrix44|"""
+    r"""std::pair|std::tuple|std::function|"""
+    r"""std::variant|std::monostate|std::any|"""
+    r"""Template\s*<[^>]*>|"""
+    r"""typename\s+\w+)\s+)?"""
+    r"""(\b[A-Z][A-Za-z0-9_]{2,}\b)\s*\("""
+)
+CPP_METHOD_DEF_RE = re.compile(r"""(\b[A-Z][A-Za-z0-9_]{2,})::([A-Z][A-Za-z0-9_]{2,})\s*\(""")
 TYPED_ATTRIBUTE_MODIFIER_RE = re.compile(r"""AttributeModifier<([A-Za-z_][A-Za-z0-9_]*)Attribute>""")
 EXTENDS_MODIFIER_RE = re.compile(r"""extends\s+([A-Za-z_][A-Za-z0-9_]*)Modifier\b""")
 HOOK_CONTENT_MODIFIER_RE = re.compile(r"""\bhook([A-Za-z0-9]+)ContentModifier\b""")
@@ -692,11 +708,25 @@ def coverage_family_key(token: str) -> str:
     elif normalized in COVERAGE_FAMILY_GROUP_OVERRIDES:
         canonical = normalized
     else:
-        return ""
+        # Fallback for unregistered tokens: allow them as family keys only if
+        # they look like reasonable component names (not path concatenations).
+        _MAX_FAMILY_TOKEN_LEN = 18
+        _PATH_NOISE_PREFIXES = ("arkts", "static", "declarative")
+        if len(normalized) > _MAX_FAMILY_TOKEN_LEN or any(normalized.startswith(p) for p in _PATH_NOISE_PREFIXES):
+            return ""
+        canonical = normalized
     grouped = COVERAGE_FAMILY_GROUP_OVERRIDES.get(canonical, canonical)
     if not grouped or grouped in GENERIC_COVERAGE_TOKENS:
         return ""
     return grouped
+
+
+def is_registered_family_token(token: str) -> bool:
+    """Return True if the token is a known, registered family key (not a fallback)."""
+    normalized = compact_token(token)
+    if not normalized or normalized in GENERIC_COVERAGE_TOKENS:
+        return False
+    return normalized in FAMILY_TOKEN_ALIAS_INDEX or normalized in COVERAGE_FAMILY_GROUP_OVERRIDES
 
 
 def capability_family_key(capability: str) -> str:
@@ -940,7 +970,7 @@ def should_keep_ets_signal_name(
     family_token = related_signal_family_token(name)
     if not family_token:
         return False
-    if family_token in source_families or coverage_family_key(family_token):
+    if family_token in source_families or is_registered_family_token(family_token):
         return True
     if coverage_capability_key(family_token) or coverage_capability_key(base_token):
         return True
@@ -1882,6 +1912,8 @@ def default_changed_file_exclusions_file() -> Path | None:
 def load_mapping_config(
     path_rules_file: Path | None,
     composite_mappings_file: Path | None,
+    *,
+    lineage_auto_alias: dict[str, list[str]] | None = None,
 ) -> MappingConfig:
     path_rules_data = load_json_if_exists(path_rules_file)
     composite_data = load_json_if_exists(composite_mappings_file)
@@ -1893,6 +1925,17 @@ def load_mapping_config(
         pattern_alias = merge_mapping_dict(PATTERN_ALIAS, config_pattern_alias)
     else:
         pattern_alias = dict(PATTERN_ALIAS)
+    # Merge auto-derived aliases from lineage map as fallback (lower priority).
+    # Manual entries always take precedence; auto entries fill gaps.
+    if lineage_auto_alias:
+        for family, symbols in lineage_auto_alias.items():
+            if family not in pattern_alias:
+                pattern_alias[family] = list(symbols)
+            else:
+                existing = set(pattern_alias[family])
+                for sym in symbols:
+                    if sym not in existing:
+                        pattern_alias[family] = pattern_alias[family] + [sym]
     composite_mappings = merge_mapping_dict(DEFAULT_COMPOSITE_MAPPINGS, composite_data.get("composite_mappings", {}))
     return MappingConfig(
         special_path_rules=special_path_rules,
@@ -2316,6 +2359,13 @@ def project_might_match(
             if base_token and base_token in project.search_typed_modifier_bases:
                 return True
 
+    # Weak symbol fallback — only check if no strong match yet
+    weak_symbols = signals.get("weak_symbols", set())
+    if weak_symbols:
+        project_identifier_calls = project.search_identifier_calls
+        if weak_symbols & project_identifier_calls:
+            return True
+
     return False
 
 
@@ -2459,6 +2509,17 @@ def span_overlaps_changed_ranges(
     start_line = offset_to_line_number(line_offsets, span_start)
     end_line = offset_to_line_number(line_offsets, max(span_start, span_end - 1))
     return any(not (end_line < range_start or start_line > range_end) for range_start, range_end in normalized_ranges)
+
+
+def extract_text_in_changed_ranges(text: str, changed_ranges: list[tuple[int, int]] | None) -> str:
+    if not changed_ranges:
+        return text
+    lines = text.split("\n")
+    selected: list[str] = []
+    for start, end in changed_ranges:
+        for i in range(max(0, start - 1), min(len(lines), end)):
+            selected.append(lines[i])
+    return "\n".join(selected)
 
 
 def parse_unified_diff_changed_ranges(patch_text: str) -> list[tuple[int, int]]:
@@ -3517,6 +3578,8 @@ def infer_signals(
     content_index: ContentModifierIndex,
     mapping_config: MappingConfig,
     changed_ranges: Iterable[tuple[int, int]] | None = None,
+    api_lineage_map: ApiLineageMap | None = None,
+    repo_root: Path | None = None,
 ) -> dict[str, set[str]]:
     rel = repo_rel(changed_file)
     if os.path.isabs(rel):
@@ -3697,24 +3760,102 @@ def infer_signals(
         ):
             signals["method_hints"].update(sorted(set(public_methods)))
 
+    ts_suffixes = {".ts"}
+    is_ts = changed_file.suffix.lower() in ts_suffixes
+    is_dts = changed_file.name.endswith(".d.ts")
+    if is_ts or is_dts:
+        text = read_text(changed_file)
+        normalized_ts_ranges = merge_changed_ranges(changed_ranges)
+        source_families = {FAMILY_TOKEN_ALIAS_INDEX.get(family, family) for family in signals["family_tokens"]}
+        source_focus = ets_source_focus_tokens(source_families)
+
+        # Extract @ohos.* module references
+        for match in OHOS_MODULE_RE.findall(text):
+            module_names = {match}
+            normalized_module = normalize_ohos_module(match, sdk_index.top_level_modules)
+            if normalized_module:
+                module_names.add(normalized_module)
+            for module_name in module_names:
+                strength = classify_ohos_module_signal_strength(module_name, source_focus, source_families)
+                if strength == "strong":
+                    signals["modules"].add(module_name)
+                elif strength == "weak":
+                    signals["weak_modules"].add(module_name)
+
+        # Extract exported interface/type names
+        for pattern in (EXPORT_CLASS_RE, EXPORT_INTERFACE_RE, TS_EXPORT_TYPE_RE):
+            for match in pattern.finditer(text):
+                name = match.group(1)
+                if name and name[:1].isupper():
+                    signals["type_hints"].add(name)
+                    signals["symbols"].add(name)
+                    family_token = related_signal_family_token(name)
+                    mapped_family = coverage_family_key(family_token) or coverage_family_key(related_signal_base_token(name))
+                    if mapped_family:
+                        signals["family_tokens"].add(mapped_family)
+                        signals["project_hints"].add(mapped_family)
+
+        # Extract interface member declarations → member_hints
+        exported_member_hints = extract_exported_interface_member_hints(
+            text,
+            source_families,
+            changed_ranges=normalized_ts_ranges or None,
+        )
+        signals["member_hints"].update(exported_member_hints)
+        for member_hint in sorted(exported_member_hints):
+            owner, _separator, _member = str(member_hint).partition(".")
+            if owner:
+                signals["type_hints"].add(owner)
+                signals["symbols"].add(owner)
+
+        # Extract declare function signatures → method_hints
+        scan_text = extract_text_in_changed_ranges(text, normalized_ts_ranges) if normalized_ts_ranges else text
+        for match in DECLARE_FUNCTION_RE.finditer(scan_text):
+            func_name = match.group(1)
+            if func_name:
+                signals["method_hints"].add(func_name)
+
+        # For .d.ts files, also extract declare interface/type as strong signals
+        if is_dts:
+            for match in DECLARE_INTERFACE_RE.finditer(scan_text):
+                name = match.group(1)
+                if name:
+                    signals["type_hints"].add(name)
+                    signals["symbols"].add(name)
+            for match in DECLARE_TYPE_RE.finditer(scan_text):
+                name = match.group(1)
+                if name:
+                    signals["type_hints"].add(name)
+                    signals["symbols"].add(name)
+            for match in DECLARE_MODULE_RE.finditer(scan_text):
+                module_name = match.group(1)
+                if module_name:
+                    signals["modules"].add(module_name)
+
     native_suffixes = {".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".hh"}
     if changed_file.suffix.lower() in native_suffixes:
         text = read_text(changed_file)
         text_lower = text.lower()
+        normalized_native_ranges = merge_changed_ranges(changed_ranges)
+        # When ranges are provided, scan only the changed lines for identifier-level signals.
+        # File-level structural signals (includes, dynamic modules) remain full-file.
+        scan_text = extract_text_in_changed_ranges(text, normalized_native_ranges) if normalized_native_ranges else text
+        scan_text_lower = scan_text.lower()
+
         dynamic_modules = {match for match in DYNAMIC_MODULE_RE.findall(text)}
 
-        for match in OHOS_MODULE_RE.findall(text):
+        for match in OHOS_MODULE_RE.findall(scan_text):
             signals["modules"].add(match)
             module = normalize_ohos_module(match, sdk_index.top_level_modules)
             if module:
                 signals["modules"].add(module)
 
-        for ident in CPP_IDENTIFIER_RE.findall(text):
+        for ident in CPP_IDENTIFIER_RE.findall(scan_text):
             compact_ident = compact_token(ident.replace("Modifier", ""))
             if compact_ident in families:
                 signals["symbols"].add(ident)
 
-        accessor_type_hints = extract_native_accessor_type_hints(text)
+        accessor_type_hints = extract_native_accessor_type_hints(scan_text)
         if accessor_type_hints:
             signals["type_hints"].update(accessor_type_hints)
             signals["symbols"].update(accessor_type_hints)
@@ -3722,13 +3863,13 @@ def infer_signals(
                 compact_token(hint) for hint in accessor_type_hints if compact_token(hint)
             )
 
-        for include_family in INCLUDE_PATTERN_COMPONENT_RE.findall(text):
+        for include_family in INCLUDE_PATTERN_COMPONENT_RE.findall(scan_text):
             family = compact_token(include_family)
             if family:
                 signals["family_tokens"].add(family)
 
         for family in families:
-            if family and family in text_lower:
+            if family and family in scan_text_lower:
                 signals["project_hints"].add(family)
 
         for raw, aliases in mapping_config.pattern_alias.items():
@@ -3737,7 +3878,7 @@ def infer_signals(
                 signals["symbols"].update(aliases)
 
         for key, rule in mapping_config.special_path_rules.items():
-            if key in text_lower:
+            if key in scan_text_lower:
                 signals["modules"].update(rule.get("modules", []))
                 signals["symbols"].update(rule.get("symbols", []))
                 signals["project_hints"].add(key)
@@ -3772,6 +3913,36 @@ def infer_signals(
                     signals["project_hints"].add(family)
                     signals["family_tokens"].add(family)
                     signals["symbols"].update(content_index.family_to_symbols.get(family, set()))
+
+        # When changed_ranges are provided, extract function names from changed lines
+        # and add them as method hints to narrow matching for wide-scope files like
+        # common_method_modifier.cpp (e.g. SetOnClick → onClick, SetGesture → gesture).
+        if normalized_native_ranges:
+            cpp_func_names = CPP_FUNCTION_DEF_RE.findall(scan_text)
+            for func_name in cpp_func_names:
+                stripped = func_name.strip()
+                if not stripped or len(stripped) < 3:
+                    continue
+                # Common patterns: SetOnClick → onClick, SetGesture → gesture
+                # Also keep the raw name as a symbol hint
+                signals["symbols"].add(stripped)
+                compact_func = compact_token(stripped)
+                if compact_func in families:
+                    signals["project_hints"].add(compact_func)
+                # Map SetXxx → xxx as a method hint
+                if stripped.startswith("Set"):
+                    method_hint = stripped[3:]
+                    if method_hint and method_hint[0].isupper():
+                        method_hint = method_hint[0].lower() + method_hint[1:]
+                    if method_hint:
+                        signals["method_hints"].add(method_hint)
+            cpp_method_names = CPP_METHOD_DEF_RE.findall(scan_text)
+            for class_name, method_name in cpp_method_names:
+                signals["symbols"].add(class_name.strip())
+                compact_class = compact_token(class_name.strip())
+                if compact_class in families:
+                    signals["project_hints"].add(compact_class)
+                signals["method_hints"].add(method_name.strip())
 
     apply_composite_mapping(changed_file, rel_lower, signals, content_index, mapping_config)
 
@@ -4677,6 +4848,60 @@ def coverage_rank_weight(rank: int) -> float:
     return 1.0 / float(normalized ** ACTIVE_RANKING_RULES.rank_weight_power)
 
 
+def _build_selection_signals(candidate: dict, target: dict) -> list[dict[str, object]]:
+    signals: list[dict[str, object]] = []
+    source_reasons = dict(candidate.get("source_reasons") or {})
+    sources = dict(candidate.get("sources") or {})
+
+    for source_key in sorted(set(str(k) for k in source_reasons.keys())):
+        source_info = sources.get(source_key, {})
+        reasons = source_reasons.get(source_key, [])
+        signal: dict[str, object] = {
+            "source_key": source_key,
+            "source_type": str(source_info.get("type") or ""),
+            "source_value": str(source_info.get("value") or ""),
+        }
+        match_types: list[str] = []
+        matched_keys: list[str] = []
+        for reason in reasons:
+            reason_str = str(reason or "")
+            if not reason_str:
+                continue
+            reason_lower = reason_str.lower()
+            if "family" in reason_lower:
+                match_types.append("family")
+            elif "capability" in reason_lower:
+                match_types.append("capability")
+            elif "type_hint" in reason_lower or "type hint" in reason_lower:
+                match_types.append("type_hint")
+            elif "member" in reason_lower:
+                match_types.append("member_hint")
+            else:
+                match_types.append(reason_str)
+            matched_keys.append(reason_str)
+        if match_types:
+            signal["match_types"] = sorted(set(match_types))
+        if matched_keys:
+            signal["matched_keys"] = matched_keys
+        signals.append(signal)
+
+    covered_families = sorted(candidate.get("covered_families", set()))
+    covered_capabilities = sorted(candidate.get("covered_capabilities", set()))
+    covered_type_hints = sorted(candidate.get("covered_type_hints", set()))
+    covered_member_hints = sorted(candidate.get("covered_member_hints", set()))
+
+    if covered_families:
+        signals.append({"match_type": "family", "matched_keys": covered_families})
+    if covered_capabilities:
+        signals.append({"match_type": "capability", "matched_keys": covered_capabilities})
+    if covered_type_hints:
+        signals.append({"match_type": "type_hint", "matched_keys": covered_type_hints})
+    if covered_member_hints:
+        signals.append({"match_type": "member_hint", "matched_keys": covered_member_hints})
+
+    return signals
+
+
 def build_global_coverage_recommendations(
     candidate_entries: list[dict[str, object]],
     repo_root: Path,
@@ -4982,7 +5207,7 @@ def build_global_coverage_recommendations(
                 family_key = capability_family_key(capability_key)
                 if family_key:
                     candidate["covered_families"].add(family_key)
-        if family_keys and not type_hint_keys and not member_hint_keys:
+        if family_keys:
             for family_key in family_keys:
                 unit_key = _unit_key_for_source(source_profile, family_key, "family")
                 all_units.setdefault(
@@ -5246,6 +5471,7 @@ def build_global_coverage_recommendations(
             key: candidate["source_reasons"].get(key, [])
             for key in sorted(source_keys)
         }
+        target["selection_signals"] = _build_selection_signals(candidate, target)
         ordered_candidates.append(target)
 
     # Phase 3: Apply fan-out limits from ranking_rules.json
@@ -5260,6 +5486,16 @@ def build_global_coverage_recommendations(
         covered_type_hints = set(target.get("covered_type_hints", []) or [])
         covered_families = set(target.get("covered_families", []) or [])
         covered_member_hints = set(target.get("covered_member_hints", []) or [])
+
+        # Extract component families from the changed source file paths
+        # (e.g. components_ng/pattern/toast/ → "toast")
+        source_comp_families: set[str] = set()
+        for src in target.get("execution_sources", []):
+            src_str = str(src)
+            m = re.search(r"components_ng/(?:pattern|render|event)/([^/]+)/", src_str)
+            if m:
+                source_comp_families.add(compact_token(m.group(1)))
+        target["source_component_families"] = sorted(source_comp_families)
 
         # Determine precision mode based on evidence level
         if covered_member_hints:
@@ -5309,6 +5545,19 @@ def build_global_coverage_recommendations(
         covered_type_hints = set(target.get("covered_type_hints", []) or [])
         matched_direct_type_hints = sorted(direct_type_hints & covered_type_hints)
         if new_coverage_count <= 0:
+            # Direct component path match boost: if the test's project family
+            # directly matches the component directory in the changed file path,
+            # elevate to required even without new coverage or member hints.
+            source_component_families = set(target.get("source_component_families", []) or [])
+            target_project_families = covered_families
+            direct_path_match = bool(source_component_families & target_project_families)
+            if direct_path_match and str(target.get("bucket") or "") == "must-run":
+                target["coverage_status"] = "required"
+                target["coverage_reason"] = (
+                    "direct component path match: test project covers the same component family as the changed file"
+                )
+                required.append(target)
+                continue
             if matched_direct_member_hints:
                 if str(target.get("bucket") or "") == "must-run":
                     target["coverage_status"] = "required"
@@ -6767,6 +7016,8 @@ def format_report(
             content_index,
             mapping_config,
             changed_ranges=changed_ranges,
+            api_lineage_map=api_lineage_map,
+            repo_root=app_config.repo_root,
         )
         affected_api_entities, file_level_affected_api_entities, derived_source_symbols = apply_api_lineage_signals(
             changed_file,
@@ -9191,6 +9442,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hdc-path", help="Path to hdc used for generated commands, execution preflight, and flashing.")
     parser.add_argument("--hdc-endpoint", help="Remote HDC server endpoint HOST:PORT used for generated commands, preflight, and execution.")
     parser.add_argument("--run-tool", choices=RUN_TOOL_CHOICES, default="auto", help="Execution tool to use for --run-now. Default: auto.")
+    parser.add_argument("--skip-install", action="store_true", default=False, help="Skip automatic HAP installation before aa_test execution. Use when HAPs are already installed on the device.")
     parser.add_argument("--run-priority", choices=RUN_PRIORITY_CHOICES, default="recommended", help="Execution priority for --run-now. required = strongest unique coverage, recommended = required plus additional unique coverage, all = include duplicate fallback coverage.")
     parser.add_argument("--shard-mode", choices=SHARD_MODE_CHOICES, default="mirror", help="Execution distribution mode. mirror = all selected targets on every device; split = shard unique targets across devices.")
     parser.add_argument("--parallel-jobs", type=int, default=1, help="Maximum number of device queues to execute in parallel for --run-now. Same-device commands stay sequential.")
@@ -9470,43 +9722,63 @@ def main() -> int:
             return 2
     elif not _has_local_acts_artifacts(app_config.acts_out_root):
         warning_root = str(app_config.acts_out_root or "")
-        if args.run_now:
-            preferred_local_acts_root = app_config.acts_out_root
-            app_config.daily_date = time.strftime("%Y%m%d")
-            print(
-                "warning: local ACTS artifacts were not found under "
-                f"{warning_root or '<unset>'}; auto-downloading daily tests for {app_config.daily_date}.",
-                file=sys.stderr,
-                flush=True,
-            )
-            emit_progress(progress_enabled, f"preparing daily prebuilt {app_config.daily_date}")
-            try:
-                prepared = prepare_daily_prebuilt_from_config(app_config)
-            except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
+        preferred_local_acts_root = app_config.acts_out_root
+        app_config.daily_date = time.strftime("%Y%m%d")
+        print(
+            "warning: local ACTS artifacts were not found under "
+            f"{warning_root or '<unset>'}; auto-downloading daily tests for {app_config.daily_date}.",
+            file=sys.stderr,
+            flush=True,
+        )
+        emit_progress(progress_enabled, f"preparing daily prebuilt {app_config.daily_date}")
+        try:
+            prepared = prepare_daily_prebuilt_from_config(app_config)
+        except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
+            if args.run_now:
                 print(f"daily prebuilt preparation failed: {exc}", file=sys.stderr)
                 return 2
-            if preferred_local_acts_root is not None:
-                try:
-                    synced_root = _sync_prebuilt_acts_to_local_root(
-                        prepared,
-                        preferred_local_acts_root,
-                        progress_enabled=progress_enabled,
-                    )
-                except OSError as exc:
+            else:
+                print(
+                    f"warning: daily prebuilt preparation failed: {exc}; "
+                    "continuing with selection-only analysis and current inventory gaps.",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                prepared = None
+        if prepared is not None and preferred_local_acts_root is not None:
+            try:
+                synced_root = _sync_prebuilt_acts_to_local_root(
+                    prepared,
+                    preferred_local_acts_root,
+                    progress_enabled=progress_enabled,
+                )
+            except OSError as exc:
+                if args.run_now:
                     print(f"daily prebuilt sync failed: {exc}", file=sys.stderr)
                     return 2
-                if synced_root is not None:
-                    app_config.acts_out_root = synced_root
-                    app_config.daily_prebuilt_note = (
-                        f"{app_config.daily_prebuilt_note} Synced to local ACTS root {synced_root}."
-                    ).strip()
-        else:
-            print(
-                "warning: local ACTS artifacts were not found under "
-                f"{warning_root or '<unset>'}; continuing with selection-only analysis and current inventory gaps.",
-                file=sys.stderr,
-                flush=True,
-            )
+                else:
+                    print(f"warning: daily prebuilt sync failed: {exc}", file=sys.stderr)
+                    synced_root = None
+            if synced_root is not None:
+                app_config.acts_out_root = synced_root
+                app_config.daily_prebuilt_note = (
+                    f"{app_config.daily_prebuilt_note} Synced to local ACTS root {synced_root}."
+                ).strip()
+
+    # Auto-download SDK if sdk_api_root is empty or has no SDK API files
+    sdk_component_root = app_config.sdk_api_root / "arkui" / "component"
+    if not sdk_component_root.is_dir() or not any(sdk_component_root.glob("*.d.ets")):
+        if app_config.sdk_date is None and app_config.sdk_build_tag is None:
+            app_config.sdk_date = time.strftime("%Y%m%d")
+        if app_config.sdk_date or app_config.sdk_build_tag:
+            emit_progress(progress_enabled, f"auto-downloading daily SDK {app_config.sdk_build_tag or app_config.sdk_date}")
+            try:
+                prepared_sdk = prepare_daily_sdk_from_config(app_config)
+                if prepared_sdk.primary_root is not None:
+                    app_config.sdk_api_root = prepared_sdk.primary_root
+            except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
+                print(f"warning: SDK auto-download failed: {exc}", file=sys.stderr)
+
     source_report_path = resolve_selector_report_input(
         args.from_report,
         bool(args.last_report),
@@ -9603,6 +9875,7 @@ def main() -> int:
             hdc_path=app_config.hdc_path,
             hdc_endpoint=app_config.hdc_endpoint,
             requested_test_names=requested_test_names,
+            skip_install=args.skip_install,
         )
         report["next_steps"] = build_next_steps(report, app_config, args)
         execution_summary = None
@@ -9642,6 +9915,7 @@ def main() -> int:
                         hdc_path=app_config.hdc_path,
                         hdc_endpoint=app_config.hdc_endpoint,
                         progress_callback=execution_progress_callback,
+                        skip_install=args.skip_install,
                     )
                 except KeyboardInterrupt:
                     execution_interrupted = True
@@ -9649,7 +9923,6 @@ def main() -> int:
                     execution_summary = dict(report.get("execution_summary") or {})
         else:
             report["execution_preflight"] = {}
-
         if run_session is not None:
             status = "planned"
             if preflight_failed:
@@ -9792,18 +10065,10 @@ def main() -> int:
     build_content_modifier_index_ms = round((time.perf_counter() - content_started) * 1000, 3)
     emit_progress(progress_enabled, "loading mapping config")
     mapping_started = time.perf_counter()
-    mapping_config = load_mapping_config(
-        path_rules_file=app_config.path_rules_file,
-        composite_mappings_file=app_config.composite_mappings_file,
-    )
-    load_mapping_config_ms = round((time.perf_counter() - mapping_started) * 1000, 3)
-    emit_progress(progress_enabled, "loading runtime history")
-    runtime_history_started = time.perf_counter()
-    runtime_history_index = build_runtime_history_index(default_runtime_history_file(app_config.runtime_state_root))
-    load_runtime_history_ms = round((time.perf_counter() - runtime_history_started) * 1000, 3)
     api_lineage_map = None
     api_lineage_map_path = None
     build_api_lineage_map_ms = 0.0
+    lineage_auto_alias = None
     if changed_files:
         emit_progress(progress_enabled, "building api lineage map")
         lineage_started = time.perf_counter()
@@ -9816,6 +10081,18 @@ def main() -> int:
             project_cache_file=app_config.cache_file,
         )
         build_api_lineage_map_ms = round((time.perf_counter() - lineage_started) * 1000, 3)
+        if api_lineage_map is not None:
+            lineage_auto_alias = api_lineage_map.auto_pattern_alias()
+    mapping_config = load_mapping_config(
+        path_rules_file=app_config.path_rules_file,
+        composite_mappings_file=app_config.composite_mappings_file,
+        lineage_auto_alias=lineage_auto_alias,
+    )
+    load_mapping_config_ms = round((time.perf_counter() - mapping_started) * 1000, 3)
+    emit_progress(progress_enabled, "loading runtime history")
+    runtime_history_started = time.perf_counter()
+    runtime_history_index = build_runtime_history_index(default_runtime_history_file(app_config.runtime_state_root))
+    load_runtime_history_ms = round((time.perf_counter() - runtime_history_started) * 1000, 3)
     emit_progress(progress_enabled, "building report")
     report_started = time.perf_counter()
     report = format_report(
@@ -9905,6 +10182,7 @@ def main() -> int:
         hdc_path=app_config.hdc_path,
         hdc_endpoint=app_config.hdc_endpoint,
         requested_test_names=requested_test_names,
+        skip_install=args.skip_install,
     )
     report["show_source_evidence"] = bool(args.show_source_evidence or args.debug_trace)
     report["coverage_run_commands"] = build_coverage_run_commands(report, app_config, args)
@@ -9946,6 +10224,7 @@ def main() -> int:
                     hdc_path=app_config.hdc_path,
                     hdc_endpoint=app_config.hdc_endpoint,
                     progress_callback=execution_progress_callback,
+                    skip_install=args.skip_install,
                 )
             except KeyboardInterrupt:
                 execution_interrupted = True

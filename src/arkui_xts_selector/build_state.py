@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .hdc_transport import build_hdc_shell_command, ensure_hdc_wrapper
+from .hdc_transport import build_hdc_command, build_hdc_env, build_hdc_shell_command, ensure_hdc_wrapper
 
 
 def compact_token(value: str) -> str:
@@ -96,6 +96,57 @@ def build_aa_test_command(
         hdc_endpoint=hdc_endpoint,
         device=device,
     )
+
+
+def find_hap_for_module(
+    module_name: str | None,
+    acts_out_root: Path | None,
+) -> Path | None:
+    if not module_name or not acts_out_root:
+        return None
+    tc_dir = acts_out_root / "testcases"
+    if not tc_dir.is_dir():
+        return None
+    compact = compact_token(module_name)
+    candidates: list[Path] = []
+    for hap in sorted(tc_dir.glob("*.hap")):
+        hap_stem = compact_token(hap.stem)
+        if hap_stem == compact or compact in hap_stem:
+            candidates.append(hap)
+    if not candidates:
+        for hap in sorted(tc_dir.glob("**/*.hap")):
+            hap_stem = compact_token(hap.stem)
+            if hap_stem == compact or compact in hap_stem:
+                candidates.append(hap)
+    if len(candidates) == 1:
+        return candidates[0]
+    for hap in candidates:
+        if compact_token(hap.stem) == compact:
+            return hap
+    return candidates[0] if candidates else None
+
+
+def build_hdc_install_command(
+    bundle_name: str | None,
+    module_name: str | None,
+    acts_out_root: Path | None,
+    hdc_path: Path | str | None = None,
+    hdc_endpoint: str | None = None,
+    device: str | None = None,
+) -> str | None:
+    if not bundle_name:
+        return None
+    hap_path = find_hap_for_module(module_name, acts_out_root)
+    if not hap_path:
+        return None
+    args = build_hdc_command(
+        ["install", str(hap_path)],
+        hdc_path=hdc_path,
+        hdc_endpoint=hdc_endpoint,
+        device=device,
+    )
+    from .hdc_transport import render_shell_command, render_hdc_env_prefix
+    return f"{render_hdc_env_prefix(hdc_path)}{render_shell_command(args)}"
 
 
 def _safe_report_fragment(value: str | None) -> str:

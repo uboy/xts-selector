@@ -1,0 +1,7 @@
+# Suites that MUST appear when web_delegate.cpp changes.
+# Source: PR !83647 web delegate changes, verified 2026-04
+#
+# web_delegate.cpp is the C++ bridge between the JS Web component and
+# native rendering. Changes affect all Web-related test suites.
+
+ace_ets_module_ui/ace_ets_module_dialog/ace_ets_module_web_static

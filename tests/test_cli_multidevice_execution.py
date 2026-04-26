@@ -333,7 +333,7 @@ class RunTargetPlanningTests(unittest.TestCase):
 
         def fake_run(command: str, **_kwargs):
             if "SER1" in command:
-                return SimpleNamespace(returncode=0, stdout="ok\n", stderr="")
+                return SimpleNamespace(returncode=0, stdout="tests run: 1\n", stderr="")
             return SimpleNamespace(returncode=3, stdout="", stderr="boom\n")
 
         with mock.patch("arkui_xts_selector.execution.subprocess.run", side_effect=fake_run):
@@ -404,7 +404,7 @@ class RunTargetPlanningTests(unittest.TestCase):
 
         def fake_run(command: str, **_kwargs):
             calls.append(command)
-            return SimpleNamespace(returncode=0, stdout="ok\n", stderr="")
+            return SimpleNamespace(returncode=0, stdout="tests run: 1\n", stderr="")
 
         with mock.patch("arkui_xts_selector.execution.subprocess.run", side_effect=fake_run):
             summary = execute_planned_targets(

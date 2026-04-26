@@ -1,0 +1,7 @@
+# Suites that MUST appear when inspector_composed_element.cpp changes.
+# Source: PR !84033 inspector changes, verified 2026-04
+#
+# inspector_composed_element.cpp handles the Inspector component for devtools.
+# Changes affect inspector-related test suites and C-API inspector suites.
+
+ace_ets_module_ui/ace_ets_module_dialog/ace_ets_capi_inspector_static

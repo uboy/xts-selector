@@ -131,6 +131,26 @@ def build_lock_metadata(
     return payload
 
 
+def _is_stale_lock(metadata: dict[str, Any] | None, current_host: str) -> bool:
+    if not metadata:
+        return False
+    pid = metadata.get("pid")
+    if not pid or not isinstance(pid, int):
+        return False
+    holder_host = str(metadata.get("host") or "")
+    if holder_host and holder_host != current_host:
+        return False
+    try:
+        os.kill(pid, 0)
+        return False
+    except ProcessLookupError:
+        return True
+    except PermissionError:
+        return False
+    except OSError:
+        return False
+
+
 def acquire_interprocess_lock(
     path: Path,
     *,
@@ -140,6 +160,15 @@ def acquire_interprocess_lock(
     path.parent.mkdir(parents=True, exist_ok=True)
     if str(path.parent).startswith("/tmp/"):
         _best_effort_chmod(path.parent, 0o1777)
+
+    # Check for stale lock from a dead process before attempting flock
+    existing_metadata = read_lock_metadata(path)
+    if _is_stale_lock(existing_metadata, socket.gethostname()):
+        try:
+            path.unlink()
+        except OSError:
+            pass
+
     handle = path.open("a+", encoding="utf-8")
     _best_effort_chmod(path, 0o666)
     deadline = time.monotonic() + max(0.0, float(timeout_s or 0.0))
@@ -148,6 +177,17 @@ def acquire_interprocess_lock(
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             break
         except BlockingIOError:
+            # Re-check for stale lock while waiting
+            current_metadata = read_lock_metadata(path)
+            if _is_stale_lock(current_metadata, socket.gethostname()):
+                try:
+                    path.unlink()
+                except OSError:
+                    pass
+                handle.close()
+                handle = path.open("a+", encoding="utf-8")
+                _best_effort_chmod(path, 0o666)
+                continue
             if timeout_s <= 0 or time.monotonic() >= deadline:
                 holder = read_lock_metadata(path)
                 handle.close()

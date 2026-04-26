@@ -17,7 +17,9 @@ DEFAULT_DAILY_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
 DEFAULT_DAILY_CACHE_ROOT = Path("/tmp/arkui_xts_selector_daily_cache").resolve()
 DEFAULT_DAILY_COMPONENT = "dayu200_Dyn_Sta_XTS"
 DEFAULT_SDK_COMPONENT = "ohos-sdk-public"
+DEFAULT_SDK_CACHE_ROOT = Path("/tmp/arkui_xts_selector_sdk_cache").resolve()
 DEFAULT_FIRMWARE_COMPONENT = "dayu200"
+DEFAULT_FIRMWARE_CACHE_ROOT = Path("/tmp/arkui_xts_selector_firmware_cache").resolve()
 PLACEHOLDER_METADATA_VALUES = {"", "-", "--", "n/a", "none", "null", "unknown"}
 DOWNLOAD_PROGRESS_UPDATE_INTERVAL = 0.5
 
