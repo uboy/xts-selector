@@ -12,6 +12,7 @@ from xml.etree.ElementTree import Element, ElementTree, SubElement, iterparse
 from .build_state import (
     build_aa_test_command,
     build_hdc_install_command,
+    build_install_test_haps_shell_sequence,
     build_runtest_command,
     build_uninstall_bundle_shell_command,
     build_xdevice_command,
@@ -856,6 +857,10 @@ def _execute_plan_item(
 
     started_at = _utc_now()
     started_monotonic = time.monotonic()
+    deadline: float | None = None
+    if timeout_value and timeout_value > 0:
+        deadline = started_monotonic + timeout_value
+    hap_installed_for_cleanup = False
 
     # HAP install step for aa_test runs
     install_result: dict[str, Any] | None = None
