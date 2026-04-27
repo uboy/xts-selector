@@ -6323,8 +6323,9 @@ def prepare_daily_prebuilt_from_config(app_config: AppConfig) -> PreparedDailyPr
             f"Using prebuilt ACTS artifacts from daily build {prepared.build.tag} "
             f"({prepared.acts_out_root})."
         )
-        if prepared.note:
-            base_note = f"{prepared.note} {base_note}"
+        prepared_note = getattr(prepared, "note", None)
+        if prepared_note:
+            base_note = f"{prepared_note} {base_note}"
         app_config.daily_prebuilt_note = base_note
     else:
         app_config.daily_prebuilt_ready = False
