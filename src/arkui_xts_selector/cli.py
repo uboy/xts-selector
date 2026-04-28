@@ -2963,6 +2963,97 @@ def ensure_project_files_loaded(project: TestProjectIndex) -> TestProjectIndex:
     return project
 
 
+@dataclass
+class LineageSelection:
+    """Result of lineage-based selection for a changed file."""
+    affected_api_entities: list[str] = field(default_factory=list)
+    consumer_projects: list[dict] = field(default_factory=list)  # [{project: str, matched_entities: list[str], priority: str}]
+    confidence: str = "low"  # "high", "medium", "low"
+    uncovered_entities: list[str] = field(default_factory=list)
+
+
+def select_by_lineage(
+    changed_file: Path,
+    changed_ranges: list[tuple[int, int]] | None,
+    api_lineage_map: ApiLineageMap,
+    repo_root: Path,
+) -> LineageSelection | None:
+    """Select test projects using lineage map edges directly.
+
+    Returns None if the file has no entries in the lineage map.
+    """
+    # 1. Get file-level API entities
+    file_entities = api_lineage_map.apis_for_source(changed_file, repo_root=repo_root)
+
+    if not file_entities:
+        return None
+
+    # 2. If changed_ranges provided, narrow to diff-level entities
+    affected = list(file_entities)
+    if changed_ranges:
+        range_entities = api_lineage_map.symbols_for_source_ranges(
+            changed_file,
+            changed_ranges,
+            repo_root=repo_root,
+        )
+        if range_entities:
+            narrowed_entities = api_lineage_map.apis_for_source_symbols(
+                changed_file,
+                range_entities,
+                repo_root=repo_root,
+            )
+            if narrowed_entities:
+                affected = list(set(affected) & set(narrowed_entities))  # intersection
+
+    # 3. Collect consumer projects for each affected entity
+    project_matches: dict[str, list[str]] = {}
+    uncovered = []
+
+    for entity in affected:
+        consumers = api_lineage_map.consumer_projects_for_api(entity)
+
+        if consumers:
+            for proj in consumers:
+                if proj not in project_matches:
+                    project_matches[proj] = []
+                project_matches[proj].append(entity)
+        else:
+            uncovered.append(entity)
+
+    # 4. Classify priority
+    results = []
+    has_method_level = False
+    has_component_level = False
+
+    for proj, entities in sorted(project_matches.items(), key=lambda x: -len(x[1])):
+        method_entities = [e for e in entities if "." in e]
+        component_entities = [e for e in entities if "." not in e]
+
+        if method_entities:
+            priority = "must-run"
+            has_method_level = True
+        elif component_entities:
+            priority = "recommended"
+            has_component_level = True
+        else:
+            priority = "related"
+
+        results.append({
+            "project": proj,
+            "matched_entities": entities,
+            "priority": priority,
+        })
+
+    confidence = "high" if has_method_level else ("medium" if has_component_level else "low")
+
+    return LineageSelection(
+        affected_api_entities=affected,
+        consumer_projects=results,
+        confidence=confidence,
+        uncovered_entities=uncovered,
+    )
+
+
 def project_matches_exact_api_prefilter(project: TestProjectIndex, signals: dict[str, set[str]]) -> bool:
     ensure_project_search_summary(project)
     exact_api_entities = {str(item) for item in signals.get("exact_api_prefilter_entities", set()) if "." in str(item)}
