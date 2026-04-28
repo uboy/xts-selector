@@ -370,7 +370,7 @@ class CliDesignV1Tests(unittest.TestCase):
         expected = [Path("frameworks/core/interfaces/native/implementation/flow_item_modifier.cpp")]
         with mock.patch("arkui_xts_selector.cli.resolve_pr_owner_repo", return_value=("group", "project")), \
                 mock.patch("arkui_xts_selector.cli.fetch_pr_metadata_via_api", return_value={"iid": 12}) as metadata_fetch, \
-                mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files_via_api", return_value=expected) as api_fetch, \
+                mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files_and_ranges_via_api", return_value=(expected, {})) as api_fetch, \
                 mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files") as git_fetch:
             resolved = resolve_pr_changed_files(
                 app_config,
@@ -408,7 +408,7 @@ class CliDesignV1Tests(unittest.TestCase):
             expected = [Path("frameworks/core/interfaces/native/implementation/flow_item_modifier.cpp")]
             with mock.patch("arkui_xts_selector.cli.resolve_pr_owner_repo", return_value=("group", "project")), \
                     mock.patch("arkui_xts_selector.cli.fetch_pr_metadata_via_api", return_value={"iid": 12}) as metadata_fetch, \
-                    mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files_via_api", return_value=expected):
+                    mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files_and_ranges_via_api", return_value=(expected, {})):
                 resolved = resolve_pr_changed_files(
                     app_config,
                     "https://codehub.example.com/group/project/merge_requests/12",
