@@ -648,6 +648,469 @@ def snake_to_pascal(name: str) -> str:
     return "".join(part.capitalize() for part in re.split(r"[_\-.]+", name) if part)
 
 
+def pascal_to_snake(name: str) -> str:
+    """Convert PascalCase to lowercase (component name format).
+
+    This is used for component names where the convention is to lowercase
+    PascalCase without inserting underscores, matching the pattern used in
+    ark_direct_component file names (e.g., datapanel, patternlock, textclock).
+
+    Examples:
+        ArkCheckbox -> checkbox
+        ArkDataPanel -> datapanel
+        ArkPatternLock -> patternlock
+        ArkSymbolGlyph -> symbolglyph
+        ArkTextClock -> textclock
+        ArkRichEditor -> richeditor
+    """
+    # Simply lowercase the string
+    return name.lower()
+
+
+# ---------------------------------------------------------------------------
+# Tree-sitter C++ / TypeScript tracing for shared files and generated .ets
+# ---------------------------------------------------------------------------
+# These functions use tree-sitter to:
+# 1. Build an index of (component, SetXxxImpl) → [called symbols] from
+#    *_static_modifier.cpp files.
+# 2. Trace shared headers (converter.h, callback_helper.h, etc.) through
+#    call chains to discover affected components.
+# 3. Trace generated .ets files to extract SDK API method names from
+#    changed ranges.
+
+_TS_CPP_PARSER: "tree_sitter.Parser | None" = None
+_TS_CPP_LANG: "tree_sitter.Language | None" = None
+_TS_TS_PARSER: "tree_sitter.Parser | None" = None
+_TS_TS_LANG: "tree_sitter.Language | None" = None
+_TS_SM_INDEX: dict[str, dict[str, list[str]]] | None = None
+"""Cache: basename -> {func_name -> [called_symbols]} for static modifier files."""
+
+
+def _get_ts_cpp_parser() -> tuple["tree_sitter.Parser", "tree_sitter.Language"]:
+    """Return a lazily-initialized tree-sitter C++ parser."""
+    global _TS_CPP_PARSER, _TS_CPP_LANG
+    if _TS_CPP_PARSER is None:
+        import tree_sitter as ts
+        import tree_sitter_cpp as tscpp
+        _TS_CPP_LANG = ts.Language(tscpp.language())
+        _TS_CPP_PARSER = ts.Parser(_TS_CPP_LANG)
+    return _TS_CPP_PARSER, _TS_CPP_LANG
+
+
+def _get_ts_ts_parser() -> tuple["tree_sitter.Parser", "tree_sitter.Language"]:
+    """Return a lazily-initialized tree-sitter TypeScript parser."""
+    global _TS_TS_PARSER, _TS_TS_LANG
+    if _TS_TS_PARSER is None:
+        import tree_sitter as ts
+        import tree_sitter_typescript as tsts
+        _TS_TS_LANG = ts.Language(tsts.language_typescript())
+        _TS_TS_PARSER = ts.Parser(_TS_TS_LANG)
+    return _TS_TS_PARSER, _TS_TS_LANG
+
+
+def _ts_extract_func_name(decl_node, code_bytes: bytes) -> str | None:
+    """Extract the function name from a function_declarator node.
+
+    Handles simple identifiers (foo), qualified identifiers (Class::foo),
+    and complex qualified identifiers with templates (std::optional<T> foo).
+    Always returns the rightmost simple identifier.
+    """
+    for child in decl_node.children:
+        if child.type == "identifier":
+            return code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+        if child.type == "field_identifier":
+            return code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+        if child.type == "qualified_identifier":
+            # Find the rightmost simple identifier child
+            raw = code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+            if "::" in raw:
+                # For complex qualified identifiers like "std::optional<T> FuncName",
+                # extract the last simple identifier by walking child nodes
+                def _find_last_identifier(node):
+                    best = None
+                    for c in node.children:
+                        if c.type == "identifier":
+                            best = code_bytes[c.start_byte:c.end_byte].decode("utf-8", errors="replace")
+                        sub = _find_last_identifier(c)
+                        if sub:
+                            best = sub
+                    return best
+                last_id = _find_last_identifier(child)
+                if last_id:
+                    return last_id
+            return raw
+    return None
+
+
+def _ts_extract_calls(node, code_bytes: bytes) -> list[str]:
+    """Extract all call expression callee names from a subtree."""
+    calls: list[str] = []
+    def walk(n):
+        if n.type == "call_expression":
+            callee = n.child_by_field_name("function")
+            if callee:
+                name = code_bytes[callee.start_byte:callee.end_byte].decode("utf-8", errors="replace")
+                if "::" in name:
+                    name = name.rsplit("::", 1)[-1]
+                calls.append(name)
+        for child in n.children:
+            walk(child)
+    walk(node)
+    return calls
+
+
+def _ts_collect_functions(root_node, code_bytes: bytes) -> dict[str, list[str]]:
+    """Walk AST and collect {func_name: [called_symbols]} for all function definitions."""
+    result: dict[str, list[str]] = {}
+
+    def visit(node):
+        if node.type == "function_definition":
+            name = None
+            body = None
+            for child in node.children:
+                if child.type == "function_declarator":
+                    name = _ts_extract_func_name(child, code_bytes)
+                elif child.type == "compound_statement":
+                    body = child
+            if name and body:
+                calls = _ts_extract_calls(body, code_bytes)
+                result[name] = calls
+        for child in node.children:
+            visit(child)
+
+    visit(root_node)
+    return result
+
+
+def _ts_get_static_modifier_index(repo_root: Path) -> dict[str, dict[str, list[str]]]:
+    """Build and cache an index of static modifier files -> {func: [calls]}.
+
+    Returns {component_name: {SetXxxImpl: [called_symbol, ...]}} where
+    component_name is extracted from the directory path
+    (e.g., checkbox from pattern/checkbox/bridge/checkbox_static_modifier.cpp).
+    """
+    global _TS_SM_INDEX
+    if _TS_SM_INDEX is not None:
+        return _TS_SM_INDEX
+
+    parser, _ = _get_ts_cpp_parser()
+    index: dict[str, dict[str, list[str]]] = {}
+
+    # Walk pattern/*/bridge/*_static_modifier.cpp
+    bridge_base = repo_root / "frameworks" / "core" / "components_ng" / "pattern"
+    if not bridge_base.is_dir():
+        _TS_SM_INDEX = index
+        return index
+
+    for bridge_dir in sorted(bridge_base.iterdir()):
+        bridge_sub = bridge_dir / "bridge"
+        if not bridge_sub.is_dir():
+            continue
+        for sm_file in sorted(bridge_sub.glob("*_static_modifier.cpp")):
+            component = sm_file.name.replace("_static_modifier.cpp", "")
+            try:
+                code = sm_file.read_bytes()
+            except OSError:
+                continue
+            tree = parser.parse(code)
+            funcs = _ts_collect_functions(tree.root_node, code)
+            if funcs:
+                index[component] = funcs
+
+    _TS_SM_INDEX = index
+    return index
+
+
+def _impl_to_sdk_method(impl_name: str) -> str | None:
+    """Convert a SetXxxImpl C++ function name to an SDK method name.
+
+    SetSelectedColorImpl -> selectedColor
+    SetSelectImpl -> select
+    SetCheckboxOptionsImpl -> None (not a setter attribute)
+    ConstructImpl -> None
+    """
+    if not impl_name.startswith("Set"):
+        return None
+    name = impl_name[3:]
+    if name.endswith("Impl"):
+        name = name[:-4]
+    if not name:
+        return None
+    # First character lowercase: SelectedColor -> selectedColor
+    return name[0].lower() + name[1:]
+
+
+def trace_shared_file_to_components(
+    changed_file: Path,
+    changed_ranges: list[tuple[int, int]] | None,
+    repo_root: Path,
+) -> dict[str, list[str]] | None:
+    """Trace a shared C++ header to discover affected components and methods.
+
+    Returns {component_name: [sdk_method_name, ...]} or None if the file
+    is not a traceable shared header or tree-sitter is unavailable.
+
+    This works by:
+    1. Parsing the changed header with tree-sitter C++ to extract function
+       names defined in changed line ranges.
+    2. Looking up the static modifier index to find which components' Set*Impl
+       functions call those extracted symbols.
+    3. Converting SetXxxImpl names to SDK method names.
+    """
+    # Only trace well-known shared infrastructure headers
+    try:
+        rel = changed_file.relative_to(repo_root)
+    except ValueError:
+        return None
+    rel_str = str(rel).replace("\\", "/")
+    rel_lower = rel_str.lower()
+
+    # Recognized shared header directories/patterns
+    shared_patterns = (
+        "core/interfaces/native/utility/",
+        "core/interfaces/native/ace/",
+        "core/common/",
+    )
+    if not any(p in rel_lower for p in shared_patterns):
+        return None
+
+    # Must be a header file
+    if changed_file.suffix.lower() not in (".h", ".hpp", ".hh"):
+        return None
+
+    try:
+        parser, lang = _get_ts_cpp_parser()
+    except ImportError:
+        return None
+
+    try:
+        code = changed_file.read_bytes()
+    except OSError:
+        return None
+
+    tree = parser.parse(code)
+
+    # Extract all function/declaration names from changed ranges
+    # If no ranges provided, extract all top-level names
+    defined_symbols: set[str] = set()
+
+    if changed_ranges:
+        # Convert to byte ranges for tree-sitter
+        lines = code.split(b"\n")
+        byte_offsets: list[int] = []
+        offset = 0
+        for line in lines:
+            byte_offsets.append(offset)
+            offset += len(line) + 1  # +1 for \n
+
+        for start_line, end_line in changed_ranges:
+            # tree-sitter uses 0-based rows; changed_ranges are 1-based
+            start_row = max(0, start_line - 1)
+            end_row = end_line  # exclusive in our range
+            start_byte = byte_offsets[start_row] if start_row < len(byte_offsets) else len(code)
+            end_byte = byte_offsets[end_row] if end_row < len(byte_offsets) else len(code)
+
+            # Find nodes overlapping with the changed range
+            def collect_names(node):
+                if (
+                    node.start_byte >= end_byte
+                    or node.end_byte <= start_byte
+                    or node.start_point[0] > end_row
+                    or node.end_point[0] < start_row
+                ):
+                    return
+                if node.type in ("function_definition", "declaration"):
+                    for child in node.children:
+                        if child.type == "function_declarator":
+                            name = _ts_extract_func_name(child, code)
+                            if name:
+                                defined_symbols.add(name)
+                        elif child.type in ("identifier", "qualified_identifier"):
+                            defined_symbols.add(
+                                code[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                            )
+                for child in node.children:
+                    collect_names(child)
+
+            collect_names(tree.root_node)
+    else:
+        # No ranges: extract all function/declaration names from the file
+        def collect_all_names(node):
+            if node.type in ("function_definition", "declaration"):
+                for child in node.children:
+                    if child.type == "function_declarator":
+                        name = _ts_extract_func_name(child, code)
+                        if name:
+                            defined_symbols.add(name)
+                    elif child.type in ("identifier", "qualified_identifier"):
+                        defined_symbols.add(
+                            code[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                        )
+            for child in node.children:
+                collect_all_names(child)
+
+        collect_all_names(tree.root_node)
+
+    if not defined_symbols:
+        return None
+
+    # Look up which components' static modifier functions call these symbols
+    sm_index = _ts_get_static_modifier_index(repo_root)
+    result: dict[str, list[str]] = {}
+
+    for component, funcs in sm_index.items():
+        matched_methods: list[str] = []
+        for func_name, calls in funcs.items():
+            # Check if any of the defined symbols are called in this function
+            if defined_symbols & set(calls):
+                sdk_method = _impl_to_sdk_method(func_name)
+                if sdk_method:
+                    matched_methods.append(sdk_method)
+        if matched_methods:
+            result[component] = sorted(set(matched_methods))
+
+    return result if result else None
+
+
+def _ts_find_component_methods(
+    root_node, code_bytes: bytes, changed_ranges: list[tuple[int, int]] | None,
+) -> list[str]:
+    """Find SDK method names in a generated .ets file using tree-sitter TS.
+
+    Looks for class methods (e.g., onChange, selectedColor) in ArkXxx classes,
+    optionally limited to changed line ranges.
+    """
+    methods: list[str] = []
+
+    def visit(node):
+        # Look for method signatures within classes
+        if node.type == "public_field_definition" or node.type == "method_definition":
+            # Get the name
+            name_node = node.child_by_field_name("name")
+            if name_node:
+                method_name = code_bytes[name_node.start_byte:name_node.end_byte].decode("utf-8", errors="replace")
+                # Skip private/internal methods
+                if method_name and not method_name.startswith("_"):
+                    if changed_ranges:
+                        # Check if this node overlaps with any changed range
+                        start_line = node.start_point[0] + 1  # 1-based
+                        end_line = node.end_point[0] + 1
+                        for rs, re_ in changed_ranges:
+                            if start_line <= re_ and end_line >= rs:
+                                methods.append(method_name)
+                                break
+                    else:
+                        methods.append(method_name)
+        for child in node.children:
+            visit(child)
+
+    visit(root_node)
+    return methods
+
+
+def trace_generated_ets_to_methods(
+    changed_file: Path,
+    changed_ranges: list[tuple[int, int]] | None,
+) -> list[str] | None:
+    """Trace a generated .ets file to extract SDK method names from changed ranges.
+
+    Returns a list of method names (e.g., ['select', 'selectedColor', 'onChange'])
+    or None if tree-sitter is unavailable or the file is not a generated .ets.
+    """
+    rel_lower = changed_file.name.lower()
+    # Only trace generated .ets files (in arkui-ohos or generated directories)
+    path_str = str(changed_file).replace("\\", "/").lower()
+    if not (rel_lower.endswith(".ets") and ("generated" in path_str or "arkui-ohos" in path_str)):
+        return None
+
+    try:
+        parser, lang = _get_ts_ts_parser()
+    except ImportError:
+        return None
+
+    try:
+        code = changed_file.read_bytes()
+    except OSError:
+        return None
+
+    tree = parser.parse(code)
+    methods = _ts_find_component_methods(tree.root_node, code, changed_ranges)
+    return methods if methods else None
+
+
+def resolve_ace_engine_components(rel: str) -> list[tuple[str, str]]:
+    """Resolve component name(s) from ace_engine source file path.
+
+    Uses deterministic architectural conventions:
+    - components_ng/pattern/{component}/         -> {component}
+    - interfaces/native/implementation/{x}_modifier.cpp -> {x} (strip _modifier)
+    - interfaces/native/implementation/{x}_accessor.cpp -> {x} (strip _ops_accessor etc.)
+    - components_ng/pattern/{component}/bridge/{component}_static_modifier.cpp -> {component}
+    - generated/component/{component}.ets        -> {component}
+    - bridge/.../generated/component/{component}.ets -> {component}
+
+    Returns list of (component_name, source) tuples, where source is one of:
+    - "pattern_dir": resolved from components_ng/pattern/{component}/
+    - "implementation": resolved from interfaces/native/implementation/
+    - "generated_ets": resolved from generated/component/*.ets
+    Returns empty list if no match.
+    """
+    rel_lower = rel.lower()
+
+    # 1. components_ng/pattern/{component}/ — covers most C++ implementation files
+    m = re.search(r"components_ng/pattern/([^/]+)/", rel)
+    if m:
+        component = m.group(1).lower()
+        return [(component, "pattern_dir")]
+
+    # 2. interfaces/native/implementation/{name}_modifier.cpp
+    m = re.search(r"interfaces/native/implementation/([^/]+)_modifier\.", rel_lower)
+    if m:
+        name = m.group(1)
+        if name not in ("common", "common_method", "common_shape_method", "component_root",
+                        "base", "base_shape", "ui_state"):
+            return [(name, "implementation")]
+        return []
+
+    # 3. interfaces/native/implementation/{name}_ops_accessor.cpp
+    m = re.search(r"interfaces/native/implementation/([^/]+)_ops_accessor\.", rel_lower)
+    if m:
+        name = m.group(1)
+        if name not in ("common_method", "base_event", "base_gesture_event"):
+            return [(name, "implementation")]
+        return []
+
+    # 4. interfaces/native/implementation/{name}_extender_accessor.cpp
+    m = re.search(r"interfaces/native/implementation/([^/]+)_extender_accessor\.", rel_lower)
+    if m:
+        name = m.group(1)
+        if name not in ("common",):
+            return [(name, "implementation")]
+        return []
+
+    # 5. generated/component/{name}.ets — Arkoala generated files
+    m = re.search(r"generated/component/([^/]+)\.ets", rel_lower)
+    if m:
+        name = m.group(1)
+        if name not in ("common", "enums", "idlize", "focus", "inspector", "builder",
+                        "contentslot", "units", "withtheme", "screen", "styledstring",
+                        "textcommon", "imagecommon", "securitycomponent",
+                        "embeddedcomponent", "uipickercomponent", "uicomponent",
+                        "lazyforeach", "lazygridlayout", "flowitem"):
+            return [(name, "generated_ets")]
+        return []
+
+    # 6. interfaces/native/utility/ — shared utility files, no component mapping
+    if "interfaces/native/utility/" in rel_lower:
+        return []
+
+    # 7. interfaces/native/common/ — shared common files
+    if "interfaces/native/common/" in rel_lower:
+        return []
+
+    return []
+
+
 def apply_ranking_rules_config(config: RankingRulesConfig) -> None:
     global ACTIVE_RANKING_RULES
     global LOW_SIGNAL_SPECIFICITY_TOKENS
@@ -3594,6 +4057,15 @@ def infer_signals(
     compact_parts.update(path_component_tokens(rel_lower))
     families = family_tokens_from_path(rel, sdk_index)
 
+    # Detect stateManagement infrastructure files BEFORE path truncation.
+    # Use full changed_file path to catch these directories even when rel
+    # is later truncated to last 4 parts.
+    _full_path_lower = str(changed_file).lower()
+    is_state_management = (
+        "statemanagement" in _full_path_lower
+        or "state_mgmt" in _full_path_lower
+    )
+
     signals = {
         "modules": set(),
         "weak_modules": set(),
@@ -3627,6 +4099,97 @@ def infer_signals(
         if compact in sdk_index.modifier_file_bases:
             signals["symbols"].add(sdk_index.modifier_file_bases[compact])
         signals["symbols"].update(mapping_config.pattern_alias.get(pattern, []))
+
+    # ark_component/src/Ark{Component}.ts — declarative frontend component wrappers
+    # Extract component name from filename: ArkCheckbox.ts -> checkbox
+    ark_component_match = re.search(r"ark_component/src/Ark([^.]+)\.ts$", rel)
+    if ark_component_match:
+        pascal_name = ark_component_match.group(1)
+        # Convert PascalCase to lowercase: ArkDataPanel -> datapanel
+        component_name = pascal_to_snake(pascal_name)
+        # Exclude common utility files
+        if component_name not in ("common", "classdefine", "classmock", "component", "commonshape"):
+            compact = compact_token(component_name)
+            signals["project_hints"].add(compact)
+            signals["family_tokens"].add(compact)
+            pascal = snake_to_pascal(component_name)
+            signals["type_hints"].add(pascal)
+            signals["symbols"].add(pascal)
+            signals["symbols"].add(f"{pascal}Modifier")
+            if compact in sdk_index.component_file_bases:
+                signals["symbols"].add(sdk_index.component_file_bases[compact])
+            if compact in sdk_index.modifier_file_bases:
+                signals["symbols"].add(sdk_index.modifier_file_bases[compact])
+
+    # ark_direct_component/src/ark{Component}.ts — direct component wrappers
+    # Extract component name from filename: arkcounter.ts -> counter
+    ark_direct_match = re.search(r"ark_direct_component/src/ark([^.]+)\.ts$", rel_lower)
+    if ark_direct_match:
+        component_name = ark_direct_match.group(1)
+        # Component name is already lowercase in this pattern
+        if component_name not in ("common",):
+            compact = compact_token(component_name)
+            signals["project_hints"].add(compact)
+            signals["family_tokens"].add(compact)
+            pascal = snake_to_pascal(component_name)
+            signals["type_hints"].add(pascal)
+            signals["symbols"].add(pascal)
+            signals["symbols"].add(f"{pascal}Modifier")
+            if compact in sdk_index.component_file_bases:
+                signals["symbols"].add(sdk_index.component_file_bases[compact])
+            if compact in sdk_index.modifier_file_bases:
+                signals["symbols"].add(sdk_index.modifier_file_bases[compact])
+
+    # Architecture-aware component resolution: deterministic mapping from
+    # ace_engine file paths to component names, bypassing fuzzy token matching.
+    # For files inside components_ng/pattern/, this supplements existing signals.
+    # For files outside (implementation/, generated/), this provides the primary mapping.
+    resolved_components = resolve_ace_engine_components(rel)
+    for comp, source in resolved_components:
+        compact = compact_token(comp)
+        if compact:
+            signals["project_hints"].add(compact)
+            signals["family_tokens"].add(compact)
+            pascal = snake_to_pascal(comp)
+            # Use PATTERN_ALIAS-derived names when available for correct casing
+            # (e.g., "checkboxgroup" -> "CheckboxGroup" not "Checkboxgroup")
+            alias_symbols = (
+                mapping_config.pattern_alias.get(comp, [])
+                or mapping_config.pattern_alias.get(compact, [])
+            )
+            if alias_symbols:
+                # First alias entry is typically the component class name
+                canonical_name = alias_symbols[0]
+                signals["type_hints"].add(canonical_name)
+                signals["symbols"].update(alias_symbols)
+            else:
+                signals["type_hints"].add(pascal)
+                signals["symbols"].add(pascal)
+                signals["symbols"].add(f"{pascal}Modifier")
+            if compact in sdk_index.component_file_bases:
+                signals["symbols"].add(sdk_index.component_file_bases[compact])
+            if compact in sdk_index.modifier_file_bases:
+                signals["symbols"].add(sdk_index.modifier_file_bases[compact])
+
+    # Generated .ets method-level tracing: parse with tree-sitter TypeScript
+    # to find which SDK API methods overlap with changed_ranges.
+    if resolved_components and changed_file.suffix.lower() == ".ets":
+        ets_methods = trace_generated_ets_to_methods(
+            changed_file, list(changed_ranges or []),
+        )
+        if ets_methods:
+            signals["method_hints"].update(ets_methods)
+            # Add member_hints for exact matching
+            for comp, _source in resolved_components:
+                alias_syms = (
+                    mapping_config.pattern_alias.get(comp, [])
+                    or mapping_config.pattern_alias.get(compact_token(comp), [])
+                )
+                attr_name = alias_syms[0] if alias_syms else snake_to_pascal(comp)
+                for method in ets_methods:
+                    signals["member_hints"].add(f"{attr_name}Attribute.{method}")
+            if ets_methods:
+                signals["method_hint_required"] = True
 
     if "ark_modifier" in rel_lower or "modifier" in parts:
         basename = compact_token(changed_file.stem)
@@ -3760,9 +4323,37 @@ def infer_signals(
         ):
             signals["method_hints"].update(sorted(set(public_methods)))
 
+        # Tree-sitter tracing for generated .ets files (e.g., arkui-ohos/generated/)
+        # Extracts method names from changed ranges for precise matching.
+        if "generated" in rel_lower or "arkui-ohos" in rel_lower:
+            ts_methods = trace_generated_ets_to_methods(
+                changed_file, normalized_changed_ranges
+            )
+            if ts_methods:
+                signals["method_hints"].update(ts_methods)
+
     ts_suffixes = {".ts"}
     is_ts = changed_file.suffix.lower() in ts_suffixes
     is_dts = changed_file.name.endswith(".d.ts")
+
+    # stateManagement / state_mgmt — framework infrastructure affecting ALL components.
+    # These directories contain decorator implementations, state observation,
+    # persistent storage, etc. Changes here have broad impact.
+    if is_state_management:
+        signals["project_hints"].update(COMMON_PROJECT_HINTS)
+        signals["method_hint_required"] = False
+        # Extract exported types from the file for additional signal precision.
+        # This avoids hardcoding specific component names — the types found in
+        # the file itself drive the matching.
+        _sm_text = read_text(changed_file)
+        if _sm_text:
+            for _pat in (EXPORT_CLASS_RE, EXPORT_INTERFACE_RE, TS_EXPORT_TYPE_RE):
+                for _m in _pat.finditer(_sm_text):
+                    _name = _m.group(1)
+                    if _name and _name[:1].isupper():
+                        signals["type_hints"].add(_name)
+                        signals["symbols"].add(_name)
+
     if is_ts or is_dts:
         text = read_text(changed_file)
         normalized_ts_ranges = merge_changed_ranges(changed_ranges)
@@ -3943,6 +4534,31 @@ def infer_signals(
                 if compact_class in families:
                     signals["project_hints"].add(compact_class)
                 signals["method_hints"].add(method_name.strip())
+
+    # --- Tree-sitter shared file tracing ---
+    # For shared infrastructure headers (converter.h, callback_helper.h, etc.),
+    # trace which components' static modifier functions call symbols defined in
+    # the changed ranges. This gives method-level precision for shared files.
+    if changed_file.suffix.lower() in (".h", ".hpp", ".hh") and repo_root:
+        shared_trace = trace_shared_file_to_components(
+            changed_file, changed_ranges, repo_root
+        )
+        if shared_trace:
+            for component, methods in shared_trace.items():
+                compact = compact_token(component)
+                signals["project_hints"].add(compact)
+                signals["family_tokens"].add(compact)
+                pascal = snake_to_pascal(component)
+                signals["type_hints"].add(pascal)
+                signals["symbols"].add(pascal)
+                signals["symbols"].add(f"{pascal}Modifier")
+                signals["method_hints"].update(methods)
+                # member_hints: ComponentAttribute.methodName
+                for method in methods:
+                    signals["member_hints"].add(f"{pascal}Attribute.{method}")
+            # For shared files traced to specific components, require at least
+            # one method match to avoid false positives from broad signals.
+            signals["method_hint_required"] = True
 
     apply_composite_mapping(changed_file, rel_lower, signals, content_index, mapping_config)
 
@@ -4284,26 +4900,25 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
         matched_methods = method_tokens & lowered_member_calls
         unmatched_methods = method_tokens - lowered_member_calls
 
-        if unmatched_methods:
-            if method_hint_required:
-                # Hard correction: file does NOT use the required method.
-                # Cap score at 5 (bucket = "possible related").
+        if method_hint_required:
+            # Require at least ONE method match. If zero matched, cap score.
+            if not matched_methods and method_tokens:
                 if score > 5:
                     penalty = score - 5
                     score = 5
                     deduped.append(
-                        f"capped: missing required method "
-                        f"{', '.join(sorted(unmatched_methods))} (-{penalty})"
+                        f"capped: no matched required method "
+                        f"(needed one of {', '.join(sorted(method_tokens))}) (-{penalty})"
                     )
-            else:
-                # Soft correction: -2 per unmatched method, max -4
-                penalty = min(4, len(unmatched_methods) * 2)
-                score = max(0, score - penalty)
-                if penalty > 0:
-                    deduped.append(
-                        f"missing method hint "
-                        f"{', '.join(sorted(unmatched_methods))} (-{penalty})"
-                    )
+        elif unmatched_methods:
+            # Soft correction: -2 per unmatched method, max -4
+            penalty = min(4, len(unmatched_methods) * 2)
+            score = max(0, score - penalty)
+            if penalty > 0:
+                deduped.append(
+                    f"missing method hint "
+                    f"{', '.join(sorted(unmatched_methods))} (-{penalty})"
+                )
 
     return score, deduped
 

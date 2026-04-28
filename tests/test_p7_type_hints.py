@@ -56,7 +56,10 @@ class P7TypeHintsTests(unittest.TestCase):
         )
 
         self.assertEqual(signals["method_hints"], {"contentModifier"})
-        self.assertEqual(signals["type_hints"], {"ContentModifier", "MenuItemConfiguration"})
+        # Architecture-aware resolution adds "Menu" from components_ng/pattern/menu/
+        self.assertIn("ContentModifier", signals["type_hints"])
+        self.assertIn("MenuItemConfiguration", signals["type_hints"])
+        self.assertIn("Menu", signals["type_hints"])
 
     def test_build_query_signals_collects_type_hints_from_composite_mapping(self) -> None:
         # After substring matching fix (Task 3), use exact key name to trigger.
