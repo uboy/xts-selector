@@ -563,7 +563,7 @@ PATTERN_ALIAS = {
     "tabs":                 ["Tabs", "TabContent", "TabsModifier"],
     "waterflow":            ["WaterFlow", "WaterFlowModifier"],
     "refresh":              ["Refresh", "RefreshModifier"],
-    "scroll":               ["Scroll", "ScrollModifier", "Scroller"],
+    "scroll":               ["Scroll", "ScrollModifier", "Scroller", "ScrollBar", "scrollbar", "scroll_bar", "scrollbarpattern"],
     "indexer":              ["AlphabetIndexer", "AlphabetIndexerModifier"],
     "patternlock":          ["PatternLock", "PatternLockModifier"],
     "picker":               ["DatePicker", "DatePickerModifier"],
@@ -593,7 +593,6 @@ PATTERN_ALIAS = {
     "form":                 ["FormComponent", "FormLink"],
     "folder_stack":         ["FolderStack"],
     "animator":             ["Animator"],
-    "scroll_bar":           ["ScrollBar"],
     "toast":                ["promptAction"],
     "sheet":                ["bindSheet", "SheetSize"],
     "action_sheet":         ["ActionSheet"],
@@ -838,6 +837,51 @@ def _impl_to_sdk_method(impl_name: str) -> str | None:
         return None
     # First character lowercase: SelectedColor -> selectedColor
     return name[0].lower() + name[1:]
+
+
+def _extract_property_names(file_path: Path) -> list[str]:
+    """Extract property class names from a C++ property file.
+
+    Returns CamelCase class names ending in 'Property'.
+    Example: GradientProperty -> ["GradientProperty"]
+    """
+    try:
+        content = file_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    # Match class declarations: class GradientProperty : public ...
+    pattern = r"class\s+([A-Z]\w*Property)\b"
+    return re.findall(pattern, content)
+
+
+def _property_to_sdk_methods(property_name: str, repo_root: Path) -> set[str]:
+    """Map property class names to SDK method names via static modifier index.
+
+    Looks in the static modifier index to find which Set*Impl functions
+    reference this property type, then converts them to SDK method names.
+
+    Example:
+        GradientProperty -> SetGradientImpl -> gradient
+    """
+    index = _ts_get_static_modifier_index(repo_root)
+    if not index:
+        return set()
+
+    methods = set()
+    # Normalize property name for matching: GradientProperty -> gradient
+    prop_lower = property_name.lower().replace("property", "")
+
+    for comp_dir, funcs in index.items():
+        for func_name in funcs:
+            sdk = _impl_to_sdk_method(func_name)
+            if sdk:
+                # Match if property name appears in SDK method or impl function name
+                sdk_lower = sdk.lower()
+                func_lower = func_name.lower()
+                if prop_lower in sdk_lower or prop_lower in func_lower:
+                    methods.add(sdk)
+
+    return methods
 
 
 def trace_shared_file_to_components(
@@ -2919,6 +2963,97 @@ def ensure_project_files_loaded(project: TestProjectIndex) -> TestProjectIndex:
     return project
 
 
+@dataclass
+class LineageSelection:
+    """Result of lineage-based selection for a changed file."""
+    affected_api_entities: list[str] = field(default_factory=list)
+    consumer_projects: list[dict] = field(default_factory=list)  # [{project: str, matched_entities: list[str], priority: str}]
+    confidence: str = "low"  # "high", "medium", "low"
+    uncovered_entities: list[str] = field(default_factory=list)
+
+
+def select_by_lineage(
+    changed_file: Path,
+    changed_ranges: list[tuple[int, int]] | None,
+    api_lineage_map: ApiLineageMap,
+    repo_root: Path,
+) -> LineageSelection | None:
+    """Select test projects using lineage map edges directly.
+
+    Returns None if the file has no entries in the lineage map.
+    """
+    # 1. Get file-level API entities
+    file_entities = api_lineage_map.apis_for_source(changed_file, repo_root=repo_root)
+
+    if not file_entities:
+        return None
+
+    # 2. If changed_ranges provided, narrow to diff-level entities
+    affected = list(file_entities)
+    if changed_ranges:
+        range_entities = api_lineage_map.symbols_for_source_ranges(
+            changed_file,
+            changed_ranges,
+            repo_root=repo_root,
+        )
+        if range_entities:
+            narrowed_entities = api_lineage_map.apis_for_source_symbols(
+                changed_file,
+                range_entities,
+                repo_root=repo_root,
+            )
+            if narrowed_entities:
+                affected = list(set(affected) & set(narrowed_entities))  # intersection
+
+    # 3. Collect consumer projects for each affected entity
+    project_matches: dict[str, list[str]] = {}
+    uncovered = []
+
+    for entity in affected:
+        consumers = api_lineage_map.consumer_projects_for_api(entity)
+
+        if consumers:
+            for proj in consumers:
+                if proj not in project_matches:
+                    project_matches[proj] = []
+                project_matches[proj].append(entity)
+        else:
+            uncovered.append(entity)
+
+    # 4. Classify priority
+    results = []
+    has_method_level = False
+    has_component_level = False
+
+    for proj, entities in sorted(project_matches.items(), key=lambda x: -len(x[1])):
+        method_entities = [e for e in entities if "." in e]
+        component_entities = [e for e in entities if "." not in e]
+
+        if method_entities:
+            priority = "must-run"
+            has_method_level = True
+        elif component_entities:
+            priority = "recommended"
+            has_component_level = True
+        else:
+            priority = "related"
+
+        results.append({
+            "project": proj,
+            "matched_entities": entities,
+            "priority": priority,
+        })
+
+    confidence = "high" if has_method_level else ("medium" if has_component_level else "low")
+
+    return LineageSelection(
+        affected_api_entities=affected,
+        consumer_projects=results,
+        confidence=confidence,
+        uncovered_entities=uncovered,
+    )
+
+
 def project_matches_exact_api_prefilter(project: TestProjectIndex, signals: dict[str, set[str]]) -> bool:
     ensure_project_search_summary(project)
     exact_api_entities = {str(item) for item in signals.get("exact_api_prefilter_entities", set()) if "." in str(item)}
@@ -4260,6 +4395,11 @@ def infer_signals(
         or "state_mgmt" in _full_path_lower
     )
 
+    # Detect manager files — cross-cutting concerns affecting multiple components.
+    # core/manager/ and components_ng/manager/ contain files like privacy_manager,
+    # drag_manager, focus_manager, etc. that handle shared functionality.
+    is_manager = "/manager/" in _full_path_lower
+
     signals = {
         "modules": set(),
         "weak_modules": set(),
@@ -4397,6 +4537,19 @@ def infer_signals(
                     signals["symbols"].add(sdk_index.component_file_bases[compact])
                 if compact in sdk_index.modifier_file_bases:
                     signals["symbols"].add(sdk_index.modifier_file_bases[compact])
+            # Set method hint filtering for symbol-traced infrastructure files
+            signals["method_hint_required"] = True
+            # Add component names as method hints for filtering
+            for comp in sym_components.keys():
+                signals["method_hints"].add(compact_token(comp))
+
+            # Property files: extract method hints from property class names
+            # via the static modifier index to enable method_hint_required filtering.
+            if "/property/" in rel_lower:
+                prop_names = _extract_property_names(changed_file)
+                for prop_name in prop_names:
+                    sdk_methods = _property_to_sdk_methods(prop_name, repo_root)
+                    signals["method_hints"].update(sdk_methods)
 
     # Generated .ets method-level tracing: parse with tree-sitter TypeScript
     # to find which SDK API methods overlap with changed_ranges.
@@ -4580,6 +4733,14 @@ def infer_signals(
                     if _name and _name[:1].isupper():
                         signals["type_hints"].add(_name)
                         signals["symbols"].add(_name)
+
+    # Manager files — cross-cutting concern, no specific component.
+    # Files in core/manager/ (privacy_manager, drag_manager, focus_manager, etc.)
+    # handle shared functionality that affects multiple components. They receive
+    # COMMON_PROJECT_HINTS since their impact is broad rather than component-specific.
+    if is_manager:
+        signals["project_hints"].update(COMMON_PROJECT_HINTS)
+        signals["method_hint_required"] = False
 
     if is_ts or is_dts:
         text = read_text(changed_file)
@@ -4767,25 +4928,35 @@ def infer_signals(
     # trace which components' static modifier functions call symbols defined in
     # the changed ranges. This gives method-level precision for shared files.
     if changed_file.suffix.lower() in (".h", ".hpp", ".hh") and repo_root:
-        shared_trace = trace_shared_file_to_components(
-            changed_file, changed_ranges, repo_root
-        )
-        if shared_trace:
-            for component, methods in shared_trace.items():
-                compact = compact_token(component)
-                signals["project_hints"].add(compact)
-                signals["family_tokens"].add(compact)
-                pascal = snake_to_pascal(component)
-                signals["type_hints"].add(pascal)
-                signals["symbols"].add(pascal)
-                signals["symbols"].add(f"{pascal}Modifier")
-                signals["method_hints"].update(methods)
-                # member_hints: ComponentAttribute.methodName
-                for method in methods:
-                    signals["member_hints"].add(f"{pascal}Attribute.{method}")
-            # For shared files traced to specific components, require at least
-            # one method match to avoid false positives from broad signals.
-            signals["method_hint_required"] = True
+        # Infrastructure directories that require changed_ranges for precision
+        _infra_dirs = ("interfaces/native/utility/", "core/base/", "core/common/")
+        _is_infra = any(d in _full_path_lower for d in _infra_dirs)
+
+        # For infrastructure files without ranges, emit COMMON_PROJECT_HINTS only
+        # to avoid 20+ component false positives from full-file content matching
+        if _is_infra and not changed_ranges:
+            for hint in COMMON_PROJECT_HINTS:
+                signals["project_hints"].add(hint)
+        else:
+            shared_trace = trace_shared_file_to_components(
+                changed_file, changed_ranges, repo_root
+            )
+            if shared_trace:
+                for component, methods in shared_trace.items():
+                    compact = compact_token(component)
+                    signals["project_hints"].add(compact)
+                    signals["family_tokens"].add(compact)
+                    pascal = snake_to_pascal(component)
+                    signals["type_hints"].add(pascal)
+                    signals["symbols"].add(pascal)
+                    signals["symbols"].add(f"{pascal}Modifier")
+                    signals["method_hints"].update(methods)
+                    # member_hints: ComponentAttribute.methodName
+                    for method in methods:
+                        signals["member_hints"].add(f"{pascal}Attribute.{method}")
+                # For shared files traced to specific components, require at least
+                # one method match to avoid false positives from broad signals.
+                signals["method_hint_required"] = True
 
     apply_composite_mapping(changed_file, rel_lower, signals, content_index, mapping_config)
 
