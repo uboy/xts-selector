@@ -4837,25 +4837,35 @@ def infer_signals(
     # trace which components' static modifier functions call symbols defined in
     # the changed ranges. This gives method-level precision for shared files.
     if changed_file.suffix.lower() in (".h", ".hpp", ".hh") and repo_root:
-        shared_trace = trace_shared_file_to_components(
-            changed_file, changed_ranges, repo_root
-        )
-        if shared_trace:
-            for component, methods in shared_trace.items():
-                compact = compact_token(component)
-                signals["project_hints"].add(compact)
-                signals["family_tokens"].add(compact)
-                pascal = snake_to_pascal(component)
-                signals["type_hints"].add(pascal)
-                signals["symbols"].add(pascal)
-                signals["symbols"].add(f"{pascal}Modifier")
-                signals["method_hints"].update(methods)
-                # member_hints: ComponentAttribute.methodName
-                for method in methods:
-                    signals["member_hints"].add(f"{pascal}Attribute.{method}")
-            # For shared files traced to specific components, require at least
-            # one method match to avoid false positives from broad signals.
-            signals["method_hint_required"] = True
+        # Infrastructure directories that require changed_ranges for precision
+        _infra_dirs = ("interfaces/native/utility/", "core/base/", "core/common/")
+        _is_infra = any(d in _full_path_lower for d in _infra_dirs)
+
+        # For infrastructure files without ranges, emit COMMON_PROJECT_HINTS only
+        # to avoid 20+ component false positives from full-file content matching
+        if _is_infra and not changed_ranges:
+            for hint in COMMON_PROJECT_HINTS:
+                signals["project_hints"].add(hint)
+        else:
+            shared_trace = trace_shared_file_to_components(
+                changed_file, changed_ranges, repo_root
+            )
+            if shared_trace:
+                for component, methods in shared_trace.items():
+                    compact = compact_token(component)
+                    signals["project_hints"].add(compact)
+                    signals["family_tokens"].add(compact)
+                    pascal = snake_to_pascal(component)
+                    signals["type_hints"].add(pascal)
+                    signals["symbols"].add(pascal)
+                    signals["symbols"].add(f"{pascal}Modifier")
+                    signals["method_hints"].update(methods)
+                    # member_hints: ComponentAttribute.methodName
+                    for method in methods:
+                        signals["member_hints"].add(f"{pascal}Attribute.{method}")
+                # For shared files traced to specific components, require at least
+                # one method match to avoid false positives from broad signals.
+                signals["method_hint_required"] = True
 
     apply_composite_mapping(changed_file, rel_lower, signals, content_index, mapping_config)
 
