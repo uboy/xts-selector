@@ -839,6 +839,51 @@ def _impl_to_sdk_method(impl_name: str) -> str | None:
     return name[0].lower() + name[1:]
 
 
+def _extract_property_names(file_path: Path) -> list[str]:
+    """Extract property class names from a C++ property file.
+
+    Returns CamelCase class names ending in 'Property'.
+    Example: GradientProperty -> ["GradientProperty"]
+    """
+    try:
+        content = file_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    # Match class declarations: class GradientProperty : public ...
+    pattern = r"class\s+([A-Z]\w*Property)\b"
+    return re.findall(pattern, content)
+
+
+def _property_to_sdk_methods(property_name: str, repo_root: Path) -> set[str]:
+    """Map property class names to SDK method names via static modifier index.
+
+    Looks in the static modifier index to find which Set*Impl functions
+    reference this property type, then converts them to SDK method names.
+
+    Example:
+        GradientProperty -> SetGradientImpl -> gradient
+    """
+    index = _ts_get_static_modifier_index(repo_root)
+    if not index:
+        return set()
+
+    methods = set()
+    # Normalize property name for matching: GradientProperty -> gradient
+    prop_lower = property_name.lower().replace("property", "")
+
+    for comp_dir, funcs in index.items():
+        for func_name in funcs:
+            sdk = _impl_to_sdk_method(func_name)
+            if sdk:
+                # Match if property name appears in SDK method or impl function name
+                sdk_lower = sdk.lower()
+                func_lower = func_name.lower()
+                if prop_lower in sdk_lower or prop_lower in func_lower:
+                    methods.add(sdk)
+
+    return methods
+
+
 def trace_shared_file_to_components(
     changed_file: Path,
     changed_ranges: list[tuple[int, int]] | None,
@@ -4406,6 +4451,14 @@ def infer_signals(
             # Add component names as method hints for filtering
             for comp in sym_components.keys():
                 signals["method_hints"].add(compact_token(comp))
+
+            # Property files: extract method hints from property class names
+            # via the static modifier index to enable method_hint_required filtering.
+            if "/property/" in rel_lower:
+                prop_names = _extract_property_names(changed_file)
+                for prop_name in prop_names:
+                    sdk_methods = _property_to_sdk_methods(prop_name, repo_root)
+                    signals["method_hints"].update(sdk_methods)
 
     # Generated .ets method-level tracing: parse with tree-sitter TypeScript
     # to find which SDK API methods overlap with changed_ranges.
