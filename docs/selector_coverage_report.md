@@ -1,6 +1,6 @@
 # ArkUI XTS Selector — Coverage & Quality Report
 
-> **Last updated**: 2026-04-28 (commit pending)
+> **Last updated**: 2026-04-28 (commit 58c8bb0)
 > **ace_engine snapshot**: ohos_master, 119 components in components_ng/pattern/
 
 ---
@@ -72,10 +72,9 @@ Evidence = path hint match or type hint match. `method_hint_required=True` caps 
 - `button/button_pattern.cpp` → hints: `{button}` ✓
 - `checkbox/bridge/checkbox_static_modifier.cpp` → hints: `{checkbox}` ✓
 - `list/list_item_pattern.cpp` → hints: `{list, item}` ✓
-- `scroll/scroll_bar.cpp` → hints: EMPTY ⚠️ (scroll_bar doesn't match scroll directly — "scrollbar" is a separate token)
+- `scroll/scroll_bar.cpp` → hints: `{scroll}` ✓ (scroll_bar → scrollbar → scroll via PATTERN_ALIAS)
 
 **Limitations:**
-- Some nested component names don't map cleanly (e.g., `scroll_bar` vs `scroll`)
 - `event_hub.cpp` files produce empty hints — content is too generic
 
 ### 3.2 interfaces/native/implementation/ (421 files)
@@ -96,41 +95,41 @@ Evidence = path hint match or type hint match. `method_hint_required=True` caps 
 - `alert_dialog_accessor.cpp` → hints: 12 projects ✓ (alert_dialog is shared between dialog/menu/calendar_picker)
 - `canvas_rendering_context2d_accessor.cpp` → hints: 9 projects ✓ (canvas is used by multiple components)
 
-**Gap:** 213 `_accessor.cpp` files (without `_ops_` or `_extender_`) not matched by `resolve_ace_engine_components()`. The symbol tracing picks up some, but could be improved with a simple regex addition.
+**Gap (resolved):** 213 `_accessor.cpp` files (without `_ops_` or `_extender_`) are now matched by `resolve_ace_engine_components()` which strips `_accessor` suffix.
 
 ### 3.3 interfaces/native/utility/ (27 files)
 
-**Coverage: MEDIUM — tree-sitter tracing**
+**Coverage: MEDIUM — tree-sitter tracing (with ranges) / COMMON_PROJECT_HINTS (without ranges)**
 
 Shared infrastructure headers (converter.h, callback_helper.h, validators.h, etc.). These are included by ALL component static modifier files.
 
 | Resolution method | How it works |
 |---|---|
 | `trace_shared_file_to_components()` | Parses header with tree-sitter C++ → extracts function names from changed ranges → looks up in static modifier index → maps to components |
-| `trace_symbols_to_components()` | Falls back to symbol matching if tree-sitter trace returns nothing |
+| COMMON_PROJECT_HINTS fallback | When no `changed_ranges` provided → emits only `{commonattrs, interactiveattributes, dragcontrol, focuscontrol}` to avoid 20+ component false positives |
 
 **Verified results:**
 - `converter.h` lines 290-310 → hints: `{search, symbolglyph}` + methods: `{fontSize, letterSpacing, maxFontSize, minFontSize}` ✓ HIGH precision with ranges
-- `converter.h` full file → hints: 20 components ✓ (correctly broad — converter.h IS used everywhere)
-- `callback_helper.h` → hints: 22 components ✓ (also broadly used)
+- `converter.h` full file (no ranges) → hints: `{commonattrs, interactiveattributes, dragcontrol, focuscontrol}` ✓ (COMMON_PROJECT_HINTS only — avoids 20+ FP)
+- `callback_helper.h` (with ranges) → hints: 2-5 components ✓ (precision from range tracing)
 
 **With changed_ranges:** HIGH precision (2-5 components)
-**Without changed_ranges:** LOW precision (20+ components)
+**Without changed_ranges:** LOW precision but controlled (COMMON_PROJECT_HINTS → 5 broad hints)
 
 ### 3.4 property/, base/, render/, syntax/, manager/ (441 files)
 
-**Coverage: MEDIUM — universal symbol tracing**
+**Coverage: MEDIUM — universal symbol tracing + method_hint_required**
 
 | Directory | Files | Resolution | Verified quality |
 |---|---|---|---|
-| property/ | 45 | `trace_symbols_to_components()` | MEDIUM — e.g., `gradient_property.cpp` → 8 relevant components |
-| base/ | 63 | `trace_symbols_to_components()` | LOW-MEDIUM — `frame_node.cpp` → 10 components (FrameNode is used everywhere) |
+| property/ | 45 | `trace_symbols_to_components()` + `_property_to_sdk_methods()` | MEDIUM-HIGH — `gradient_property.cpp` → 8 components + SDK method_hints |
+| base/ | 63 | `trace_symbols_to_components()` + `method_hint_required=True` | MEDIUM — `frame_node.cpp` → 10 components, filtered by method matching |
 | base/ | 63 | COMMON_PROJECT_HINTS for "common"/"base" tokens | Supplements for truly shared code |
-| render/ | 157 | `trace_symbols_to_components()` | LOW — `paint_wrapper.cpp` → 23 components (PaintWrapper is base class) |
-| syntax/ | 64 | `trace_symbols_to_components()` | HIGH — `lazy_for_each_node.cpp` → `{list(15), grid(12)}` ✓ |
-| manager/ | 112 | `trace_symbols_to_components()` | NONE — `privacy_manager.cpp` → 0 (no matching symbols) |
+| render/ | 157 | `trace_symbols_to_components()` + `method_hint_required=True` | MEDIUM — `paint_wrapper.cpp` → 23 components raw, filtered by method matching |
+| syntax/ | 64 | `trace_symbols_to_components()` + `method_hint_required=True` | HIGH — `lazy_for_each_node.cpp` → `{list(15), grid(12)}` ✓ |
+| manager/ | 112 | COMMON_PROJECT_HINTS (broad) | LOW — `privacy_manager.cpp` → COMMON_PROJECT_HINTS only |
 
-**Key insight:** Files defining base classes (FrameNode, PaintWrapper, Component) hit many components — this is correct behavior, not a bug. The precision comes from `method_hint_required` filtering at score time.
+**Key insight:** Files defining base classes (FrameNode, PaintWrapper, Component) hit many components — this is correct behavior, not a bug. The precision comes from `method_hint_required=True` filtering at score time (since this batch), which caps the score to 5 for projects that don't match any extracted method/symbol.
 
 ### 3.5 Top-level infrastructure (263 files)
 
@@ -260,11 +259,15 @@ The `api_surface.py` module classifies files:
 
 | Method | What it extracts | When used | Precision |
 |---|---|---|---|
-| `resolve_ace_engine_components()` | Component name from path | pattern/, implementation/ | HIGH |
+| `resolve_ace_engine_components()` | Component name from path | pattern/, implementation/, old components/ | HIGH |
 | `trace_symbols_to_components()` | CamelCase symbols → components via index | Any C++ file not resolved by path | MEDIUM-HIGH |
-| `trace_shared_file_to_components()` | Changed functions → component calls via tree-sitter | Shared headers (utility/, common/) | HIGH (with ranges) |
+| `trace_shared_file_to_components()` | Changed functions → component calls via tree-sitter | Shared headers — only with changed_ranges | HIGH (with ranges) |
 | `trace_generated_ets_to_methods()` | SDK method names via tree-sitter TS | Generated .ets files | HIGH (with ranges) |
 | `_impl_to_sdk_method()` | SetXxxImpl → sdk method name | Static modifier index | HIGH |
+| `_property_to_sdk_methods()` | Property class → SDK method via modifier index | C++ files in property/ | MEDIUM-HIGH |
+| `select_by_lineage()` | Source → API → consumer via ApiLineageMap | Phase 1.1 — function exists, not yet integrated | HIGH (direct edges) |
+| Infra without ranges guard | COMMON_PROJECT_HINTS only | utility/, base/, common/ without changed_ranges | LOW (controlled) |
+| Manager COMMON_PROJECT_HINTS | Broad hints for manager/ files | manager/ directories | LOW (broad by design) |
 | Path token matching | Tokens from file path | All files | LOW-MEDIUM |
 | Regex identifier extraction | C++/TS/JS identifiers | Native/TS files | LOW-MEDIUM |
 | PUBLIC_METHOD_RE | Method names from .ets | ETS files | MEDIUM |
@@ -285,16 +288,14 @@ The `api_surface.py` module classifies files:
 | `.gn`/`.gni` build files | Build configuration | Typically not needed for test selection |
 | `.yaml`/`.json` config | Not code — no API impact | — |
 | `event/event_manager.cpp` | Symbol tracing returns 0 — "EventManager" too generic | Lower threshold or add COMMON_PROJECT_HINTS |
-| `manager/privacy_manager.cpp` | No matching symbols in component index | Add manager→component mapping |
+| `animation/` files | "animation" too generic for component matching | Add animation→component tracing |
 
 ### 7.2 Low precision areas
 
 | What | Current behavior | Root cause | Possible fix |
 |---|---|---|---|
-| Infrastructure files without changed_ranges | 20+ components suggested | Without ranges, entire file content matched | Require changed_ranges for infrastructure files |
-| Old `components/` directory | Mixed signals (path + symbol) | Different directory structure than components_ng/ | Add `components/{component}/` pattern to resolve_ |
-| `_accessor.cpp` without ops/extender | Symbol tracing only | resolve_ace_engine_components doesn't handle these | Add plain `_accessor.cpp` pattern |
-| Base class files (FrameNode, PaintWrapper) | Many components matched | These ARE used everywhere — correct behavior | method_hint_required + member_hints for precision |
+| Infrastructure files without changed_ranges | 5 broad hints (COMMON_PROJECT_HINTS) | Without ranges, full-file trace disabled by guard | Controlled — acceptable behavior |
+| Base class files (FrameNode, PaintWrapper) | 10+ components matched but filtered by method_hint_required | These ARE used everywhere — correct behavior | Acceptable — method filtering caps score for non-matching projects |
 
 ### 7.3 Performance considerations
 
@@ -311,10 +312,23 @@ The `api_surface.py` module classifies files:
 
 | Date | Commit | What changed | Impact |
 |---|---|---|---|
-| 2026-04-28 | pending | Added `components/{component}/` and plain `_accessor.cpp` patterns to `resolve_ace_engine_components()` | +1,080 old component files HIGH, +213 accessor files HIGH |
+| 2026-04-28 | 58c8bb0 | Batch merge: 6 precision improvements + lineage Phase 1.1 + file-type tests | See details below |
+| 2026-04-28 | 8a85138 | Added `components/{component}/` and plain `_accessor.cpp` patterns to `resolve_ace_engine_components()` | +1,080 old component files HIGH, +213 accessor files HIGH |
 | 2026-04-28 | b30da85 | Universal symbol-to-component tracing (`trace_symbols_to_components()`) | Covers ~54% of C++ files that were previously uncovered (property/, base/, render/, syntax/) |
 | 2026-04-28 | f00ddfa | Tree-sitter C++/TS tracing, `_impl_to_sdk_method()`, `resolve_ace_engine_components()`, `method_hint_required` "match at least one" semantics, ark_component/ark_direct_component resolution, stateManagement coverage | Foundation for method-level precision; covers pattern/ (46%) and shared headers |
 | 2026-04-28 | (docs) | `ace_engine_directory_catalog.md` | Documentation of 20+ ace_engine directories |
+
+**Batch 58c8bb0 details:**
+
+| Improvement | Commit | Effect |
+|---|---|---|
+| `scroll_bar` → `scroll` alias | 070ba5d | scroll_bar.cpp now produces `{scroll}` hints |
+| `manager/` → COMMON_PROJECT_HINTS | be1af2d | +112 files get broad signals |
+| `method_hint_required=True` for symbol-traced | 701f36c | Fewer FP for base/, render/, property/ |
+| property → SDK method mapping | c547f17 | `_property_to_sdk_methods()` adds method_hints for property/ files |
+| Infra without ranges → COMMON_PROJECT_HINTS only | a730c9d | utility/base/common without ranges: 20+ hints → 5 hints |
+| `select_by_lineage()` Phase 1.1 | 7969d3c | LineageSelection dataclass + function (not yet integrated) |
+| File-type coverage tests | 0e9cd06 | 13 tests covering 8 file categories |
 
 ---
 
@@ -327,11 +341,13 @@ The `api_surface.py` module classifies files:
 | .cpp in pattern/ | 2,769 | HIGH | HIGH | Component resolved from path |
 | .cpp in impl/*_modifier | 125 | HIGH | HIGH | Component resolved from filename |
 | .cpp in impl/*_accessor (other) | 213 | HIGH | HIGH | resolve_ace_engine_components strips _accessor |
-| .h in utility/ | 27 | HIGH* | HIGH | *With changed_ranges; LOW without |
-| .cpp in property/ | 45 | MEDIUM | MEDIUM | Symbol tracing |
-| .cpp in base/ | 63 | LOW-MEDIUM | HIGH | Many components matched correctly |
-| .cpp in render/ | 157 | LOW-MEDIUM | HIGH | Same as base/ |
-| .cpp in syntax/ | 64 | MEDIUM-HIGH | HIGH | e.g., lazy_for_each → list, grid |
+| .h in utility/ (with ranges) | 27 | HIGH | HIGH | tree-sitter trace with method-level precision |
+| .h in utility/ (no ranges) | 27 | LOW (controlled) | HIGH | COMMON_PROJECT_HINTS only (5 broad hints) |
+| .cpp in property/ | 45 | MEDIUM-HIGH | MEDIUM | Symbol tracing + property→SDK method mapping |
+| .cpp in base/ | 63 | MEDIUM | HIGH | Symbol tracing + method_hint_required filtering |
+| .cpp in render/ | 157 | MEDIUM | HIGH | Symbol tracing + method_hint_required filtering |
+| .cpp in syntax/ | 64 | HIGH | HIGH | e.g., lazy_for_each → list, grid |
+| .cpp in manager/ | 112 | LOW | HIGH | COMMON_PROJECT_HINTS only (broad) |
 | .cpp in animation/gestures/pipeline/event | 263 | LOW | MEDIUM | Generic path tokens |
 | .ets generated/ | 1,584 | HIGH | HIGH | Path + tree-sitter method extraction |
 | .ts ark_component/ | ~25 | HIGH | HIGH | Filename → component |
@@ -344,8 +360,8 @@ The `api_surface.py` module classifies files:
 | Metric | Value |
 |---|---|
 | C++ files with HIGH precision | ~4,100 (63%) |
-| C++ files with MEDIUM precision | ~700 (11%) |
-| C++ files with LOW precision | ~700 (11%) |
+| C++ files with MEDIUM precision | ~900 (14%) |
+| C++ files with LOW precision (controlled) | ~500 (8%) |
 | C++ files with NONE | ~1,000 (15%) |
 | ETS/TS files with HIGH precision | ~1,650 (95%+ of relevant) |
 | ETS/TS files with MEDIUM precision | ~130 (stateManagement) |
@@ -356,13 +372,15 @@ The `api_surface.py` module classifies files:
 
 | # | Improvement | Impact | Effort | Description |
 |---|---|---|---|---|
-| ~~1~~ | ~~Add `_accessor.cpp` pattern~~ | ~~+213 files~~ | ~~DONE~~ | ~~Done in this commit~~ |
-| ~~2~~ | ~~Add old `components/{component}/` pattern~~ | ~~+1,080 files~~ | ~~DONE~~ | ~~Done in this commit~~ |
-| 3 | Changed ranges required for infrastructure files | Precision ↑↑ | MEDIUM | If no ranges, use COMMON_PROJECT_HINTS only |
+| ~~1~~ | ~~Add `_accessor.cpp` pattern~~ | ~~+213 files~~ | ~~DONE~~ | ~~Done in 8a85138~~ |
+| ~~2~~ | ~~Add old `components/{component}/` pattern~~ | ~~+1,080 files~~ | ~~DONE~~ | ~~Done in 8a85138~~ |
+| ~~3~~ | ~~Changed ranges required for infrastructure files~~ | ~~Precision ↑↑~~ | ~~DONE~~ | ~~Done in 58c8bb0 (a730c9d)~~ |
 | 4 | Pre-built symbol index (persist to disk) | Performance ↑ | LOW | Save `_SYM_COMP_INDEX` to JSON |
 | 5 | IDL file parsing | +1,165 files | MEDIUM | Parse .idl for component interface definitions |
 | 6 | AST-based member extraction for all .ets | Precision ↑ | MEDIUM | Replace PUBLIC_METHOD_RE regex with tree-sitter |
 | 7 | Cross-file include tracing | Precision ↑ | HIGH | Build include graph, trace dependencies |
-| 8 | `scroll_bar` → `scroll` family alias | Precision ↑ for scroll | LOW | Add to PATTERN_ALIAS or FAMILY_TOKEN_ALIAS_INDEX |
-| 9 | manager/ → component mapping | +112 files | LOW | Common manager patterns → COMMON hints |
-| 10 | Pipeline for lineage-first selection (plan Phase 1) | Architecture ↑ | HIGH | Replace token-overlap with direct lineage lookup |
+| ~~8~~ | ~~`scroll_bar` → `scroll` family alias~~ | ~~Precision ↑ for scroll~~ | ~~DONE~~ | ~~Done in 58c8bb0 (070ba5d)~~ |
+| ~~9~~ | ~~manager/ → component mapping~~ | ~~+112 files~~ | ~~DONE~~ | ~~Done in 58c8bb0 (be1af2d)~~ |
+| ~~10~~ | ~~Pipeline for lineage-first selection (Phase 1.1)~~ | ~~Architecture ↑~~ | ~~PARTIAL~~ | ~~select_by_lineage() added (7969d3c), integration pending~~ |
+| 11 | Integrate lineage-first into main loop | Architecture ↑↑ | MEDIUM | Wire select_by_lineage() into infer_signals() as primary path |
+| 12 | `method_hint_required` tuning for base/ files | Precision ↑ | LOW | Some base/ files still hit 10+ components even with filtering |
