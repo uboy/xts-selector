@@ -4259,6 +4259,11 @@ def infer_signals(
         or "state_mgmt" in _full_path_lower
     )
 
+    # Detect manager files — cross-cutting concerns affecting multiple components.
+    # core/manager/ and components_ng/manager/ contain files like privacy_manager,
+    # drag_manager, focus_manager, etc. that handle shared functionality.
+    is_manager = "/manager/" in _full_path_lower
+
     signals = {
         "modules": set(),
         "weak_modules": set(),
@@ -4579,6 +4584,14 @@ def infer_signals(
                     if _name and _name[:1].isupper():
                         signals["type_hints"].add(_name)
                         signals["symbols"].add(_name)
+
+    # Manager files — cross-cutting concern, no specific component.
+    # Files in core/manager/ (privacy_manager, drag_manager, focus_manager, etc.)
+    # handle shared functionality that affects multiple components. They receive
+    # COMMON_PROJECT_HINTS since their impact is broad rather than component-specific.
+    if is_manager:
+        signals["project_hints"].update(COMMON_PROJECT_HINTS)
+        signals["method_hint_required"] = False
 
     if is_ts or is_dts:
         text = read_text(changed_file)
