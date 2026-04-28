@@ -1216,14 +1216,15 @@ def resolve_ace_engine_components(rel: str) -> list[tuple[str, str]]:
 
     Uses deterministic architectural conventions:
     - components_ng/pattern/{component}/         -> {component}
+    - components/{component}/                    -> {component} (old pre-ng)
     - interfaces/native/implementation/{x}_modifier.cpp -> {x} (strip _modifier)
-    - interfaces/native/implementation/{x}_accessor.cpp -> {x} (strip _ops_accessor etc.)
-    - components_ng/pattern/{component}/bridge/{component}_static_modifier.cpp -> {component}
+    - interfaces/native/implementation/{x}_accessor.cpp -> {x} (strip suffix)
     - generated/component/{component}.ets        -> {component}
     - bridge/.../generated/component/{component}.ets -> {component}
 
     Returns list of (component_name, source) tuples, where source is one of:
     - "pattern_dir": resolved from components_ng/pattern/{component}/
+    - "old_component": resolved from components/{component}/
     - "implementation": resolved from interfaces/native/implementation/
     - "generated_ets": resolved from generated/component/*.ets
     Returns empty list if no match.
@@ -1236,7 +1237,16 @@ def resolve_ace_engine_components(rel: str) -> list[tuple[str, str]]:
         component = m.group(1).lower()
         return [(component, "pattern_dir")]
 
-    # 2. interfaces/native/implementation/{name}_modifier.cpp
+    # 2. components/{component}/ — old pre-ng component directory
+    m = re.search(r"core/components/([^/]+)/", rel_lower)
+    if m:
+        name = m.group(1)
+        if name not in ("common", "declaration", "display", "coverage",
+                        "foreach", "drag_bar", "box"):
+            return [(name, "old_component")]
+        return []
+
+    # 3. interfaces/native/implementation/{name}_modifier.cpp
     m = re.search(r"interfaces/native/implementation/([^/]+)_modifier\.", rel_lower)
     if m:
         name = m.group(1)
@@ -1245,7 +1255,7 @@ def resolve_ace_engine_components(rel: str) -> list[tuple[str, str]]:
             return [(name, "implementation")]
         return []
 
-    # 3. interfaces/native/implementation/{name}_ops_accessor.cpp
+    # 4. interfaces/native/implementation/{name}_ops_accessor.cpp
     m = re.search(r"interfaces/native/implementation/([^/]+)_ops_accessor\.", rel_lower)
     if m:
         name = m.group(1)
@@ -1253,7 +1263,7 @@ def resolve_ace_engine_components(rel: str) -> list[tuple[str, str]]:
             return [(name, "implementation")]
         return []
 
-    # 4. interfaces/native/implementation/{name}_extender_accessor.cpp
+    # 5. interfaces/native/implementation/{name}_extender_accessor.cpp
     m = re.search(r"interfaces/native/implementation/([^/]+)_extender_accessor\.", rel_lower)
     if m:
         name = m.group(1)
@@ -1261,7 +1271,18 @@ def resolve_ace_engine_components(rel: str) -> list[tuple[str, str]]:
             return [(name, "implementation")]
         return []
 
-    # 5. generated/component/{name}.ets — Arkoala generated files
+    # 6. interfaces/native/implementation/{name}_accessor.cpp (plain accessor)
+    #    These are API object accessors (canvas_gradient, alert_dialog, etc.)
+    #    Strip _accessor to get the API object name.
+    m = re.search(r"interfaces/native/implementation/([^/]+)_accessor\.", rel_lower)
+    if m:
+        name = m.group(1)
+        # Skip shared/generic ones — these have no specific component
+        if name not in ("base_event", "base_gesture_event", "base_shape"):
+            return [(name, "implementation")]
+        return []
+
+    # 7. generated/component/{name}.ets — Arkoala generated files
     m = re.search(r"generated/component/([^/]+)\.ets", rel_lower)
     if m:
         name = m.group(1)
@@ -1273,11 +1294,11 @@ def resolve_ace_engine_components(rel: str) -> list[tuple[str, str]]:
             return [(name, "generated_ets")]
         return []
 
-    # 6. interfaces/native/utility/ — shared utility files, no component mapping
+    # 8. interfaces/native/utility/ — shared utility files, no component mapping
     if "interfaces/native/utility/" in rel_lower:
         return []
 
-    # 7. interfaces/native/common/ — shared common files
+    # 9. interfaces/native/common/ — shared common files
     if "interfaces/native/common/" in rel_lower:
         return []
 

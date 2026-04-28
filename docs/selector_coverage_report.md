@@ -1,6 +1,6 @@
 # ArkUI XTS Selector — Coverage & Quality Report
 
-> **Last updated**: 2026-04-28 (commit b30da85)
+> **Last updated**: 2026-04-28 (commit pending)
 > **ace_engine snapshot**: ohos_master, 119 components in components_ng/pattern/
 
 ---
@@ -87,7 +87,7 @@ Evidence = path hint match or type hint match. `method_hint_required=True` caps 
 | `*_modifier.cpp` | 125 | HIGH | `resolve_ace_engine_components()` strips `_modifier` |
 | `*_ops_accessor.cpp` | 34 | HIGH | Strips `_ops_accessor` |
 | `*_extender_accessor.cpp` | 25 | HIGH | Strips `_extender_accessor` |
-| `*_accessor.cpp` (other) | 213 | MEDIUM | `trace_symbols_to_components()` via symbol index |
+| `*_accessor.cpp` (other) | 213 | HIGH | `resolve_ace_engine_components()` strips `_accessor` |
 
 **Verified results:**
 - `button_modifier.cpp` → hints: `{button}` ✓ HIGH
@@ -143,14 +143,17 @@ Shared infrastructure headers (converter.h, callback_helper.h, validators.h, etc
 
 ### 3.6 Old components/ directory (1,080 files)
 
-**Coverage: LOW-MEDIUM**
+**Coverage: HIGH**
 
-The old `components/` directory (pre-components_ng) uses different naming conventions.
+The old `components/` directory (pre-components_ng) is now resolved by `resolve_ace_engine_components()` via `components/{component}/` pattern. 50 out of 105 old directories directly match components_ng/pattern/ names.
 
-- `checkable/checkable_component.cpp` → hints: `{checkable, radio}` ✓
-- `button/button_component.cpp` → hints: 8 projects (button + unrelated from symbol matching)
+- `button/button_component.cpp` → hints: `{button}` ✓ HIGH
+- `checkable/checkable_component.cpp` → hints: `{checkable}` ✓ HIGH
+- `text/text_component.cpp` → hints: `{text}` ✓ HIGH
+- `image/image_component.cpp` → hints: `{image}` ✓ HIGH
+- `scroll/scroll_component.cpp` → hints: `{scroll}` ✓ HIGH
 
-**Limitation:** Old component directory doesn't have the regular `pattern/{component}/` structure. Files here use `components/{component}/` but the selector doesn't have a specific pattern for this. Symbol tracing helps but isn't as precise.
+**Exclusions:** `common`, `declaration`, `display`, `coverage`, `foreach`, `drag_bar`, `box` — these are infrastructure, not components.
 
 ### 3.7 Static Modifier Index (tree-sitter)
 
@@ -308,6 +311,7 @@ The `api_surface.py` module classifies files:
 
 | Date | Commit | What changed | Impact |
 |---|---|---|---|
+| 2026-04-28 | pending | Added `components/{component}/` and plain `_accessor.cpp` patterns to `resolve_ace_engine_components()` | +1,080 old component files HIGH, +213 accessor files HIGH |
 | 2026-04-28 | b30da85 | Universal symbol-to-component tracing (`trace_symbols_to_components()`) | Covers ~54% of C++ files that were previously uncovered (property/, base/, render/, syntax/) |
 | 2026-04-28 | f00ddfa | Tree-sitter C++/TS tracing, `_impl_to_sdk_method()`, `resolve_ace_engine_components()`, `method_hint_required` "match at least one" semantics, ark_component/ark_direct_component resolution, stateManagement coverage | Foundation for method-level precision; covers pattern/ (46%) and shared headers |
 | 2026-04-28 | (docs) | `ace_engine_directory_catalog.md` | Documentation of 20+ ace_engine directories |
@@ -322,7 +326,7 @@ The `api_surface.py` module classifies files:
 |---|---|---|---|---|
 | .cpp in pattern/ | 2,769 | HIGH | HIGH | Component resolved from path |
 | .cpp in impl/*_modifier | 125 | HIGH | HIGH | Component resolved from filename |
-| .cpp in impl/*_accessor (other) | 213 | MEDIUM | MEDIUM | Symbol tracing fallback |
+| .cpp in impl/*_accessor (other) | 213 | HIGH | HIGH | resolve_ace_engine_components strips _accessor |
 | .h in utility/ | 27 | HIGH* | HIGH | *With changed_ranges; LOW without |
 | .cpp in property/ | 45 | MEDIUM | MEDIUM | Symbol tracing |
 | .cpp in base/ | 63 | LOW-MEDIUM | HIGH | Many components matched correctly |
@@ -339,10 +343,10 @@ The `api_surface.py` module classifies files:
 
 | Metric | Value |
 |---|---|
-| C++ files with HIGH precision | ~3,100 (48%) |
+| C++ files with HIGH precision | ~4,100 (63%) |
 | C++ files with MEDIUM precision | ~700 (11%) |
-| C++ files with LOW precision | ~1,600 (25%) |
-| C++ files with NONE | ~1,000 (16%) |
+| C++ files with LOW precision | ~700 (11%) |
+| C++ files with NONE | ~1,000 (15%) |
 | ETS/TS files with HIGH precision | ~1,650 (95%+ of relevant) |
 | ETS/TS files with MEDIUM precision | ~130 (stateManagement) |
 
@@ -352,8 +356,8 @@ The `api_surface.py` module classifies files:
 
 | # | Improvement | Impact | Effort | Description |
 |---|---|---|---|---|
-| 1 | Add `_accessor.cpp` pattern to `resolve_ace_engine_components()` | +213 files HIGH | LOW | Simple regex: strip `_accessor` suffix |
-| 2 | Add old `components/{component}/` pattern | +1,080 files MEDIUM | LOW | Simple regex addition |
+| ~~1~~ | ~~Add `_accessor.cpp` pattern~~ | ~~+213 files~~ | ~~DONE~~ | ~~Done in this commit~~ |
+| ~~2~~ | ~~Add old `components/{component}/` pattern~~ | ~~+1,080 files~~ | ~~DONE~~ | ~~Done in this commit~~ |
 | 3 | Changed ranges required for infrastructure files | Precision ↑↑ | MEDIUM | If no ranges, use COMMON_PROJECT_HINTS only |
 | 4 | Pre-built symbol index (persist to disk) | Performance ↑ | LOW | Save `_SYM_COMP_INDEX` to JSON |
 | 5 | IDL file parsing | +1,165 files | MEDIUM | Parse .idl for component interface definitions |
