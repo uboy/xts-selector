@@ -4401,6 +4401,11 @@ def infer_signals(
                     signals["symbols"].add(sdk_index.component_file_bases[compact])
                 if compact in sdk_index.modifier_file_bases:
                     signals["symbols"].add(sdk_index.modifier_file_bases[compact])
+            # Set method hint filtering for symbol-traced infrastructure files
+            signals["method_hint_required"] = True
+            # Add component names as method hints for filtering
+            for comp in sym_components.keys():
+                signals["method_hints"].add(compact_token(comp))
 
     # Generated .ets method-level tracing: parse with tree-sitter TypeScript
     # to find which SDK API methods overlap with changed_ranges.
