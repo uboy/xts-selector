@@ -1038,6 +1038,179 @@ def trace_generated_ets_to_methods(
     return methods if methods else None
 
 
+# ---------------------------------------------------------------------------
+# Universal symbol-to-component index for C++ files
+# ---------------------------------------------------------------------------
+# Scans components_ng/pattern/*/ for CamelCase identifiers and builds a
+# reverse index: symbol -> set of components. At query time, symbols from
+# changed C++ files are looked up to discover affected components.
+
+_SYM_COMP_INDEX: dict[str, set[str]] | None = None
+"""Cache: CamelCase symbol -> set of component names."""
+
+
+def _build_symbol_component_index(repo_root: Path) -> dict[str, set[str]]:
+    """Build a reverse index from CamelCase symbols to component names.
+
+    Scans all .cpp/.h files under components_ng/pattern/*/ and collects
+    CamelCase identifiers (class names, method names, etc). Returns a dict
+    mapping each symbol to the set of components that reference it.
+    """
+    pattern_dir = repo_root / "frameworks" / "core" / "components_ng" / "pattern"
+    if not pattern_dir.is_dir():
+        return {}
+
+    index: dict[str, set[str]] = {}
+    _camel_re = re.compile(r"\b([A-Z][a-zA-Z]{2,})\b")
+
+    for comp_dir in pattern_dir.iterdir():
+        if not comp_dir.is_dir():
+            continue
+        component = comp_dir.name
+        for f in comp_dir.rglob("*"):
+            if f.suffix not in (".cpp", ".h", ".hpp", ".cc", ".cxx"):
+                continue
+            try:
+                text = f.read_text(errors="ignore")
+            except OSError:
+                continue
+            for sym in set(_camel_re.findall(text)):
+                if sym not in index:
+                    index[sym] = set()
+                index[sym].add(component)
+
+    return index
+
+
+def _get_symbol_component_index(repo_root: Path) -> dict[str, set[str]]:
+    """Return the cached symbol-to-component index, building if needed."""
+    global _SYM_COMP_INDEX
+    if _SYM_COMP_INDEX is None:
+        _SYM_COMP_INDEX = _build_symbol_component_index(repo_root)
+    return _SYM_COMP_INDEX
+
+
+def trace_symbols_to_components(
+    changed_file: Path,
+    changed_ranges: list[tuple[int, int]] | None,
+    repo_root: Path,
+) -> dict[str, int]:
+    """Trace symbols from a changed C++ file to affected components.
+
+    Extracts CamelCase identifiers from the file (optionally limited to
+    changed line ranges), looks them up in the symbol-to-component index,
+    and returns {component_name: hit_count} for components that reference
+    the extracted symbols.
+
+    Only returns components with ≥2 symbol matches (or ≥1 if very few
+    symbols extracted), to filter noise from common infrastructure names.
+    """
+    try:
+        parser, lang = _get_ts_cpp_parser()
+    except ImportError:
+        return {}
+
+    try:
+        code = changed_file.read_bytes()
+    except OSError:
+        return {}
+
+    index = _get_symbol_component_index(repo_root)
+    if not index:
+        return {}
+
+    tree = parser.parse(code)
+
+    # Extract symbols from changed ranges (or full file)
+    _camel_re = re.compile(r"\b([A-Z][a-zA-Z]{3,}(?:Property|Model|Modifier|Pattern|Wrapper|Node|Component|Painter|Manager|Handler|Event|Gesture|Layout|Render|Context|Animation|Thread|Engine|Service))\b")
+
+    if changed_ranges:
+        # Extract text from changed ranges only
+        lines = code.decode("utf-8", errors="ignore").split("\n")
+        range_texts = []
+        for rs, re_ in changed_ranges:
+            range_texts.append("\n".join(lines[max(0, rs - 1):re_]))
+        scan_text = "\n".join(range_texts)
+    else:
+        scan_text = code.decode("utf-8", errors="ignore")
+
+    # Method 1: Regex CamelCase symbols (high precision)
+    regex_symbols = set(_camel_re.findall(scan_text))
+
+    # Method 2: AST function/class names from changed ranges
+    ast_symbols = set()
+    if changed_ranges:
+        def visit(node):
+            for rs, re_ in changed_ranges:
+                rs0 = rs - 1
+                if node.end_point[0] < rs0 or node.start_point[0] > re_:
+                    continue
+                if node.type == "function_definition":
+                    for child in node.children:
+                        if child.type == "function_declarator":
+                            name = _ts_extract_func_name(child, code)
+                            if name and len(name) > 3:
+                                ast_symbols.add(name)
+                if node.type == "class_specifier":
+                    for child in node.children:
+                        if child.type == "type_identifier":
+                            ast_symbols.add(
+                                code[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                            )
+            for child in node.children:
+                visit(child)
+        visit(tree.root_node)
+    else:
+        # Full file: extract all function/class names
+        def visit_all(node):
+            if node.type == "function_definition":
+                for child in node.children:
+                    if child.type == "function_declarator":
+                        name = _ts_extract_func_name(child, code)
+                        if name and len(name) > 3:
+                            ast_symbols.add(name)
+            if node.type == "class_specifier":
+                for child in node.children:
+                    if child.type == "type_identifier":
+                        ast_symbols.add(
+                            code[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                        )
+            for child in node.children:
+                visit_all(child)
+        visit_all(tree.root_node)
+
+    # Combine and filter noise
+    noise = {"NULL", "CHECK", "ACE", "OHOS", "CONST", "VOID", "TAG", "FUNC", "DEBUG"}
+    all_symbols = (regex_symbols | ast_symbols) - noise
+
+    # Only keep symbols that exist in the index
+    matching_symbols = {s for s in all_symbols if s in index}
+
+    if not matching_symbols:
+        return {}
+
+    # Count component hits
+    component_hits: dict[str, int] = {}
+    for sym in matching_symbols:
+        for comp in index.get(sym, set()):
+            component_hits[comp] = component_hits.get(comp, 0) + 1
+
+    # Filter: adaptive threshold based on how many components match.
+    # Infrastructure files (FrameNode, Component, etc.) hit 50+ components.
+    # We want only the most-specific matches.
+    if not component_hits:
+        return {}
+    max_hits = max(component_hits.values())
+    total_components = len(component_hits)
+    if total_components > 20:
+        # Too many components — only keep the top tier
+        threshold = max(max_hits * 2 // 3, 3)
+        return {c: cnt for c, cnt in component_hits.items() if cnt >= threshold}
+    if len(matching_symbols) > 3:
+        return {c: cnt for c, cnt in component_hits.items() if cnt >= 2}
+    return component_hits
+
+
 def resolve_ace_engine_components(rel: str) -> list[tuple[str, str]]:
     """Resolve component name(s) from ace_engine source file path.
 
@@ -4170,6 +4343,39 @@ def infer_signals(
                 signals["symbols"].add(sdk_index.component_file_bases[compact])
             if compact in sdk_index.modifier_file_bases:
                 signals["symbols"].add(sdk_index.modifier_file_bases[compact])
+
+    # Universal symbol tracing for C++ files not resolved by path patterns.
+    # Extracts CamelCase identifiers from the file and maps them to components
+    # via the pre-built symbol-to-component index.
+    if (not resolved_components
+        and changed_file.suffix.lower() in (".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".hh")
+        and repo_root):
+        sym_components = trace_symbols_to_components(
+            changed_file, list(changed_ranges or []), repo_root,
+        )
+        if sym_components:
+            # Sort by hit count (most specific first), take top components
+            for comp, hits in sorted(sym_components.items(), key=lambda x: -x[1]):
+                compact = compact_token(comp)
+                if not compact:
+                    continue
+                signals["project_hints"].add(compact)
+                signals["family_tokens"].add(compact)
+                pascal = snake_to_pascal(comp)
+                alias_symbols = (
+                    mapping_config.pattern_alias.get(comp, [])
+                    or mapping_config.pattern_alias.get(compact, [])
+                )
+                if alias_symbols:
+                    signals["type_hints"].add(alias_symbols[0])
+                    signals["symbols"].update(alias_symbols)
+                else:
+                    signals["type_hints"].add(pascal)
+                    signals["symbols"].add(pascal)
+                if compact in sdk_index.component_file_bases:
+                    signals["symbols"].add(sdk_index.component_file_bases[compact])
+                if compact in sdk_index.modifier_file_bases:
+                    signals["symbols"].add(sdk_index.modifier_file_bases[compact])
 
     # Generated .ets method-level tracing: parse with tree-sitter TypeScript
     # to find which SDK API methods overlap with changed_ranges.
