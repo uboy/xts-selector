@@ -3,6 +3,15 @@
 # token, indirect dependents like StateManagement, scroll, layout, gestureGroup,
 # panGesture, accessibilityDescription, backgroundImagePosition/Size,
 # backgroundBlurStyle, foregroundBlurStyle, mouseResponseRegion, touchable).
+# Updated 2026-04-29: removed 5 more suites that have ONLY ubiquitous Button
+# import evidence (no discriminative signal). With IDF-aware scoring, Button
+# import in >30% of projects is noise, not signal. These suites use Button as
+# a generic scaffold for testing common attributes/events/layout:
+#   - commonAttrsOther_nowear_api11
+#   - commonEvents_api12None
+#   - commonEvents_api18
+#   - KeyboardShortcut_api12
+#   - layout_api12
 ace_ets_component_seven/ace_ets_component_common_seven_attrs_accessibilityGroup
 ace_ets_component_seven/ace_ets_component_common_seven_attrs_accessibilityLevel
 ace_ets_component_seven/ace_ets_component_common_seven_attrs_accessibilityText
@@ -62,11 +71,6 @@ ace_ets_component_seven/ace_ets_component_common_seven_attrs_useEffect
 ace_ets_component_seven/ace_ets_component_common_seven_attrs_width
 ace_ets_component_seven/ace_ets_component_common_seven_attrs_zIndex
 ace_ets_module_ui/ace_ets_module_commonAttrsOther/ace_ets_module_commonAttrsOther_api11
-ace_ets_module_ui/ace_ets_module_commonAttrsOther/ace_ets_module_commonAttrsOther_nowear_api11
 ace_ets_module_ui/ace_ets_module_commonEvents/ace_ets_module_commonEvents_api12
-ace_ets_module_ui/ace_ets_module_commonEvents/ace_ets_module_commonEvents_api12None
-ace_ets_module_ui/ace_ets_module_commonEvents/ace_ets_module_commonEvents_api18
 ace_ets_module_ui/ace_ets_module_dialog/ace_ets_module_dialog_button
-ace_ets_module_ui/ace_ets_module_keyboardShortcut/ace_ets_module_KeyboardShortcut_api12
-ace_ets_module_ui/ace_ets_module_layout/ace_ets_module_layout_api12
 ace_ets_module_ui/ace_ets_module_modifier

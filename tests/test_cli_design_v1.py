@@ -2840,9 +2840,11 @@ class FancySliderModifier extends SliderModifier {}
         self.assertEqual(strict_summary["filtered_out"], 2)
 
     def test_candidate_bucket_requires_non_lexical_evidence_for_must_run(self) -> None:
-        self.assertEqual(candidate_bucket(30, False), "possible related")
-        self.assertEqual(candidate_bucket(30, True), "must-run")
-        self.assertEqual(candidate_bucket(18, True), "high-confidence related")
+        self.assertEqual(candidate_bucket(30, False), "excluded")
+        self.assertEqual(candidate_bucket(30, True), "high-confidence related")
+        self.assertEqual(candidate_bucket(30, True, evidence_profile={"direct_type_hint_keys": ["Button"]}), "must-run")
+        self.assertEqual(candidate_bucket(24, True), "high-confidence related")
+        self.assertEqual(candidate_bucket(12, True), "possible related")
 
     def test_format_report_filters_symbol_query_projects_by_variant(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -3185,13 +3187,13 @@ void Foo()
     # ------------------------------------------------------------------
 
     def test_lexical_only_evidence_never_produces_must_run(self) -> None:
-        """candidate_bucket with has_non_lexical_evidence=False must never be must-run."""
+        """candidate_bucket with has_non_lexical_evidence=False must always be excluded."""
         for score in (12, 24, 30, 100):
             bucket = candidate_bucket(score, False)
-            self.assertNotEqual(
+            self.assertEqual(
                 bucket,
-                "must-run",
-                f"score={score}, non_lexical=False: lexical-only must not produce must-run",
+                "excluded",
+                f"score={score}, non_lexical=False: lexical-only must produce excluded",
             )
 
     def test_ubiquitous_symbol_scores_lower_when_no_family_context(self) -> None:
@@ -3633,16 +3635,20 @@ void Foo()
 
     def test_candidate_bucket_boundaries(self) -> None:
         """Score boundaries for buckets should be consistent."""
-        # must-run: score >= 24 AND non_lexical
-        self.assertEqual(candidate_bucket(24, True), "must-run")
-        self.assertEqual(candidate_bucket(100, True), "must-run")
-        # high-confidence: score >= 12 AND non_lexical, but < 24
-        self.assertEqual(candidate_bucket(12, True), "high-confidence related")
-        self.assertEqual(candidate_bucket(23, True), "high-confidence related")
-        # possible related: always when no non_lexical or score < 12
-        self.assertEqual(candidate_bucket(11, True), "possible related")
-        self.assertEqual(candidate_bucket(0, True), "possible related")
-        self.assertEqual(candidate_bucket(100, False), "possible related")
+        # must-run: score >= 24 AND non_lexical AND direct type/member evidence
+        self.assertEqual(candidate_bucket(24, True, evidence_profile={"direct_type_hint_keys": ["Button"]}), "must-run")
+        self.assertEqual(candidate_bucket(24, True, evidence_profile={"direct_member_hint_keys": ["Button.onClick"]}), "must-run")
+        self.assertEqual(candidate_bucket(100, True, evidence_profile={"direct_type_hint_keys": ["Button"]}), "must-run")
+        # high-confidence related: score >= 24 AND non_lexical, no direct evidence
+        self.assertEqual(candidate_bucket(24, True), "high-confidence related")
+        self.assertEqual(candidate_bucket(100, True), "high-confidence related")
+        # possible related: score >= 12 AND non_lexical, but < 24
+        self.assertEqual(candidate_bucket(12, True), "possible related")
+        self.assertEqual(candidate_bucket(23, True), "possible related")
+        # excluded: no non_lexical or score < 12
+        self.assertEqual(candidate_bucket(11, True), "excluded")
+        self.assertEqual(candidate_bucket(0, True), "excluded")
+        self.assertEqual(candidate_bucket(100, False), "excluded")
 
 
 class PatternAliasCoverageTests(unittest.TestCase):

@@ -448,7 +448,7 @@ LOW_SIGNAL_SPECIFICITY_TOKENS: set[str] = set()
 GENERIC_SCOPE_TOKENS: set[str] = set()
 PRIMARY_SCOPE_TIERS = {"direct", "focused"}
 SCOPE_TIER_ORDER = {"direct": 0, "focused": 1, "broad": 2}
-BUCKET_ORDER = {"must-run": 0, "high-confidence related": 1, "possible related": 2}
+BUCKET_ORDER = {"must-run": 0, "high-confidence related": 1, "possible related": 2, "excluded": 3}
 GENERIC_PATH_TOKENS: set[str] = set()
 CONTENT_MODIFIER_NOISE = {
     "accessor", "builder", "commonview", "configuration", "content", "helper",
@@ -4767,25 +4767,36 @@ def infer_signals(
     # trace which components' static modifier functions call symbols defined in
     # the changed ranges. This gives method-level precision for shared files.
     if changed_file.suffix.lower() in (".h", ".hpp", ".hh") and repo_root:
-        shared_trace = trace_shared_file_to_components(
-            changed_file, changed_ranges, repo_root
-        )
-        if shared_trace:
-            for component, methods in shared_trace.items():
-                compact = compact_token(component)
-                signals["project_hints"].add(compact)
-                signals["family_tokens"].add(compact)
-                pascal = snake_to_pascal(component)
-                signals["type_hints"].add(pascal)
-                signals["symbols"].add(pascal)
-                signals["symbols"].add(f"{pascal}Modifier")
-                signals["method_hints"].update(methods)
-                # member_hints: ComponentAttribute.methodName
-                for method in methods:
-                    signals["member_hints"].add(f"{pascal}Attribute.{method}")
-            # For shared files traced to specific components, require at least
-            # one method match to avoid false positives from broad signals.
-            signals["method_hint_required"] = True
+        # Infrastructure directories that require changed_ranges for precision
+        _infra_dirs = ("interfaces/native/utility/", "core/base/", "core/common/")
+        _is_infra = any(d in _full_path_lower for d in _infra_dirs)
+
+        if _is_infra and not changed_ranges:
+            # Emit COMMON_PROJECT_HINTS only — full-file matching would produce
+            # 20+ component false positives for shared infrastructure headers.
+            for hint in COMMON_PROJECT_HINTS:
+                signals["project_hints"].add(hint)
+            signals["method_hint_required"] = False
+        else:
+            shared_trace = trace_shared_file_to_components(
+                changed_file, changed_ranges, repo_root
+            )
+            if shared_trace:
+                for component, methods in shared_trace.items():
+                    compact = compact_token(component)
+                    signals["project_hints"].add(compact)
+                    signals["family_tokens"].add(compact)
+                    pascal = snake_to_pascal(component)
+                    signals["type_hints"].add(pascal)
+                    signals["symbols"].add(pascal)
+                    signals["symbols"].add(f"{pascal}Modifier")
+                    signals["method_hints"].update(methods)
+                    # member_hints: ComponentAttribute.methodName
+                    for method in methods:
+                        signals["member_hints"].add(f"{pascal}Attribute.{method}")
+                # For shared files traced to specific components, require at least
+                # one method match to avoid false positives from broad signals.
+                signals["method_hint_required"] = True
 
     apply_composite_mapping(changed_file, rel_lower, signals, content_index, mapping_config)
 
@@ -4931,12 +4942,47 @@ def collect_source_only_consumers(
     return ordered if top_projects <= 0 else ordered[:top_projects]
 
 
+def compute_signal_symbol_df(
+    projects: list[TestProjectIndex],
+    signals: dict[str, set[str]],
+) -> tuple[dict[str, int], int]:
+    """Compute document frequency for signal symbols across projects.
+
+    Returns (symbol_df, total_projects) where symbol_df[sym] = number of
+    projects whose files import sym. Used for IDF-aware scoring.
+
+    References: SCORING_PIPELINE.md bottleneck B2.
+    """
+    signal_symbols = signals.get("symbols", set()) | signals.get("weak_symbols", set())
+    if not signal_symbols:
+        return {}, 0
+    df: dict[str, int] = {sym: 0 for sym in signal_symbols}
+    total = 0
+    for project in projects:
+        ensure_project_search_summary(project)
+        total += 1
+        proj_syms = project.search_imported_symbols
+        for sym in signal_symbols:
+            if sym in proj_syms:
+                df[sym] = df.get(sym, 0) + 1
+    return df, total
+
+
+# Symbols imported by >UBIQUOTUS_DF_FRACTION of projects are treated as
+# non-discriminative: import/call evidence alone contributes 0 to score.
+# Score for these symbols comes only from direct evidence (type hints,
+# member hints, typed modifier, typed field access).
+UBIQUITOUS_DF_FRACTION = 0.30
+
+
 def symbol_score(
     signal_symbol: str,
     file_index: TestFileIndex,
     family_tokens: set[str],
     lowered_member_calls: set[str],
     weak: bool = False,
+    symbol_df: dict[str, int] | None = None,
+    total_projects: int = 0,
 ) -> tuple[int, list[str]]:
     score = 0
     reasons: list[str] = []
@@ -4945,36 +4991,49 @@ def symbol_score(
     path_key = compact_token(file_index.relative_path)
     path_supports = base and base in path_key
     family_supports = base and base in family_tokens
-    is_ubiquitous = base in UBIQUITOUS_BASES
-    strong = (not is_ubiquitous) or path_supports or family_supports
+
+    # IDF check: if this symbol is imported by >30% of projects,
+    # import/call evidence is non-discriminative. Only direct evidence
+    # (type hints, member hints, typed fields) should score.
+    df = symbol_df.get(signal_symbol, 0) if symbol_df else 0
+    is_idf_ubiquitous = total_projects > 0 and df > total_projects * UBIQUITOUS_DF_FRACTION
+
+    is_static_ubiquitous = base in UBIQUITOUS_BASES
+    strong = (not is_static_ubiquitous) or path_supports or family_supports
     reason_prefix = "weak " if weak else ""
 
+    # Import evidence: score only if symbol is NOT IDF-ubiquitous.
+    # When a symbol appears in >30% of projects, the import is noise,
+    # not signal — every test file imports Button.
     if signal_symbol in file_index.imported_symbols:
-        if weak:
-            score += 2 if strong else 1
+        if is_idf_ubiquitous and not path_supports:
+            # Ubiquitous symbol in a non-specific project: soft IDF penalty (+1 instead of full)
+            score += 1
+            reasons.append(f"{reason_prefix}imports symbol {signal_symbol} (ubiquitous)")
         else:
-            score += 7 if strong else 1
-        reasons.append(f"{reason_prefix}imports symbol {signal_symbol}")
+            if weak:
+                score += 2 if strong else 1
+            else:
+                score += 7 if strong else 1
+            reasons.append(f"{reason_prefix}imports symbol {signal_symbol}")
     if signal_symbol in file_index.identifier_calls:
-        if weak:
-            if signal_symbol in file_index.imported_symbols:
-                call_pts = 2 if strong else 1
-            else:
-                call_pts = 1
+        if is_idf_ubiquitous and not path_supports:
+            # Ubiquitous symbol call in non-specific project: soft IDF penalty (+1 instead of full)
+            score += 1
+            reasons.append(f"{reason_prefix}calls {signal_symbol}() (ubiquitous)")
         else:
-            # If the symbol is also explicitly imported, the call is
-            # confirmation evidence that adds less marginal value than the
-            # import itself. If NOT imported (ArkUI components are globally
-            # available in ETS without explicit import), the call is still
-            # valid usage evidence but weaker than an explicit SDK import.
-            #   import + call  → 7 + 3 = 10  (explicitly imported and used)
-            #   call only      → 4            (globally used, no import)
-            if signal_symbol in file_index.imported_symbols:
-                call_pts = 3 if strong else 1
+            if weak:
+                if signal_symbol in file_index.imported_symbols:
+                    call_pts = 2 if strong else 1
+                else:
+                    call_pts = 1
             else:
-                call_pts = 4 if strong else 1
-        score += call_pts
-        reasons.append(f"{reason_prefix}calls {signal_symbol}()")
+                if signal_symbol in file_index.imported_symbols:
+                    call_pts = 3 if strong else 1
+                else:
+                    call_pts = 4 if strong else 1
+            score += call_pts
+            reasons.append(f"{reason_prefix}calls {signal_symbol}()")
     if lower in lowered_member_calls:
         score += 1 if weak else (4 if strong else 1)
         reasons.append(f"{reason_prefix}member call .{lower}()")
@@ -4982,7 +5041,7 @@ def symbol_score(
         if weak:
             word_score = 0
         else:
-            word_score = 2 if strong and not is_ubiquitous else (1 if strong else 0)
+            word_score = 2 if strong and not is_static_ubiquitous else (1 if strong else 0)
         score += word_score
         if word_score:
             reasons.append(f"{reason_prefix}mentions {lower}")
@@ -5020,12 +5079,16 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
             reasons.append(f"weak imports {module}")
 
     typed_modifier_matches: list[str] = []
+    _symbol_df = signals.get("_symbol_df")
+    _total_projects = signals.get("_total_projects", 0)
     for symbol in sorted(signals["symbols"]):
         delta, symbol_reasons = symbol_score(
             symbol,
             file_index,
             signals["family_tokens"],
             lowered_member_calls,
+            symbol_df=_symbol_df,
+            total_projects=_total_projects,
         )
         score += delta
         reasons.extend(symbol_reasons)
@@ -5038,6 +5101,8 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
             signals["family_tokens"],
             lowered_member_calls,
             weak=True,
+            symbol_df=_symbol_df,
+            total_projects=_total_projects,
         )
         score += delta
         reasons.extend(symbol_reasons)
@@ -5085,11 +5150,24 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
         else:
             reasons.append(f"calls methods {', '.join(sorted(method_member_matches))}")
     if constructor_matches:
-        score += 5
-        reasons.append(f"constructs hinted type {', '.join(sorted(constructor_matches))}")
+        # Reduce ubiquitous type construction: +1 instead of +5.
+        # Deep evidence (member calls, field access) still scores full.
+        _ubiq_type_tokens = signals.get("_ubiquitous_type_tokens", set())
+        _non_ubiq_constructors = [h for h in constructor_matches if compact_token(h) not in _ubiq_type_tokens]
+        if _non_ubiq_constructors:
+            score += 5
+            reasons.append(f"constructs hinted type {', '.join(sorted(_non_ubiq_constructors))}")
+        else:
+            # Ubiquitous type: minimal score, not zero (preserves recall)
+            score += 1
     if import_matches:
-        score += 3
-        reasons.append(f"imports hinted type {', '.join(sorted(import_matches))}")
+        _ubiq_type_tokens = signals.get("_ubiquitous_type_tokens", set())
+        _non_ubiq_imports = [h for h in import_matches if compact_token(h) not in _ubiq_type_tokens]
+        if _non_ubiq_imports:
+            score += 3
+            reasons.append(f"imports hinted type {', '.join(sorted(_non_ubiq_imports))}")
+        else:
+            score += 1
     if type_member_matches:
         score += 5
         reasons.append(f"calls hinted type member {', '.join(sorted(type_member_matches))}")
@@ -5195,31 +5273,64 @@ def confidence(score: int) -> str:
 def project_has_non_lexical_evidence(
     project_reasons: list[str],
     file_hits: list[tuple[int, TestFileIndex, list[str]]],
+    ubiquitous_symbols: set[str] | None = None,
 ) -> bool:
+    # Direct evidence patterns that always count as non-lexical,
+    # regardless of symbol ubiquity.
+    _direct_evidence_prefixes = (
+        'constructs hinted type ',
+        'imports hinted type ',
+        'calls hinted type member ',
+        'reads/writes fields of hinted type ',
+        'member call .',
+    )
     for reason in project_reasons:
         if reason.startswith('imports '):
+            # Skip ubiquitous symbol imports — they don't discriminate
+            if ubiquitous_symbols:
+                sym = reason[len('imports '):]
+                if sym in ubiquitous_symbols:
+                    continue
             return True
     for _file_score, _test_file, reasons in file_hits[:3]:
         for reason in reasons:
-            if (
-                reason.startswith('imports ')
-                or reason.startswith('calls ')
-                or reason.startswith('member call .')
-                or reason.startswith('constructs hinted type ')
-                or reason.startswith('imports hinted type ')
-                or reason.startswith('calls hinted type member ')
-                or reason.startswith('reads/writes fields of hinted type ')
-            ):
+            # Direct evidence always counts
+            if any(reason.startswith(p) for p in _direct_evidence_prefixes):
+                return True
+            if reason.startswith('imports '):
+                if ubiquitous_symbols:
+                    sym = reason[len('imports '):]
+                    if sym in ubiquitous_symbols:
+                        continue
+                return True
+            if reason.startswith('calls '):
+                if ubiquitous_symbols:
+                    sym = reason[len('calls '):].rstrip('()')
+                    if sym in ubiquitous_symbols:
+                        continue
                 return True
     return False
 
 
-def candidate_bucket(score: int, has_non_lexical_evidence: bool) -> str:
-    if score >= 24 and has_non_lexical_evidence:
+def candidate_bucket(
+    score: int,
+    has_non_lexical_evidence: bool,
+    evidence_profile: dict[str, object] | None = None,
+) -> str:
+    # Strong evidence: type hints or member hints matched directly
+    has_type_evidence = bool(evidence_profile and evidence_profile.get("direct_type_hint_keys"))
+    has_member_evidence = bool(evidence_profile and evidence_profile.get("direct_member_hint_keys"))
+
+    # Projects with direct type/member evidence are high-confidence matches
+    if score >= 24 and has_non_lexical_evidence and (has_type_evidence or has_member_evidence):
         return 'must-run'
-    if score >= 12 and has_non_lexical_evidence:
+    # Non-lexical evidence but no direct type/member match — still relevant, protected from dedup
+    if score >= 24 and has_non_lexical_evidence:
         return 'high-confidence related'
-    return 'possible related'
+    if score >= 12 and has_non_lexical_evidence:
+        return 'possible related'
+    # Weak evidence only — exclude from output
+    return 'excluded'
 
 
 def filter_project_results_by_relevance(
@@ -7899,6 +8010,22 @@ def format_report(
             signals,
             effective_variants_mode,
         )
+        # Compute IDF for signal symbols (SCORING_PIPELINE.md bottleneck B2).
+        # Symbols imported by >30% of candidate projects get 0 import/call
+        # score — their evidence must come from type hints, member hints,
+        # or typed field access instead.
+        _symbol_df, _total_projects = compute_signal_symbol_df(candidate_projects, signals)
+        signals["_symbol_df"] = _symbol_df
+        signals["_total_projects"] = _total_projects
+        _ubiquitous_symbols = {
+            sym for sym, count in _symbol_df.items()
+            if _total_projects > 0 and count > _total_projects * UBIQUITOUS_DF_FRACTION
+        }
+        # Propagate to score_file: ubiquitous type hint tokens get 0 points
+        # for constructor/import evidence. Only deep evidence scores.
+        signals["_ubiquitous_type_tokens"] = {
+            compact_token(sym) for sym in _ubiquitous_symbols
+        }
         for project in candidate_projects:
             score, project_reasons, file_hits = score_project(project, signals)
             if score <= 0:
@@ -7906,17 +8033,21 @@ def format_report(
             if not should_keep_project_for_surface(project, file_hits, effective_variants_mode):
                 continue
             hit_surfaces = sorted(matched_file_surfaces(file_hits))
-            _nlx = project_has_non_lexical_evidence(project_reasons, file_hits)
-            _bucket = candidate_bucket(score, _nlx)
+            _nlx = project_has_non_lexical_evidence(project_reasons, file_hits, ubiquitous_symbols=_ubiquitous_symbols)
+            family_profile = infer_project_family_profile(project, project_reasons, file_hits)
+            type_hint_profile = infer_project_type_hint_profile(file_hits, signals)
+            member_hint_profile = infer_project_member_hint_profile(file_hits, signals)
+            _evidence_profile = {
+                "direct_type_hint_keys": type_hint_profile["direct_type_hint_keys"],
+                "direct_member_hint_keys": member_hint_profile["direct_member_hint_keys"],
+            }
+            _bucket = candidate_bucket(score, _nlx, evidence_profile=_evidence_profile)
             scope_tier, specificity_score, scope_reasons = classify_project_scope(
                 project,
                 signals,
                 project_reasons,
                 file_hits,
             )
-            family_profile = infer_project_family_profile(project, project_reasons, file_hits)
-            type_hint_profile = infer_project_type_hint_profile(file_hits, signals)
-            member_hint_profile = infer_project_member_hint_profile(file_hits, signals)
             project_entry = {
                 # Only 'possible related' suites (call-only, no explicit import)
                 # are eligible for coverage deduplication. Must-run and
@@ -7973,11 +8104,28 @@ def format_report(
                     "project_reason_count": len(project_reasons),
                 }
             project_results.append(project_entry)
+        # Abstention for broad infrastructure files: files in common/ or base_
+        # paths that produce signals for many families AND match many projects
+        # (e.g. base_pattern.cpp). Only keep projects with direct type/member
+        # hint evidence to avoid flooding the output. Specific component files
+        # (e.g. menu_item_pattern.cpp in pattern/menu/menu_item/) are NOT
+        # subject to this filter even if they have many family tokens.
+        _is_infrastructure_file = "/common/" in rel or rel.split("/")[-1].startswith("base_")
+        _broad_family_count = len(signals.get("family_tokens", set()))
+        if _is_infrastructure_file and _broad_family_count >= 3 and len(project_results) > 5:
+            project_results = [
+                p for p in project_results
+                if p.get("direct_type_hint_keys") or p.get("direct_member_hint_keys")
+            ]
         sort_project_results(project_results)
         project_results = deduplicate_by_coverage_signature(project_results, keep_per_signature)
         filtered_project_results, relevance_summary = filter_project_results_by_relevance(project_results, relevance_mode)
         shown_project_results = filtered_project_results if top_projects <= 0 else filtered_project_results[:top_projects]
         coverage_source = make_coverage_source("changed_file", rel)
+        # Only include projects with meaningful scores in coverage candidates.
+        # Projects with very low scores (path token overlap only) add noise
+        # to the coverage planner without meaningful signal.
+        COVERAGE_MIN_SCORE = 15
         coverage_candidates.extend(
             {
                 "source": coverage_source,
@@ -7986,6 +8134,7 @@ def format_report(
                 "source_rank": index,
             }
             for index, item in enumerate(filtered_project_results, start=1)
+            if item.get("score", 0) >= COVERAGE_MIN_SCORE
         )
         function_coverage = build_function_coverage_rows(
             changed_file=changed_file,
@@ -8110,6 +8259,14 @@ def format_report(
             signals,
             effective_variants_mode,
         )
+        # IDF for symbol queries (same logic as changed_file section)
+        _sq_symbol_df, _sq_total_projects = compute_signal_symbol_df(candidate_projects, signals)
+        signals["_symbol_df"] = _sq_symbol_df
+        signals["_total_projects"] = _sq_total_projects
+        _sq_ubiquitous_symbols = {
+            sym for sym, count in _sq_symbol_df.items()
+            if _sq_total_projects > 0 and count > _sq_total_projects * UBIQUITOUS_DF_FRACTION
+        }
         for project in candidate_projects:
             score, project_reasons, file_hits = score_project(project, signals)
             if score <= 0:
@@ -8117,17 +8274,21 @@ def format_report(
             if not should_keep_project_for_surface(project, file_hits, effective_variants_mode):
                 continue
             hit_surfaces = sorted(matched_file_surfaces(file_hits))
-            _nlx = project_has_non_lexical_evidence(project_reasons, file_hits)
-            _bucket = candidate_bucket(score, _nlx)
+            _nlx = project_has_non_lexical_evidence(project_reasons, file_hits, ubiquitous_symbols=_sq_ubiquitous_symbols)
+            family_profile = infer_project_family_profile(project, project_reasons, file_hits)
+            type_hint_profile = infer_project_type_hint_profile(file_hits, signals)
+            member_hint_profile = infer_project_member_hint_profile(file_hits, signals)
+            _evidence_profile = {
+                "direct_type_hint_keys": type_hint_profile["direct_type_hint_keys"],
+                "direct_member_hint_keys": member_hint_profile["direct_member_hint_keys"],
+            }
+            _bucket = candidate_bucket(score, _nlx, evidence_profile=_evidence_profile)
             scope_tier, specificity_score, scope_reasons = classify_project_scope(
                 project,
                 signals,
                 project_reasons,
                 file_hits,
             )
-            family_profile = infer_project_family_profile(project, project_reasons, file_hits)
-            type_hint_profile = infer_project_type_hint_profile(file_hits, signals)
-            member_hint_profile = infer_project_member_hint_profile(file_hits, signals)
             project_entry = {
                 "_coverage_sig": coverage_signature(file_hits, project_path_key=project.path_key) if _bucket == "possible related" else None,
                 "score": score,
