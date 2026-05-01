@@ -1120,9 +1120,9 @@ class FancySliderModifier extends SliderModifier {}
                 )
             ]
 
-        from arkui_xts_selector import cli as cli_module
-        cli_module._latest_daily_selector_metadata.cache_clear()
-        with mock.patch("arkui_xts_selector.cli.list_daily_tags", side_effect=fake_list_daily_tags):
+        from arkui_xts_selector import report_human as report_human_module
+        report_human_module._latest_daily_selector_metadata.cache_clear()
+        with mock.patch("arkui_xts_selector.report_human.list_daily_tags", side_effect=fake_list_daily_tags):
             steps = build_next_steps(report, app_config, self._build_next_steps_args())
 
         step_commands = {step["step"]: step["command"] for step in steps}
@@ -1162,7 +1162,7 @@ class FancySliderModifier extends SliderModifier {}
             "selector_run": {"selector_report_path": "/tmp/report.json"},
         }
 
-        with mock.patch("arkui_xts_selector.cli.list_daily_tags") as daily_tags_mock:
+        with mock.patch("arkui_xts_selector.report_human.list_daily_tags") as daily_tags_mock:
             steps = build_next_steps(report, app_config, self._build_next_steps_args())
 
         daily_tags_mock.assert_not_called()
@@ -1266,7 +1266,7 @@ class FancySliderModifier extends SliderModifier {}
 
         existing_result = Path("/tmp/base-results")
         with mock.patch("pathlib.Path.exists", return_value=True), mock.patch(
-            "arkui_xts_selector.cli.list_run_manifests",
+            "arkui_xts_selector.report_human.list_run_manifests",
             return_value=[
                 {
                     "label": "baseline",
