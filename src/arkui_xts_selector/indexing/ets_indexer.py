@@ -21,6 +21,17 @@ class EtsTestEntry:
     test_module: str  # Derived from directory structure
     usages: tuple["EtsUsage", ...] = ()
     api_references: tuple[str, ...] = ()  # API symbol names referenced
+    entry_kind: str = "consumer"  # "consumer" (XTS test file) or "bridge" (generated/sdk source)
+
+    @property
+    def is_consumer(self) -> bool:
+        """True if this is a consumer (XTS test) entry."""
+        return self.entry_kind == "consumer"
+
+    @property
+    def is_bridge(self) -> bool:
+        """True if this is a bridge (generated/sdk source) entry."""
+        return self.entry_kind == "bridge"
 
     def to_dict(self) -> dict:
         """Return a JSON-compatible dict."""
@@ -29,6 +40,8 @@ class EtsTestEntry:
             "test_module": self.test_module,
             "api_references": list(self.api_references),
         }
+        if self.entry_kind != "consumer":
+            d["entry_kind"] = self.entry_kind
         if self.usages:
             d["usages"] = [usage.to_dict() for usage in self.usages]
         return d
@@ -48,6 +61,7 @@ class EtsTestEntry:
             test_module=data.get("test_module", ""),
             usages=usages,
             api_references=tuple(data.get("api_references", [])),
+            entry_kind=data.get("entry_kind", "consumer"),
         )
 
 
@@ -151,6 +165,37 @@ def _extract_api_references(usages: tuple["EtsUsage", ...]) -> tuple[str, ...]:
     return tuple(sorted(api_symbols))
 
 
+# Bridge path indicators — generated/sdk source files, not XTS test consumers
+_BRIDGE_PATH_INDICATORS = (
+    "generated/src",
+    "arkoala",
+    "sdk/api",
+    "interface/sdk",
+    ".sdk_cache",
+    "build-tools",
+    "compiler_api",
+)
+
+
+def _classify_entry(file_path: str) -> str:
+    """Classify an ETS file as 'consumer' or 'bridge'.
+
+    Bridge entries are generated SDK sources or framework glue code.
+    Consumer entries are actual XTS test files.
+
+    Args:
+        file_path: Path to the .ets file
+
+    Returns:
+        "consumer" or "bridge"
+    """
+    lower_path = file_path.lower().replace("\\", "/")
+    for indicator in _BRIDGE_PATH_INDICATORS:
+        if indicator in lower_path:
+            return "bridge"
+    return "consumer"
+
+
 def _walk_depth(root: Path, max_depth: int):
     """Walk directory tree up to max_depth, yielding Path entries."""
     import os
@@ -208,6 +253,7 @@ def build_ets_index(xts_root: Path, max_depth: int | None = None) -> EtsIndexRes
                 test_module=test_module,
                 usages=parse_result.usages,
                 api_references=api_refs,
+                entry_kind=_classify_entry(str(ets_file)),
             )
             entries.append(entry)
             total_usages += len(parse_result.usages)

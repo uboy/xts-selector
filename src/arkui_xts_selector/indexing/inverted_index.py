@@ -99,7 +99,14 @@ def build_inverted_index(
         InvertedIndex mapping API canonical IDs to consumer entries
     """
     ets_result = build_ets_index(xts_root, max_depth=max_depth)
-    usages = extract_api_usages(ets_result, sdk_index=sdk_index)
+    # T9.2: Only use consumer entries for inverted index (exclude bridge/generated files)
+    consumer_result = EtsIndexResult(
+        entries=tuple(e for e in ets_result.entries if e.is_consumer),
+        errors=ets_result.errors,
+        total_usages=sum(len(e.usages) for e in ets_result.entries if e.is_consumer),
+        index_time_ms=ets_result.index_time_ms,
+    )
+    usages = extract_api_usages(consumer_result, sdk_index=sdk_index)
 
     by_api: dict[str, list[ConsumerEntry]] = {}
     for usage in usages:

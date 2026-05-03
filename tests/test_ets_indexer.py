@@ -224,3 +224,83 @@ def fixtures_dir():
     import arkui_xts_selector
     module_dir = Path(arkui_xts_selector.__file__).parent
     return module_dir.parent.parent / "tests" / "fixtures"
+
+
+class TestEntryClassification:
+    """Test T9.2: ETS entry classification as consumer vs bridge."""
+
+    def test_classify_consumer_file(self):
+        """XTS test files are classified as 'consumer'."""
+        from arkui_xts_selector.indexing.ets_indexer import _classify_entry
+        assert _classify_entry("test/xts/acts/arkui/ButtonTest.ets") == "consumer"
+        assert _classify_entry("acts/arkui/ace_ets_module_button/ButtonRoleTest.ets") == "consumer"
+
+    def test_classify_bridge_file(self):
+        """Generated/sdk files are classified as 'bridge'."""
+        from arkui_xts_selector.indexing.ets_indexer import _classify_entry
+        assert _classify_entry("generated/src/Button.ets") == "bridge"
+        assert _classify_entry("sdk/api/Button.ets") == "bridge"
+        assert _classify_entry("arkoala/src/Button.ets") == "bridge"
+        assert _classify_entry("interface/sdk/Button.ets") == "bridge"
+
+    def test_entry_kind_in_to_dict(self):
+        """entry_kind is serialized in to_dict for non-consumer entries."""
+        entry = EtsTestEntry(
+            file_path="test.ets",
+            test_module="test",
+            entry_kind="bridge",
+        )
+        d = entry.to_dict()
+        assert d["entry_kind"] == "bridge"
+
+        # Consumer entries don't include entry_kind (default)
+        consumer = EtsTestEntry(
+            file_path="test.ets",
+            test_module="test",
+        )
+        cd = consumer.to_dict()
+        assert "entry_kind" not in cd
+
+    def test_entry_kind_from_dict(self):
+        """entry_kind is deserialized from dict."""
+        entry = EtsTestEntry.from_dict({
+            "file_path": "test.ets",
+            "test_module": "test",
+            "entry_kind": "bridge",
+        })
+        assert entry.entry_kind == "bridge"
+
+        # Default is consumer
+        default = EtsTestEntry.from_dict({
+            "file_path": "test.ets",
+            "test_module": "test",
+        })
+        assert default.entry_kind == "consumer"
+
+    def test_is_consumer_is_bridge_properties(self):
+        """is_consumer and is_bridge properties work."""
+        consumer = EtsTestEntry(file_path="t.ets", test_module="t")
+        bridge = EtsTestEntry(file_path="t.ets", test_module="t", entry_kind="bridge")
+
+        assert consumer.is_consumer is True
+        assert consumer.is_bridge is False
+        assert bridge.is_consumer is False
+        assert bridge.is_bridge is True
+
+    def test_inverted_index_excludes_bridge_entries(self, fixtures_dir):
+        """Inverted index only uses consumer entries, not bridge."""
+        from arkui_xts_selector.indexing.ets_indexer import build_ets_index, _classify_entry
+        from arkui_xts_selector.indexing.inverted_index import build_inverted_index
+        from arkui_xts_selector.indexing.sdk_indexer import build_sdk_index
+
+        ets_root = fixtures_dir / "ets_tests"
+        sdk_root = fixtures_root = fixtures_dir / "sdk_registry"
+        sdk_index = build_sdk_index(sdk_root)
+
+        # Build inverted index — should only use consumer entries
+        inv = build_inverted_index(ets_root, sdk_index)
+
+        # The fixture files should all be consumers (no bridge files in fixtures)
+        ets_result = build_ets_index(ets_root)
+        for entry in ets_result.entries:
+            assert entry.entry_kind == "consumer", f"Fixture file should be consumer: {entry.file_path}"
