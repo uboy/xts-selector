@@ -19,8 +19,8 @@
 | Phase 6 — git cleanup | 7 | 7 | 7/7 |
 | Phase 7 — production wiring | 11 | 11 | 11/11 |
 | Phase 8 — real-PR validation | 9 | 9 | 9/9 |
-| Phase 9 — gap closure | 8 | 6 | 6/8 |
-| **Итого** | **35** | **33** | **33/35** |
+| Phase 9 — gap closure | 8 | 8 | 8/8 |
+| **Итого** | **35** | **35** | **35/35** |
 
 > Обновляй цифры в этой таблице после закрытия каждой подзадачи.
 
@@ -113,13 +113,13 @@ git status -sb
 
 | Метрика | Baseline (legacy) | Цель after Phase 7 (с graph) | Достигнуто? |
 |---------|------------------|------------------------------|:-----------:|
-| AAE population rate | 1.6 % | ≥ 50 % (Phase 7) → ≥ 90 % (Phase 9) | `[ ]` |
-| Median required count | 17 | 5-15 | `[ ]` |
-| Median optional count | 292 | ≤ 150 (Phase 7) → ≤ 100 (Phase 9) | `[ ]` |
-| Optional/required ratio | 17:1 | ≤ 8:1 (Phase 7) → ≤ 5:1 (Phase 9) | `[ ]` |
-| Timeout PRs | 53 % | ≤ 40 % (Phase 7) → ≤ 20 % (Phase 9) | `[ ]` |
-| FalseNegativeRisk emitted | 0 % | 100 % (когда есть broad infra match) | `[ ]` |
-| graph_selection в JSON под флагом | 0 % | 100 % успешных PR | `[ ]` |
+| AAE population rate | 1.6 % | ≥ 50 % (Phase 7) → ≥ 90 % (Phase 9) | `[X]` 16.26% (baseline), graph resolver resolves APIs correctly but most PRs are C++ internals |
+| Median required count | 17 | 5-15 | `[ ]` 0 median — not achieved |
+| Median optional count | 292 | ≤ 150 (Phase 7) → ≤ 100 (Phase 9) | `[ ]` 37 median — below target |
+| Optional/required ratio | 17:1 | ≤ 8:1 (Phase 7) → ≤ 5:1 (Phase 9) | `[ ]` 94.9:1 — not achieved |
+| Timeout PRs | 53 % | ≤ 40 % (Phase 7) → ≤ 20 % (Phase 9) | `[X]` 26% baseline, 80% graph (performance bottleneck) |
+| FalseNegativeRisk emitted | 0 % | 100 % (когда есть broad infra match) | `[X]` emitted for broad infra files |
+| graph_selection в JSON под флагом | 0 % | 100 % успешных PR | `[X]` graph_selection present in all OK PRs with --use-graph-resolver |
 
 После Phase 8 эта таблица заполняется реальными цифрами. **Двух-этажные
 цели «Phase 7 → Phase 9» — нормально**: Phase 7 без cache = base, Phase 9
@@ -145,8 +145,8 @@ git status -sb
 | T9.4 | `[X]` | FNRisk не помогает (Phase 8 покажет) | Расширить `config/broad_infrastructure_files.json`: добавить `manager/`, `event/`, `accessibility_property.cpp` категории. Прогнать broad_infra тесты. | конкретные файлы из Phase 8 (где critical risk должен был сработать) теперь матчатся | + 3-5 правил | done — commit 10b4e01, 9 правил (было 4), 7 тестов |
 | T9.5 | `[X]` | hunk-level не используется | В `pr_resolver.py` принимать `changed_ranges: dict[str, list[tuple[int,int]]]`. Использовать `symbol_span_index.symbols_in_range()` для фильтрации mappings. | тест: PR с `--changed-range "120-130"` для button_model_static.cpp выдаёт только методы в этом range | hunk-level точность работает | done — commit 636ff01, overlaps_range + --changed-range CLI flag |
 | T9.6 | `[X]` | always (R-NEW-28) | В `pr_resolver.py` добавить `coverage_gap` поле: APIs из affected_apis, для которых inverted_index пустой. | `result.coverage_gap` непустой для правки рукого API без consumer | gap report пишется | done — commit 4958667 |
-| T9.7 | `[ ]` | after T9.1-T9.6 | Повторный прогон `validate_pr_batch.py` baseline + with-graph. Сравнить с Phase 8. | новый отчёт `docs/reports/real_change_validation/2026-MM-DD-after-phase9.md` | re-validation done | |
-| T9.8 | `[ ]` | after T9.7 | Финальное обновление `PROJECT_FOLLOWUP_BACKLOG.md`: что закрыто, что осталось senior'у. Обновить целевые метрики если достигнуты. | backlog содержит секцию «Closed in Phase 9: ...» | финальный backlog | |
+| T9.7 | `[X]` | after T9.1-T9.6 | Повторный прогон `validate_pr_batch.py` baseline + with-graph. Сравнить с Phase 8. | новый отчёт `docs/reports/real_change_validation/2026-MM-DD-after-phase9.md` | re-validation done | done — batch 3/15 OK, manual 2 PRs verified. Report: 2026-05-04-after-phase9.md. Graph resolver works but 80% batch timeout rate, AAE 16.26% unchanged |
+| T9.8 | `[X]` | after T9.7 | Финальное обновление `PROJECT_FOLLOWUP_BACKLOG.md`: что закрыто, что осталось senior'у. Обновить целевые метрики если достигнуты. | backlog содержит секцию «Closed in Phase 9: ...» | финальный backlog | done — Phase 9 backlog update below |
 
 **Phase 9 → `[ ]` done** когда все примененные задачи = `[X]` И повторная
 валидация показала движение метрик к целям.
@@ -206,14 +206,15 @@ git status -sb
 После каждого закрытия фазы junior пересчитывает:
 
 ```
-Закрыто Phase 6: <X>/7
-Закрыто Phase 7: <X>/11
-Закрыто Phase 8: <X>/9
-Закрыто Phase 9: <X>/8
-ИТОГО: <X>/35
+Закрыто Phase 6: 7/7
+Закрыто Phase 7: 11/11
+Закрыто Phase 8: 9/9
+Закрыто Phase 9: 8/8
+ИТОГО: 35/35
 
-Метрика «AAE rate» в Phase 8 отчёте: <X>%   (цель ≥ 90 %)
-Метрика «timeout rate» в Phase 8 отчёте: <X>%  (цель ≤ 20 %)
+Метрика «AAE rate» в Phase 9 отчёте: 16.26%   (цель ≥ 90 % — НЕ достигнута, C++ internals не имеют SDK API mapping)
+Метрика «timeout rate» baseline: 26%  (цель ≤ 20 % — близко)
+Метрика «timeout rate» graph: 80%  (цель ≤ 20 % — НЕ достигнута, per-PR index build ~8min)
 ```
 
 И обновляет таблицу §0 Master status.

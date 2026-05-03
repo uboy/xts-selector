@@ -9,6 +9,25 @@ place.
 
 ## Closed (kept for traceability)
 
+- **R-NEW-28** (coverage gap report). Closed 2026-05-04 in Phase 9 (T9.6):
+  `pr_resolver.py` now computes `coverage_gap: tuple[str, ...]` — APIs with
+  no consumer tests. Visible in `graph_selection.coverage_gap` JSON field.
+- **R-NEW-29** (persistent cache). Closed 2026-05-04 in Phase 9 (T9.1):
+  `indexing/cache.py` provides JSON-based persistent cache for SDK/ACE/ETS/inverted
+  indices with `_dir_signature()` invalidation. Warm cache: 0.39s (838x faster).
+- **R-NEW-30** (bridge/consumer classification). Closed 2026-05-04 in Phase 9 (T9.2):
+  `EtsTestEntry.entry_kind` field ("consumer" or "bridge"). `build_inverted_index()`
+  filters to consumer-only entries.
+- **R-NEW-31** (selection reasons per-project). Closed 2026-05-04 in Phase 9 (T9.3):
+  `SelectionReason` dataclass with project_path, matched_apis, confidence.
+  Visible in `graph_selection.entries[].selection_reasons`.
+- **R-NEW-32** (expanded broad infra rules). Closed 2026-05-04 in Phase 9 (T9.4):
+  `config/broad_infrastructure_files.json` expanded from 4 to 9 rules covering
+  manager/, event/, accessibility, render/, layout/ patterns.
+- **R-NEW-33** (hunk-level resolution). Closed 2026-05-04 in Phase 9 (T9.5):
+  `SourceApiMapping.overlaps_range()` + `changed_ranges` parameter in `resolve_pr()`.
+  `--changed-range` CLI flag for FILE:START-END format.
+
 - **R16** (FalseNegativeRisk in production JSON). Closed 2026-05-03 in Phase 7:
   `pr_resolver.py` computes per-file and overall risk; `cli.py` writes
   `graph_selection.overall_false_negative_risk` under `--use-graph-resolver`.
@@ -137,3 +156,44 @@ place.
 
 ### D3 — refresh selector_coverage_report.md
 - Periodic snapshot. Re-run when scoring changes.
+
+## Phase 10+ items (from Phase 9 validation findings)
+
+These items were identified during Phase 9 validation as necessary to reach
+the original quality targets (AAE ≥ 50%, timeout ≤ 20%).
+
+### R-NEW-34 — direct C++ → unit test directory mapping
+- Why: 16.26% AAE rate cannot reach ≥ 50% through SDK API pipeline alone.
+  Most real PRs change C++ framework internals (e.g., `menu_pattern.h`,
+  `rich_editor_pattern.h`) that have no SDK API mapping.
+- Plan: Create a C++ source → test directory mapping using convention-based
+  discovery (e.g., `frameworks/core/components_ng/pattern/menu/` →
+  `test/core/components_ng/pattern/menu/`). Add as supplementary signal
+  in `pr_resolver.py`.
+- Risk: medium — convention-based mapping may have false positives.
+
+### R-NEW-35 — build graph (gn/ninja) integration for binary-level deps
+- Why: The graph resolver only traces SDK API → consumer paths. Build-level
+  dependency analysis would catch "test X links against changed object Y"
+  relationships that are invisible at the API level.
+- Plan: Parse `.gn` build files or ninja build graph to extract
+  `test_target → source_file` dependencies. Integrate as additional
+  signal in `resolve_pr()`.
+- Risk: high — requires OHOS build system knowledge.
+
+### R-NEW-36 — graph resolver batch performance optimization
+- Why: 80% timeout rate in batch validation (8+ minutes per PR). The
+  per-invocation subprocess model is too slow.
+- Plan: (a) Pre-build indices once and pass cache file path to each subprocess.
+  (b) Consider in-process batch mode where indices are built once and reused
+  across PRs. (c) Reduce daily SDK download overhead.
+- Risk: low — pure performance work, no logic changes.
+
+### R-NEW-37 — broader API coverage beyond SDK-declared APIs
+- Why: The graph resolver only maps public SDK APIs. Internal component APIs
+  (e.g., `InsertValue`, `onStyledStringWillChange`) are detected as coverage
+  gaps because they have no consumer tests. Some of these APIs are tested
+  indirectly through UI-level ETS tests.
+- Plan: Extend SDK indexer to recognize internal component APIs declared in
+  `.d.ts` files within the ACE engine itself (not just interface/sdk-js/).
+- Risk: medium — internal APIs may not have stable contracts.
