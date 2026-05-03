@@ -1472,10 +1472,6 @@ def parse_args() -> argparse.Namespace:
         "--use-graph-resolver", action="store_true",
         help="Add graph-based selection results in JSON under 'graph_selection' key. Experimental, default off.",
     )
-    parser.add_argument(
-        "--changed-range", action="append", default=[],
-        help="Hunk-level range filter: FILE:START-END (repeatable). E.g. --changed-range 'button_model_static.cpp:120-130'",
-    )
 
     return parser.parse_args()
 
@@ -2187,15 +2183,10 @@ def main() -> int:
 
             _broad_rules = PROJECT_ROOT / "config" / "broad_infrastructure_files.json"
 
-            # Parse --changed-range arguments into dict
+            # Convert changed_ranges_by_file (Path keys) to str keys for resolve_pr
             _changed_ranges: dict[str, list[tuple[int, int]]] = {}
-            for cr in getattr(args, "changed_range", []):
-                try:
-                    file_part, range_part = cr.rsplit(":", 1)
-                    start_s, end_s = range_part.split("-")
-                    _changed_ranges.setdefault(file_part, []).append((int(start_s), int(end_s)))
-                except (ValueError, IndexError):
-                    pass  # Silently skip malformed ranges
+            for fpath, ranges in (changed_ranges_by_file or {}).items():
+                _changed_ranges[str(fpath)] = ranges
 
             _result = resolve_pr(
                 changed_files=[str(f) for f in changed_files],
