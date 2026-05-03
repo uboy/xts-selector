@@ -1,0 +1,43 @@
+{
+  "schema_version": "v1",
+  "rules": [
+    {
+      "id": "frame_node_core",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp",
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.h"
+      ],
+      "fan_out_target": "all_pattern_components",
+      "false_negative_risk": "critical",
+      "rationale": "FrameNode is the base class for every UI element."
+    },
+    {
+      "id": "pipeline_context",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/pipeline_ng/pipeline_context.cpp",
+        "foundation/arkui/ace_engine/frameworks/core/pipeline/pipeline_base.cpp"
+      ],
+      "fan_out_target": "all_components",
+      "false_negative_risk": "high"
+    },
+    {
+      "id": "idlize_generator",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/bridge/arkts_frontend/arkui_idlize/.*\\.tgz"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_arkts_generated_bridges",
+      "false_negative_risk": "critical",
+      "rationale": "Generator package change re-generates all ArkTS bridge files."
+    },
+    {
+      "id": "koala_wrapper",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/bridge/arkts_frontend/koala_projects/.*/koala-wrapper/.*\\.cpp"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_arkts_runtime_consumers",
+      "false_negative_risk": "high"
+    }
+  ]
+}
