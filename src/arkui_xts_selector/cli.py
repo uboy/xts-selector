@@ -1456,6 +1456,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-cache", action="store_true")
     json_group.add_argument("--json", action="store_true", help="Write machine-readable JSON to stdout instead of the default report file.")
     json_group.add_argument("--json-out", help="Write machine-readable JSON to the specified file path.")
+
+    # Add subcommands for specialized indexing operations
+    subparsers = parser.add_subparsers(dest="command", help="Specialized indexing commands")
+
+    trace_parser = subparsers.add_parser("trace", help="Trace a source symbol to consumer tests")
+    trace_parser.add_argument("target", help="File path and symbol, e.g. path/to/file.cpp:SetRole")
+    trace_parser.add_argument("--repo-root", help="OHOS workspace root")
+    trace_parser.add_argument("--sdk-root", help="SDK root directory")
+
+    explain_parser = subparsers.add_parser("explain", help="List API entities that a test project covers")
+    explain_parser.add_argument("test_project", help="Path to the test project directory")
+
     return parser.parse_args()
 
 
@@ -1648,6 +1660,15 @@ def main() -> int:
     global REPO_ROOT
     runtime_started = time.perf_counter()
     args = parse_args()
+
+    # Handle subcommands
+    if args.command == "trace":
+        from .indexing.trace import cmd_trace
+        return cmd_trace(args)
+    if args.command == "explain":
+        from .indexing.explain import cmd_explain
+        return cmd_explain(args)
+
     progress_enabled = not args.no_progress
     json_to_stdout = bool(args.json)
     json_output_path: Path | None = None

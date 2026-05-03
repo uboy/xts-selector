@@ -14,10 +14,14 @@ Import boundary: standard library only.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from .ace_indexer import AceIndexEntry, AceIndexResult
 from .cpp_parser import CppMethod
+
+# ImportSdkIndexResult lazily to avoid circular imports
+if TYPE_CHECKING:
+    from .sdk_indexer import SdkIndexResult
 
 
 ConfidenceLevel = Literal["strong", "medium", "weak"]
@@ -43,6 +47,7 @@ class SourceApiMapping:
 
 def build_source_to_api_mapping(
     ace_index: AceIndexResult,
+    sdk_index: SdkIndexResult | None = None,
 ) -> list[SourceApiMapping]:
     """Build source-to-API mappings from AceEngine index.
 
@@ -50,6 +55,7 @@ def build_source_to_api_mapping(
 
     Args:
         ace_index: AceEngine index result
+        sdk_index: Optional SDK index for filtering weak mappings
 
     Returns:
         List of SourceApiMapping entries
@@ -65,6 +71,18 @@ def build_source_to_api_mapping(
             for method in cls.methods:
                 mapping = _map_method_by_role(method, role, family)
                 if mapping:
+                    # Filter weak mappings against SDK registry
+                    if sdk_index is not None and mapping.confidence == "weak":
+                        found = sdk_index.find(mapping.api_public_name)
+                        if found is None:
+                            continue  # Skip — not a public API
+                        # Upgrade confidence when SDK confirms
+                        mapping = SourceApiMapping(
+                            source_qualified=mapping.source_qualified,
+                            api_public_name=mapping.api_public_name,
+                            confidence="medium",  # SDK-confirmed
+                            file_role=mapping.file_role,
+                        )
                     mappings.append(mapping)
 
         # Process free functions (methods defined outside classes)
@@ -73,6 +91,18 @@ def build_source_to_api_mapping(
             synthetic_method = CppMethod(name=func_name)
             mapping = _map_method_by_role(synthetic_method, role, family)
             if mapping:
+                # Filter weak mappings against SDK registry
+                if sdk_index is not None and mapping.confidence == "weak":
+                    found = sdk_index.find(mapping.api_public_name)
+                    if found is None:
+                        continue  # Skip — not a public API
+                    # Upgrade confidence when SDK confirms
+                    mapping = SourceApiMapping(
+                        source_qualified=mapping.source_qualified,
+                        api_public_name=mapping.api_public_name,
+                        confidence="medium",  # SDK-confirmed
+                        file_role=mapping.file_role,
+                    )
                 mappings.append(mapping)
 
     return mappings

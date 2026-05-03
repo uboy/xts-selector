@@ -22,6 +22,8 @@ from arkui_xts_selector.indexing.source_to_api import (
     SourceApiMapping,
     build_source_to_api_mapping,
 )
+from arkui_xts_selector.model.api import ApiEntityId, ApiDeclarationRef
+from arkui_xts_selector.indexing.sdk_indexer import SdkIndexEntry, SdkIndexResult
 
 
 class TestBuildSourceToApiMapping:
@@ -297,3 +299,231 @@ class TestConfidenceLevels:
             file_role="pattern",
         )
         assert mapping.confidence == "weak"
+
+
+class TestSdkIndexFiltering:
+    """Test SDK index filtering of weak mappings."""
+
+    def test_sdk_index_none_returns_all_mappings(self):
+        """When sdk_index is None, all mappings are returned unchanged."""
+        # Create a synthetic ACE index with pattern role (weak confidence)
+        pattern_entry = AceIndexEntry(
+            file_path="test.cpp",
+            role="pattern",
+            family="Button",
+            classes=(
+                CppClass(
+                    name="ButtonPattern",
+                    methods=(CppMethod(name="OnModifyDone"),),
+                ),
+            ),
+            free_functions=(),
+            includes=(),
+        )
+        ace_index = AceIndexResult(entries=(pattern_entry,))
+
+        # Without SDK index, all mappings are returned
+        mappings = build_source_to_api_mapping(ace_index, sdk_index=None)
+
+        assert len(mappings) == 1
+        assert mappings[0].source_qualified == "Button::OnModifyDone"
+        assert mappings[0].api_public_name == "OnModifyDone"
+        assert mappings[0].confidence == "weak"
+        assert mappings[0].file_role == "pattern"
+
+    def test_sdk_index_filters_weak_mappings_not_in_registry(self):
+        """When sdk_index is provided, weak mappings not in SDK are filtered out."""
+        # Create a synthetic ACE index with pattern role (weak confidence)
+        pattern_entry = AceIndexEntry(
+            file_path="test.cpp",
+            role="pattern",
+            family="Button",
+            classes=(
+                CppClass(
+                    name="ButtonPattern",
+                    methods=(
+                        CppMethod(name="OnModifyDone"),
+                        CppMethod(name="OnSizeChanged"),
+                    ),
+                ),
+            ),
+            free_functions=(),
+            includes=(),
+        )
+        ace_index = AceIndexResult(entries=(pattern_entry,))
+
+        # Create SDK index with only "OnModifyDone" registered
+        api_id = ApiEntityId(
+            namespace="arkui",
+            surface="static",
+            kind="event_or_method",
+            module="ohos.arkui",
+            public_name="Button",
+            member_of="Button",
+            member_name="OnModifyDone",
+        )
+        declaration = ApiDeclarationRef(
+            declaration_id=api_id.canonical(),
+            file_path="test.d.ts",
+            module="ohos.arkui",
+            export_name="Button.OnModifyDone",
+        )
+        sdk_entry = SdkIndexEntry(api_id=api_id, declaration=declaration)
+        sdk_index = SdkIndexResult(entries=(sdk_entry,))
+
+        # With SDK index, only mappings found in SDK are returned
+        mappings = build_source_to_api_mapping(ace_index, sdk_index=sdk_index)
+
+        assert len(mappings) == 1
+        assert mappings[0].api_public_name == "OnModifyDone"
+        # Confidence should be upgraded to "medium" when SDK confirms
+        assert mappings[0].confidence == "medium"
+
+    def test_sdk_index_upgrades_weak_to_medium_when_confirmed(self):
+        """When sdk_index confirms a weak mapping, confidence is upgraded to medium."""
+        # Create a synthetic ACE index with pattern role (weak confidence)
+        pattern_entry = AceIndexEntry(
+            file_path="test.cpp",
+            role="pattern",
+            family="Button",
+            classes=(
+                CppClass(
+                    name="ButtonPattern",
+                    methods=(CppMethod(name="OnModifyDone"),),
+                ),
+            ),
+            free_functions=(),
+            includes=(),
+        )
+        ace_index = AceIndexResult(entries=(pattern_entry,))
+
+        # Create SDK index with the API registered
+        api_id = ApiEntityId(
+            namespace="arkui",
+            surface="static",
+            kind="event_or_method",
+            module="ohos.arkui",
+            public_name="Button",
+            member_of="Button",
+            member_name="OnModifyDone",
+        )
+        declaration = ApiDeclarationRef(
+            declaration_id=api_id.canonical(),
+            file_path="test.d.ts",
+            module="ohos.arkui",
+            export_name="Button.OnModifyDone",
+        )
+        sdk_entry = SdkIndexEntry(api_id=api_id, declaration=declaration)
+        sdk_index = SdkIndexResult(entries=(sdk_entry,))
+
+        # With SDK index, weak mapping is upgraded to medium
+        mappings = build_source_to_api_mapping(ace_index, sdk_index=sdk_index)
+
+        assert len(mappings) == 1
+        assert mappings[0].api_public_name == "OnModifyDone"
+        assert mappings[0].confidence == "medium"  # Upgraded from "weak"
+
+    def test_sdk_index_does_not_affect_strong_and_medium_mappings(self):
+        """Strong and medium confidence mappings are not affected by SDK index."""
+        # Create a synthetic ACE index with model_static role (strong confidence)
+        model_static_entry = AceIndexEntry(
+            file_path="test.cpp",
+            role="model_static",
+            family="Button",
+            classes=(
+                CppClass(
+                    name="ButtonModelStatic",
+                    methods=(CppMethod(name="SetRole"),),
+                ),
+            ),
+            free_functions=(),
+            includes=(),
+        )
+        ace_index = AceIndexResult(entries=(model_static_entry,))
+
+        # Create SDK index (even without the API)
+        sdk_index = SdkIndexResult(entries=())
+
+        # Strong mappings are returned regardless of SDK index
+        mappings = build_source_to_api_mapping(ace_index, sdk_index=sdk_index)
+
+        assert len(mappings) == 1
+        assert mappings[0].api_public_name == "role"
+        assert mappings[0].confidence == "strong"  # Still strong
+
+    def test_sdk_index_filters_pattern_role_mappings(self):
+        """Pattern role mappings are filtered by SDK index."""
+        # Create a synthetic ACE index with pattern role
+        pattern_entry = AceIndexEntry(
+            file_path="test.cpp",
+            role="pattern",
+            family="Button",
+            classes=(
+                CppClass(
+                    name="ButtonPattern",
+                    methods=(
+                        CppMethod(name="Measure"),  # Internal method
+                        CppMethod(name="Layout"),    # Internal method
+                    ),
+                ),
+            ),
+            free_functions=(),
+            includes=(),
+        )
+        ace_index = AceIndexResult(entries=(pattern_entry,))
+
+        # Create SDK index with neither method registered (both are internal)
+        sdk_index = SdkIndexResult(entries=())
+
+        # Both weak mappings should be filtered out
+        mappings = build_source_to_api_mapping(ace_index, sdk_index=sdk_index)
+
+        assert len(mappings) == 0
+
+    def test_sdk_index_handles_member_names(self):
+        """SDK index find method works with member names."""
+        # Create a synthetic ACE index with pattern role
+        pattern_entry = AceIndexEntry(
+            file_path="test.cpp",
+            role="pattern",
+            family="Button",
+            classes=(
+                CppClass(
+                    name="ButtonPattern",
+                    methods=(CppMethod(name="role"),),  # Member method
+                ),
+            ),
+            free_functions=(),
+            includes=(),
+        )
+        ace_index = AceIndexResult(entries=(pattern_entry,))
+
+        # Create SDK index with the member name registered
+        api_id = ApiEntityId(
+            namespace="arkui",
+            surface="static",
+            kind="attribute",
+            module="ohos.arkui",
+            public_name="ButtonAttribute",
+            member_of="ButtonAttribute",
+            member_name="role",
+        )
+        declaration = ApiDeclarationRef(
+            declaration_id=api_id.canonical(),
+            file_path="test.d.ts",
+            module="ohos.arkui",
+            export_name="ButtonAttribute.role",
+        )
+        sdk_entry = SdkIndexEntry(
+            api_id=api_id,
+            declaration=declaration,
+            member_name="role",
+        )
+        sdk_index = SdkIndexResult(entries=(sdk_entry,))
+
+        # SDK index should find the member by name
+        mappings = build_source_to_api_mapping(ace_index, sdk_index=sdk_index)
+
+        assert len(mappings) == 1
+        assert mappings[0].api_public_name == "role"
+        assert mappings[0].confidence == "medium"

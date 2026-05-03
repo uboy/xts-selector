@@ -91,6 +91,13 @@ class SdkIndexResult:
                 if full_member == name:
                     return entry
 
+        # Also try matching by member_name alone (for pattern role mappings)
+        for entry in self.entries:
+            if entry.api_id.member_name == name:
+                return entry
+            if entry.member_name == name:
+                return entry
+
         return None
 
     def to_dict(self) -> dict:
