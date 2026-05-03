@@ -616,3 +616,29 @@ button_model_static.cpp::Button::SetRole
 
 Все эти items стоит положить в `PROJECT_FOLLOWUP_BACKLOG.md` отдельной
 секцией «Quality & UX gaps from real-PR validation».
+
+---
+
+## Update 2026-05-03: post Phase 1-7 validation
+
+Full report: `docs/reports/real_change_validation/2026-05-03.md`
+
+Baseline re-run on 50 PRs (10 parallel workers, 300s timeout):
+
+| Metric | Before (300 PR, 120s) | After (50 PR, 300s) |
+|--------|----------------------|---------------------|
+| Timeout rate | 53% (159/300) | 26% (13/50) |
+| AAE population rate (mean) | 1.6% | 16.26% |
+| Files with AAE (per-file rate) | — | 7.74% (25/323) |
+| Required count (median) | — | 0 |
+| Optional count (median) | — | 37 |
+| Optional/Required ratio | ~17:1 | 94.9:1 |
+
+**Graph resolver (`--use-graph-resolver`)** timed out on all 5 test PRs at 600s.
+Root cause: index construction (SDK + ACE + inverted) runs per-invocation without
+cache. Building inverted index on the full `test/xts/acts/arkui/` tree takes 5+ min.
+
+**Key blockers for Phase 9:**
+- T9.1 persistent cache (CRITICAL — graph unusable without it)
+- T9.2 bridge/consumer split (ETS indexer treats all files as tests)
+- Timeout rate still above 20% target

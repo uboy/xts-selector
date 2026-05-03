@@ -9,6 +9,22 @@ place.
 
 ## Closed (kept for traceability)
 
+- **R16** (FalseNegativeRisk in production JSON). Closed 2026-05-03 in Phase 7:
+  `pr_resolver.py` computes per-file and overall risk; `cli.py` writes
+  `graph_selection.overall_false_negative_risk` under `--use-graph-resolver`.
+- **R20** (extract_summary reads wrong path). Closed 2026-05-03 in Phase 8:
+  `validate_pr_batch.py::extract_summary` now reads from `report["results"]`
+  and `report["coverage_recommendations"]["ordered_targets"]`.
+- **R-NEW-26** (inverted index API → consumers). Closed 2026-05-03 in Phase 7:
+  `inverted_index.py` maps API canonical IDs to consumer projects.
+  10 tests pass.
+- **R-NEW-27** (graph resolver wired to CLI). Closed 2026-05-03 in Phase 7:
+  `--use-graph-resolver` flag in cli.py produces `graph_selection` in JSON.
+  Default behavior unchanged.
+- **R-NEW-28** (coverage gap report). Open → moved to Phase 9 (T9.6).
+- **R-NEW-29** (persistent cache). Open → CRITICAL for Phase 9 (T9.1).
+  Graph resolver unusable without it — all test PRs timeout at 600s.
+
 - **R1** (dead `must_run_unsupported_coverage_equivalence` rule).
   Closed by adding `_COVERAGE_SPECIFIC_RULES` in
   `src/arkui_xts_selector/ranking/buckets.py` and three tests in
