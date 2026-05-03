@@ -21,14 +21,32 @@ FalseNegativeRisk = str  # Literal["low", "medium", "high", "critical"]
 
 
 @dataclass(frozen=True)
+class SelectionReason:
+    """Why a consumer project was selected."""
+    project_path: str
+    matched_apis: tuple[str, ...]  # API names that linked this project
+    usage_kinds: tuple[str, ...]  # e.g. ("component_construction", "attribute_method")
+    confidence: str  # "strong" | "medium" | "weak"
+
+    def to_dict(self) -> dict:
+        return {
+            "project_path": self.project_path,
+            "matched_apis": list(self.matched_apis),
+            "usage_kinds": list(self.usage_kinds),
+            "confidence": self.confidence,
+        }
+
+
+@dataclass(frozen=True)
 class PrResolveEntry:
     """One changed file with its resolved API entities and consumer tests."""
     changed_file: str
     affected_apis: tuple[str, ...]  # API public names (e.g. "role", "buttonStyle")
     consumer_projects: tuple[str, ...]  # XTS project paths
-    broad_infra_match: BroadInfraMatch | None
-    false_negative_risk: FalseNegativeRisk
-    parser_level: int  # max parser_level used (0-3)
+    selection_reasons: tuple[SelectionReason, ...] = ()  # T9.3: per-project why
+    broad_infra_match: BroadInfraMatch | None = None
+    false_negative_risk: FalseNegativeRisk = "low"
+    parser_level: int = 0  # max parser_level used (0-3)
 
 
 @dataclass(frozen=True)
@@ -36,6 +54,7 @@ class PrResolveResult:
     """Result of resolving all changed files in a PR."""
     entries: tuple[PrResolveEntry, ...] = ()
     overall_false_negative_risk: FalseNegativeRisk = "low"
+    coverage_gap: tuple[str, ...] = ()  # T9.6: affected APIs with no consumer tests
 
 
 def resolve_pr(
@@ -72,6 +91,8 @@ def resolve_pr(
     entries: list[PrResolveEntry] = []
     overall_risk: FalseNegativeRisk = "low"
     risk_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+    all_affected_apis: set[str] = set()
+    all_covered_apis: set[str] = set()
 
     for cf in changed_files:
         # 1. Broad infra check
@@ -81,6 +102,7 @@ def resolve_pr(
                 changed_file=cf,
                 affected_apis=(),
                 consumer_projects=(),
+                selection_reasons=(),
                 broad_infra_match=infra,
                 false_negative_risk=infra.false_negative_risk,
                 parser_level=1,
@@ -92,24 +114,47 @@ def resolve_pr(
         # 2. Find mappings for this file
         file_mappings = _find_mappings_for_file(cf, by_file)
 
-        # 3. Collect affected APIs and consumer projects
+        # 3. Collect affected APIs and consumer projects with reasons
         affected_apis: list[str] = []
-        consumers: list[str] = []
         max_parser_level = 0
+        # Track per-project: matched APIs and usage kinds
+        project_reasons: dict[str, dict] = {}  # project_path -> {apis: set, kinds: set, confidence: str}
 
         for mapping in file_mappings:
             api_name = mapping.api_public_name
             affected_apis.append(api_name)
+            all_affected_apis.add(api_name)
             max_parser_level = max(max_parser_level,
                                    3 if mapping.confidence == "strong" else
                                    2 if mapping.confidence == "medium" else 1)
 
             # Look up consumers
             for consumer in inverted.consumers_for_name(api_name):
-                consumers.append(consumer.project_path)
+                proj = consumer.project_path
+                if proj not in project_reasons:
+                    project_reasons[proj] = {"apis": set(), "kinds": set(), "confidence": "weak"}
+                project_reasons[proj]["apis"].add(api_name)
+                project_reasons[proj]["kinds"].add(consumer.usage_kind)
+                # Upgrade confidence if higher
+                conf_order = {"weak": 0, "medium": 1, "strong": 2}
+                if conf_order.get(consumer.confidence, 0) > conf_order.get(project_reasons[proj]["confidence"], 0):
+                    project_reasons[proj]["confidence"] = consumer.confidence
+
+                all_covered_apis.add(api_name)
 
         # Deduplicate consumers
-        unique_consumers = sorted(set(consumers))
+        unique_consumers = sorted(set(project_reasons.keys()))
+
+        # Build selection reasons
+        selection_reasons = tuple(
+            SelectionReason(
+                project_path=proj,
+                matched_apis=tuple(sorted(info["apis"])),
+                usage_kinds=tuple(sorted(info["kinds"])),
+                confidence=info["confidence"],
+            )
+            for proj, info in sorted(project_reasons.items())
+        )
 
         # 4. Classify risk
         risk = _classify_risk(affected_apis, unique_consumers, file_mappings)
@@ -118,6 +163,7 @@ def resolve_pr(
             changed_file=cf,
             affected_apis=tuple(affected_apis),
             consumer_projects=tuple(unique_consumers),
+            selection_reasons=selection_reasons,
             broad_infra_match=None,
             false_negative_risk=risk,
             parser_level=max_parser_level,
@@ -126,9 +172,13 @@ def resolve_pr(
         if risk_order.get(risk, 0) > risk_order.get(overall_risk, 0):
             overall_risk = risk
 
+    # T9.6: Coverage gap = affected APIs with no consumers
+    coverage_gap = tuple(sorted(all_affected_apis - all_covered_apis))
+
     return PrResolveResult(
         entries=tuple(entries),
         overall_false_negative_risk=overall_risk,
+        coverage_gap=coverage_gap,
     )
 
 

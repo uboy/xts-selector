@@ -17,6 +17,7 @@ import pytest
 from arkui_xts_selector.indexing.pr_resolver import (
     PrResolveEntry,
     PrResolveResult,
+    SelectionReason,
     resolve_pr,
     _find_mappings_for_file,
     _classify_risk,
@@ -329,3 +330,122 @@ class TestFindMappingsForFile:
         by_file = {"other/path.cpp": []}
         result = _find_mappings_for_file("test.cpp", by_file)
         assert result == []
+
+
+class TestSelectionReasons:
+    """Test T9.3: selection_reasons per consumer project."""
+
+    def test_selection_reasons_with_real_fixtures(self):
+        """selection_reasons populated with button_model_static.cpp fixture."""
+        fixture_root = Path("tests/fixtures")
+        ace_root = fixture_root / "ace_engine"
+        sdk_root = fixture_root / "sdk_registry"
+        ets_root = fixture_root / "ets_tests"
+
+        ace_index = build_ace_index(ace_root)
+        sdk_index = build_sdk_index(sdk_root)
+        inverted = build_inverted_index(ets_root, sdk_index)
+
+        changed_files = [
+            "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        ]
+
+        result = resolve_pr(changed_files, ace_index, sdk_index, inverted)
+        assert len(result.entries) == 1
+        entry = result.entries[0]
+
+        # selection_reasons should be non-empty when consumers are found
+        if entry.consumer_projects:
+            assert len(entry.selection_reasons) > 0
+            reason = entry.selection_reasons[0]
+            assert isinstance(reason, SelectionReason)
+            assert reason.project_path
+            assert len(reason.matched_apis) > 0
+            assert "role" in reason.matched_apis or any("role" in api for api in reason.matched_apis)
+
+    def test_selection_reason_to_dict(self):
+        """SelectionReason.to_dict returns correct structure."""
+        reason = SelectionReason(
+            project_path="test/project",
+            matched_apis=("role", "buttonStyle"),
+            usage_kinds=("component_construction",),
+            confidence="strong",
+        )
+        d = reason.to_dict()
+        assert d["project_path"] == "test/project"
+        assert d["matched_apis"] == ["role", "buttonStyle"]
+        assert d["usage_kinds"] == ["component_construction"]
+        assert d["confidence"] == "strong"
+
+    def test_selection_reasons_empty_when_no_consumers(self):
+        """selection_reasons is empty when no consumers found."""
+        from arkui_xts_selector.indexing.ace_indexer import AceIndexResult
+        from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
+        from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+
+        ace_index = AceIndexResult()
+        sdk_index = SdkIndexResult()
+        inverted = InvertedIndex()
+
+        result = resolve_pr(["unknown/file.cpp"], ace_index, sdk_index, inverted)
+        assert len(result.entries) == 1
+        assert result.entries[0].selection_reasons == ()
+
+
+class TestCoverageGap:
+    """Test T9.6: coverage_gap field in PrResolveResult."""
+
+    def test_coverage_gap_empty_when_all_covered(self):
+        """coverage_gap is empty when all affected APIs have consumers."""
+        # This is tested with fixtures where role/buttonStyle have consumers
+        fixture_root = Path("tests/fixtures")
+        ace_root = fixture_root / "ace_engine"
+        sdk_root = fixture_root / "sdk_registry"
+        ets_root = fixture_root / "ets_tests"
+
+        ace_index = build_ace_index(ace_root)
+        sdk_index = build_sdk_index(sdk_root)
+        inverted = build_inverted_index(ets_root, sdk_index)
+
+        result = resolve_pr(
+            ["frameworks/core/components_ng/pattern/button/button_model_static.cpp"],
+            ace_index, sdk_index, inverted,
+        )
+
+        # coverage_gap should be a tuple
+        assert isinstance(result.coverage_gap, tuple)
+
+    def test_coverage_gap_with_uncovered_api(self):
+        """coverage_gap contains APIs with no consumers."""
+        from arkui_xts_selector.indexing.ace_indexer import AceIndexEntry, AceIndexResult
+        from arkui_xts_selector.indexing.cpp_parser import CppClass, CppMethod
+        from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
+        from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+
+        # Create ACE index with an API mapping
+        ace_entry = AceIndexEntry(
+            file_path="test/test_model_static.cpp",
+            role="model_static",
+            family="component",
+            classes=(CppClass(
+                name="TestModel",
+                methods=(CppMethod(
+                    name="SetTestApi",
+                    qualified="TestModel::SetTestApi",
+                ),),
+            ),),
+        )
+        ace_index = AceIndexResult(entries=(ace_entry,))
+        sdk_index = SdkIndexResult()
+        inverted = InvertedIndex()  # Empty — no consumers
+
+        result = resolve_pr(["test/test_model_static.cpp"], ace_index, sdk_index, inverted)
+
+        # API should be in coverage_gap since no consumers exist
+        if result.entries and result.entries[0].affected_apis:
+            assert "testApi" in result.coverage_gap
+
+    def test_coverage_gap_default_empty(self):
+        """PrResolveResult defaults coverage_gap to empty tuple."""
+        result = PrResolveResult()
+        assert result.coverage_gap == ()

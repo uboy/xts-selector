@@ -2195,6 +2195,7 @@ def main() -> int:
                     "changed_file": e.changed_file,
                     "affected_apis": list(e.affected_apis),
                     "consumer_projects": list(e.consumer_projects),
+                    "selection_reasons": [r.to_dict() for r in e.selection_reasons],
                     "false_negative_risk": e.false_negative_risk,
                     "parser_level": e.parser_level,
                 }
@@ -2206,7 +2207,7 @@ def main() -> int:
                     }
                 return d
 
-            report["graph_selection"] = {
+            graph_selection = {
                 "schema_version": "graph-pr-v1",
                 "entries": [_entry_to_dict(e) for e in _result.entries],
                 "overall_false_negative_risk": _result.overall_false_negative_risk,
@@ -2216,6 +2217,9 @@ def main() -> int:
                     "inverted_apis": len(_inverted.by_api),
                 },
             }
+            if _result.coverage_gap:
+                graph_selection["coverage_gap"] = list(_result.coverage_gap)
+            report["graph_selection"] = graph_selection
             report["timings_ms"]["graph_resolver"] = round((time.perf_counter() - graph_started) * 1000, 3)
         except Exception as exc:
             report["graph_selection"] = {"error": str(exc)}
