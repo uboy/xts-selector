@@ -35,16 +35,37 @@ class SourceApiMapping:
     confidence: ConfidenceLevel  # Mapping confidence level
     file_role: str  # File role that produced this mapping
     source_file_path: str  # Source file path (e.g., foundations/arkui/ace_engine/button.cpp)
+    method_line: int | None = None  # Start line of the method (for hunk-level filtering)
+    method_end_line: int | None = None  # End line of the method (for hunk-level filtering)
+
+    def overlaps_range(self, start: int, end: int) -> bool:
+        """Check if this mapping's method overlaps with a line range.
+
+        Args:
+            start: Start line of the range (inclusive)
+            end: End line of the range (inclusive)
+
+        Returns:
+            True if the method's lines overlap with the given range
+        """
+        if self.method_line is None or self.method_end_line is None:
+            return True  # No line info → include by default
+        return self.method_line <= end and self.method_end_line >= start
 
     def to_dict(self) -> dict:
         """Return a JSON-compatible dict."""
-        return {
+        d = {
             "source_qualified": self.source_qualified,
             "api_public_name": self.api_public_name,
             "confidence": self.confidence,
             "file_role": self.file_role,
             "source_file_path": self.source_file_path,
         }
+        if self.method_line is not None:
+            d["method_line"] = self.method_line
+        if self.method_end_line is not None:
+            d["method_end_line"] = self.method_end_line
+        return d
 
 
 def build_source_to_api_mapping(
@@ -74,6 +95,16 @@ def build_source_to_api_mapping(
             for method in cls.methods:
                 mapping = _map_method_by_role(method, role, family, file_path)
                 if mapping:
+                    # Attach method line range for hunk-level filtering
+                    mapping = SourceApiMapping(
+                        source_qualified=mapping.source_qualified,
+                        api_public_name=mapping.api_public_name,
+                        confidence=mapping.confidence,
+                        file_role=mapping.file_role,
+                        source_file_path=mapping.source_file_path,
+                        method_line=method.line,
+                        method_end_line=method.end_line,
+                    )
                     # Filter weak mappings against SDK registry
                     if sdk_index is not None and mapping.confidence == "weak":
                         found = sdk_index.find(mapping.api_public_name)
@@ -86,6 +117,8 @@ def build_source_to_api_mapping(
                             confidence="medium",  # SDK-confirmed
                             file_role=mapping.file_role,
                             source_file_path=mapping.source_file_path,
+                            method_line=method.line,
+                            method_end_line=method.end_line,
                         )
                     mappings.append(mapping)
 

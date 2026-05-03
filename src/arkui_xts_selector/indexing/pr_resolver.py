@@ -63,6 +63,7 @@ def resolve_pr(
     sdk_index: SdkIndexResult,
     inverted: InvertedIndex,
     broad_rules_path: Path | None = None,
+    changed_ranges: dict[str, list[tuple[int, int]]] | None = None,
 ) -> PrResolveResult:
     """Main production resolver entry point.
 
@@ -72,6 +73,9 @@ def resolve_pr(
         sdk_index: Pre-built SDK index for API validation
         inverted: Pre-built inverted index (API → consumers)
         broad_rules_path: Optional path to broad_infrastructure_files.json
+        changed_ranges: Optional hunk-level ranges per file.
+            Key = file path (matches changed_files entry),
+            Value = list of (start_line, end_line) tuples.
 
     Returns:
         PrResolveResult with entries per changed file
@@ -113,6 +117,14 @@ def resolve_pr(
 
         # 2. Find mappings for this file
         file_mappings = _find_mappings_for_file(cf, by_file)
+
+        # 2b. Hunk-level filtering: only keep mappings overlapping changed ranges
+        if changed_ranges and cf in changed_ranges:
+            ranges = changed_ranges[cf]
+            file_mappings = [
+                m for m in file_mappings
+                if any(m.overlaps_range(start, end) for start, end in ranges)
+            ]
 
         # 3. Collect affected APIs and consumer projects with reasons
         affected_apis: list[str] = []

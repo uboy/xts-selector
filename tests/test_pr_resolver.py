@@ -543,3 +543,117 @@ class TestCoverageGap:
         """PrResolveResult defaults coverage_gap to empty tuple."""
         result = PrResolveResult()
         assert result.coverage_gap == ()
+
+
+class TestHunkLevelResolution:
+    """Test T9.5: hunk-level resolution with changed_ranges."""
+
+    def _make_ace_with_methods(self):
+        """Build ACE index with methods at known line ranges."""
+        from arkui_xts_selector.indexing.ace_indexer import AceIndexEntry, AceIndexResult
+        from arkui_xts_selector.indexing.cpp_parser import CppClass, CppMethod
+
+        return AceIndexResult(entries=(
+            AceIndexEntry(
+                file_path="test/button_model_static.cpp",
+                role="model_static",
+                family="button",
+                classes=(CppClass(
+                    name="ButtonModel",
+                    methods=(
+                        CppMethod(name="SetRole", qualified="ButtonModel::SetRole", line=100, end_line=115),
+                        CppMethod(name="SetButtonStyle", qualified="ButtonModel::SetButtonStyle", line=120, end_line=140),
+                        CppMethod(name="SetLabel", qualified="ButtonModel::SetLabel", line=200, end_line=220),
+                    ),
+                ),),
+            ),
+        ))
+
+    def test_hunk_filter_selects_overlapping_methods(self):
+        """Changed range 120-130 only selects SetButtonStyle, not SetRole or SetLabel."""
+        from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
+        from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+
+        ace = self._make_ace_with_methods()
+        result = resolve_pr(
+            ["test/button_model_static.cpp"],
+            ace, SdkIndexResult(), InvertedIndex(),
+            changed_ranges={"test/button_model_static.cpp": [(120, 130)]},
+        )
+
+        assert len(result.entries) == 1
+        entry = result.entries[0]
+        # Only buttonStyle should be in affected_apis
+        assert "buttonStyle" in entry.affected_apis
+        assert "role" not in entry.affected_apis
+        assert "label" not in entry.affected_apis
+
+    def test_hunk_filter_multiple_ranges(self):
+        """Multiple ranges select all overlapping methods."""
+        from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
+        from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+
+        ace = self._make_ace_with_methods()
+        result = resolve_pr(
+            ["test/button_model_static.cpp"],
+            ace, SdkIndexResult(), InvertedIndex(),
+            changed_ranges={"test/button_model_static.cpp": [(100, 110), (200, 210)]},
+        )
+
+        entry = result.entries[0]
+        assert "role" in entry.affected_apis
+        assert "label" in entry.affected_apis
+        assert "buttonStyle" not in entry.affected_apis
+
+    def test_no_changed_ranges_includes_all_methods(self):
+        """Without changed_ranges, all methods are included."""
+        from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
+        from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+
+        ace = self._make_ace_with_methods()
+        result = resolve_pr(
+            ["test/button_model_static.cpp"],
+            ace, SdkIndexResult(), InvertedIndex(),
+        )
+
+        entry = result.entries[0]
+        assert "role" in entry.affected_apis
+        assert "buttonStyle" in entry.affected_apis
+        assert "label" in entry.affected_apis
+
+    def test_overlaps_range_method(self):
+        """SourceApiMapping.overlaps_range works correctly."""
+        from arkui_xts_selector.indexing.source_to_api import SourceApiMapping
+
+        m = SourceApiMapping(
+            source_qualified="Test::SetRole",
+            api_public_name="role",
+            confidence="strong",
+            file_role="model_static",
+            source_file_path="test.cpp",
+            method_line=100,
+            method_end_line=115,
+        )
+
+        # Overlapping ranges
+        assert m.overlaps_range(90, 105) is True   # Partial overlap
+        assert m.overlaps_range(110, 120) is True   # Partial overlap
+        assert m.overlaps_range(100, 115) is True   # Exact match
+        assert m.overlaps_range(50, 200) is True    # Contains
+
+        # Non-overlapping ranges
+        assert m.overlaps_range(50, 99) is False    # Before
+        assert m.overlaps_range(116, 200) is False   # After
+
+    def test_overlaps_range_no_line_info(self):
+        """SourceApiMapping without line info always overlaps."""
+        from arkui_xts_selector.indexing.source_to_api import SourceApiMapping
+
+        m = SourceApiMapping(
+            source_qualified="Test::SetRole",
+            api_public_name="role",
+            confidence="strong",
+            file_role="model_static",
+            source_file_path="test.cpp",
+        )
+        assert m.overlaps_range(1, 1) is True  # Always true when no line info
