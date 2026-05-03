@@ -118,11 +118,17 @@ Current interpretation rule:
 ## Documentation
 
 - [docs/CLI_REFERENCE.md](docs/CLI_REFERENCE.md) - detailed CLI reference for `arkui-xts-selector` and `xts_compare`
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - project structure, indexes, and execution flow
+- [docs/TARGET_ARCHITECTURE.md](docs/TARGET_ARCHITECTURE.md) - current target architecture (typed graph, bucket gates, parser levels)
+- [docs/ARCHITECTURE_V1.md](docs/ARCHITECTURE_V1.md) - V1 historical baseline (kept for context)
 - [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) - scope and expected behavior
 - [docs/DESIGN.md](docs/DESIGN.md) - design notes and implementation direction
-- [docs/API_IMPACT_SELECTION_PLAN.md](docs/API_IMPACT_SELECTION_PLAN.md) - phased plan for API-lineage-based impact selection
-- [docs/API_IMPACT_SELECTION_DESIGN.md](docs/API_IMPACT_SELECTION_DESIGN.md) - design notes for mapping changed ArkUI/Ace files to affected APIs and consumers
+- [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) - active phased plan for graph-backed selection
+- [docs/API_LINEAGE_GRAPH.md](docs/API_LINEAGE_GRAPH.md) - graph schema and edge contracts
+- [docs/REFACTORING_PLAN.md](docs/REFACTORING_PLAN.md) - migration phases from legacy heuristics to graph
+- [docs/PROJECT_PRECISE_TRACING_DESIGN.md](docs/PROJECT_PRECISE_TRACING_DESIGN.md) - precise tracing design
+- [docs/PROJECT_PRECISE_TRACING_PLAYBOOK.md](docs/PROJECT_PRECISE_TRACING_PLAYBOOK.md) - precise tracing implementation playbook
+- [docs/PROJECT_FOLLOWUP_BACKLOG.md](docs/PROJECT_FOLLOWUP_BACKLOG.md) - outstanding follow-ups
+- [docs/archive/](docs/archive/) - historical design and review documents
 
 ## Common Examples
 
@@ -337,7 +343,35 @@ Special mapping rules are stored outside Python code where possible:
 
 ## Architecture
 
-Project architecture is documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The project has two coexisting layers:
+
+1. **Production CLI path.** The legacy selection pipeline lives in
+   `cli.py`, `signal_inference.py`, `scoring.py`, `coverage_planner.py`,
+   `report_human.py`, and friends. It produces the JSON/human reports
+   you get from `arkui-xts-selector` today. This path uses regex/
+   path-token heuristics, numeric scoring, and the `ApiLineageMap`
+   parallel maps.
+
+2. **Shadow graph path** (under active development). New typed layers
+   live in `model/`, `graph/`, `ranking/`, and `indexing/`. They model
+   API entities, evidence, usage signatures, coverage equivalence,
+   bucket gates, and runnability separately. They are NOT yet used by
+   the default CLI; they are validated through fixtures, golden graph
+   JSON, and shadow tests.
+
+The current target architecture for the shadow path is documented in
+[docs/TARGET_ARCHITECTURE.md](docs/TARGET_ARCHITECTURE.md). The graph
+schema is in [docs/API_LINEAGE_GRAPH.md](docs/API_LINEAGE_GRAPH.md).
+The migration plan from legacy to graph-backed default is in
+[docs/REFACTORING_PLAN.md](docs/REFACTORING_PLAN.md) and
+[docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+
+A latest cross-check between docs and code is kept in
+[docs/PROJECT_PRECISE_TRACING_PLAYBOOK.md](docs/PROJECT_PRECISE_TRACING_PLAYBOOK.md);
+outstanding follow-up work in
+[docs/PROJECT_FOLLOWUP_BACKLOG.md](docs/PROJECT_FOLLOWUP_BACKLOG.md).
+
+Earlier design notes are archived under [docs/archive/](docs/archive/).
 
 ## Built Artifacts
 
