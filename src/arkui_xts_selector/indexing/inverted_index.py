@@ -85,17 +85,20 @@ class InvertedIndex:
 def build_inverted_index(
     xts_root: Path,
     sdk_index: SdkIndexResult,
+    max_depth: int = 8,
 ) -> InvertedIndex:
     """Walk xts_root, extract usages, build api -> consumers map.
 
     Args:
         xts_root: Root directory of XTS test files
         sdk_index: SDK index for API resolution
+        max_depth: Max directory depth for ETS file search (default 8).
+                   Limits scope to avoid scanning 50K+ files.
 
     Returns:
         InvertedIndex mapping API canonical IDs to consumer entries
     """
-    ets_result = build_ets_index(xts_root)
+    ets_result = build_ets_index(xts_root, max_depth=max_depth)
     usages = extract_api_usages(ets_result, sdk_index=sdk_index)
 
     by_api: dict[str, list[ConsumerEntry]] = {}

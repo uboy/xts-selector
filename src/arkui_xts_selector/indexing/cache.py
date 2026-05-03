@@ -27,11 +27,16 @@ CACHE_ROOT = Path(
 
 
 def _dir_signature(root: Path, extensions: tuple[str, ...] = ()) -> str:
-    """Compute a signature based on dir path + file count + max mtime.
+    """Compute a fast signature based on dir path + top-level dir mtime.
+
+    For large trees (50K+ files), we avoid rglob. Instead we use:
+    - Root directory path
+    - Root directory mtime
+    - Top-level subdirectory count and mtimes (first 50)
 
     Args:
         root: Root directory to compute signature for
-        extensions: Optional file extensions to filter by
+        extensions: Ignored for performance (kept for API compatibility)
 
     Returns:
         A hex signature string (first 16 chars of SHA256)
@@ -39,19 +44,20 @@ def _dir_signature(root: Path, extensions: tuple[str, ...] = ()) -> str:
     h = hashlib.sha256()
     h.update(str(root).encode())
     if root.is_dir():
-        if extensions:
-            files = []
-            for ext in extensions:
-                files.extend(root.rglob(f"*{ext}"))
-        else:
-            files = list(root.rglob("*"))
-        h.update(str(len(files)).encode())
-        # Use max mtime of first 500 files (don't stat everything for huge dirs)
-        for f in sorted(files)[:500]:
-            try:
-                h.update(str(f.stat().st_mtime).encode())
-            except OSError:
-                pass
+        try:
+            h.update(str(root.stat().st_mtime).encode())
+        except OSError:
+            pass
+        # Sample top-level subdirs for change detection
+        try:
+            subdirs = sorted(d for d in root.iterdir() if d.is_dir())[:50]
+            for d in subdirs:
+                try:
+                    h.update(f"{d.name}:{d.stat().st_mtime}".encode())
+                except OSError:
+                    pass
+        except OSError:
+            pass
     return h.hexdigest()[:16]
 
 

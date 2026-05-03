@@ -151,11 +151,25 @@ def _extract_api_references(usages: tuple["EtsUsage", ...]) -> tuple[str, ...]:
     return tuple(sorted(api_symbols))
 
 
-def build_ets_index(xts_root: Path) -> EtsIndexResult:
+def _walk_depth(root: Path, max_depth: int):
+    """Walk directory tree up to max_depth, yielding Path entries."""
+    import os
+    root_str = str(root)
+    for dirpath, dirnames, filenames in os.walk(root):
+        depth = dirpath[len(root_str):].count(os.sep)
+        if depth >= max_depth:
+            dirnames.clear()  # Don't descend further
+        for filename in filenames:
+            yield Path(dirpath) / filename
+
+
+def build_ets_index(xts_root: Path, max_depth: int | None = None) -> EtsIndexResult:
     """Build an index of ETS test files and extract API references.
 
     Args:
         xts_root: Root directory containing XTS test files
+        max_depth: Optional max directory depth for file search.
+                   None = unlimited (default).
 
     Returns:
         EtsIndexResult with entries, errors, and usage counts
@@ -167,7 +181,14 @@ def build_ets_index(xts_root: Path) -> EtsIndexResult:
     # Find all .ets files
     ets_files: list[Path] = []
     if xts_root.is_dir():
-        ets_files = sorted(xts_root.rglob("*.ets"))
+        if max_depth is not None:
+            # Use depth-limited walk instead of rglob + filter
+            for entry in _walk_depth(xts_root, max_depth):
+                if entry.is_file() and entry.suffix == ".ets":
+                    ets_files.append(entry)
+            ets_files.sort()
+        else:
+            ets_files = sorted(xts_root.rglob("*.ets"))
 
     from .ets_parser import parse_ets_file, EtsParseResult
 

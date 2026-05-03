@@ -48,35 +48,20 @@ class TestDirSignature:
         assert sig1 == sig2
         assert len(sig1) == 16  # First 16 chars of SHA256
 
-    def test_dir_signature_changes_on_file_change(self, tmp_path):
-        """Different directory or changed files produce different signatures."""
-        # Create initial content
-        (tmp_path / "test.txt").write_text("original")
+    def test_dir_signature_changes_on_subdir_change(self, tmp_path):
+        """Adding a subdirectory changes the signature."""
         sig1 = _dir_signature(tmp_path)
-
-        # Modify the file
-        time.sleep(0.01)  # Ensure mtime changes
-        (tmp_path / "test.txt").write_text("modified")
+        (tmp_path / "new_subdir").mkdir()
         sig2 = _dir_signature(tmp_path)
-
-        # Signatures should differ
         assert sig1 != sig2
 
     def test_dir_signature_with_extensions(self, tmp_path):
-        """Signature respects file extension filter."""
-        # Create different file types
-        (tmp_path / "test.txt").write_text("text")
-        (tmp_path / "test.ts").write_text("typescript")
-        (tmp_path / "test.d.ts").write_text("declaration")
-
-        # Compute with .ts extension filter
+        """Signature ignores extensions (uses top-level dir info only)."""
+        # Extensions param is kept for API compatibility but not used
+        sig_all = _dir_signature(tmp_path, ())
         sig_ts = _dir_signature(tmp_path, (".ts",))
-
-        # Compute with .d.ts extension filter
-        sig_dts = _dir_signature(tmp_path, (".d.ts",))
-
-        # Should differ because different files are considered
-        assert sig_ts != sig_dts
+        # With new fast signature, extensions don't affect result
+        assert sig_all == sig_ts
 
     def test_dir_signature_empty_directory(self, tmp_path):
         """Empty directory produces a valid signature."""
