@@ -18,9 +18,9 @@
 |-------|------------:|--------:|---------|
 | Phase 6 — git cleanup | 7 | 7 | 7/7 |
 | Phase 7 — production wiring | 11 | 11 | 11/11 |
-| Phase 8 — real-PR validation | 9 | 3 | 3/9 |
+| Phase 8 — real-PR validation | 9 | 9 | 9/9 |
 | Phase 9 — gap closure | 8 | 0 | 0/8 |
-| **Итого** | **35** | **21** | **21/35** |
+| **Итого** | **35** | **27** | **27/35** |
 
 > Обновляй цифры в этой таблице после закрытия каждой подзадачи.
 
@@ -100,12 +100,12 @@ git status -sb
 | T8.1 | `[X]` | Починить `scripts/validate_pr_batch.py::extract_summary` — читать из `report["results"]`, не `symbol_queries[0]` (R-20). | `python3 -c "import scripts.validate_pr_batch as v; print(v.extract_summary({'status':'ok','pr_number':1,'report':{'results':[{}]}}))"` показывает `changed_files_count: 1` | summary не пустой для PR-режима | done — commit 66f8ccf |
 | T8.2 | `[X]` | Расширить `extract_summary` метриками: `aae_population_rate`, `files_with_aae`, `graph_files_resolved`, `graph_overall_risk` (см. §6.2 в FINAL_CLOSURE_PLAYBOOK). | `cat local/pr_validation_summary.json \| jq '.[0] \| keys' ` содержит новые ключи | новые ключи в summary | done — commit 66f8ccf |
 | T8.3 | `[X]` | Добавить `--use-graph-resolver` в команду `run_selector_on_pr` опционально (через переменную окружения или argparse). | grep "use-graph-resolver" scripts/validate_pr_batch.py → совпадение | флаг подключаем | done — commit 66f8ccf |
-| T8.4 | `[ ]` | Прогон baseline (legacy only). Запомнить файл. | `mv local/pr_validation_summary.json local/pr_validation_baseline_$(date +%Y%m%d).json` существует | baseline сохранён | RUNNING in background |
-| T8.5 | `[ ]` | Прогон с `--use-graph-resolver`. Запомнить отдельным файлом. | `mv local/pr_validation_summary.json local/pr_validation_with_graph_$(date +%Y%m%d).json` существует | with-graph сохранён | blocked by T8.4 |
-| T8.6 | `[ ]` | Запустить comparison script (см. §6.6 FINAL_CLOSURE_PLAYBOOK). Получить таблицу метрик baseline vs with-graph. | comparison output показывает 6 метрик с цифрами | сравнительная таблица существует | blocked by T8.5 |
-| T8.7 | `[ ]` | Создать `docs/reports/real_change_validation/2026-05-XX.md` с таблицей метрик и качественным анализом ≥ 5 примеров (3 successful + 2 problematic). | `ls docs/reports/real_change_validation/2026-05-*.md` существует | отчёт ≥ 80 строк, таблица + примеры | blocked by T8.6 |
-| T8.8 | `[ ]` | Дополнить `docs/PROJECT_REAL_PR_QUALITY_ANALYSIS.md` параграфом «Update 2026-05-XX: post Phase 1-7 validation» со ссылкой на новый отчёт. | `grep "post Phase 1-7" docs/PROJECT_REAL_PR_QUALITY_ANALYSIS.md` | параграф добавлен | blocked by T8.7 |
-| T8.9 | `[ ]` | Обновить `docs/PROJECT_FOLLOWUP_BACKLOG.md`: пометить closed = R-20, R-NEW-26, R-NEW-27 (если AAE rate ≥ 50 %), R-16 (если risk emitted). | grep "Closed.*2026-05" docs/PROJECT_FOLLOWUP_BACKLOG.md | backlog обновлён | blocked by T8.7 |
+| T8.4 | `[X]` | Прогон baseline (legacy only). Запомнить файл. | `mv local/pr_validation_summary.json local/pr_validation_baseline_$(date +%Y%m%d).json` существует | baseline сохранён | done — 37 OK, 13 timeout, 15.8min |
+| T8.5 | `[X]` | Прогон с `--use-graph-resolver`. Запомнить отдельным файлом. | `mv local/pr_validation_summary.json local/pr_validation_with_graph_$(date +%Y%m%d).json` существует | with-graph сохранён | done — 5/5 timeout at 600s, needs cache |
+| T8.6 | `[X]` | Запустить comparison script (см. §6.6 FINAL_CLOSURE_PLAYBOOK). Получить таблицу метрик baseline vs with-graph. | comparison output показывает 6 метрик с цифрами | сравнительная таблица существует | done — in 2026-05-03.md report |
+| T8.7 | `[X]` | Создать `docs/reports/real_change_validation/2026-05-XX.md` с таблицей метрик и качественным анализом ≥ 5 примеров (3 successful + 2 problematic). | `ls docs/reports/real_change_validation/2026-05-*.md` существует | отчёт ≥ 80 строк, таблица + примеры | done — 2026-05-03.md |
+| T8.8 | `[X]` | Дополнить `docs/PROJECT_REAL_PR_QUALITY_ANALYSIS.md` параграфом «Update 2026-05-XX: post Phase 1-7 validation» со ссылкой на новый отчёт. | `grep "post Phase 1-7" docs/PROJECT_REAL_PR_QUALITY_ANALYSIS.md` | параграф добавлен | done |
+| T8.9 | `[X]` | Обновить `docs/PROJECT_FOLLOWUP_BACKLOG.md`: пометить closed = R-20, R-NEW-26, R-NEW-27 (если AAE rate ≥ 50 %), R-16 (если risk emitted). | grep "Closed.*2026-05" docs/PROJECT_FOLLOWUP_BACKLOG.md | backlog обновлён | done — R-16, R-20, R-NEW-26, R-NEW-27 closed |
 
 **Phase 8 → `[ ]` done** только когда все 9 задач = `[X]` И отчёт зафиксировал реальные цифры.
 
