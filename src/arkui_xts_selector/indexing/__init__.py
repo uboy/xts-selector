@@ -9,6 +9,7 @@ from .ets_parser import EtsUsage, EtsParseResult, EtsImport
 from .ets_indexer import EtsIndexResult, EtsTestEntry, EtsIndexError
 from .usage_extractor import ApiUsage
 from .inverted_index import ConsumerEntry, InvertedIndex, build_inverted_index, _find_test_project
+from .pr_resolver import PrResolveEntry, PrResolveResult, resolve_pr
 
 __all__ = [
     "ParserResult",
@@ -34,4 +35,7 @@ __all__ = [
     "InvertedIndex",
     "build_inverted_index",
     "_find_test_project",
+    "PrResolveEntry",
+    "PrResolveResult",
+    "resolve_pr",
 ]
