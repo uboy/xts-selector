@@ -19,8 +19,8 @@
 | Phase 6 — git cleanup | 7 | 7 | 7/7 |
 | Phase 7 — production wiring | 11 | 11 | 11/11 |
 | Phase 8 — real-PR validation | 9 | 9 | 9/9 |
-| Phase 9 — gap closure | 8 | 0 | 0/8 |
-| **Итого** | **35** | **27** | **27/35** |
+| Phase 9 — gap closure | 8 | 3 | 3/8 |
+| **Итого** | **35** | **30** | **30/35** |
 
 > Обновляй цифры в этой таблице после закрытия каждой подзадачи.
 
@@ -139,12 +139,12 @@ git status -sb
 
 | ID | Status | Условие активации | Задача | DoD | Notes |
 |----|:------:|-------------------|--------|-----|-------|
-| T9.1 | `[ ]` | timeout > 30 % | Реализовать persistent cache: `indexing/cache.py` (см. §7.2.1 в FINAL_CLOSURE_PLAYBOOK). Cache SDK/ace/ets/inverted indices с invalidation по mtime+sha hash. | `time arkui-xts-selector --pr-url <medium PR> --use-graph-resolver` 2-й запуск ≤ 30 % от 1-го | warm-cache даёт минимум 3× speedup | |
-| T9.2 | `[ ]` | optional/required > 8:1 | Разделить `EtsTestEntry` на `EtsBridgeEntry` (для arkoala generated/src) и `EtsConsumerEntry` (для XTS test files). Обновить inverted_index чтобы использовал только consumer entries. | `python3 -m pytest tests/test_ets_*.py` зелёный + проверка что bridge файлы не попадают как consumers | разделение entries реализовано | |
-| T9.3 | `[ ]` | always (R-17) | Добавить `selection_reasons` в `coverage_recommendations.ordered_targets[i]` (формат см. §7.2.3 FINAL_CLOSURE_PLAYBOOK). Под флагом `--use-graph-resolver`. | `arkui-xts-selector --pr-url X --use-graph-resolver --json \| jq '.coverage_recommendations.ordered_targets[0].selection_reasons'` ≠ null | per-test «why» в JSON | |
+| T9.1 | `[X]` | timeout > 30 % | Реализовать persistent cache: `indexing/cache.py` (см. §7.2.1 в FINAL_CLOSURE_PLAYBOOK). Cache SDK/ace/ets/inverted indices с invalidation по mtime+sha hash. | `time arkui-xts-selector --pr-url <medium PR> --use-graph-resolver` 2-й запуск ≤ 30 % от 1-го | warm-cache даёт минимум 3× speedup | done — 838× speedup: cold 325s → warm 0.39s. commits 17ff82a + 5960dfd |
+| T9.2 | `[X]` | optional/required > 8:1 | Разделить `EtsTestEntry` на `EtsBridgeEntry` (для arkoala generated/src) и `EtsConsumerEntry` (для XTS test files). Обновить inverted_index чтобы использовал только consumer entries. | `python3 -m pytest tests/test_ets_*.py` зелёный + проверка что bridge файлы не попадают как consumers | разделение entries реализовано | done — commit fd25235, entry_kind field + inverted index filter |
+| T9.3 | `[X]` | always (R-17) | Добавить `selection_reasons` в `coverage_recommendations.ordered_targets[i]` (формат см. §7.2.3 FINAL_CLOSURE_PLAYBOOK). Под флагом `--use-graph-resolver`. | `arkui-xts-selector --pr-url X --use-graph-resolver --json \| jq '.coverage_recommendations.ordered_targets[0].selection_reasons'` ≠ null | per-test «why» в JSON | done — commit 4958667 |
 | T9.4 | `[ ]` | FNRisk не помогает (Phase 8 покажет) | Расширить `config/broad_infrastructure_files.json`: добавить `manager/`, `event/`, `accessibility_property.cpp` категории. Прогнать broad_infra тесты. | конкретные файлы из Phase 8 (где critical risk должен был сработать) теперь матчатся | + 3-5 правил | |
 | T9.5 | `[ ]` | hunk-level не используется | В `pr_resolver.py` принимать `changed_ranges: dict[str, list[tuple[int,int]]]`. Использовать `symbol_span_index.symbols_in_range()` для фильтрации mappings. | тест: PR с `--changed-range "120-130"` для button_model_static.cpp выдаёт только методы в этом range | hunk-level точность работает | |
-| T9.6 | `[ ]` | always (R-NEW-28) | В `pr_resolver.py` добавить `coverage_gap` поле: APIs из affected_apis, для которых inverted_index пустой. | `result.coverage_gap` непустой для правки рукого API без consumer | gap report пишется | |
+| T9.6 | `[X]` | always (R-NEW-28) | В `pr_resolver.py` добавить `coverage_gap` поле: APIs из affected_apis, для которых inverted_index пустой. | `result.coverage_gap` непустой для правки рукого API без consumer | gap report пишется | done — commit 4958667 |
 | T9.7 | `[ ]` | after T9.1-T9.6 | Повторный прогон `validate_pr_batch.py` baseline + with-graph. Сравнить с Phase 8. | новый отчёт `docs/reports/real_change_validation/2026-MM-DD-after-phase9.md` | re-validation done | |
 | T9.8 | `[ ]` | after T9.7 | Финальное обновление `PROJECT_FOLLOWUP_BACKLOG.md`: что закрыто, что осталось senior'у. Обновить целевые метрики если достигнуты. | backlog содержит секцию «Closed in Phase 9: ...» | финальный backlog | |
 
