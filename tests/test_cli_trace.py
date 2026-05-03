@@ -7,7 +7,7 @@ import os
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from arkui_xts_selector.cli.trace import cmd_trace
+from arkui_xts_selector.indexing.trace import cmd_trace
 
 
 class CliTraceTests(unittest.TestCase):
@@ -35,7 +35,7 @@ class CliTraceTests(unittest.TestCase):
         result = cmd_trace(args)
         self.assertEqual(result, 1)
 
-    @patch('arkui_xts_selector.cli.trace.Path')
+    @patch('arkui_xts_selector.indexing.trace.Path')
     def test_trace_with_valid_file(self, mock_path):
         """Test that trace can handle a file path."""
         args = Mock()

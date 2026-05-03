@@ -1,10 +1,27 @@
 """Indexing subpackage — SDK, C++, and ArkTS source parsers and indexers."""
 
+from .parser_contracts import ParserResult, SymbolDiscovery, _level_to_provenance
+from .sdk_indexer import SdkIndexEntry, SdkIndexResult
+from .ace_indexer import AceIndexEntry, AceIndexResult, AceSourceEntry
+from .artifact_indexer import ArtifactEntry, ArtifactIndexResult
+from .xts_indexer import XtsIndexResult, XtsProjectEntry
 from .ets_parser import EtsUsage, EtsParseResult, EtsImport
 from .ets_indexer import EtsIndexResult, EtsTestEntry, EtsIndexError
 from .usage_extractor import ApiUsage
 
 __all__ = [
+    "ParserResult",
+    "SymbolDiscovery",
+    "_level_to_provenance",
+    "SdkIndexEntry",
+    "SdkIndexResult",
+    "AceIndexEntry",
+    "AceIndexResult",
+    "AceSourceEntry",
+    "ArtifactEntry",
+    "ArtifactIndexResult",
+    "XtsIndexResult",
+    "XtsProjectEntry",
     "EtsUsage",
     "EtsParseResult",
     "EtsImport",

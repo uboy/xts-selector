@@ -6,7 +6,7 @@ import os
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from arkui_xts_selector.cli.explain import cmd_explain
+from arkui_xts_selector.indexing.explain import cmd_explain
 
 
 class CliExplainTests(unittest.TestCase):
@@ -23,7 +23,7 @@ class CliExplainTests(unittest.TestCase):
         result = cmd_explain(args)
         self.assertEqual(result, 1)
 
-    @patch('arkui_xts_selector.cli.explain.Path')
+    @patch('arkui_xts_selector.indexing.explain.Path')
     @patch('arkui_xts_selector.indexing.ets_indexer.build_ets_index')
     def test_explain_with_valid_directory(self, mock_build_index, mock_path):
         """Test that explain can handle a directory path."""
