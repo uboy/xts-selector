@@ -1468,6 +1468,11 @@ def parse_args() -> argparse.Namespace:
     explain_parser = subparsers.add_parser("explain", help="List API entities that a test project covers")
     explain_parser.add_argument("test_project", help="Path to the test project directory")
 
+    parser.add_argument(
+        "--use-graph-resolver", action="store_true",
+        help="Add graph-based selection results in JSON under 'graph_selection' key. Experimental, default off.",
+    )
+
     return parser.parse_args()
 
 
@@ -2157,6 +2162,63 @@ def main() -> int:
         "main_report_call": round((time.perf_counter() - report_started) * 1000, 3),
     })
     report["timings_ms"]["total_runtime"] = round((time.perf_counter() - runtime_started) * 1000, 3)
+    # ---- Graph-based resolver (Phase 7, experimental, under flag) ----
+    if args.use_graph_resolver and changed_files:
+        try:
+            from .indexing.sdk_indexer import build_sdk_index
+            from .indexing.ace_indexer import build_ace_index
+            from .indexing.inverted_index import build_inverted_index
+            from .indexing.pr_resolver import resolve_pr
+
+            graph_started = time.perf_counter()
+
+            _sdk_root = app_config.sdk_api_root or (app_config.repo_root / "interface/sdk-js/api")
+            _ace_root = app_config.repo_root / "foundation/arkui/ace_engine"
+            _xts_root = app_config.xts_root
+
+            _sdk = build_sdk_index(_sdk_root) if _sdk_root.is_dir() else SdkIndexResult()
+            _ace = build_ace_index(_ace_root) if _ace_root.is_dir() else AceIndexResult()
+            _inverted = build_inverted_index(_xts_root, sdk_index=_sdk) if _xts_root and _xts_root.is_dir() else InvertedIndex()
+
+            _broad_rules = PROJECT_ROOT / "config" / "broad_infrastructure_files.json"
+            _result = resolve_pr(
+                changed_files=[str(f) for f in changed_files],
+                ace_index=_ace,
+                sdk_index=_sdk,
+                inverted=_inverted,
+                broad_rules_path=_broad_rules if _broad_rules.exists() else None,
+            )
+
+            def _entry_to_dict(e):
+                d = {
+                    "changed_file": e.changed_file,
+                    "affected_apis": list(e.affected_apis),
+                    "consumer_projects": list(e.consumer_projects),
+                    "false_negative_risk": e.false_negative_risk,
+                    "parser_level": e.parser_level,
+                }
+                if e.broad_infra_match is not None:
+                    d["broad_infra_match"] = {
+                        "rule_id": e.broad_infra_match.rule_id,
+                        "pattern": e.broad_infra_match.pattern,
+                        "risk": e.broad_infra_match.false_negative_risk,
+                    }
+                return d
+
+            report["graph_selection"] = {
+                "schema_version": "graph-pr-v1",
+                "entries": [_entry_to_dict(e) for e in _result.entries],
+                "overall_false_negative_risk": _result.overall_false_negative_risk,
+                "index_stats": {
+                    "sdk_entries": len(_sdk.entries),
+                    "ace_entries": len(_ace.entries),
+                    "inverted_apis": len(_inverted.by_api),
+                },
+            }
+            report["timings_ms"]["graph_resolver"] = round((time.perf_counter() - graph_started) * 1000, 3)
+        except Exception as exc:
+            report["graph_selection"] = {"error": str(exc)}
+    # ---- End graph-based resolver ----
     report["json_output_mode"] = "stdout" if json_to_stdout else "file"
     report["requested_devices"] = list(app_config.devices)
     report["execution_server_host"] = app_config.server_host or ""
