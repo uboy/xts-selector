@@ -23,6 +23,21 @@ class ConsumerEntry:
     usage_kind: str          # "component_instantiation" | "chained_modifier" | ...
     confidence: str
 
+    def to_dict(self) -> dict:
+        """Return a JSON-compatible dict."""
+        return {
+            "project_path": self.project_path,
+            "file_path": self.file_path,
+            "line": self.line,
+            "usage_kind": self.usage_kind,
+            "confidence": self.confidence,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> ConsumerEntry:
+        """Reconstruct from a dict produced by :meth:`to_dict`."""
+        return cls(**data)
+
 
 @dataclass
 class InvertedIndex:
@@ -48,6 +63,23 @@ class InvertedIndex:
     def total_consumers(self) -> int:
         """Total consumer entries across all APIs."""
         return sum(len(entries) for entries in self.by_api.values())
+
+    def to_dict(self) -> dict:
+        """Return a JSON-compatible dict."""
+        return {
+            "by_api": {
+                api: [e.to_dict() for e in entries]
+                for api, entries in self.by_api.items()
+            }
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> InvertedIndex:
+        """Reconstruct from a dict produced by :meth:`to_dict`."""
+        by_api = {}
+        for api, entries in data.get("by_api", {}).items():
+            by_api[api] = [ConsumerEntry.from_dict(e) for e in entries]
+        return cls(by_api=by_api)
 
 
 def build_inverted_index(

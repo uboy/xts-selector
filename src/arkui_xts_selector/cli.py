@@ -2165,9 +2165,10 @@ def main() -> int:
     # ---- Graph-based resolver (Phase 7, experimental, under flag) ----
     if args.use_graph_resolver and changed_files:
         try:
-            from .indexing.sdk_indexer import build_sdk_index
-            from .indexing.ace_indexer import build_ace_index
-            from .indexing.inverted_index import build_inverted_index
+            from .indexing.cache import cached_sdk_index, cached_ace_index, cached_inverted_index
+            from .indexing.sdk_indexer import SdkIndexResult
+            from .indexing.ace_indexer import AceIndexResult
+            from .indexing.inverted_index import InvertedIndex
             from .indexing.pr_resolver import resolve_pr
 
             graph_started = time.perf_counter()
@@ -2176,9 +2177,9 @@ def main() -> int:
             _ace_root = app_config.repo_root / "foundation/arkui/ace_engine"
             _xts_root = app_config.xts_root
 
-            _sdk = build_sdk_index(_sdk_root) if _sdk_root.is_dir() else SdkIndexResult()
-            _ace = build_ace_index(_ace_root) if _ace_root.is_dir() else AceIndexResult()
-            _inverted = build_inverted_index(_xts_root, sdk_index=_sdk) if _xts_root and _xts_root.is_dir() else InvertedIndex()
+            _sdk = cached_sdk_index(_sdk_root) if _sdk_root.is_dir() else SdkIndexResult()
+            _ace = cached_ace_index(_ace_root) if _ace_root.is_dir() else AceIndexResult()
+            _inverted = cached_inverted_index(_xts_root, sdk_index=_sdk) if _xts_root and _xts_root.is_dir() else InvertedIndex()
 
             _broad_rules = PROJECT_ROOT / "config" / "broad_infrastructure_files.json"
             _result = resolve_pr(
