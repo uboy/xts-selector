@@ -34,6 +34,7 @@ class SourceApiMapping:
     api_public_name: str  # SDK API name (e.g., role)
     confidence: ConfidenceLevel  # Mapping confidence level
     file_role: str  # File role that produced this mapping
+    source_file_path: str  # Source file path (e.g., foundations/arkui/ace_engine/button.cpp)
 
     def to_dict(self) -> dict:
         """Return a JSON-compatible dict."""
@@ -42,6 +43,7 @@ class SourceApiMapping:
             "api_public_name": self.api_public_name,
             "confidence": self.confidence,
             "file_role": self.file_role,
+            "source_file_path": self.source_file_path,
         }
 
 
@@ -65,11 +67,12 @@ def build_source_to_api_mapping(
     for entry in ace_index.entries:
         role = entry.role
         family = entry.family
+        file_path = entry.file_path
 
         # Process classes and their methods
         for cls in entry.classes:
             for method in cls.methods:
-                mapping = _map_method_by_role(method, role, family)
+                mapping = _map_method_by_role(method, role, family, file_path)
                 if mapping:
                     # Filter weak mappings against SDK registry
                     if sdk_index is not None and mapping.confidence == "weak":
@@ -82,6 +85,7 @@ def build_source_to_api_mapping(
                             api_public_name=mapping.api_public_name,
                             confidence="medium",  # SDK-confirmed
                             file_role=mapping.file_role,
+                            source_file_path=mapping.source_file_path,
                         )
                     mappings.append(mapping)
 
@@ -89,7 +93,7 @@ def build_source_to_api_mapping(
         for func_name in entry.free_functions:
             # Create a synthetic method for free functions
             synthetic_method = CppMethod(name=func_name)
-            mapping = _map_method_by_role(synthetic_method, role, family)
+            mapping = _map_method_by_role(synthetic_method, role, family, file_path)
             if mapping:
                 # Filter weak mappings against SDK registry
                 if sdk_index is not None and mapping.confidence == "weak":
@@ -102,6 +106,7 @@ def build_source_to_api_mapping(
                         api_public_name=mapping.api_public_name,
                         confidence="medium",  # SDK-confirmed
                         file_role=mapping.file_role,
+                        source_file_path=mapping.source_file_path,
                     )
                 mappings.append(mapping)
 
@@ -112,6 +117,7 @@ def _map_method_by_role(
     method: CppMethod,
     role: str,
     family: str | None,
+    file_path: str,
 ) -> SourceApiMapping | None:
     """Map a method to an API name based on its role.
 
@@ -119,6 +125,7 @@ def _map_method_by_role(
         method: The C++ method to map
         role: The file role
         family: The component family
+        file_path: The source file path
 
     Returns:
         SourceApiMapping or None if no mapping applies
@@ -127,27 +134,27 @@ def _map_method_by_role(
     qualified = method.qualified or f"{family}::{method_name}" if family else method_name
 
     if role == "model_static":
-        return _map_model_static(method_name, qualified, role)
+        return _map_model_static(method_name, qualified, role, file_path)
 
     if role == "model_ng":
-        return _map_model_ng(method_name, qualified, role)
+        return _map_model_ng(method_name, qualified, role, file_path)
 
     if role == "native_modifier":
-        return _map_native_modifier(method_name, qualified, role)
+        return _map_native_modifier(method_name, qualified, role, file_path)
 
     if role == "native_node_accessor":
-        return _map_native_node_accessor(method_name, qualified, role)
+        return _map_native_node_accessor(method_name, qualified, role, file_path)
 
     if role == "jsview_dynamic":
-        return _map_jsview_dynamic(method_name, qualified, role)
+        return _map_jsview_dynamic(method_name, qualified, role, file_path)
 
     if role == "pattern":
-        return _map_pattern(method_name, qualified, role)
+        return _map_pattern(method_name, qualified, role, file_path)
 
     return None
 
 
-def _map_model_static(method_name: str, qualified: str, role: str) -> SourceApiMapping | None:
+def _map_model_static(method_name: str, qualified: str, role: str, file_path: str) -> SourceApiMapping | None:
     """Map model_static method to API name.
 
     SetXxx() → Xxx (camelCase)
@@ -168,12 +175,13 @@ def _map_model_static(method_name: str, qualified: str, role: str) -> SourceApiM
             api_public_name=api_name,
             confidence="strong",
             file_role=role,
+            source_file_path=file_path,
         )
 
     return None
 
 
-def _map_model_ng(method_name: str, qualified: str, role: str) -> SourceApiMapping | None:
+def _map_model_ng(method_name: str, qualified: str, role: str, file_path: str) -> SourceApiMapping | None:
     """Map model_ng method to API name.
 
     Similar to model_static but for NG API.
@@ -190,12 +198,13 @@ def _map_model_ng(method_name: str, qualified: str, role: str) -> SourceApiMappi
             api_public_name=api_name,
             confidence="strong",
             file_role=role,
+            source_file_path=file_path,
         )
 
     return None
 
 
-def _map_native_modifier(method_name: str, qualified: str, role: str) -> SourceApiMapping | None:
+def _map_native_modifier(method_name: str, qualified: str, role: str, file_path: str) -> SourceApiMapping | None:
     """Map native modifier method to API name.
 
     SetXxx() → Xxx (native API)
@@ -210,6 +219,7 @@ def _map_native_modifier(method_name: str, qualified: str, role: str) -> SourceA
                 api_public_name=api_name,
                 confidence="strong",
                 file_role=role,
+                source_file_path=file_path,
             )
     elif method_name.startswith("Reset"):
         name = method_name[5:]
@@ -220,12 +230,13 @@ def _map_native_modifier(method_name: str, qualified: str, role: str) -> SourceA
                 api_public_name=api_name,
                 confidence="medium",  # Reset is weaker than Set
                 file_role=role,
+                source_file_path=file_path,
             )
 
     return None
 
 
-def _map_native_node_accessor(method_name: str, qualified: str, role: str) -> SourceApiMapping | None:
+def _map_native_node_accessor(method_name: str, qualified: str, role: str, file_path: str) -> SourceApiMapping | None:
     """Map native node accessor method to API name.
 
     GetXxx() → Xxx (read API)
@@ -240,6 +251,7 @@ def _map_native_node_accessor(method_name: str, qualified: str, role: str) -> So
                 api_public_name=api_name,
                 confidence="strong",
                 file_role=role,
+                source_file_path=file_path,
             )
     elif method_name.startswith("Set"):
         name = method_name[3:]
@@ -250,12 +262,13 @@ def _map_native_node_accessor(method_name: str, qualified: str, role: str) -> So
                 api_public_name=api_name,
                 confidence="medium",  # Set in accessor is weaker than Get
                 file_role=role,
+                source_file_path=file_path,
             )
 
     return None
 
 
-def _map_jsview_dynamic(method_name: str, qualified: str, role: str) -> SourceApiMapping | None:
+def _map_jsview_dynamic(method_name: str, qualified: str, role: str, file_path: str) -> SourceApiMapping | None:
     """Map JS view dynamic method to API name.
 
     JsXxx() → Xxx
@@ -267,6 +280,7 @@ def _map_jsview_dynamic(method_name: str, qualified: str, role: str) -> SourceAp
             api_public_name="create",
             confidence="strong",
             file_role=role,
+            source_file_path=file_path,
         )
 
     if method_name.startswith("Js"):
@@ -278,12 +292,13 @@ def _map_jsview_dynamic(method_name: str, qualified: str, role: str) -> SourceAp
                 api_public_name=api_name,
                 confidence="strong",
                 file_role=role,
+                source_file_path=file_path,
             )
 
     return None
 
 
-def _map_pattern(method_name: str, qualified: str, role: str) -> SourceApiMapping | None:
+def _map_pattern(method_name: str, qualified: str, role: str, file_path: str) -> SourceApiMapping | None:
     """Map pattern method to API name.
 
     Pattern methods have lower confidence as they're internal implementation.
@@ -295,4 +310,5 @@ def _map_pattern(method_name: str, qualified: str, role: str) -> SourceApiMappin
         api_public_name=method_name,
         confidence="weak",  # Pattern methods are internal
         file_role=role,
+        source_file_path=file_path,
     )

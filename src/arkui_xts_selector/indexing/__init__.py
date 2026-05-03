@@ -8,6 +8,7 @@ from .xts_indexer import XtsIndexResult, XtsProjectEntry
 from .ets_parser import EtsUsage, EtsParseResult, EtsImport
 from .ets_indexer import EtsIndexResult, EtsTestEntry, EtsIndexError
 from .usage_extractor import ApiUsage
+from .inverted_index import ConsumerEntry, InvertedIndex, build_inverted_index, _find_test_project
 
 __all__ = [
     "ParserResult",
@@ -29,4 +30,8 @@ __all__ = [
     "EtsTestEntry",
     "EtsIndexError",
     "ApiUsage",
+    "ConsumerEntry",
+    "InvertedIndex",
+    "build_inverted_index",
+    "_find_test_project",
 ]

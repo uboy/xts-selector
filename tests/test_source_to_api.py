@@ -206,12 +206,14 @@ class TestSourceApiMapping:
             api_public_name="role",
             confidence="strong",
             file_role="model_static",
+            source_file_path="test.cpp",
         )
         d = mapping.to_dict()
         assert d["source_qualified"] == "ButtonModelStatic::SetRole"
         assert d["api_public_name"] == "role"
         assert d["confidence"] == "strong"
         assert d["file_role"] == "model_static"
+        assert d["source_file_path"] == "test.cpp"
 
     def test_camel_case_conversion(self):
         """SetButtonStyle maps to buttonStyle."""
@@ -221,6 +223,7 @@ class TestSourceApiMapping:
             api_public_name="buttonStyle",
             confidence="strong",
             file_role="model_static",
+            source_file_path="test.cpp",
         )
         assert mapping.api_public_name == "buttonStyle"
         assert mapping.api_public_name[0].islower()  # First character is lowercase
@@ -232,6 +235,7 @@ class TestSourceApiMapping:
             api_public_name="x",
             confidence="strong",
             file_role="model_static",
+            source_file_path="test.cpp",
         )
         assert mapping.api_public_name == "x"
 
@@ -247,6 +251,7 @@ class TestConfidenceLevels:
             api_public_name="role",
             confidence="strong",
             file_role="model_static",
+            source_file_path="test.cpp",
         )
         assert mapping.confidence == "strong"
 
@@ -257,6 +262,7 @@ class TestConfidenceLevels:
             api_public_name="role",
             confidence="strong",
             file_role="native_modifier",
+            source_file_path="test.cpp",
         )
         assert mapping.confidence == "strong"
 
@@ -267,6 +273,7 @@ class TestConfidenceLevels:
             api_public_name="role",
             confidence="medium",
             file_role="native_modifier",
+            source_file_path="test.cpp",
         )
         assert mapping.confidence == "medium"
 
@@ -277,6 +284,7 @@ class TestConfidenceLevels:
             api_public_name="role",
             confidence="strong",
             file_role="native_node_accessor",
+            source_file_path="test.cpp",
         )
         assert mapping.confidence == "strong"
 
@@ -287,6 +295,7 @@ class TestConfidenceLevels:
             api_public_name="role",
             confidence="medium",
             file_role="native_node_accessor",
+            source_file_path="test.cpp",
         )
         assert mapping.confidence == "medium"
 
@@ -297,6 +306,7 @@ class TestConfidenceLevels:
             api_public_name="OnModifyDone",
             confidence="weak",
             file_role="pattern",
+            source_file_path="test.cpp",
         )
         assert mapping.confidence == "weak"
 
