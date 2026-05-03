@@ -58,6 +58,26 @@ class Evidence:
     provenance: str = "fallback_heuristic"  # one of _PROVENANCE_KINDS
     note: str | None = None
 
+    def __post_init__(self) -> None:
+        if self.provenance not in _PROVENANCE_KINDS:
+            raise ValueError(
+                f"Evidence.provenance={self.provenance!r} is not one of "
+                f"{_PROVENANCE_KINDS}"
+            )
+        if self.confidence_level not in ("strong", "medium", "weak", "unknown"):
+            raise ValueError(
+                f"Evidence.confidence_level={self.confidence_level!r} invalid"
+            )
+        if self.parser_level == 0 and self.provenance in ("parser", "config_rule"):
+            raise ValueError(
+                f"parser_level=0 is incompatible with provenance="
+                f"{self.provenance!r}; use 'fallback_heuristic' or 'path_rule'"
+            )
+        if not (0 <= self.parser_level <= 3):
+            raise ValueError(
+                f"Evidence.parser_level={self.parser_level} must be in [0, 3]"
+            )
+
     @property
     def is_artifact(self) -> bool:
         """True if this evidence comes from an artifact/build output."""

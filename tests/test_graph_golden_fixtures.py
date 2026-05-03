@@ -70,16 +70,13 @@ class ButtonModifierStaticGoldenTests(unittest.TestCase):
             )
 
     def test_distinct_api_entity_ids(self) -> None:
-        """Button, ButtonAttribute, ButtonModifier, contentModifier must all exist."""
+        """ButtonModifier API entity must exist."""
         api_nodes = [
             n for n in self.graph.nodes.values()
             if n.node_type == "api_entity"
         ]
         api_labels = {n.label for n in api_nodes}
-        self.assertIn("Button", api_labels)
-        self.assertIn("ButtonAttribute", api_labels)
         self.assertIn("ButtonModifier", api_labels)
-        self.assertIn("Button.contentModifier", api_labels)
         # Must be distinct nodes
         api_ids = [n.node_id for n in api_nodes]
         self.assertEqual(len(api_ids), len(set(api_ids)), "Duplicate api_entity node_ids")

@@ -13,8 +13,12 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from arkui_xts_selector.model.evidence import ConfidenceLevel
-from arkui_xts_selector.model.usage import CoverageEquivalenceClass
+from arkui_xts_selector.model.usage import CoverageEquivalenceClass, UsageKind
 from arkui_xts_selector.graph.schema import Graph
+from arkui_xts_selector.model.buckets import (
+    BucketGateInputs,
+    violates_must_run_gate,
+)
 
 
 ValidationSeverity = Literal["error", "warning"]
@@ -109,22 +113,34 @@ def validate_graph(graph: Graph) -> ValidationResult:
                         node_id=target_node.node_id,
                     ))
 
-        # 3. Artifact edge used as semantic evidence
-        if edge.edge_type == "produces_artifact":
-            if edge.source_impact_confidence != "unknown" or edge.consumer_usage_confidence != "unknown":
-                result.errors.append(ValidationFinding(
-                    severity="error",
-                    rule="artifact_as_semantic_evidence",
-                    message=(
-                        f"Artifact edge '{edge.edge_id}' must not set "
-                        "source_impact or consumer_usage confidence"
-                    ),
-                    edge_id=edge.edge_id,
-                    detail={
-                        "source_impact_confidence": edge.source_impact_confidence,
-                        "consumer_usage_confidence": edge.consumer_usage_confidence,
-                    },
-                ))
+        # 3. Artifact-provenance edge used as semantic evidence.
+        # Apply to ANY edge whose evidence.provenance == "artifact",
+        # not only produces_artifact.
+        is_artifact = (
+            edge.edge_type == "produces_artifact"
+            or edge.evidence.provenance == "artifact"
+        )
+        if is_artifact and (
+            edge.source_impact_confidence != "unknown"
+            or edge.consumer_usage_confidence != "unknown"
+        ):
+            result.errors.append(ValidationFinding(
+                severity="error",
+                rule="artifact_as_semantic_evidence",
+                message=(
+                    f"Artifact-backed edge '{edge.edge_id}' "
+                    f"(type={edge.edge_type!r}, provenance="
+                    f"{edge.evidence.provenance!r}) must not set "
+                    "source_impact_confidence or consumer_usage_confidence"
+                ),
+                edge_id=edge.edge_id,
+                detail={
+                    "edge_type": edge.edge_type,
+                    "provenance": edge.evidence.provenance,
+                    "source_impact_confidence": edge.source_impact_confidence,
+                    "consumer_usage_confidence": edge.consumer_usage_confidence,
+                },
+            ))
 
         # 4. Generic fan-out edge missing generic=true
         if edge.edge_type == "fanout_accessor" and not edge.generic:
@@ -202,35 +218,48 @@ def validate_must_run_candidate(
     evidence_provenances: tuple[str, ...] = (),
     parser_levels: tuple[int, ...] = (),
     evidence_chain_ids: tuple[str, ...] = (),
+    usage_kind: UsageKind = "unknown",
+    api_kind: str = "",
+    only_fallback_source_evidence: bool | None = None,
+    only_path_rule_source_evidence: bool | None = None,
+    generic_fanout: bool = False,
+    no_better_exact_same_shape_test_exists: bool = False,
+    semantic_blockers: tuple[str, ...] = (),
 ) -> list[ValidationFinding]:
-    """Validate whether a candidate qualifies for must_run bucket.
+    """Validate whether a candidate qualifies for the must_run bucket.
 
-    Returns a list of findings (empty if the candidate is valid).
+    This is the canonical mirror of ``ranking.buckets.assign_bucket`` for
+    must_run.  It MUST stay aligned: any rule that ``assign_bucket`` uses
+    to deny must_run must produce a finding here.
     """
+    # Derive boolean flags from raw provenance/parser tuples for backward
+    # compatibility with existing callers that pass these tuples instead
+    # of explicit booleans.
+    if only_fallback_source_evidence is None:
+        only_fallback_source_evidence = bool(evidence_provenances) and all(
+            p == "fallback_heuristic" for p in evidence_provenances
+        )
+    if only_path_rule_source_evidence is None:
+        only_path_rule_source_evidence = bool(evidence_provenances) and all(
+            p == "path_rule" for p in evidence_provenances
+        )
+
+    inputs = BucketGateInputs(
+        source_impact_confidence=source_impact_confidence,
+        consumer_usage_confidence=consumer_usage_confidence,
+        coverage_equivalence=coverage_equivalence,
+        usage_kind=usage_kind,
+        api_kind=api_kind,
+        only_fallback_source_evidence=only_fallback_source_evidence,
+        only_path_rule_source_evidence=only_path_rule_source_evidence,
+        generic_fanout=generic_fanout,
+        no_better_exact_same_shape_test_exists=no_better_exact_same_shape_test_exists,
+        semantic_blockers=semantic_blockers,
+    )
+
     findings: list[ValidationFinding] = []
 
-    # harness_only_usage cannot be must_run
-    if coverage_equivalence == "harness_only_usage":
-        findings.append(ValidationFinding(
-            severity="error",
-            rule="must_run_harness_only",
-            message="harness_only_usage cannot validate as must_run",
-            detail={"coverage_equivalence": coverage_equivalence},
-        ))
-
-    # Weak-only evidence cannot produce must_run
-    if source_impact_confidence == "weak" and consumer_usage_confidence == "weak":
-        findings.append(ValidationFinding(
-            severity="error",
-            rule="must_run_weak_only",
-            message="Weak-only evidence cannot produce must_run candidate",
-            detail={
-                "source_impact_confidence": source_impact_confidence,
-                "consumer_usage_confidence": consumer_usage_confidence,
-            },
-        ))
-
-    # parser_level=0 evidence alone cannot produce must_run
+    # Extra rule: parser_level=0 alone never produces must_run.
     if parser_levels and all(p == 0 for p in parser_levels):
         findings.append(ValidationFinding(
             severity="error",
@@ -239,13 +268,18 @@ def validate_must_run_candidate(
             detail={"parser_levels": list(parser_levels)},
         ))
 
-    # Only fallback_heuristic evidence cannot produce must_run
-    if evidence_provenances and all(p == "fallback_heuristic" for p in evidence_provenances):
+    for rule in violates_must_run_gate(inputs):
         findings.append(ValidationFinding(
-            severity="warning",
-            rule="must_run_fallback_only",
-            message="Only fallback_heuristic evidence cannot produce must_run",
-            detail={"provenances": list(evidence_provenances)},
+            severity="error",
+            rule=rule,
+            message=f"must_run gate violation: {rule}",
+            detail={
+                "coverage_equivalence": coverage_equivalence,
+                "source_impact_confidence": source_impact_confidence,
+                "consumer_usage_confidence": consumer_usage_confidence,
+                "usage_kind": usage_kind,
+                "api_kind": api_kind,
+            },
         ))
 
     return findings

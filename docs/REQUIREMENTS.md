@@ -1,3 +1,10 @@
+> **STATE-AS-OF: 2026-05-01.** Goals and contracts described here are
+> still valid. Bucket names have evolved: this document lists
+> `must-run / high-confidence related / possible related / unresolved`,
+> while the current code uses
+> `must_run / recommended / possible / unresolved` (see
+> [TARGET_ARCHITECTURE.md](TARGET_ARCHITECTURE.md)).
+
 # Requirements
 
 ## Goal

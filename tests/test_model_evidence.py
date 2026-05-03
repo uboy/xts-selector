@@ -23,7 +23,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertFalse(ev.is_semantic)
 
     def test_parser_evidence_is_semantic(self) -> None:
-        ev = Evidence(provenance="parser", source="tree-sitter")
+        ev = Evidence(provenance="parser", source="tree-sitter", parser_level=2)
         self.assertFalse(ev.is_artifact)
         self.assertTrue(ev.is_semantic)
 
@@ -113,6 +113,42 @@ class EvidenceEdgeTests(unittest.TestCase):
         self.assertEqual(edge.source_impact_confidence, "unknown")
         self.assertEqual(edge.consumer_usage_confidence, "unknown")
         self.assertNotEqual(edge.runnability_confidence, "unknown")
+
+
+class EvidencePostInitValidationTests(unittest.TestCase):
+    """Runtime validation of Evidence field invariants."""
+
+    def test_invalid_provenance_raises(self) -> None:
+        with self.assertRaises(ValueError) as ctx:
+            Evidence(provenance="totally-not-a-kind")
+        self.assertIn("provenance", str(ctx.exception))
+
+    def test_invalid_confidence_level_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            Evidence(confidence_level="confirmed")
+
+    def test_parser_level_zero_blocks_parser_provenance(self) -> None:
+        with self.assertRaises(ValueError):
+            Evidence(parser_level=0, provenance="parser")
+
+    def test_parser_level_zero_blocks_config_rule_provenance(self) -> None:
+        with self.assertRaises(ValueError):
+            Evidence(parser_level=0, provenance="config_rule")
+
+    def test_parser_level_zero_with_fallback_ok(self) -> None:
+        Evidence(parser_level=0, provenance="fallback_heuristic")
+        Evidence(parser_level=0, provenance="path_rule")
+
+    def test_parser_level_out_of_range_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            Evidence(parser_level=4, provenance="parser")
+        with self.assertRaises(ValueError):
+            Evidence(parser_level=-1, provenance="fallback_heuristic")
+
+    def test_default_evidence_is_valid(self) -> None:
+        e = Evidence()
+        self.assertEqual(e.provenance, "fallback_heuristic")
+        self.assertEqual(e.parser_level, 0)
 
 
 if __name__ == "__main__":

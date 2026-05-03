@@ -116,6 +116,71 @@ class ArtifactEdgeAsSemanticEvidenceTests(unittest.TestCase):
         rules = [f.rule for f in result.errors]
         self.assertNotIn("artifact_as_semantic_evidence", rules)
 
+    def test_artifact_provenance_on_maps_to_target_blocks_semantic(self) -> None:
+        g = Graph()
+        g.add_node(GraphNode(node_id="proj:x", node_type="consumer_project"))
+        g.add_node(GraphNode(node_id="target:x", node_type="runnable_target"))
+        g.add_edge(GraphEdge(
+            edge_id="e_maps",
+            edge_type="maps_to_target",
+            from_node="proj:x",
+            to_node="target:x",
+            evidence=Evidence(
+                source="build_manifest",
+                provenance="artifact",
+                parser_level=1,
+            ),
+            source_impact_confidence="strong",
+            runnability_confidence="strong",
+        ))
+        result = validate_graph(g)
+        rules = [f.rule for f in result.errors]
+        self.assertIn("artifact_as_semantic_evidence", rules)
+
+    def test_artifact_provenance_on_uses_api_blocks_consumer_semantic(self) -> None:
+        g = Graph()
+        g.add_node(GraphNode(node_id="cf:x.ets", node_type="consumer_file"))
+        g.add_node(GraphNode(
+            node_id="api:v1:arkui.static:modifier:@ohos.arkui.component.Button#ButtonModifier",
+            node_type="api_entity",
+            data={"kind": "modifier"},
+        ))
+        g.add_edge(GraphEdge(
+            edge_id="e_uses",
+            edge_type="uses_api",
+            from_node="cf:x.ets",
+            to_node="api:v1:arkui.static:modifier:@ohos.arkui.component.Button#ButtonModifier",
+            evidence=Evidence(
+                source="artifact_index",
+                provenance="artifact",
+                parser_level=1,
+            ),
+            consumer_usage_confidence="strong",
+        ))
+        result = validate_graph(g)
+        rules = [f.rule for f in result.errors]
+        self.assertIn("artifact_as_semantic_evidence", rules)
+
+    def test_artifact_provenance_runnability_only_still_ok(self) -> None:
+        g = Graph()
+        g.add_node(GraphNode(node_id="proj:x", node_type="consumer_project"))
+        g.add_node(GraphNode(node_id="target:x", node_type="runnable_target"))
+        g.add_edge(GraphEdge(
+            edge_id="e_maps",
+            edge_type="maps_to_target",
+            from_node="proj:x",
+            to_node="target:x",
+            evidence=Evidence(
+                source="build_manifest",
+                provenance="artifact",
+                parser_level=1,
+            ),
+            runnability_confidence="strong",
+        ))
+        result = validate_graph(g)
+        rules = [f.rule for f in result.errors]
+        self.assertNotIn("artifact_as_semantic_evidence", rules)
+
 
 class GenericFanoutEdgeTests(unittest.TestCase):
     def test_fanout_missing_generic(self) -> None:
@@ -153,7 +218,8 @@ class MustRunValidationTests(unittest.TestCase):
             consumer_usage_confidence="weak",
         )
         rules = [f.rule for f in findings]
-        self.assertIn("must_run_weak_only", rules)
+        self.assertIn("must_run_source_not_strong", rules)
+        self.assertIn("must_run_consumer_not_strong", rules)
 
     def test_parser_level_zero(self) -> None:
         findings = validate_must_run_candidate(
@@ -184,7 +250,7 @@ class MustRunValidationTests(unittest.TestCase):
         )
         rules = [f.rule for f in findings]
         self.assertNotIn("must_run_harness_only", rules)
-        self.assertNotIn("must_run_weak_only", rules)
+        self.assertNotIn("must_run_source_not_strong", rules)
         self.assertNotIn("must_run_parser_level_zero", rules)
 
 
@@ -197,7 +263,7 @@ class ConfigRuleEdgeTests(unittest.TestCase):
             edge_id="e1", edge_type="fanout_accessor",
             from_node="a:1", to_node="a:2",
             generic=True,
-            evidence=Evidence(provenance="config_rule"),
+            evidence=Evidence(provenance="config_rule", parser_level=1),
             config_rule_id=None,  # WRONG
         ))
         result = validate_graph(g)
@@ -213,7 +279,7 @@ class ParserEdgeTests(unittest.TestCase):
         g.add_edge(GraphEdge(
             edge_id="e1", edge_type="declares",
             from_node="a:1", to_node="a:2",
-            evidence=Evidence(provenance="parser"),
+            evidence=Evidence(provenance="parser", parser_level=2),
             source_file=None,
         ))
         result = validate_graph(g)
@@ -244,7 +310,7 @@ class StrongUsesApiNoEvidenceTests(unittest.TestCase):
             edge_id="e1", edge_type="uses_api",
             from_node="c:1", to_node="a:1",
             consumer_usage_confidence="strong",
-            evidence=Evidence(provenance="parser", file_path="test.ets"),
+            evidence=Evidence(provenance="parser", file_path="test.ets", parser_level=2),
         ))
         result = validate_graph(g)
         rules = [f.rule for f in result.errors]

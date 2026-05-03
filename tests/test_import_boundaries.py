@@ -44,9 +44,11 @@ def _collect_submodules(package_name: str) -> list[str]:
 
 
 def _get_imports(module_name: str) -> set[str]:
-    """Get the set of top-level imports made by a module (without importing it).
+    """Get the set of full dotted import paths made by a module.
 
     This inspects the AST to find import statements without executing the module.
+    Returns full dotted paths (e.g. ``"arkui_xts_selector.ranking.buckets"``)
+    so callers can extract any segment they need.
     """
     import ast
 
@@ -68,11 +70,51 @@ def _get_imports(module_name: str) -> set[str]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                imports.add(alias.name.split(".")[0])
+                imports.add(alias.name)
         elif isinstance(node, ast.ImportFrom):
             if node.module:
-                imports.add(node.module.split(".")[0])
+                imports.add(node.module)
     return imports
+
+
+def _get_imports_from_path(filepath: str | Path) -> set[str]:
+    """Same as _get_imports but takes a file path instead of module name."""
+    import ast
+
+    try:
+        source = Path(filepath).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return set()
+
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return set()
+
+    imports: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                imports.add(alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                imports.add(node.module)
+    return imports
+
+
+_PREFIX = "arkui_xts_selector."
+
+
+def _project_top_segments(imports: set[str]) -> set[str]:
+    """Extract the first segment after ``arkui_xts_selector.`` from each import."""
+    segments: set[str] = set()
+    for imp in imports:
+        if imp.startswith(_PREFIX):
+            tail = imp[len(_PREFIX):]
+            top = tail.split(".")[0]
+            if top:
+                segments.add(top)
+    return segments
 
 
 # ---------------------------------------------------------------------------
@@ -93,13 +135,16 @@ _FORBIDDEN_FOR_GRAPH = {
     "cli", "report_human", "report_json", "report_build",
     "report_next_steps", "execution", "project_index", "signal_inference",
     "signal_scoring", "scoring", "coverage_planner", "coverage_keys",
-    "ranking_rules", "source_profile", "changed_files",
+    "ranking", "ranking_rules", "source_profile", "changed_files",
     "git_host", "progress", "utility_modes", "benchmark",
     "consumer_semantics", "api_lineage", "api_surface",
     "tree_sitter_parsers", "symbol_tracing", "mapping_config",
 }
 
-_FORBIDDEN_FOR_RANKING = {"cli"}
+_FORBIDDEN_FOR_RANKING = {
+    "cli", "graph", "report_human", "report_json", "execution",
+    "project_index", "scoring", "signal_inference",
+}
 
 _FORBIDDEN_FOR_REPORTING = {
     "signal_inference", "signal_scoring", "scoring",
@@ -118,14 +163,7 @@ class ImportBoundaryTests(unittest.TestCase):
         violations: list[str] = []
         for modname in submodules:
             imports = _get_imports(modname)
-            # Only check imports from arkui_xts_selector internal modules
-            internal = {
-                imp.split(".")[-1] if imp.startswith("arkui_xts_selector") else None
-                for imp in imports
-                if imp.startswith("arkui_xts_selector")
-            }
-            internal.discard(None)
-            bad = internal & forbidden
+            bad = _project_top_segments(imports) & forbidden
             if bad:
                 violations.append(f"{modname} imports forbidden: {sorted(bad)}")
         if violations:
@@ -146,6 +184,10 @@ class ImportBoundaryTests(unittest.TestCase):
         """ranking must not import cli, if ranking package exists."""
         self._check_package("arkui_xts_selector.ranking_rules", _FORBIDDEN_FOR_RANKING)
 
+    def test_ranking_package_does_not_import_cli(self) -> None:
+        """ranking package must not import cli or graph internals."""
+        self._check_package("arkui_xts_selector.ranking", _FORBIDDEN_FOR_RANKING)
+
     def test_reporting_does_not_import_indexing_or_resolving(self) -> None:
         """reporting must not import indexing or resolving internals, if reporting package exists."""
         self._check_package("arkui_xts_selector.report_human", _FORBIDDEN_FOR_REPORTING)
@@ -157,17 +199,46 @@ class ImportBoundaryTests(unittest.TestCase):
         submodules = _collect_submodules("arkui_xts_selector.model")
         for modname in submodules:
             imports = _get_imports(modname)
-            # Check that non-stdlib imports are only to model/ sibling modules
-            for imp in imports:
-                if imp.startswith("arkui_xts_selector"):
-                    suffix = imp[len("arkui_xts_selector"):].lstrip(".")
-                    # Allow: model.api, model.evidence, model.usage, etc.
-                    # Also allow 'model' itself (import from . import X)
-                    parts = suffix.split(".") if suffix else []
-                    if parts and parts[0] not in ("model",):
-                        self.fail(
-                            f"{modname} imports non-model package module: {imp}"
-                        )
+            segments = _project_top_segments(imports)
+            non_model = segments - {"model"}
+            if non_model:
+                self.fail(
+                    f"{modname} imports non-model package modules: {sorted(non_model)}"
+                )
+
+    def test_framework_catches_known_violation(self) -> None:
+        """Sanity: feed the framework a synthetic violation and prove it
+        detects it. Without this test we can't trust the boundary tests."""
+        import tempfile
+        import textwrap
+
+        # Simulate a file that imports from cli (which is forbidden for
+        # both model and graph).
+        src = textwrap.dedent("""\
+            from arkui_xts_selector.cli import main_entry
+        """)
+        with tempfile.NamedTemporaryFile(
+            suffix=".py", mode="w", delete=False,
+        ) as f:
+            f.write(src)
+            path = f.name
+
+        try:
+            imports = _get_imports_from_path(path)
+            segments = _project_top_segments(imports)
+            self.assertIn(
+                "cli", segments,
+                f"Framework failed to detect 'cli' import; got segments: {segments}",
+            )
+            # Also verify the violation would be caught by _check_package
+            bad = segments & _FORBIDDEN_FOR_MODEL
+            self.assertIn(
+                "cli", bad,
+                f"Framework failed to flag 'cli' as forbidden for model; "
+                f"intersection: {bad}",
+            )
+        finally:
+            Path(path).unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

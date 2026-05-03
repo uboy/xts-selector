@@ -169,9 +169,19 @@ class Graph:
     edges: dict[str, GraphEdge] = field(default_factory=dict)
 
     def add_node(self, node: GraphNode) -> None:
+        if node.node_id in self.nodes:
+            raise ValueError(
+                f"Duplicate node id {node.node_id!r}: silent overwrite "
+                "would erase prior evidence."
+            )
         self.nodes[node.node_id] = node
 
     def add_edge(self, edge: GraphEdge) -> None:
+        if edge.edge_id in self.edges:
+            raise ValueError(
+                f"Duplicate edge id {edge.edge_id!r}: silent overwrite "
+                "would erase prior evidence."
+            )
         self.edges[edge.edge_id] = edge
 
     def to_dict(self) -> dict:

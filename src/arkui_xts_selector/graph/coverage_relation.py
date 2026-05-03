@@ -73,15 +73,23 @@ def resolve_coverage_relations(
         consumer_usage = uses_edge.consumer_usage_confidence
 
         # Determine usage kind from evidence
-        usage_kind = _infer_usage_kind(uses_edge.evidence.symbol)
+        usage_kind = _infer_usage_kind(uses_edge.evidence)
 
-        # Build usage signature
+        # Build usage signature.
+        # IMPORTANT: argument_shape must NOT be synthesized from an
+        # import statement. Default to "unknown" unless the resolver has
+        # reason to believe a direct call/member usage was parsed.
         api_id = api_entity_id
+        if usage_kind in _DIRECT_USAGE_KINDS:
+            argument_shape: ArgumentShape = "no_args"
+        else:
+            argument_shape = "unknown"
+
         usage_sig = ApiUsageSignature(
             api_entity_id=api_id,
             language="ArkTS",
             usage_kind=usage_kind,
-            argument_shape="no_args",
+            argument_shape=argument_shape,
             file_path=uses_edge.evidence.file_path or "",
             line=uses_edge.evidence.line,
             parser_provenance=uses_edge.evidence.source,
@@ -131,7 +139,7 @@ def resolve_coverage_relations(
         # Determine coverage equivalence from usage signature
         coverage_eq = _determine_coverage_equivalence(
             usage_kind=usage_kind,
-            argument_shape="no_args",
+            argument_shape=argument_shape,
             consumer_usage_confidence=consumer_usage,
         )
 
@@ -199,12 +207,38 @@ def build_selection_result(
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _infer_usage_kind(symbol: str | None) -> UsageKind:
-    """Infer usage kind from evidence symbol."""
-    if not symbol:
+def _infer_usage_kind(evidence) -> UsageKind:
+    """Infer usage kind from evidence provenance and parser metadata.
+
+    Heuristic, used by fixture-driven shadow mode.  Real consumers
+    should populate ``usage_kind`` themselves; this helper is a
+    last-resort fallback.
+
+    Rules:
+      * provenance="import" => usage_kind="import"
+      * provenance="parser" with a function/symbol => "method_call"
+        (the parser proved a real call site, not a bare import)
+      * provenance="config_rule" => "type_reference"
+      * everything else => "unknown"
+    """
+    prov = evidence.provenance if evidence is not None else "fallback_heuristic"
+    if prov == "import":
         return "import"
-    # If symbol matches an import name, it's import-only evidence
-    return "import"
+    if prov == "parser" and (evidence.function or evidence.symbol):
+        return "method_call"
+    if prov == "config_rule":
+        return "type_reference"
+    return "unknown"
+
+
+_DIRECT_USAGE_KINDS = frozenset({
+    "component_instantiation",
+    "chained_modifier",
+    "static_modifier",
+    "method_call",
+    "member_access",
+    "event_handler",
+})
 
 
 def _determine_coverage_equivalence(
@@ -213,11 +247,26 @@ def _determine_coverage_equivalence(
     argument_shape: ArgumentShape,
     consumer_usage_confidence: ConfidenceLevel,
 ) -> CoverageEquivalenceClass:
-    """Determine coverage equivalence from usage evidence."""
+    """Determine coverage equivalence from usage evidence.
+
+    Critical rules (see TARGET_ARCHITECTURE.md::F.BucketGatePolicy):
+
+    * ``import`` is NOT a direct usage. It can only produce
+      ``exact_api_unknown_usage_shape`` at best, never ``..._same_usage_shape``.
+      ``argument_shape`` MUST NOT be synthesized from import statements.
+    * ``argument_shape != "unknown"`` only narrows equivalence for
+      direct usage kinds.
+    """
     if usage_kind == "harness_only":
         return "harness_only_usage"
 
-    if argument_shape != "unknown" and consumer_usage_confidence == "strong":
+    is_direct = usage_kind in _DIRECT_USAGE_KINDS
+
+    if (
+        is_direct
+        and argument_shape != "unknown"
+        and consumer_usage_confidence == "strong"
+    ):
         return "exact_api_same_usage_shape"
 
     if consumer_usage_confidence == "strong":

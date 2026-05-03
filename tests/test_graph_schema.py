@@ -171,6 +171,24 @@ class GraphContainerTests(unittest.TestCase):
         d = g.to_dict()
         self.assertEqual(d, {"nodes": [], "edges": []})
 
+    def test_duplicate_node_id_raises(self) -> None:
+        g = Graph()
+        g.add_node(GraphNode(node_id="n1", node_type="api_entity"))
+        with self.assertRaises(ValueError) as ctx:
+            g.add_node(GraphNode(node_id="n1", node_type="consumer_file"))
+        self.assertIn("Duplicate node id", str(ctx.exception))
+
+    def test_duplicate_edge_id_raises(self) -> None:
+        g = Graph()
+        g.add_node(GraphNode(node_id="a", node_type="consumer_file"))
+        g.add_node(GraphNode(node_id="b", node_type="api_entity"))
+        g.add_edge(GraphEdge(edge_id="e1", edge_type="uses_api",
+                             from_node="a", to_node="b"))
+        with self.assertRaises(ValueError) as ctx:
+            g.add_edge(GraphEdge(edge_id="e1", edge_type="declares",
+                                 from_node="a", to_node="b"))
+        self.assertIn("Duplicate edge id", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

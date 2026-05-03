@@ -113,18 +113,26 @@ class ApiUsageSignatureTests(unittest.TestCase):
         for rel in self.relations:
             self.assertIsNotNone(rel.usage_signature)
 
-    def test_usage_kind_is_import(self) -> None:
-        """ButtonModifier imported via import statement."""
+    def test_usage_kind_is_direct_method_call(self) -> None:
+        """Positive Slice A path uses parser-confirmed direct usage,
+        not a bare import statement."""
         for rel in self.relations:
-            self.assertEqual(rel.usage_signature.usage_kind, "import")
+            self.assertIn(
+                rel.usage_signature.usage_kind,
+                ("method_call", "static_modifier", "chained_modifier",
+                 "member_access", "component_instantiation", "event_handler"),
+                f"unexpected usage_kind: {rel.usage_signature.usage_kind}",
+            )
 
-    def test_argument_shape_no_args(self) -> None:
-        """Fixture test uses no_args argument shape."""
+    def test_argument_shape_present_only_for_direct_usage(self) -> None:
+        """argument_shape=no_args is fine here because the fixture
+        models a direct call. It must NEVER be no_args for an
+        import-only fixture (see ImportOnlyButtonModifierTests below)."""
         for rel in self.relations:
             self.assertEqual(rel.usage_signature.argument_shape, "no_args")
 
     def test_exact_api_same_usage_shape(self) -> None:
-        """import with strong confidence and no_args = exact_api_same_usage_shape."""
+        """direct usage with strong confidence and no_args = exact_api_same_usage_shape."""
         for rel in self.relations:
             if rel.consumer_usage_confidence == "strong":
                 self.assertEqual(
@@ -170,10 +178,10 @@ class CoverageEquivalenceTests(unittest.TestCase):
         self.assertEqual(eq, "exact_api_unknown_usage_shape")
         self.assertNotEqual(eq, "exact_api_same_usage_shape")
 
-    def test_no_args_strong_confidence_is_exact_same(self) -> None:
+    def test_no_args_strong_confidence_direct_usage_is_exact_same(self) -> None:
         from arkui_xts_selector.graph.coverage_relation import _determine_coverage_equivalence
         eq = _determine_coverage_equivalence(
-            usage_kind="import",
+            usage_kind="method_call",
             argument_shape="no_args",
             consumer_usage_confidence="strong",
         )
@@ -182,7 +190,7 @@ class CoverageEquivalenceTests(unittest.TestCase):
     def test_medium_confidence_is_same_modifier_family(self) -> None:
         from arkui_xts_selector.graph.coverage_relation import _determine_coverage_equivalence
         eq = _determine_coverage_equivalence(
-            usage_kind="import",
+            usage_kind="method_call",
             argument_shape="no_args",
             consumer_usage_confidence="medium",
         )
@@ -255,6 +263,77 @@ class BucketGatePolicyTests(unittest.TestCase):
         )
         self.assertEqual(result.semantic_bucket, "must_run")
         self.assertEqual(result.runnability_state, "blocked")
+
+    def test_validate_rejects_import_only_non_module(self) -> None:
+        """validate_must_run_candidate must reject import-only consumer
+        evidence for a non-module API. ButtonModifier is a "modifier"
+        kind, which is one of the non-module API kinds."""
+        findings = validate_must_run_candidate(
+            coverage_equivalence="exact_api_same_usage_shape",
+            source_impact_confidence="strong",
+            consumer_usage_confidence="strong",
+            usage_kind="import",
+            api_kind="modifier",
+        )
+        rules = [f.rule for f in findings if f.severity == "error"]
+        self.assertIn(
+            "must_run_import_only_non_module", rules,
+            "Import-only evidence on a non-module API must be rejected; "
+            "see docs/TARGET_ARCHITECTURE.md::F.BucketGatePolicy.",
+        )
+
+    def test_validate_accepts_module_api_import(self) -> None:
+        """For a module API, an import statement IS the canonical use
+        and must NOT trigger must_run_import_only_non_module."""
+        findings = validate_must_run_candidate(
+            coverage_equivalence="exact_api_same_usage_shape",
+            source_impact_confidence="strong",
+            consumer_usage_confidence="strong",
+            usage_kind="import",
+            api_kind="module",
+        )
+        rules = [f.rule for f in findings if f.severity == "error"]
+        self.assertNotIn("must_run_import_only_non_module", rules)
+
+
+class ImportOnlyButtonModifierTests(unittest.TestCase):
+    """Negative-control: import-only ButtonModifier evidence MUST NOT must_run."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        from arkui_xts_selector.graph.adapters import (
+            build_button_modifier_import_only_graph,
+        )
+        cls.graph = build_button_modifier_import_only_graph()
+        cls.modifier_id = _button_modifier_id()
+        cls.relations = resolve_coverage_relations(cls.graph, cls.modifier_id)
+        cls.results = [build_selection_result(r) for r in cls.relations]
+
+    def test_finds_at_least_one_relation(self) -> None:
+        self.assertGreaterEqual(len(self.relations), 1)
+
+    def test_usage_kind_is_import(self) -> None:
+        for rel in self.relations:
+            self.assertEqual(rel.usage_signature.usage_kind, "import")
+
+    def test_argument_shape_is_unknown_or_not_no_args(self) -> None:
+        """argument_shape must NOT be synthesized from an import statement."""
+        for rel in self.relations:
+            self.assertNotEqual(
+                rel.usage_signature.argument_shape, "no_args",
+                "argument_shape=no_args was synthesized from an import "
+                "statement; this is the very false-precision blocker we "
+                "are closing.",
+            )
+
+    def test_never_reaches_must_run(self) -> None:
+        buckets = {r.semantic_bucket for r in self.results}
+        self.assertNotIn("must_run", buckets,
+                         f"Import-only evidence reached must_run: {buckets}")
+
+    def test_lands_in_recommended_or_possible(self) -> None:
+        for r in self.results:
+            self.assertIn(r.semantic_bucket, ("recommended", "possible", "unresolved"))
 
 
 class SelectionResultSerializationTests(unittest.TestCase):

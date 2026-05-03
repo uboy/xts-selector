@@ -84,7 +84,7 @@ The first shadow implementation exposed several blockers that must be fixed befo
 
 ### EPIC 0 - Design Hardening And Test Baseline
 
-#### TASK E0-1 - Freeze Architecture Contracts
+#### TASK E0-1 - Freeze Architecture Contracts [DONE]
 
 Type: docs-only
 Size: S
@@ -126,7 +126,7 @@ Acceptance criteria:
 Rollback strategy:
 - Revert doc changes.
 
-#### TASK E0-2 - Add Baseline Import-Boundary Test Skeleton
+#### TASK E0-2 - Add Baseline Import-Boundary Test Skeleton [DONE]
 
 Type: tests-only
 Size: S
@@ -168,7 +168,7 @@ Rollback strategy:
 
 ### EPIC 1 - Typed Model Layer
 
-#### TASK E1-1 - Add Canonical API Model
+#### TASK E1-1 - Add Canonical API Model [DONE]
 
 Type: shadow-runtime
 Size: M
@@ -216,7 +216,7 @@ Acceptance criteria:
 Rollback strategy:
 - Remove `model/api.py` and its tests.
 
-#### TASK E1-2 - Add Evidence, Usage, Selection, Unresolved, And Risk Models
+#### TASK E1-2 - Add Evidence, Usage, Selection, Unresolved, And Risk Models [DONE]
 
 Type: shadow-runtime
 Size: M
@@ -269,7 +269,7 @@ Acceptance criteria:
 Rollback strategy:
 - Remove new model files and tests.
 
-#### TASK E1-3 - Harden Canonical Identity And Model Value Validation
+#### TASK E1-3 - Harden Canonical Identity And Model Value Validation [DONE]
 
 Type: shadow-runtime
 Size: S
@@ -322,7 +322,7 @@ Rollback strategy:
 
 ### EPIC 2 - Graph Schema And Validation
 
-#### TASK E2-1 - Add Graph Node/Edge Schema
+#### TASK E2-1 - Add Graph Node/Edge Schema [DONE]
 
 Type: shadow-runtime
 Size: M
@@ -370,7 +370,7 @@ Acceptance criteria:
 Rollback strategy:
 - Remove `graph/schema.py` and tests.
 
-#### TASK E2-2 - Add Graph Validation Rules
+#### TASK E2-2 - Add Graph Validation Rules [DONE]
 
 Type: shadow-runtime
 Size: M
@@ -423,7 +423,7 @@ Rollback strategy:
 
 ### EPIC 3 - Tiny Fixtures And Golden Graph JSON
 
-#### TASK E3-1 - Add ButtonModifier Tiny Fixture
+#### TASK E3-1 - Add ButtonModifier Tiny Fixture [DONE]
 
 Type: tests-only
 Size: M
@@ -463,7 +463,7 @@ Acceptance criteria:
 Rollback strategy:
 - Remove fixture directory.
 
-#### TASK E3-2 - Add Golden Graph Loader Test
+#### TASK E3-2 - Add Golden Graph Loader Test [DONE]
 
 Type: tests-only
 Size: S
@@ -503,7 +503,7 @@ Rollback strategy:
 
 ### EPIC 4 - Slice A: ButtonModifier Static Exact Lineage
 
-#### TASK E4-1 - Add Current-Lineage To Graph Adapter For ButtonModifier
+#### TASK E4-1 - Add Current-Lineage To Graph Adapter For ButtonModifier [DONE]
 
 Type: shadow-runtime
 Size: M
@@ -544,7 +544,7 @@ Acceptance criteria:
 Rollback strategy:
 - Disable/remove adapter module.
 
-#### TASK E4-2 - Add ButtonModifier Consumer Usage Signature
+#### TASK E4-2 - Add ButtonModifier Consumer Usage Signature [DONE]
 
 Type: shadow-runtime
 Size: M
@@ -590,7 +590,7 @@ Acceptance criteria:
 Rollback strategy:
 - Remove resolver fixture code and tests.
 
-#### TASK E4-3 - Correct Slice A Import-Only False Precision
+#### TASK E4-3 - Correct Slice A Import-Only False Precision [DONE]
 
 Type: shadow-runtime
 Size: S
@@ -640,7 +640,7 @@ Rollback strategy:
 
 ### EPIC 5 - Bucket Gate Policy Unit Tests
 
-#### TASK E5-1 - Implement BucketGatePolicy As Pure Logic
+#### TASK E5-1 - Implement BucketGatePolicy As Pure Logic [DONE]
 
 Type: shadow-runtime
 Size: M
@@ -686,7 +686,7 @@ Acceptance criteria:
 Rollback strategy:
 - Remove new ranking module and tests.
 
-#### TASK E5-2 - Align Validation With BucketGatePolicy
+#### TASK E5-2 - Align Validation With BucketGatePolicy [DONE]
 
 Type: shadow-runtime
 Size: S
@@ -736,7 +736,7 @@ Rollback strategy:
 
 ### EPIC 6 - Shadow Export / Debug Output
 
-#### TASK E6-1 - Add Hidden Shadow Graph Export Hook
+#### TASK E6-1 - Add Hidden Shadow Graph Export Hook [DONE]
 
 Type: shadow-runtime
 Size: M
@@ -782,7 +782,7 @@ Rollback strategy:
 
 ### EPIC 7 - Benchmark Fixture Upgrade
 
-#### TASK E7-1 - Extend Canonical Corpus Schema Validation
+#### TASK E7-1 - Extend Canonical Corpus Schema Validation [DONE]
 
 Type: tests-only
 Size: M
@@ -824,7 +824,7 @@ Acceptance criteria:
 Rollback strategy:
 - Revert validation changes.
 
-#### TASK E7-2 - Add Negative Fixtures For Canonical Families
+#### TASK E7-2 - Add Negative Fixtures For Canonical Families [DONE]
 
 Type: tests-only
 Size: M
@@ -865,7 +865,7 @@ Rollback strategy:
 
 ### EPIC 8 - Slice B: contentModifier Shared Accessor Fan-Out
 
-#### TASK E8-1 - Add contentModifier Fan-Out Graph Fixture
+#### TASK E8-1 - Add contentModifier Fan-Out Graph Fixture [DONE]
 
 Type: tests-only
 Size: M
@@ -907,7 +907,7 @@ Acceptance criteria:
 Rollback strategy:
 - Remove fixture directory.
 
-#### TASK E8-2 - Add Fan-Out Bucket/Risk Tests
+#### TASK E8-2 - Add Fan-Out Bucket/Risk Tests [DONE]
 
 Type: shadow-runtime
 Size: M
@@ -950,7 +950,7 @@ Rollback strategy:
 
 ### EPIC 9 - Parser/Indexer Extraction
 
-#### TASK E9-1 - Define Parser Output Contracts
+#### TASK E9-1 - Define Parser Output Contracts [DONE]
 
 Type: shadow-runtime
 Size: M
@@ -992,7 +992,7 @@ Acceptance criteria:
 Rollback strategy:
 - Remove parser contract adapters.
 
-#### TASK E9-2 - Extract Indexer Boundaries In Shadow Wrappers
+#### TASK E9-2 - Extract Indexer Boundaries In Shadow Wrappers [DONE]
 
 Type: shadow-runtime
 Size: L
@@ -1039,7 +1039,7 @@ Rollback strategy:
 
 ### EPIC 10 - API-To-XTS Resolver Shadow Mode
 
-#### TASK E10-1 - Add Graph API-To-XTS Resolver
+#### TASK E10-1 - Add Graph API-To-XTS Resolver [DONE]
 
 Type: shadow-runtime
 Size: L
@@ -1085,7 +1085,7 @@ Rollback strategy:
 
 ### EPIC 11 - Performance/Cache Baseline
 
-#### TASK E11-1 - Add Performance Diagnostics Contract
+#### TASK E11-1 - Add Performance Diagnostics Contract [DONE]
 
 Type: shadow-runtime
 Size: M
@@ -1163,7 +1163,7 @@ Rollback strategy:
 
 ### EPIC 12 - Real-Change Validation Runs
 
-#### TASK E12-1 - Add Real-Change Validation Records
+#### TASK E12-1 - Add Real-Change Validation Records [DONE]
 
 Type: docs-only
 Size: M
@@ -1204,7 +1204,7 @@ Rollback strategy:
 
 ### EPIC 13 - Readiness Gate For Graph-Backed Mode
 
-#### TASK E13-1 - Experimental Graph-Mode Readiness Review
+#### TASK E13-1 - Experimental Graph-Mode Readiness Review [DONE]
 
 Type: docs-only
 Size: M
