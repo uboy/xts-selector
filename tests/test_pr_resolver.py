@@ -128,6 +128,100 @@ class TestResolvePrUnknownFileHighRisk:
         sdk_index = SdkIndexResult()
         inverted = InvertedIndex()
 
+
+class TestBroadInfraNewRules:
+    """Test T9.4: expanded broad_infra rules for manager/event/accessibility/render/layout."""
+
+    def _resolve(self, changed_file: str) -> PrResolveResult:
+        from arkui_xts_selector.indexing.ace_indexer import AceIndexResult
+        from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
+        from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+        return resolve_pr(
+            [changed_file],
+            AceIndexResult(), SdkIndexResult(), InvertedIndex(),
+            Path("config/broad_infrastructure_files.json"),
+        )
+
+    def test_manager_focus_matches(self):
+        """Manager/focus file → element_proxy_manager rule."""
+        result = self._resolve(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/manager/focus/focus_manager.cpp"
+        )
+        assert len(result.entries) == 1
+        assert result.entries[0].broad_infra_match.rule_id == "element_proxy_manager"
+        assert result.entries[0].false_negative_risk == "high"
+
+    def test_event_hub_matches(self):
+        """Event hub file → event_hub rule."""
+        result = self._resolve(
+            "foundation/arkui/ace_engine/frameworks/core/event/event_hub.cpp"
+        )
+        assert len(result.entries) == 1
+        assert result.entries[0].broad_infra_match.rule_id == "event_hub"
+
+    def test_gesture_event_matches(self):
+        """Gesture event file → event_hub rule."""
+        result = self._resolve(
+            "foundation/arkui/ace_engine/frameworks/core/event/gesture_event.cpp"
+        )
+        assert len(result.entries) == 1
+        assert result.entries[0].broad_infra_match.rule_id == "event_hub"
+
+    def test_accessibility_property_matches(self):
+        """Accessibility property file → accessibility_property rule."""
+        result = self._resolve(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/property/accessibility_property.cpp"
+        )
+        assert len(result.entries) == 1
+        assert result.entries[0].broad_infra_match.rule_id == "accessibility_property"
+        assert result.entries[0].false_negative_risk == "medium"
+
+    def test_render_node_matches(self):
+        """Render node file → render_node rule."""
+        result = self._resolve(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/render/render_node.cpp"
+        )
+        assert len(result.entries) == 1
+        assert result.entries[0].broad_infra_match.rule_id == "render_node"
+
+    def test_layout_wrapper_matches(self):
+        """Layout wrapper file → layout_core rule."""
+        result = self._resolve(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/layout/layout_wrapper.cpp"
+        )
+        assert len(result.entries) == 1
+        assert result.entries[0].broad_infra_match.rule_id == "layout_core"
+
+    def test_overall_risk_critical_takes_precedence(self):
+        """frame_node + layout → overall risk is critical."""
+        from arkui_xts_selector.indexing.ace_indexer import AceIndexResult
+        from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
+        from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+        result = resolve_pr(
+            [
+                "foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp",
+                "foundation/arkui/ace_engine/frameworks/core/components_ng/layout/layout_wrapper.cpp",
+            ],
+            AceIndexResult(), SdkIndexResult(), InvertedIndex(),
+            Path("config/broad_infrastructure_files.json"),
+        )
+        assert result.overall_false_negative_risk == "critical"
+
+
+class TestResolvePrUnknownFileHighRiskOrig:
+    """Test that unknown file → high risk (no APIs) — original test."""
+
+    def test_resolve_pr_unknown_file_high_risk(self):
+        """Unknown file → high risk (no APIs)."""
+        from arkui_xts_selector.indexing.ace_indexer import AceIndexResult
+        from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
+        from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+
+        # Create empty indices
+        ace_index = AceIndexResult()
+        sdk_index = SdkIndexResult()
+        inverted = InvertedIndex()
+
         # Resolve with unknown file
         changed_files = ["unknown/path/to/file.cpp"]
 

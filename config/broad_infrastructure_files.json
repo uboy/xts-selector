@@ -38,6 +38,61 @@
       "match_kind": "regex",
       "fan_out_target": "all_arkts_runtime_consumers",
       "false_negative_risk": "high"
+    },
+    {
+      "id": "element_proxy_manager",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/base/element_proxy.cpp",
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/base/element_proxy.h",
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/manager/.*"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_managed_components",
+      "false_negative_risk": "high",
+      "rationale": "Manager subsystem orchestrates lifecycle, focus, drag for all components."
+    },
+    {
+      "id": "event_hub",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/event/.*"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_event_consuming_components",
+      "false_negative_risk": "high",
+      "rationale": "Event hub and event dispatch affect all components that handle gestures, key events, mouse."
+    },
+    {
+      "id": "accessibility_property",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/property/accessibility_property\\.cpp",
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/property/accessibility_property\\.h",
+        "foundation/arkui/ace_engine/frameworks/core/accessibility/.*"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_accessible_components",
+      "false_negative_risk": "medium",
+      "rationale": "Accessibility property is inherited by all components with accessibility support."
+    },
+    {
+      "id": "render_node",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/render/.*\\.cpp",
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/render/.*\\.h"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_rendered_components",
+      "false_negative_risk": "high",
+      "rationale": "Render node base class affects drawing pipeline for every visible component."
+    },
+    {
+      "id": "layout_core",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/layout/.*"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_layout_components",
+      "false_negative_risk": "high",
+      "rationale": "Core layout algorithms affect how every component is positioned and sized."
     }
   ]
 }
