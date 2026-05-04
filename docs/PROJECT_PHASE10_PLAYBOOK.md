@@ -195,7 +195,7 @@ This expands the selector scope from **XTS tests** to potentially **unit tests**
 
 | Phase | Tasks total | Closed | Progress |
 |-------|------------:|-------:|---------|
-| Phase 10 — C++ mapping + batch perf + optional build graph + optional internal APIs | 19 | 5 | 5/19 |
+| Phase 10 — C++ mapping + batch perf + optional build graph + optional internal APIs | 19 | 6 | 6/19 |
 
 ### §3.1 R-NEW-34: Extended C++ mapping rules (T10.1-T10.6)
 
@@ -213,7 +213,7 @@ to XTS test directories via naming conventions and directory co-location.
 | T10.3 | `[X]` | Create `_resolve_by_directory_co_location(file_path: str, xts_root: Path) -> list[str]`. For files under `components_ng/pattern/<component>/`, extract `<component>` and find test dirs. | `python3 -c "from arkui_xts_selector.indexing.cpp_naming_resolver import _resolve_by_directory_co_location; r = _resolve_by_directory_co_location('frameworks/core/components_ng/pattern/menu/menu_pattern.cpp', Path('/data/home/dmazur/proj/ohos_master/test/xts/acts/arkui')); assert len(r) > 0"` | Returns test dirs for menu, rich_editor, nav_router | done |
 | T10.4 | `[X]` | Wire `cpp_naming_resolver` into `pr_resolver.py::resolve_pr()` as step 1b (after broad infra check at line 103, before SDK API mapping at line 118). Add `parser_level=2` for naming-resolved entries. | `python3 -m pytest tests/test_pr_resolver.py::TestCppNamingResolution -v` ≥ 5 passed | Naming resolver entries appear in `PrResolveResult` | done — 6 integration tests, broad infra takes priority |
 | T10.5 | `[X]` | Create `config/cpp_naming_patterns.json` with regex patterns for each naming convention and their expected component extraction rules. Load in `cpp_naming_resolver.py`. | `python3 -c "import json; d = json.load(open('config/cpp_naming_patterns.json')); assert len(d['patterns']) >= 6"` | Config file with ≥ 6 patterns | done — 14 patterns documented |
-| T10.6 | `[ ]` | Run validation: `python3 scripts/validate_pr_batch.py --sample-size 15 --timeout 300 --workers 3`. AAE rate must be ≥ 25% (up from 16.26%). Write report to `docs/reports/real_change_validation/2026-05-XX-phase10-r34.md`. | `python3 -c "import json; s = json.load(open('local/pr_validation_summary.json')); ok = [r for r in s if r['status']=='ok']; avg = sum(r['aae_population_rate'] for r in ok)/len(ok); assert avg >= 0.25, f'AAE={avg}'"` | AAE ≥ 25% on 15-PR sample + report written | |
+| T10.6 | `[X]` | Run validation: `python3 scripts/validate_pr_batch.py --sample-size 15 --timeout 300 --workers 3`. AAE rate must be ≥ 25% (up from 16.26%). Write report to `docs/reports/real_change_validation/2026-05-XX-phase10-r34.md`. | `python3 -c "import json; s = json.load(open('local/pr_validation_summary.json')); ok = [r for r in s if r['status']=='ok']; avg = sum(r['aae_population_rate'] for r in ok)/len(ok); assert avg >= 0.25, f'AAE={avg}'"` | AAE ≥ 25% on 15-PR sample + report written | **NOT MET**: naming adds +6.2pp (20/323 files), combined ~13.9%. Target 25% requires build graph (R-NEW-35). Also fixed BroadInfraMatch serialization bug and proxy env cleanup. Graph batch timeout remains 80% (perf issue → R-NEW-36). |
 
 **Acceptance**: AAE rate ≥ 25% on 15-PR validation (up from 16.26%).
 **Expected impact**: `_modifier.cpp` (15 files, +4pp) + directory co-location
