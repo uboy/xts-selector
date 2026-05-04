@@ -161,7 +161,9 @@ def _summarize_result(result: dict) -> dict:
         _SKIP_PATTERNS = (
             "/examples/", "/test/unittest/", "/test/mock/",
             ".gn", ".gni", ".json", ".json5", ".png", ".map", ".gitignore",
-            "koala_projects/", "arkui_idlize/",
+            "koala_projects/arkoala-arkts/arkui-ohos/generated/",
+            "koala_projects/arkoala-arkts/arkui-ohos/build/",
+            "arkui_idlize/",
         )
         actionable_files = 0
         for e in graph_entries:
