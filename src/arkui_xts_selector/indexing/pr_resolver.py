@@ -16,6 +16,12 @@ from .inverted_index import InvertedIndex
 from .sdk_indexer import SdkIndexResult
 from .source_to_api import build_source_to_api_mapping, SourceApiMapping
 
+# Lazy import to avoid circular dependency on xts_root at module level
+try:
+    from .cpp_naming_resolver import resolve_changed_cpp_file as _resolve_cpp_naming
+except ImportError:
+    _resolve_cpp_naming = None  # type: ignore[assignment]
+
 
 FalseNegativeRisk = str  # Literal["low", "medium", "high", "critical"]
 
@@ -64,6 +70,7 @@ def resolve_pr(
     inverted: InvertedIndex,
     broad_rules_path: Path | None = None,
     changed_ranges: dict[str, list[tuple[int, int]]] | None = None,
+    xts_root: Path | None = None,
 ) -> PrResolveResult:
     """Main production resolver entry point.
 
@@ -76,6 +83,7 @@ def resolve_pr(
         changed_ranges: Optional hunk-level ranges per file.
             Key = file path (matches changed_files entry),
             Value = list of (start_line, end_line) tuples.
+        xts_root: Optional XTS test root for C++ naming resolution.
 
     Returns:
         PrResolveResult with entries per changed file
@@ -114,6 +122,29 @@ def resolve_pr(
             if risk_order.get(infra.false_negative_risk, 0) > risk_order.get(overall_risk, 0):
                 overall_risk = infra.false_negative_risk
             continue
+
+        # 1b. C++ naming convention resolution (bypasses API layer)
+        if xts_root and _resolve_cpp_naming is not None:
+            naming_dirs = _resolve_cpp_naming(cf, xts_root)
+            if naming_dirs:
+                entries.append(PrResolveEntry(
+                    changed_file=cf,
+                    affected_apis=(),
+                    consumer_projects=tuple(naming_dirs),
+                    selection_reasons=tuple(
+                        SelectionReason(
+                            project_path=d,
+                            matched_apis=(),
+                            usage_kinds=("cpp_naming_convention",),
+                            confidence="medium",
+                        )
+                        for d in naming_dirs
+                    ),
+                    broad_infra_match=None,
+                    false_negative_risk="low",
+                    parser_level=2,
+                ))
+                continue
 
         # 2. Find mappings for this file
         file_mappings = _find_mappings_for_file(cf, by_file)

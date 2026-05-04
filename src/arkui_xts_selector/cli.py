@@ -2195,6 +2195,7 @@ def main() -> int:
                 inverted=_inverted,
                 broad_rules_path=_broad_rules if _broad_rules.exists() else None,
                 changed_ranges=_changed_ranges if _changed_ranges else None,
+                xts_root=_xts_root if _xts_root else None,
             )
 
             def _entry_to_dict(e):

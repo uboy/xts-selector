@@ -657,3 +657,113 @@ class TestHunkLevelResolution:
             source_file_path="test.cpp",
         )
         assert m.overlaps_range(1, 1) is True  # Always true when no line info
+
+
+class TestCppNamingResolution:
+    """Test C++ naming convention resolution wired into resolve_pr()."""
+
+    @pytest.fixture
+    def empty_indices(self):
+        from arkui_xts_selector.indexing.ace_indexer import AceIndexResult
+        from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
+        from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+        return AceIndexResult(), SdkIndexResult(), InvertedIndex()
+
+    def test_naming_resolver_finds_test_dirs(self, empty_indices, xts_root):
+        """button_modifier.cpp resolves to button XTS dirs via naming convention."""
+        ace, sdk, inv = empty_indices
+        result = resolve_pr(
+            changed_files=["button_modifier.cpp"],
+            ace_index=ace,
+            sdk_index=sdk,
+            inverted=inv,
+            xts_root=xts_root,
+        )
+        assert len(result.entries) == 1
+        entry = result.entries[0]
+        assert entry.parser_level == 2
+        assert len(entry.consumer_projects) > 0
+        assert entry.false_negative_risk == "low"
+        # Selection reasons should have cpp_naming_convention usage_kind
+        assert len(entry.selection_reasons) > 0
+        assert "cpp_naming_convention" in entry.selection_reasons[0].usage_kinds
+
+    def test_naming_resolver_layout_algorithm(self, empty_indices, xts_root):
+        """rich_editor_layout_algorithm.cpp resolves via naming convention."""
+        ace, sdk, inv = empty_indices
+        result = resolve_pr(
+            changed_files=["rich_editor_layout_algorithm.cpp"],
+            ace_index=ace,
+            sdk_index=sdk,
+            inverted=inv,
+            xts_root=xts_root,
+        )
+        assert len(result.entries) == 1
+        assert len(result.entries[0].consumer_projects) > 0
+
+    def test_naming_resolver_paint_method(self, empty_indices, xts_root):
+        """calendar_paint_method.cpp resolves via naming convention."""
+        ace, sdk, inv = empty_indices
+        result = resolve_pr(
+            changed_files=["calendar_paint_method.cpp"],
+            ace_index=ace,
+            sdk_index=sdk,
+            inverted=inv,
+            xts_root=xts_root,
+        )
+        assert len(result.entries) == 1
+        assert len(result.entries[0].consumer_projects) > 0
+
+    def test_naming_resolver_skipped_without_xts_root(self, empty_indices):
+        """Without xts_root, naming resolver is skipped, falls through to SDK API path."""
+        ace, sdk, inv = empty_indices
+        result = resolve_pr(
+            changed_files=["button_modifier.cpp"],
+            ace_index=ace,
+            sdk_index=sdk,
+            inverted=inv,
+            # No xts_root
+        )
+        # Should still have 1 entry but from SDK API path (0 consumers in empty index)
+        assert len(result.entries) == 1
+        assert result.entries[0].parser_level != 2  # Not naming-resolved
+
+    def test_naming_resolver_skipped_for_non_matching(self, empty_indices, xts_root):
+        """BUILD.gn does not match any naming convention."""
+        ace, sdk, inv = empty_indices
+        result = resolve_pr(
+            changed_files=["BUILD.gn"],
+            ace_index=ace,
+            sdk_index=sdk,
+            inverted=inv,
+            xts_root=xts_root,
+        )
+        assert len(result.entries) == 1
+        assert len(result.entries[0].consumer_projects) == 0
+
+    def test_broad_infra_takes_priority_over_naming(self, empty_indices, xts_root):
+        """Broad infra match takes priority over naming convention."""
+        from pathlib import Path
+        ace, sdk, inv = empty_indices
+        broad_rules = Path(__file__).resolve().parent.parent / "config" / "broad_infrastructure_files.json"
+        result = resolve_pr(
+            changed_files=["foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp"],
+            ace_index=ace,
+            sdk_index=sdk,
+            inverted=inv,
+            broad_rules_path=broad_rules,
+            xts_root=xts_root,
+        )
+        assert len(result.entries) == 1
+        assert result.entries[0].broad_infra_match is not None
+        assert result.entries[0].parser_level == 1  # Broad infra, not naming
+
+
+@pytest.fixture
+def xts_root():
+    import os
+    repo = os.environ.get("OHOS_REPO_ROOT", str(Path.home() / "proj/ohos_master"))
+    root = Path(repo) / "test" / "xts" / "acts" / "arkui"
+    if not root.is_dir():
+        pytest.skip(f"XTS root not found: {root}")
+    return root
