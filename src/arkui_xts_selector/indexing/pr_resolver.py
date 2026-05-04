@@ -7,7 +7,8 @@ Production-wiring entry point that ties Phase 1-5 together:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .ace_indexer import AceIndexResult
@@ -61,6 +62,166 @@ class PrResolveResult:
     entries: tuple[PrResolveEntry, ...] = ()
     overall_false_negative_risk: FalseNegativeRisk = "low"
     coverage_gap: tuple[str, ...] = ()  # T9.6: affected APIs with no consumer tests
+    fallback_applied: bool = False
+    fallback_reason: str = ""
+    fallback_level: str = "none"  # "rescue" | "safety_net" | "none"
+    fallback_extra_targets: tuple[str, ...] = ()  # additional targets from fallback
+
+
+@dataclass(frozen=True)
+class FallbackDecision:
+    """Conservative fallback decision for a PR resolution result."""
+    apply: bool
+    reason: str
+    level: str  # "rescue" | "safety_net" | "none"
+    extra_targets: tuple[str, ...] = ()
+
+
+def _compute_aae_rate(result: PrResolveResult) -> float:
+    """Compute AAE population rate from a resolve result.
+
+    Files with coverage = has affected_apis OR consumer_projects OR broad_infra_match.
+    """
+    if not result.entries:
+        return 0.0
+    covered = sum(
+        1 for e in result.entries
+        if e.affected_apis or e.consumer_projects or e.broad_infra_match
+    )
+    return covered / len(result.entries)
+
+
+def _compute_fallback_decision(
+    result: PrResolveResult,
+    xts_root: Path | None = None,
+) -> FallbackDecision:
+    """Determine conservative fallback action for a PR resolution.
+
+    Policy (Phase 11 §2.2):
+      - critical risk → rescue (add all family-related XTS suites to required)
+      - high risk + AAE < 40% → safety_net (add broader family suites)
+      - medium risk + AAE < 60% → warning only (no auto-broadening)
+      - low risk → normal behavior
+    """
+    risk = result.overall_false_negative_risk
+    aae = _compute_aae_rate(result)
+
+    if risk == "critical":
+        extra = _expand_to_family_coverage(result, xts_root)
+        return FallbackDecision(
+            apply=True,
+            reason=f"critical risk (AAE={aae:.0%}); auto-rescue: add {len(extra)} family test suites",
+            level="rescue",
+            extra_targets=tuple(sorted(extra)),
+        )
+
+    if risk == "high" and aae < 0.4:
+        extra = _expand_to_family_coverage(result, xts_root)
+        return FallbackDecision(
+            apply=True,
+            reason=f"high risk + low AAE ({aae:.0%}); safety net: add {len(extra)} broader family suites",
+            level="safety_net",
+            extra_targets=tuple(sorted(extra)),
+        )
+
+    return FallbackDecision(apply=False, reason="", level="none")
+
+
+def _expand_to_family_coverage(
+    result: PrResolveResult,
+    xts_root: Path | None = None,
+) -> set[str]:
+    """Expand selection to include all XTS test directories for affected families.
+
+    For each naming-resolved or API-resolved entry, extract the component family
+    prefix (e.g. "grid" from "ace_ets_module_layout_gridrow_gridcol") and find
+    all matching test directories under xts_root.
+
+    For broad-infra entries (no specific component), returns ALL XTS test dirs.
+    """
+    if xts_root is None or not xts_root.is_dir():
+        return set()
+
+    # Collect family prefixes from resolved entries
+    family_prefixes: set[str] = set()
+    has_broad_infra = False
+
+    for entry in result.entries:
+        if entry.broad_infra_match is not None:
+            has_broad_infra = True
+            continue
+
+        for proj in entry.consumer_projects:
+            # Extract family from paths like:
+            # ace_ets_module_layout_gridrow_gridcol → layout_gridrow_gridcol
+            # ace_ets_module_imageText → imageText
+            basename = Path(proj).name if "/" not in proj else proj.rstrip("/").split("/")[-1]
+            m = re.match(r"ace_ets_module_(.+?)(?:_nowear_api\d+_static)?$", basename)
+            if m:
+                raw = m.group(1)
+                # Split on _ to get family parts: "layout_gridrow_gridcol" → "layout"
+                # For simple names: "imageText" → "imageText"
+                parts = raw.split("_")
+                if len(parts) > 1:
+                    family_prefixes.add(parts[0])  # e.g. "layout"
+                else:
+                    family_prefixes.add(raw)  # e.g. "imageText"
+
+    if has_broad_infra:
+        # Broad infra → return ALL test directories
+        all_dirs: set[str] = set()
+        for d in xts_root.iterdir():
+            if d.is_dir() and d.name.startswith("ace_ets_module_"):
+                all_dirs.add(d.name)
+        return all_dirs
+
+    if not family_prefixes:
+        return set()
+
+    # Find all matching test directories
+    expanded: set[str] = set()
+    for d in xts_root.iterdir():
+        if not d.is_dir() or not d.name.startswith("ace_ets_module_"):
+            continue
+        suffix = d.name[len("ace_ets_module_"):]
+        for prefix in family_prefixes:
+            if suffix.startswith(prefix) or suffix.startswith(prefix.lower()):
+                expanded.add(d.name)
+                break
+
+    return expanded
+
+
+def apply_fallback(
+    result: PrResolveResult,
+    xts_root: Path | None = None,
+) -> PrResolveResult:
+    """Apply conservative fallback policy to a resolve result.
+
+    Returns a new PrResolveResult with fallback fields populated and
+    extra targets added to consumer_projects.
+    """
+    decision = _compute_fallback_decision(result, xts_root)
+
+    if not decision.apply:
+        return result
+
+    # Merge extra targets into existing consumer_projects
+    existing_targets: set[str] = set()
+    for entry in result.entries:
+        existing_targets.update(entry.consumer_projects)
+
+    new_targets = set(decision.extra_targets) - existing_targets
+
+    return PrResolveResult(
+        entries=result.entries,
+        overall_false_negative_risk=result.overall_false_negative_risk,
+        coverage_gap=result.coverage_gap,
+        fallback_applied=True,
+        fallback_reason=decision.reason,
+        fallback_level=decision.level,
+        fallback_extra_targets=tuple(sorted(new_targets)),
+    )
 
 
 def resolve_pr(

@@ -19,7 +19,7 @@ from .indexing.cache import cached_ace_index, cached_inverted_index, cached_sdk_
 from .indexing.inverted_index import InvertedIndex
 from .indexing.pr_resolver import (
     PrResolveEntry, SelectionReason,
-    _build_file_mapping_index, resolve_pr_with_context,
+    _build_file_mapping_index, resolve_pr_with_context, apply_fallback,
 )
 from .indexing.broad_infra import load_rules
 from .indexing.sdk_indexer import SdkIndexResult
@@ -78,8 +78,14 @@ def _fetch_pr_changed_files(
     pr_ref = pr_url.rstrip("/").split("/")[-1]
 
     # Determine API credentials from config
-    api_url = "https://gitcode.com/api/v5"
+    api_url = "https://gitcode.com"
     token = ""
+
+    # Auto-detect config if not provided
+    if git_host_config is None:
+        default_config = Path.home() / ".config" / "gitee_util" / "config.ini"
+        if default_config.exists():
+            git_host_config = default_config
 
     if git_host_config and git_host_config.exists():
         ini_url, ini_token = load_ini_git_host_config(
@@ -178,6 +184,10 @@ def _summarize_result(result: dict) -> dict:
             for p in e.get("consumer_projects", []):
                 if p not in all_projects:
                     all_projects[p] = {"project": p, "bucket": "required", "score": 0, "variant": ""}
+        # Include fallback extra targets
+        for p in gs.get("fallback_extra_targets", []):
+            if p not in all_projects:
+                all_projects[p] = {"project": p, "bucket": "required", "score": 0, "variant": ""}
 
         return {
             "pr_number": result["pr_number"],
@@ -195,6 +205,10 @@ def _summarize_result(result: dict) -> dict:
             "graph_naming_resolved": naming_resolved,
             "graph_overall_risk": gs.get("overall_false_negative_risk", "n/a"),
             "graph_error": gs.get("error"),
+            "fallback_applied": gs.get("fallback_applied", False),
+            "fallback_reason": gs.get("fallback_reason", ""),
+            "fallback_level": gs.get("fallback_level", "none"),
+            "fallback_extra_targets_count": len(gs.get("fallback_extra_targets", [])),
         }
 
     # Legacy subprocess format (report key)
@@ -242,6 +256,10 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
     # Clear proxy env vars to avoid API timeouts
     for proxy_var in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY"):
         os.environ.pop(proxy_var, None)
+
+    # Install urllib opener without proxy to prevent cached proxy settings
+    import urllib.request
+    urllib.request.install_opener(urllib.request.build_opener(urllib.request.ProxyHandler({})))
 
     # Resolve paths
     repo_root = Path(args.repo_root) if args.repo_root else Path(
@@ -344,12 +362,21 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                 xts_root=xts_root if xts_root else None,
             )
 
+            # Apply conservative fallback policy (Phase 11)
+            pr_resolve_result = apply_fallback(
+                pr_resolve_result, xts_root=xts_root if xts_root else None)
+
             graph_selection = {
                 "schema_version": "graph-pr-v1",
                 "entries": [_entry_to_dict(e) for e in pr_resolve_result.entries],
                 "overall_false_negative_risk": pr_resolve_result.overall_false_negative_risk,
                 "coverage_gap": list(pr_resolve_result.coverage_gap),
+                "fallback_applied": pr_resolve_result.fallback_applied,
+                "fallback_reason": pr_resolve_result.fallback_reason,
+                "fallback_level": pr_resolve_result.fallback_level,
             }
+            if pr_resolve_result.fallback_extra_targets:
+                graph_selection["fallback_extra_targets"] = list(pr_resolve_result.fallback_extra_targets)
 
             pr_result = {
                 "pr_number": pr_number,
@@ -414,6 +441,14 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         print(f"AAE actionable rate (excl. examples/tests/config, avg): {avg_aae_actionable:.2%}")
         print(f"Total coverage: {total_covered}/{total_files} files")
         print(f"Naming-resolved files: {naming_resolved}")
+
+        # Fallback statistics
+        fb_applied = sum(1 for s in summaries if s["status"] == "ok" and s.get("fallback_applied"))
+        fb_rescue = sum(1 for s in summaries if s["status"] == "ok" and s.get("fallback_level") == "rescue")
+        fb_safety = sum(1 for s in summaries if s["status"] == "ok" and s.get("fallback_level") == "safety_net")
+        fb_targets = sum(s.get("fallback_extra_targets_count", 0) for s in summaries if s["status"] == "ok")
+        print(f"Fallback applied: {fb_applied}/{ok} (rescue={fb_rescue}, safety_net={fb_safety})")
+        print(f"Fallback extra targets total: {fb_targets}")
 
     print(f"\nResults saved to {output_path}")
     print(f"Summaries saved to {summary_path}")

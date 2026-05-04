@@ -2183,7 +2183,7 @@ def main() -> int:
             from .indexing.sdk_indexer import SdkIndexResult
             from .indexing.ace_indexer import AceIndexResult
             from .indexing.inverted_index import InvertedIndex
-            from .indexing.pr_resolver import resolve_pr
+            from .indexing.pr_resolver import resolve_pr, apply_fallback
 
             graph_started = time.perf_counter()
 
@@ -2211,6 +2211,9 @@ def main() -> int:
                 changed_ranges=_changed_ranges if _changed_ranges else None,
                 xts_root=_xts_root if _xts_root else None,
             )
+
+            # Apply conservative fallback policy (Phase 11)
+            _result = apply_fallback(_result, xts_root=_xts_root if _xts_root else None)
 
             def _entry_to_dict(e):
                 d = {
@@ -2242,6 +2245,12 @@ def main() -> int:
             }
             if _result.coverage_gap:
                 graph_selection["coverage_gap"] = list(_result.coverage_gap)
+            # Fallback policy fields (Phase 11)
+            graph_selection["fallback_applied"] = _result.fallback_applied
+            graph_selection["fallback_reason"] = _result.fallback_reason
+            graph_selection["fallback_level"] = _result.fallback_level
+            if _result.fallback_extra_targets:
+                graph_selection["fallback_extra_targets"] = list(_result.fallback_extra_targets)
             report["graph_selection"] = graph_selection
             report["timings_ms"]["graph_resolver"] = round((time.perf_counter() - graph_started) * 1000, 3)
         except Exception as exc:
