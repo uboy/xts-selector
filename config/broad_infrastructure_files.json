@@ -93,6 +93,81 @@
       "fan_out_target": "all_layout_components",
       "false_negative_risk": "high",
       "rationale": "Core layout algorithms affect how every component is positioned and sized."
+    },
+    {
+      "id": "declarative_frontend_bridge",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/jsview/js_.*\\.cpp",
+        "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/jsview/js_.*\\.h"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_js_bridge_components",
+      "false_negative_risk": "high",
+      "rationale": "JS bridge view files connect declarative API to native implementation."
+    },
+    {
+      "id": "native_module_bridge",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/.*\\.cpp"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_native_module_components",
+      "false_negative_risk": "high",
+      "rationale": "Native module bridge files affect all components exposed to ArkTS runtime."
+    },
+    {
+      "id": "adapter_platform",
+      "match_paths": [
+        "foundation/arkui/ace_engine/adapter/ohos/entrance/.*\\.cpp",
+        "foundation/arkui/ace_engine/adapter/ohos/osal/.*\\.cpp"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_platform_components",
+      "false_negative_risk": "medium",
+      "rationale": "Platform adapter affects rendering and OS integration for all components."
+    },
+    {
+      "id": "core_common_utilities",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/common/.*\\.cpp",
+        "foundation/arkui/ace_engine/frameworks/core/common/.*\\.h"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_common_utilities",
+      "false_negative_risk": "medium",
+      "rationale": "Core common utilities (container scope, memory, etc.) affect all components."
+    },
+    {
+      "id": "core_image_pipeline",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/image/.*\\.cpp",
+        "foundation/arkui/ace_engine/frameworks/core/image/.*\\.h"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "image_related_components",
+      "false_negative_risk": "medium",
+      "rationale": "Core image pipeline affects image, svg, symbol glyph components."
+    },
+    {
+      "id": "arkts_koala_generated",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/bridge/arkts_frontend/koala_projects/.*\\.ets",
+        "foundation/arkui/ace_engine/frameworks/bridge/arkts_frontend/koala_projects/.*\\.ts"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_arkts_koala_consumers",
+      "false_negative_risk": "critical",
+      "rationale": "Generated Arkoala/ArkTS bridge files — all XTS component tests affected."
+    },
+    {
+      "id": "arkts_koala_native",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/bridge/arkts_frontend/koala_projects/.*/native/.*\\.cpp"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_arkts_native_consumers",
+      "false_negative_risk": "high",
+      "rationale": "Arkoala native module changes affect all component bridges."
     }
   ]
 }

@@ -152,8 +152,23 @@ def _summarize_result(result: dict) -> dict:
         changed_files = [e.get("changed_file", "") for e in graph_entries]
         files_with_apis = sum(1 for e in graph_entries if e.get("affected_apis"))
         naming_resolved = sum(1 for e in graph_entries if e.get("parser_level") == 2)
-        # AAE: files with APIs OR naming-resolved (both provide actionable coverage)
-        files_with_coverage = sum(1 for e in graph_entries if e.get("affected_apis") or e.get("consumer_projects"))
+        # AAE: files with APIs OR naming-resolved OR broad-infra (all provide actionable coverage)
+        files_with_coverage = sum(1 for e in graph_entries
+                                  if e.get("affected_apis") or e.get("consumer_projects")
+                                  or e.get("broad_infra_match"))
+
+        # Excludable files: examples, test_code, build_config, generated bridges, assets
+        _SKIP_PATTERNS = (
+            "/examples/", "/test/unittest/", "/test/mock/",
+            ".gn", ".gni", ".json", ".json5", ".png", ".map", ".gitignore",
+            "koala_projects/", "arkui_idlize/",
+        )
+        actionable_files = 0
+        for e in graph_entries:
+            f = e.get("changed_file", "")
+            if not any(p in f for p in _SKIP_PATTERNS):
+                actionable_files += 1
+        actionable_files = max(1, actionable_files)
 
         # Collect unique consumer projects as targets
         all_projects: dict[str, dict] = {}
@@ -167,8 +182,10 @@ def _summarize_result(result: dict) -> dict:
             "status": "ok",
             "changed_files": changed_files,
             "changed_files_count": len(graph_entries),
+            "actionable_files": actionable_files,
             "files_with_aae": files_with_coverage,
             "aae_population_rate": round(files_with_coverage / max(1, len(graph_entries)), 4),
+            "aae_actionable_rate": round(files_with_coverage / actionable_files, 4),
             "target_count": len(all_projects),
             "top_targets": list(all_projects.values())[:5],
             "buckets": {},
@@ -385,9 +402,15 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
 
     if ok > 0:
         aae_rates = [s["aae_population_rate"] for s in summaries if s["status"] == "ok" and "aae_population_rate" in s]
+        aae_actionable = [s["aae_actionable_rate"] for s in summaries if s["status"] == "ok" and "aae_actionable_rate" in s]
         avg_aae = sum(aae_rates) / len(aae_rates) if aae_rates else 0
+        avg_aae_actionable = sum(aae_actionable) / len(aae_actionable) if aae_actionable else 0
         naming_resolved = sum(s.get("graph_naming_resolved", 0) for s in summaries if s["status"] == "ok")
-        print(f"AAE population rate (avg): {avg_aae:.2%}")
+        total_files = sum(s.get("changed_files_count", 0) for s in summaries if s["status"] == "ok")
+        total_covered = sum(s.get("files_with_aae", 0) for s in summaries if s["status"] == "ok")
+        print(f"AAE population rate (avg per PR): {avg_aae:.2%}")
+        print(f"AAE actionable rate (excl. examples/tests/config, avg): {avg_aae_actionable:.2%}")
+        print(f"Total coverage: {total_covered}/{total_files} files")
         print(f"Naming-resolved files: {naming_resolved}")
 
     print(f"\nResults saved to {output_path}")
