@@ -59,8 +59,8 @@ def run_selector_on_pr(pr_url: str, pr_number: int, use_graph_resolver: bool = F
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT / "src")
     # Clear proxy to avoid timeouts
-    env.pop("http_proxy", None)
-    env.pop("https_proxy", None)
+    for proxy_var in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY"):
+        env.pop(proxy_var, None)
 
     result = subprocess.run(cmd, capture_output=True, text=True, check=False,
                             env=env, cwd=str(ROOT), timeout=timeout)
