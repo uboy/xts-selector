@@ -2210,7 +2210,8 @@ def main() -> int:
                 if e.broad_infra_match is not None:
                     d["broad_infra_match"] = {
                         "rule_id": e.broad_infra_match.rule_id,
-                        "pattern": e.broad_infra_match.pattern,
+                        "rationale": e.broad_infra_match.rationale,
+                        "fan_out_target": e.broad_infra_match.fan_out_target,
                         "risk": e.broad_infra_match.false_negative_risk,
                     }
                 return d
