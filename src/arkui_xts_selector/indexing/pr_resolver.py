@@ -92,14 +92,71 @@ def resolve_pr(
     rules = load_rules(broad_rules_path) if broad_rules_path else []
 
     # Build all source_to_api mappings
-    all_mappings = build_source_to_api_mapping(ace_index, sdk_index=sdk_index)
+    by_file = _build_file_mapping_index(ace_index, sdk_index)
 
-    # Index mappings by source_file_path for O(1) lookup
+    return _resolve_pr_core(
+        changed_files=changed_files,
+        by_file=by_file,
+        inverted=inverted,
+        rules=rules,
+        changed_ranges=changed_ranges,
+        xts_root=xts_root,
+    )
+
+
+def _build_file_mapping_index(
+    ace_index: AceIndexResult,
+    sdk_index: SdkIndexResult,
+) -> dict[str, list[SourceApiMapping]]:
+    """Build source-to-API mapping indexed by file path (expensive, cache this)."""
+    all_mappings = build_source_to_api_mapping(ace_index, sdk_index=sdk_index)
     by_file: dict[str, list[SourceApiMapping]] = {}
     for m in all_mappings:
         key = m.source_file_path
         by_file.setdefault(key, []).append(m)
+    return by_file
 
+
+def resolve_pr_with_context(
+    changed_files: list[str],
+    by_file: dict[str, list[SourceApiMapping]],
+    inverted: InvertedIndex,
+    rules: list,
+    changed_ranges: dict[str, list[tuple[int, int]]] | None = None,
+    xts_root: Path | None = None,
+) -> PrResolveResult:
+    """Resolve PR using pre-built mapping index (for batch mode).
+
+    Args:
+        changed_files: List of changed file paths
+        by_file: Pre-built source-to-API mapping index from _build_file_mapping_index()
+        inverted: Pre-built inverted index
+        rules: Pre-loaded broad infra rules
+        changed_ranges: Optional hunk-level ranges per file
+        xts_root: Optional XTS test root for C++ naming resolution
+
+    Returns:
+        PrResolveResult with entries per changed file
+    """
+    return _resolve_pr_core(
+        changed_files=changed_files,
+        by_file=by_file,
+        inverted=inverted,
+        rules=rules,
+        changed_ranges=changed_ranges,
+        xts_root=xts_root,
+    )
+
+
+def _resolve_pr_core(
+    changed_files: list[str],
+    by_file: dict[str, list[SourceApiMapping]],
+    inverted: InvertedIndex,
+    rules: list,
+    changed_ranges: dict[str, list[tuple[int, int]]] | None = None,
+    xts_root: Path | None = None,
+) -> PrResolveResult:
+    """Shared core resolver logic used by both resolve_pr and resolve_pr_with_context."""
     entries: list[PrResolveEntry] = []
     overall_risk: FalseNegativeRisk = "low"
     risk_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}

@@ -1468,6 +1468,17 @@ def parse_args() -> argparse.Namespace:
     explain_parser = subparsers.add_parser("explain", help="List API entities that a test project covers")
     explain_parser.add_argument("test_project", help="Path to the test project directory")
 
+    batch_parser = subparsers.add_parser("validate-batch", help="In-process batch validation: load indices once, resolve multiple PRs")
+    batch_parser.add_argument("--pr-list-file", required=True, help="File with PR URLs (one per line)")
+    batch_parser.add_argument("--sample-size", type=int, default=None, help="Limit to first N PRs")
+    batch_parser.add_argument("--timeout", type=int, default=300, help="Per-PR timeout in seconds (default: 300)")
+    batch_parser.add_argument("--output", default="local/batch_results.json", help="Output JSON path")
+    batch_parser.add_argument("--cache-dir", default="local/pr_cache", help="Cache directory for per-PR results")
+    batch_parser.add_argument("--repo-root", default=None, help="OHOS workspace root")
+    batch_parser.add_argument("--xts-root", default=None, help="XTS tests root")
+    batch_parser.add_argument("--sdk-api-root", default=None, help="SDK API root")
+    batch_parser.add_argument("--git-host-config", default=None, help="Git host config file (INI with token)")
+
     parser.add_argument(
         "--use-graph-resolver", action="store_true",
         help="Add graph-based selection results in JSON under 'graph_selection' key. Experimental, default off.",
@@ -1673,6 +1684,9 @@ def main() -> int:
     if args.command == "explain":
         from .indexing.explain import cmd_explain
         return cmd_explain(args)
+    if args.command == "validate-batch":
+        from .batch_validate import cmd_validate_batch
+        return cmd_validate_batch(args)
 
     progress_enabled = not args.no_progress
     json_to_stdout = bool(args.json)
