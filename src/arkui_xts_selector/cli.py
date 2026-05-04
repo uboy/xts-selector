@@ -1484,6 +1484,22 @@ def parse_args() -> argparse.Namespace:
         help="Add graph-based selection results in JSON under 'graph_selection' key. Experimental, default off.",
     )
 
+    # Audit subcommand (Phase 11, T11.15)
+    audit_parser = subparsers.add_parser("audit", help="Audit log operations")
+    audit_sub = audit_parser.add_subparsers(dest="audit_command")
+
+    fn_rate_parser = audit_sub.add_parser("fn-rate", help="Compute false-negative rate from audit log")
+    fn_rate_parser.add_argument("--days", type=int, default=30, help="Analyze last N days (default: 30)")
+    fn_rate_parser.add_argument("--audit-dir", default=None, help="Audit log directory (default: .runs/audit/)")
+
+    record_parser = audit_sub.add_parser("record", help="Record a PR run result to audit log")
+    record_parser.add_argument("--pr-number", type=int, required=True, help="PR number")
+    record_parser.add_argument("--selected", nargs="*", default=[], help="Selected test targets")
+    record_parser.add_argument("--ran", nargs="*", default=[], help="Actually executed test targets")
+    record_parser.add_argument("--failed", nargs="*", default=[], help="Failed test targets")
+    record_parser.add_argument("--selector-report", default=None, help="Path to selector report JSON")
+    record_parser.add_argument("--audit-dir", default=None, help="Audit log directory")
+
     return parser.parse_args()
 
 
@@ -1687,6 +1703,36 @@ def main() -> int:
     if args.command == "validate-batch":
         from .batch_validate import cmd_validate_batch
         return cmd_validate_batch(args)
+
+    if args.command == "audit":
+        if args.audit_command == "fn-rate":
+            from .audit.analyzer import compute_fn_rate, format_fn_rate_report
+            from pathlib import Path as _Path
+            report = compute_fn_rate(
+                audit_dir=_Path(args.audit_dir) if args.audit_dir else None,
+                days=args.days,
+            )
+            print(format_fn_rate_report(report))
+            return 0
+        if args.audit_command == "record":
+            from .audit.recorder import record_run
+            import json as _json
+            from pathlib import Path as _Path
+            selector_report = None
+            if args.selector_report:
+                selector_report = _json.loads(_Path(args.selector_report).read_text())
+            record_run(
+                pr_number=args.pr_number,
+                selected=args.selected,
+                ran=args.ran,
+                failed=args.failed,
+                selector_report=selector_report,
+                audit_dir=_Path(args.audit_dir) if args.audit_dir else None,
+            )
+            print(f"Recorded audit entry for PR #{args.pr_number}")
+            return 0
+        print("Usage: arkui-xts-selector audit <fn-rate|record> [options]", file=sys.stderr)
+        return 1
 
     progress_enabled = not args.no_progress
     json_to_stdout = bool(args.json)
