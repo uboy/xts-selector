@@ -152,6 +152,8 @@ def _summarize_result(result: dict) -> dict:
         changed_files = [e.get("changed_file", "") for e in graph_entries]
         files_with_apis = sum(1 for e in graph_entries if e.get("affected_apis"))
         naming_resolved = sum(1 for e in graph_entries if e.get("parser_level") == 2)
+        # AAE: files with APIs OR naming-resolved (both provide actionable coverage)
+        files_with_coverage = sum(1 for e in graph_entries if e.get("affected_apis") or e.get("consumer_projects"))
 
         # Collect unique consumer projects as targets
         all_projects: dict[str, dict] = {}
@@ -165,8 +167,8 @@ def _summarize_result(result: dict) -> dict:
             "status": "ok",
             "changed_files": changed_files,
             "changed_files_count": len(graph_entries),
-            "files_with_aae": files_with_apis,
-            "aae_population_rate": round(files_with_apis / max(1, len(graph_entries)), 4),
+            "files_with_aae": files_with_coverage,
+            "aae_population_rate": round(files_with_coverage / max(1, len(graph_entries)), 4),
             "target_count": len(all_projects),
             "top_targets": list(all_projects.values())[:5],
             "buckets": {},
