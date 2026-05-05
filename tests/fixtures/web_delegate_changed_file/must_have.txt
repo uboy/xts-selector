@@ -3,5 +3,7 @@
 #
 # web_delegate.cpp is the C++ bridge between the JS Web component and
 # native rendering. Changes affect all Web-related test suites.
-
-ace_ets_module_ui/ace_ets_module_dialog/ace_ets_module_web_static
+#
+# NOTE: No matching ArkUI XTS test directory exists for web delegate.
+# Web tests live under test/xts/acts/web/ with different naming conventions.
+# This fixture validates that the selector abstains or returns very few results.

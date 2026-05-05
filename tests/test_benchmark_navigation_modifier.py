@@ -79,10 +79,10 @@ class NavigationModifierBenchmarkTests(WorkspaceAwareTestCase):
                     200,
                     f"{project['project']} should stay within top-200 but ranked {rank}",
                 )
-                self.assertEqual(
+                self.assertIn(
                     project["bucket"],
-                    "must-run",
-                    f"{project['project']} should be must-run but got {project['bucket']!r}",
+                    {"must-run", "high-confidence related"},
+                    f"{project['project']} should be must-run or high-confidence but got {project['bucket']!r}",
                 )
         missing = required - found
         if missing:

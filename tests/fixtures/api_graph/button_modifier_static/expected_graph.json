@@ -1,0 +1,218 @@
+{
+  "edges": [
+    {
+      "consumer_usage_confidence": "unknown",
+      "edge_id": "edge:backs_component:engine:button",
+      "edge_type": "backs_component",
+      "evidence": {
+        "confidence": 0.85,
+        "confidence_level": "strong",
+        "family_specific": true,
+        "file_path": "frameworks/core/components_ng/pattern/button/button_model_static.cpp",
+        "generic": false,
+        "parser_level": 2,
+        "provenance": "parser",
+        "source": "ace_source_parser",
+        "surface": "static"
+      },
+      "from_node": "engine_file:frameworks/core/components_ng/pattern/button/button_model_static.cpp",
+      "generic": false,
+      "runnability_confidence": "unknown",
+      "source_impact_confidence": "strong",
+      "to_node": "family:Button"
+    },
+    {
+      "consumer_usage_confidence": "unknown",
+      "edge_id": "edge:belongs_to_project:consumer:ace_ets_module_modifier_static",
+      "edge_type": "belongs_to_project",
+      "evidence": {
+        "confidence": 1.0,
+        "confidence_level": "strong",
+        "family_specific": false,
+        "file_path": "test/xts/acts/arkui/ace_ets_module_modifier_static/ace_ets_module_modifier_static/ButtonModifierTest.ets",
+        "generic": false,
+        "parser_level": 2,
+        "provenance": "parser",
+        "source": "project_index",
+        "surface": "static"
+      },
+      "from_node": "consumer_file:test/xts/acts/arkui/ace_ets_module_modifier_static/ace_ets_module_modifier_static/ButtonModifierTest.ets",
+      "generic": false,
+      "runnability_confidence": "strong",
+      "source_file": "test/xts/acts/arkui/ace_ets_module_modifier_static/ace_ets_module_modifier_static/ButtonModifierTest.ets",
+      "source_impact_confidence": "unknown",
+      "to_node": "consumer_project:ace_ets_module_ui/ace_ets_module_modifier_static"
+    },
+    {
+      "consumer_usage_confidence": "unknown",
+      "edge_id": "edge:declares:sdk:ButtonModifier",
+      "edge_type": "declares",
+      "evidence": {
+        "confidence": 1.0,
+        "confidence_level": "strong",
+        "family_specific": true,
+        "file_path": "api/@ohos.arkui.component.button.d.ts",
+        "generic": false,
+        "parser_level": 3,
+        "provenance": "parser",
+        "source": "sdk_declaration_parser",
+        "surface": "static"
+      },
+      "from_node": "sdk_declaration:api/@ohos.arkui.component.button.d.ts#ButtonModifier",
+      "generic": false,
+      "runnability_confidence": "unknown",
+      "source_file": "api/@ohos.arkui.component.button.d.ts",
+      "source_impact_confidence": "unknown",
+      "to_node": "api:v1:arkui.static:modifier:@ohos%2Earkui%2Ecomponent%2EButton#ButtonModifier"
+    },
+    {
+      "consumer_usage_confidence": "unknown",
+      "edge_id": "edge:maps_to_target:ace_ets_module_modifier_static",
+      "edge_type": "maps_to_target",
+      "evidence": {
+        "confidence": 1.0,
+        "confidence_level": "strong",
+        "family_specific": false,
+        "generic": false,
+        "parser_level": 1,
+        "provenance": "artifact",
+        "source": "build_manifest",
+        "surface": "static"
+      },
+      "from_node": "consumer_project:ace_ets_module_ui/ace_ets_module_modifier_static",
+      "generic": false,
+      "runnability_confidence": "strong",
+      "source_impact_confidence": "unknown",
+      "to_node": "target:acts:ace_ets_module_modifier_static"
+    },
+    {
+      "consumer_usage_confidence": "unknown",
+      "edge_id": "edge:produces_artifact:ace_ets_module_modifier_static",
+      "edge_type": "produces_artifact",
+      "evidence": {
+        "confidence": 1.0,
+        "confidence_level": "strong",
+        "family_specific": false,
+        "generic": false,
+        "parser_level": 1,
+        "provenance": "artifact",
+        "source": "build_manifest",
+        "surface": "static"
+      },
+      "from_node": "target:acts:ace_ets_module_modifier_static",
+      "generic": false,
+      "runnability_confidence": "strong",
+      "source_impact_confidence": "unknown",
+      "to_node": "artifact:hap:AceEtsModuleModifierStatic.hap"
+    },
+    {
+      "consumer_usage_confidence": "unknown",
+      "edge_id": "edge:provides_static_modifier:button_model_static",
+      "edge_type": "provides_static_modifier",
+      "evidence": {
+        "confidence": 0.85,
+        "confidence_level": "strong",
+        "family_specific": true,
+        "file_path": "frameworks/core/components_ng/pattern/button/button_model_static.cpp",
+        "generic": false,
+        "parser_level": 2,
+        "provenance": "parser",
+        "source": "ace_source_parser",
+        "surface": "static",
+        "symbol": "ButtonModifier"
+      },
+      "from_node": "engine_file:frameworks/core/components_ng/pattern/button/button_model_static.cpp",
+      "generic": false,
+      "runnability_confidence": "unknown",
+      "source_file": "frameworks/core/components_ng/pattern/button/button_model_static.cpp",
+      "source_impact_confidence": "strong",
+      "to_node": "api:v1:arkui.static:modifier:@ohos%2Earkui%2Ecomponent%2EButton#ButtonModifier"
+    },
+    {
+      "consumer_usage_confidence": "strong",
+      "edge_id": "edge:uses_api:ButtonModifierTest:ButtonModifier",
+      "edge_type": "uses_api",
+      "evidence": {
+        "confidence": 0.9,
+        "confidence_level": "strong",
+        "family_specific": true,
+        "file_path": "test/xts/acts/arkui/ace_ets_module_modifier_static/ace_ets_module_modifier_static/ButtonModifierTest.ets",
+        "function": "ButtonModifier",
+        "generic": false,
+        "line": 25,
+        "parser_level": 2,
+        "provenance": "parser",
+        "source": "ets_consumer_parser",
+        "surface": "static",
+        "symbol": "ButtonModifier"
+      },
+      "from_node": "consumer_file:test/xts/acts/arkui/ace_ets_module_modifier_static/ace_ets_module_modifier_static/ButtonModifierTest.ets",
+      "generic": false,
+      "runnability_confidence": "unknown",
+      "source_file": "test/xts/acts/arkui/ace_ets_module_modifier_static/ace_ets_module_modifier_static/ButtonModifierTest.ets",
+      "source_impact_confidence": "unknown",
+      "to_node": "api:v1:arkui.static:modifier:@ohos%2Earkui%2Ecomponent%2EButton#ButtonModifier"
+    }
+  ],
+  "nodes": [
+    {
+      "data": {
+        "ambiguity": "unambiguous",
+        "family": "Button",
+        "kind": "modifier",
+        "module": "@ohos.arkui.component.Button",
+        "public_name": "ButtonModifier",
+        "stability": "stable",
+        "surface": "static"
+      },
+      "label": "ButtonModifier",
+      "node_id": "api:v1:arkui.static:modifier:@ohos%2Earkui%2Ecomponent%2EButton#ButtonModifier",
+      "node_type": "api_entity"
+    },
+    {
+      "label": "AceEtsModuleModifierStatic.hap",
+      "node_id": "artifact:hap:AceEtsModuleModifierStatic.hap",
+      "node_type": "build_artifact"
+    },
+    {
+      "label": "ButtonModifierTest.ets",
+      "node_id": "consumer_file:test/xts/acts/arkui/ace_ets_module_modifier_static/ace_ets_module_modifier_static/ButtonModifierTest.ets",
+      "node_type": "consumer_file"
+    },
+    {
+      "label": "ace_ets_module_modifier_static",
+      "node_id": "consumer_project:ace_ets_module_ui/ace_ets_module_modifier_static",
+      "node_type": "consumer_project"
+    },
+    {
+      "label": "button_model_static.cpp",
+      "node_id": "engine_file:frameworks/core/components_ng/pattern/button/button_model_static.cpp",
+      "node_type": "engine_file"
+    },
+    {
+      "label": "Button",
+      "node_id": "family:Button",
+      "node_type": "component_family"
+    },
+    {
+      "data": {
+        "export_name": "ButtonModifier",
+        "file_path": "api/@ohos.arkui.component.button.d.ts",
+        "line": 120
+      },
+      "label": "ButtonModifier",
+      "node_id": "sdk_declaration:api/@ohos.arkui.component.button.d.ts#ButtonModifier",
+      "node_type": "sdk_declaration"
+    },
+    {
+      "label": "static",
+      "node_id": "surface:static",
+      "node_type": "api_surface"
+    },
+    {
+      "label": "ace_ets_module_modifier_static",
+      "node_id": "target:acts:ace_ets_module_modifier_static",
+      "node_type": "runnable_target"
+    }
+  ]
+}

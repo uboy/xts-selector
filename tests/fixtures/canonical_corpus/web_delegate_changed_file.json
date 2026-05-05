@@ -5,12 +5,11 @@
   ],
   "expected_variant": "static",
   "expected_surface": "static",
-  "expected_abstention": false,
+  "expected_abstention": true,
   "precision_budget": {
-    "max_required_count": 100,
+    "max_required_count": 5,
     "max_top5_unrelated_noise": 0
   },
-  "must_have_source": "tests/fixtures/web_delegate_changed_file/must_have.txt",
   "reference_set": {
     "note": "PR !83647 web delegate changes, verified 2026-04",
     "description": "web_delegate.cpp is the C++ bridge between JS Web component and native rendering. Changes affect all Web-related test suites."

@@ -1,0 +1,272 @@
+"""AceEngine indexer for C++ source files.
+
+This module provides:
+- AceIndexEntry: An AceEngine source file entry with parsed C++ information
+- AceIndexResult: Result of indexing AceEngine source files
+- build_ace_index(): Build an index from AceEngine C++ source files
+
+The indexer walks pattern/, interfaces/native/implementation/,
+interfaces/native/node/, and bridge/declarative_frontend/jsview/ directories
+to classify files by role (pattern, model_static, native_modifier, etc.)
+and parse them to extract classes, methods, and includes.
+
+Import boundary: standard library + arkui_xts_selector.indexing.file_role,
+arkui_xts_selector.indexing.cpp_parser only.
+"""
+from __future__ import annotations
+
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
+
+from .cpp_parser import CppClass, CppMethod, CppParseResult, parse_cpp_file
+from .file_role import FileRole, classify
+
+
+@dataclass(frozen=True)
+class AceIndexEntry:
+    """An AceEngine source file entry with parsed C++ information."""
+    file_path: str
+    role: FileRole
+    family: str | None = None
+    classes: tuple[CppClass, ...] = ()
+    free_functions: tuple[str, ...] = ()
+    includes: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict:
+        """Return a JSON-compatible dict."""
+        d: dict[str, object] = {
+            "file_path": self.file_path,
+            "role": self.role,
+        }
+        if self.family is not None:
+            d["family"] = self.family
+        if self.classes:
+            d["classes"] = [cls.to_dict() for cls in self.classes]
+        if self.free_functions:
+            d["free_functions"] = list(self.free_functions)
+        if self.includes:
+            d["includes"] = list(self.includes)
+        return d
+
+    @classmethod
+    def from_dict(cls, data: dict) -> AceIndexEntry:
+        """Reconstruct from a dict produced by :meth:`to_dict`."""
+        classes_data = data.get("classes", [])
+        return cls(
+            file_path=data.get("file_path", ""),
+            role=data.get("role", "unknown"),
+            family=data.get("family"),
+            classes=tuple(_class_from_dict(c) for c in classes_data),
+            free_functions=tuple(data.get("free_functions", ())),
+            includes=tuple(data.get("includes", ())),
+        )
+
+
+@dataclass(frozen=True)
+class AceIndexResult:
+    """Result of indexing AceEngine source files."""
+    entries: tuple[AceIndexEntry, ...] = ()
+    errors: tuple[str, ...] = ()  # Error messages for files that couldn't be parsed
+    index_time_ms: float = 0.0
+    source: str = "ace_indexer_cpp"
+
+    def to_dict(self) -> dict:
+        """Return a JSON-compatible dict."""
+        return {
+            "entries": [entry.to_dict() for entry in self.entries],
+            "errors": list(self.errors),
+            "index_time_ms": self.index_time_ms,
+            "source": self.source,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> AceIndexResult:
+        """Reconstruct from a dict produced by :meth:`to_dict`."""
+        entries_data = data.get("entries", [])
+        return cls(
+            entries=tuple(AceIndexEntry.from_dict(e) for e in entries_data),
+            errors=tuple(data.get("errors", ())),
+            index_time_ms=data.get("index_time_ms", 0.0),
+            source=data.get("source", "ace_indexer_cpp"),
+        )
+
+
+def _class_from_dict(data: dict) -> CppClass:
+    """Helper to reconstruct CppClass from dict."""
+    methods_data = data.get("methods", [])
+    return CppClass(
+        name=data.get("name", ""),
+        base_class=data.get("base_class"),
+        line=data.get("line"),
+        end_line=data.get("end_line"),
+        methods=tuple(_method_from_dict(m) for m in methods_data),
+    )
+
+
+def _method_from_dict(data: dict) -> CppMethod:
+    """Helper to reconstruct CppMethod from dict."""
+    return CppMethod(
+        name=data.get("name", ""),
+        parent_class=data.get("parent_class"),
+        qualified=data.get("qualified"),
+        line=data.get("line"),
+        end_line=data.get("end_line"),
+        body_span=tuple(data.get("body_span", ())) if data.get("body_span") else None,
+    )
+
+
+# AceSourceEntry: Legacy type for backwards compatibility (deprecated)
+@dataclass(frozen=True)
+class AceSourceEntry:
+    """An AceEngine source file entry (legacy, deprecated)."""
+    file_path: str
+    family: str | None = None
+    surface: str = "static"
+    provides_modifiers: tuple[str, ...] = ()
+    implements_components: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict:
+        """Return a JSON-compatible dict."""
+        d: dict[str, object] = {
+            "file_path": self.file_path,
+            "surface": self.surface,
+        }
+        if self.family is not None:
+            d["family"] = self.family
+        if self.provides_modifiers:
+            d["provides_modifiers"] = list(self.provides_modifiers)
+        if self.implements_components:
+            d["implements_components"] = list(self.implements_components)
+        return d
+
+    @classmethod
+    def from_dict(cls, data: dict) -> AceSourceEntry:
+        """Reconstruct from a dict produced by :meth:`to_dict`."""
+        prov_mod = data.get("provides_modifiers")
+        impl_comp = data.get("implements_components")
+        return cls(
+            file_path=data.get("file_path", ""),
+            family=data.get("family"),
+            surface=data.get("surface", "static"),
+            provides_modifiers=tuple(prov_mod) if prov_mod else (),
+            implements_components=tuple(impl_comp) if impl_comp else (),
+        )
+
+
+# Legacy AceIndexResult for backwards compatibility (deprecated)
+@dataclass(frozen=True)
+class _LegacyAceIndexResult:
+    """Result of indexing AceEngine source files (legacy, deprecated)."""
+    entries: tuple[AceSourceEntry, ...] = ()
+    index_time_ms: float = 0.0
+    source: str = "ace_source_parser"
+
+    def to_dict(self) -> dict:
+        """Return a JSON-compatible dict."""
+        return {
+            "entries": [entry.to_dict() for entry in self.entries],
+            "index_time_ms": self.index_time_ms,
+            "source": self.source,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> _LegacyAceIndexResult:
+        """Reconstruct from a dict produced by :meth:`to_dict`."""
+        entries_data = data.get("entries", [])
+        return cls(
+            entries=tuple(AceSourceEntry.from_dict(e) for e in entries_data),
+            index_time_ms=data.get("index_time_ms", 0.0),
+            source=data.get("source", "ace_source_parser"),
+        )
+
+
+def build_ace_index(
+    ace_root: Path | str,
+    families: list[str] | None = None,
+    extensions: tuple[str, ...] = (".cpp", ".h"),
+) -> AceIndexResult:
+    """Build an index from AceEngine C++ source files.
+
+    Walks the following directories under ace_root:
+    - frameworks/core/components_ng/pattern/
+    - frameworks/core/interfaces/native/implementation/
+    - frameworks/core/interfaces/native/node/
+    - frameworks/bridge/declarative_frontend/jsview/
+
+    For each .cpp/.h file, classifies role via file_role.classify()
+    and parses via cpp_parser.parse_cpp_file().
+
+    Args:
+        ace_root: Path to the AceEngine root directory
+        families: Optional list of families to include. If None, includes all.
+        extensions: File extensions to index (default: .cpp, .h)
+
+    Returns:
+        AceIndexResult with entries for each indexed file
+    """
+    start_time = time.perf_counter()
+    ace_root = Path(ace_root) if isinstance(ace_root, str) else ace_root
+
+    entries: list[AceIndexEntry] = []
+    errors: list[str] = []
+
+    # Directories to walk
+    directories = [
+        ace_root / "frameworks" / "core" / "components_ng" / "pattern",
+        ace_root / "frameworks" / "core" / "interfaces" / "native" / "implementation",
+        ace_root / "frameworks" / "core" / "interfaces" / "native" / "node",
+        ace_root / "frameworks" / "bridge" / "declarative_frontend" / "jsview",
+    ]
+
+    # Walk each directory
+    for directory in directories:
+        if not directory.is_dir():
+            continue
+
+        for ext in extensions:
+            for file_path in sorted(directory.rglob(f"*{ext}")):
+                # Get relative path from ace_root
+                try:
+                    rel_path = file_path.relative_to(ace_root)
+                except ValueError:
+                    # File is not relative to ace_root, skip
+                    continue
+
+                rel_path_str = str(rel_path).replace("\\", "/")
+
+                # Classify file role
+                role, family = classify(rel_path_str)
+
+                # Filter by family if specified
+                if families is not None and family not in families:
+                    continue
+
+                # Skip unknown and infrastructure roles
+                if role in ("unknown", "infrastructure"):
+                    continue
+
+                # Parse the file
+                try:
+                    parse_result = parse_cpp_file(file_path)
+                    entry = AceIndexEntry(
+                        file_path=str(file_path),
+                        role=role,
+                        family=family,
+                        classes=parse_result.classes,
+                        free_functions=parse_result.free_functions,
+                        includes=parse_result.includes,
+                    )
+                    entries.append(entry)
+                except Exception as e:
+                    errors.append(f"Failed to parse {file_path}: {e}")
+
+    index_time_ms = (time.perf_counter() - start_time) * 1000
+
+    return AceIndexResult(
+        entries=tuple(entries),
+        errors=tuple(errors),
+        index_time_ms=index_time_ms,
+        source="ace_indexer_cpp",
+    )

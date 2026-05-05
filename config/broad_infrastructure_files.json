@@ -1,0 +1,173 @@
+{
+  "schema_version": "v1",
+  "rules": [
+    {
+      "id": "frame_node_core",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp",
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.h"
+      ],
+      "fan_out_target": "all_pattern_components",
+      "false_negative_risk": "critical",
+      "rationale": "FrameNode is the base class for every UI element."
+    },
+    {
+      "id": "pipeline_context",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/pipeline_ng/pipeline_context.cpp",
+        "foundation/arkui/ace_engine/frameworks/core/pipeline/pipeline_base.cpp"
+      ],
+      "fan_out_target": "all_components",
+      "false_negative_risk": "high"
+    },
+    {
+      "id": "idlize_generator",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/bridge/arkts_frontend/arkui_idlize/.*\\.tgz"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_arkts_generated_bridges",
+      "false_negative_risk": "critical",
+      "rationale": "Generator package change re-generates all ArkTS bridge files."
+    },
+    {
+      "id": "koala_wrapper",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/bridge/arkts_frontend/koala_projects/.*/koala-wrapper/.*\\.cpp"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_arkts_runtime_consumers",
+      "false_negative_risk": "high"
+    },
+    {
+      "id": "element_proxy_manager",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/base/element_proxy.cpp",
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/base/element_proxy.h",
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/manager/.*"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_managed_components",
+      "false_negative_risk": "high",
+      "rationale": "Manager subsystem orchestrates lifecycle, focus, drag for all components."
+    },
+    {
+      "id": "event_hub",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/event/.*"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_event_consuming_components",
+      "false_negative_risk": "high",
+      "rationale": "Event hub and event dispatch affect all components that handle gestures, key events, mouse."
+    },
+    {
+      "id": "accessibility_property",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/property/accessibility_property\\.cpp",
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/property/accessibility_property\\.h",
+        "foundation/arkui/ace_engine/frameworks/core/accessibility/.*"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_accessible_components",
+      "false_negative_risk": "medium",
+      "rationale": "Accessibility property is inherited by all components with accessibility support."
+    },
+    {
+      "id": "render_node",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/render/.*\\.cpp",
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/render/.*\\.h"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_rendered_components",
+      "false_negative_risk": "high",
+      "rationale": "Render node base class affects drawing pipeline for every visible component."
+    },
+    {
+      "id": "layout_core",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/layout/.*"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_layout_components",
+      "false_negative_risk": "high",
+      "rationale": "Core layout algorithms affect how every component is positioned and sized."
+    },
+    {
+      "id": "declarative_frontend_bridge",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/jsview/js_.*\\.cpp",
+        "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/jsview/js_.*\\.h"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_js_bridge_components",
+      "false_negative_risk": "high",
+      "rationale": "JS bridge view files connect declarative API to native implementation."
+    },
+    {
+      "id": "native_module_bridge",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/.*\\.cpp"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_native_module_components",
+      "false_negative_risk": "high",
+      "rationale": "Native module bridge files affect all components exposed to ArkTS runtime."
+    },
+    {
+      "id": "adapter_platform",
+      "match_paths": [
+        "foundation/arkui/ace_engine/adapter/ohos/entrance/.*\\.cpp",
+        "foundation/arkui/ace_engine/adapter/ohos/osal/.*\\.cpp"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_platform_components",
+      "false_negative_risk": "medium",
+      "rationale": "Platform adapter affects rendering and OS integration for all components."
+    },
+    {
+      "id": "core_common_utilities",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/common/.*\\.cpp",
+        "foundation/arkui/ace_engine/frameworks/core/common/.*\\.h"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_common_utilities",
+      "false_negative_risk": "medium",
+      "rationale": "Core common utilities (container scope, memory, etc.) affect all components."
+    },
+    {
+      "id": "core_image_pipeline",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/image/.*\\.cpp",
+        "foundation/arkui/ace_engine/frameworks/core/image/.*\\.h"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "image_related_components",
+      "false_negative_risk": "medium",
+      "rationale": "Core image pipeline affects image, svg, symbol glyph components."
+    },
+    {
+      "id": "arkts_koala_generated",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/bridge/arkts_frontend/koala_projects/.*\\.ets",
+        "foundation/arkui/ace_engine/frameworks/bridge/arkts_frontend/koala_projects/.*\\.ts"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_arkts_koala_consumers",
+      "false_negative_risk": "critical",
+      "rationale": "Generated Arkoala/ArkTS bridge files — all XTS component tests affected."
+    },
+    {
+      "id": "arkts_koala_native",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/bridge/arkts_frontend/koala_projects/.*/native/.*\\.cpp"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_arkts_native_consumers",
+      "false_negative_risk": "high",
+      "rationale": "Arkoala native module changes affect all component bridges."
+    }
+  ]
+}

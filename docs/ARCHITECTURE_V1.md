@@ -1,3 +1,9 @@
+> **STATUS: V1 historical baseline.** This document captures the
+> recommended V1 architecture from 2026-04-08. The current target
+> architecture is documented in [TARGET_ARCHITECTURE.md](TARGET_ARCHITECTURE.md);
+> the active implementation plan is [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+> Read this file only for context on early decisions.
+
 # Architecture
 
 ## Goal

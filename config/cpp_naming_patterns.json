@@ -1,0 +1,98 @@
+{
+  "description": "C++ naming convention patterns for extracting component names from file paths. Used by indexing/cpp_naming_resolver.py.",
+  "version": 1,
+  "patterns": [
+    {
+      "id": "content_modifier",
+      "suffix": "_content_modifier",
+      "regex": "^([\\w]+)_content_modifier\\.\\w+$",
+      "examples": ["grid_content_modifier.cpp", "slider_content_modifier.cpp"]
+    },
+    {
+      "id": "overlay_modifier",
+      "suffix": "_overlay_modifier",
+      "regex": "^([\\w]+)_overlay_modifier\\.\\w+$",
+      "examples": ["rich_editor_overlay_modifier.cpp"]
+    },
+    {
+      "id": "drag_overlay_modifier",
+      "suffix": "_drag_overlay_modifier",
+      "regex": "^([\\w]+)_drag_overlay_modifier\\.\\w+$",
+      "examples": ["rich_editor_drag_overlay_modifier.cpp"]
+    },
+    {
+      "id": "drag_paint_method",
+      "suffix": "_drag_paint_method",
+      "regex": "^([\\w]+)_drag_paint_method\\.\\w+$",
+      "examples": ["rich_editor_drag_paint_method.cpp"]
+    },
+    {
+      "id": "gesture_event_hub",
+      "suffix": "_gesture_event_hub",
+      "regex": "^([\\w]+)_gesture_event_hub\\.\\w+$",
+      "examples": ["rich_editor_gesture_event_hub.cpp"]
+    },
+    {
+      "id": "layout_algorithm",
+      "suffix": "_layout_algorithm",
+      "regex": "^([\\w]+)_layout_algorithm\\.\\w+$",
+      "examples": ["button_layout_algorithm.cpp", "rich_editor_layout_algorithm.cpp"]
+    },
+    {
+      "id": "paint_method",
+      "suffix": "_paint_method",
+      "regex": "^([\\w]+)_paint_method\\.\\w+$",
+      "examples": ["button_paint_method.cpp", "calendar_paint_method.cpp"]
+    },
+    {
+      "id": "accessibility_property",
+      "suffix": "_accessibility_property",
+      "regex": "^([\\w]+)_accessibility_property\\.\\w+$",
+      "examples": ["badge_accessibility_property.cpp"]
+    },
+    {
+      "id": "model_static",
+      "suffix": "_model_static",
+      "regex": "^([\\w]+)_model_static\\.\\w+$",
+      "examples": ["button_model_static.cpp", "calendar_picker_model_static.cpp"]
+    },
+    {
+      "id": "model_ng",
+      "suffix": "_model_ng",
+      "regex": "^([\\w]+)_model_ng\\.\\w+$",
+      "examples": ["button_model_ng.cpp"]
+    },
+    {
+      "id": "event_hub",
+      "suffix": "_event_hub",
+      "regex": "^([\\w]+)_event_hub\\.\\w+$",
+      "examples": ["button_event_hub.h", "grid_event_hub.cpp"]
+    },
+    {
+      "id": "modifier",
+      "suffix": "_modifier",
+      "regex": "^([\\w]+)_modifier\\.\\w+$",
+      "examples": ["canvas_modifier.cpp", "divider_modifier.cpp"]
+    },
+    {
+      "id": "pattern",
+      "suffix": "_pattern",
+      "regex": "^([\\w]+)_pattern\\.\\w+$",
+      "examples": ["button_pattern.cpp", "menu_pattern.h"]
+    },
+    {
+      "id": "model",
+      "suffix": "_model",
+      "regex": "^([\\w]+)_model\\.\\w+$",
+      "examples": ["button_model.h"]
+    }
+  ],
+  "directory_co_location": {
+    "description": "Extract component from directory path under components_ng/pattern/<component>/",
+    "path_pattern": "components_ng/pattern/([\\w]+(?:_[\\w]+)*)/",
+    "examples": [
+      "frameworks/core/components_ng/pattern/menu/menu_pattern.cpp → menu",
+      "frameworks/core/components_ng/pattern/rich_editor/rich_editor_layout_algorithm.cpp → rich_editor"
+    ]
+  }
+}
