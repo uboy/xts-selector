@@ -7,6 +7,7 @@ Production-wiring entry point that ties Phase 1-5 together:
 """
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -168,26 +169,38 @@ def _expand_to_family_coverage(
                     family_prefixes.add(raw)  # e.g. "imageText"
 
     if has_broad_infra:
-        # Broad infra → return ALL test directories
+        # Broad infra → return ALL test directories (recursive, up to depth 4)
         all_dirs: set[str] = set()
-        for d in xts_root.iterdir():
-            if d.is_dir() and d.name.startswith("ace_ets_module_"):
-                all_dirs.add(d.name)
+        xts_root_str = str(xts_root)
+        base_depth = xts_root_str.rstrip("/").count("/")
+        for dirpath, dirnames, _ in os.walk(xts_root):
+            dirname = os.path.basename(dirpath)
+            if dirname.startswith("ace_ets_module_"):
+                all_dirs.add(dirname)
+            if dirpath.count("/") - base_depth >= 4:
+                dirnames.clear()
         return all_dirs
 
     if not family_prefixes:
         return set()
 
-    # Find all matching test directories
+    # Find all matching test directories (recursive, up to depth 4)
     expanded: set[str] = set()
-    for d in xts_root.iterdir():
-        if not d.is_dir() or not d.name.startswith("ace_ets_module_"):
+    xts_root_str = str(xts_root)
+    base_depth = xts_root_str.rstrip("/").count("/")
+    for dirpath, dirnames, _ in os.walk(xts_root):
+        dirname = os.path.basename(dirpath)
+        if not dirname.startswith("ace_ets_module_"):
+            if dirpath.count("/") - base_depth >= 4:
+                dirnames.clear()
             continue
-        suffix = d.name[len("ace_ets_module_"):]
+        suffix = dirname[len("ace_ets_module_"):]
         for prefix in family_prefixes:
             if suffix.startswith(prefix) or suffix.startswith(prefix.lower()):
-                expanded.add(d.name)
+                expanded.add(dirname)
                 break
+        if dirpath.count("/") - base_depth >= 4:
+            dirnames.clear()
 
     return expanded
 
