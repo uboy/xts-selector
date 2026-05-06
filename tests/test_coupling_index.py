@@ -38,6 +38,44 @@ class TestCouplingIndex:
         results = idx.lookup_coupling("some/path/button_pattern.cpp")
         assert len(results) == 1
 
+    def test_lookup_filters_low_support(self) -> None:
+        idx = CouplingIndex(_index={
+            "file.cpp": [
+                CouplingEntry("test_a", 0.8, 3, ""),   # support < 5 → filtered
+                CouplingEntry("test_b", 0.6, 10, ""),  # passes
+            ],
+        })
+        results = idx.lookup_coupling("file.cpp")
+        assert len(results) == 1
+        assert results[0].test_file == "test_b"
+
+    def test_lookup_filters_low_confidence(self) -> None:
+        idx = CouplingIndex(_index={
+            "file.cpp": [
+                CouplingEntry("test_a", 0.2, 10, ""),  # confidence < 0.3 → filtered
+                CouplingEntry("test_b", 0.5, 10, ""),  # passes
+            ],
+        })
+        results = idx.lookup_coupling("file.cpp")
+        assert len(results) == 1
+        assert results[0].test_file == "test_b"
+
+    def test_lookup_caps_top_10(self) -> None:
+        entries = [CouplingEntry(f"test_{i}", 0.5, 10, "") for i in range(15)]
+        idx = CouplingIndex(_index={"file.cpp": entries})
+        results = idx.lookup_coupling("file.cpp")
+        assert len(results) == 10
+
+    def test_lookup_sorted_by_confidence(self) -> None:
+        idx = CouplingIndex(_index={
+            "file.cpp": [
+                CouplingEntry("test_low", 0.4, 10, ""),
+                CouplingEntry("test_high", 0.9, 10, ""),
+            ],
+        })
+        results = idx.lookup_coupling("file.cpp")
+        assert results[0].test_file == "test_high"
+
     def test_lookup_missing(self) -> None:
         idx = CouplingIndex(_index={})
         assert idx.lookup_coupling("unknown.cpp") == []

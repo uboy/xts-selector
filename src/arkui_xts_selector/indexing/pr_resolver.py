@@ -102,6 +102,7 @@ class PrResolveResult:
     ci_policy_recommendation: str = "ok"  # "ok" | "warn" | "require_broader_suite" | "manual_review"
     ci_policy_reason: str = ""
     unresolved_files: tuple[str, ...] = ()  # files with no mapping at all
+    low_confidence_resolved_files: tuple[str, ...] = ()  # files resolved only via weak signals (last_resort, area_fallback)
     semantic_source: str = "unknown"  # "api" | "family" | "broad" | "unknown"
 
 
@@ -427,6 +428,7 @@ def _resolve_pr_core(
     all_affected_apis: set[str] = set()
     all_covered_apis: set[str] = set()
     unresolved_files: list[str] = []
+    low_confidence_resolved: list[str] = []
     has_broad = False
     has_family = False
     has_api = False
@@ -484,11 +486,8 @@ def _resolve_pr_core(
                         # Resolve consumer projects via inverted index
                         project_reasons: dict[str, dict] = {}
                         for api_name in affected_apis_idl:
-                            # Look up consumers: prefer exact canonical, fallback to fuzzy
-                            consumers = []
-                            consumers = inverted.consumers_for_canonical(api_name)
-                            if not consumers:
-                                consumers = inverted.consumers_for_name(api_name)
+                            # IDL methods are bare names, not canonical IDs — use name lookup directly
+                            consumers = inverted.consumers_for_name(api_name)
 
                             for consumer in consumers:
                                 proj = consumer.project_path
@@ -563,54 +562,7 @@ def _resolve_pr_core(
                 file_handled = True
                 continue
 
-        # 1.2. Coverage replay — tests that historically covered this source file
-        if coverage_index is not None and not file_handled:
-            coverage_entries = coverage_index.lookup_coverage(cf)
-            if coverage_entries:
-                entries.append(PrResolveEntry(
-                    changed_file=cf,
-                    affected_apis=(),
-                    consumer_projects=tuple(e.test_id for e in coverage_entries if e.is_significant),
-                    selection_reasons=tuple(
-                        SelectionReason(
-                            project_path=e.test_id,
-                            matched_apis=(),
-                            usage_kinds=("coverage_replay",),
-                            confidence="medium" if e.coverage_ratio >= 0.3 else "weak",
-                        ) for e in coverage_entries if e.is_significant
-                    ),
-                    broad_infra_match=None,
-                    false_negative_risk="low",
-                    parser_level=1,
-                    impact_candidates=(),
-                ))
-                continue
-
-        # 1.5. Git history coupling (between bridge and broad infra)
-        if coupling_index is not None and not file_handled:
-            coupled = coupling_index.lookup_coupling(cf)
-            if coupled:
-                targets = tuple(c.test_file for c in coupled)
-                entries.append(PrResolveEntry(
-                    changed_file=cf,
-                    affected_apis=(),
-                    consumer_projects=targets,
-                    selection_reasons=tuple(
-                        SelectionReason(
-                            project_path=c.test_file,
-                            matched_apis=(),
-                            usage_kinds=("git_coupling",),
-                            confidence="medium" if c.confidence >= 0.5 else "weak",
-                        ) for c in coupled
-                    ),
-                    broad_infra_match=None,
-                    false_negative_risk="medium",
-                    parser_level=1,
-                    impact_candidates=(),
-                ))
-                continue
-
-        # 2. Broad infra check (known infrastructure files — before generic C++ naming)
+        # 2. Broad infra check (known infrastructure files — highest priority truth)
         if rules:
             infra = match_changed_file(cf, rules)
             if infra is not None:
@@ -730,6 +682,48 @@ def _resolve_pr_core(
                 if any(m.overlaps_range(start, end) for start, end in ranges)
             ]
 
+        # A.1: Semantic diff — determine if changes are body vs comment-only
+        if file_mappings and changed_ranges and cf in changed_ranges:
+            try:
+                from .method_diff import classify_hunk_impact
+                # Try to read file content for AST-based classification
+                file_content: bytes | None = None
+                try:
+                    candidate = Path(cf)
+                    if candidate.is_file():
+                        file_content = candidate.read_bytes()
+                except OSError:
+                    pass
+                # Build a synthetic patch from changed_ranges
+                patch_lines = []
+                for start, end in changed_ranges[cf]:
+                    count = end - start + 1
+                    patch_lines.append(f"@@ -{start},{count} +{start},{count} @@")
+                patch_text = "\n".join(patch_lines)
+                impacts = classify_hunk_impact(cf, patch_text, file_content)
+                if impacts:
+                    any_body = any(imp.is_body_change for imp in impacts)
+                    if not any_body:
+                        # All changes are comment/whitespace — mark all mappings
+                        file_mappings = [
+                            SourceApiMapping(
+                                source_qualified=m.source_qualified,
+                                api_public_name=m.api_public_name,
+                                confidence=m.confidence,
+                                file_role=m.file_role,
+                                source_file_path=m.source_file_path,
+                                method_line=m.method_line,
+                                method_end_line=m.method_end_line,
+                                api_id=m.api_id,
+                                api_member_of=m.api_member_of,
+                                ambiguity_state=m.ambiguity_state,
+                                body_changed=False,
+                            )
+                            for m in file_mappings
+                        ]
+            except Exception:
+                pass  # method_diff failure is non-fatal
+
         # 3. Collect affected APIs and consumer projects with reasons
         affected_apis: list[str] = []
         canonical_affected_apis: list[str] = []
@@ -741,7 +735,8 @@ def _resolve_pr_core(
             api_name = mapping.api_public_name
             affected_apis.append(api_name)
             all_affected_apis.add(api_name)
-            if mapping.api_id:
+            # Only include canonical IDs that were SDK-verified (ambiguity_state="unique")
+            if mapping.api_id and mapping.ambiguity_state == "unique":
                 canonical_affected_apis.append(mapping.api_id)
             max_parser_level = max(max_parser_level,
                                    3 if mapping.confidence == "strong" else
@@ -772,8 +767,8 @@ def _resolve_pr_core(
         # Deduplicate consumers
         unique_consumers = sorted(set(project_reasons.keys()))
 
-        # 4.3. ETS import graph expansion — if changed file is imported by tests, add them
-        if ets_index is not None and ets_index.imported_by:
+        # 4.3. ETS import graph expansion — only for .ets files
+        if cf_normalized.endswith(".ets") and ets_index is not None and ets_index.imported_by:
             importers = ets_index.find_importers(cf)
             for importer in importers:
                 if importer not in project_reasons:
@@ -781,6 +776,30 @@ def _resolve_pr_core(
                         "apis": set(), "kinds": {"import_graph"}, "confidence": "weak",
                     }
             unique_consumers = sorted(set(project_reasons.keys()))
+
+        # 4.3b. Coverage replay — additive, supplements existing consumers
+        if coverage_index is not None:
+            coverage_entries = coverage_index.lookup_coverage(cf)
+            for ce in coverage_entries:
+                if ce.is_significant and ce.test_id not in project_reasons:
+                    project_reasons[ce.test_id] = {
+                        "apis": set(), "kinds": {"coverage_replay"},
+                        "confidence": "medium" if ce.coverage_ratio >= 0.3 else "weak",
+                    }
+            if coverage_entries:
+                unique_consumers = sorted(set(project_reasons.keys()))
+
+        # 4.3c. Git history coupling — additive, supplements existing consumers
+        if coupling_index is not None:
+            coupled = coupling_index.lookup_coupling(cf)
+            for c in coupled:
+                if c.test_file not in project_reasons:
+                    project_reasons[c.test_file] = {
+                        "apis": set(), "kinds": {"git_coupling"},
+                        "confidence": "medium" if c.confidence >= 0.5 else "weak",
+                    }
+            if coupled:
+                unique_consumers = sorted(set(project_reasons.keys()))
 
         # Build selection reasons
         selection_reasons = tuple(
@@ -821,12 +840,11 @@ def _resolve_pr_core(
                             ) for t in capped_targets
                         ),
                         broad_infra_match=None,
-                        false_negative_risk="medium",
+                        false_negative_risk="low",
                         parser_level=0,
                         impact_candidates=(),
                     ))
-                    if risk_order.get("medium", 0) > risk_order.get(overall_risk, 0):
-                        overall_risk = "medium"
+                    low_confidence_resolved.append(cf)
                     continue
 
             # 4.5. Last-resort path-token matching (before marking as unresolved)
@@ -848,12 +866,11 @@ def _resolve_pr_core(
                             ) for m in resort_matches
                         ),
                         broad_infra_match=None,
-                        false_negative_risk="medium",
+                        false_negative_risk="low",
                         parser_level=0,
                         impact_candidates=(),
                     ))
-                    if risk_order.get("medium", 0) > risk_order.get(overall_risk, 0):
-                        overall_risk = "medium"
+                    low_confidence_resolved.append(cf)
                     continue
 
             unresolved_files.append(cf)
@@ -912,6 +929,7 @@ def _resolve_pr_core(
         ci_policy_recommendation=ci_policy,
         ci_policy_reason=ci_reason,
         unresolved_files=tuple(unresolved_files),
+        low_confidence_resolved_files=tuple(low_confidence_resolved),
         semantic_source=semantic_source,
     )
 

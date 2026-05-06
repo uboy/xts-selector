@@ -637,5 +637,76 @@ Full suite (including sdk_indexer which scans real .d.ts files): 144+ tests pass
 | `src/arkui_xts_selector/indexing/cache.py` | sdk_sig from sdk_api_root, not xts_root |
 | `src/arkui_xts_selector/cli.py` | TargetIndex wiring, --pr-api-cache-dir, --pr-cache-mode |
 | `scripts/cache_pr_list.py` | Standalone PR cache prefill tool (env token, proxy off, pagination) |
+
+## Post-Phase 10 Backlog Implementation (commit e348d67)
+
+### Status: Implemented with review fixes
+
+All 14 backlog tasks (A.1-A.5, B.1-B.4, C.1-C.5) have been implemented and then refined based on code review.
+
+**Important: Phase 0-10 foundation was NOT implemented.** The backlog was built on top of the existing (imperfect) resolver. Known foundation gaps:
+
+- **C1.1** canonical_affected_apis now gated on `ambiguity_state == "unique"` (SDK-verified only)
+- **C1.2** substring fallback in `consumers_for_canonical` still present (Phase 0.3 not done)
+- **C1.3** path normalization in `_find_mappings_for_file` still has endswith fallback
+- **C1.4** file_category (test/build/example filtering) not implemented
+- **C1.5** `golden-eval` / `quality-compare` CLI commands not added
+- **C1.6** SDK lookup still lacks parent context (Phase 4)
+
+### Review fixes applied (commit after e348d67)
+
+| Fix | Description |
+|---|---|
+| C1.1 | `sdk_confirmed` flag on SourceApiMapping; canonical_affected_apis gated to SDK-verified only |
+| C2 | Coverage replay and git coupling moved AFTER broad_infra; made additive (no `continue`) |
+| C3 | method_diff wired into `_resolve_pr_core` to set `body_changed=False` for comment-only changes |
+| C4/C5 | last_resort and area_fallback risk changed to `"low"`; added `low_confidence_resolved_files` counter |
+| H1 | coupling_index filters `support>=5, confidence>=0.3`, caps top-10 |
+| H2 | ETS import graph guarded to `.ets` files only |
+| H3 | IDL branch uses `consumers_for_name()` directly (bare names, not canonical) |
+| M3 | Expired overrides emit stderr warning at load time |
+
+### Resolver chain (final)
+
+```
+Step 0:   Manual overrides (C.3)
+Step 0.5: IDL resolution (A.5)
+Step 1:   ArkTS bridge (existing)
+Step 2:   Broad infra (existing) — conservative truth, always fires
+Step 3:   C++ naming + macro expansion (A.4)
+Step 4:   Source-to-API mapping (existing + A.2 inheritance + A.1 body_changed)
+Step 4.3: ETS import graph (B.4, .ets only)
+Step 4.3b: Coverage replay (B.1, additive)
+Step 4.3c: Git coupling (B.2, additive, filtered)
+Step 4.4: Area-based fallback (C.4, risk=low)
+Step 4.5: Last-resort tokens (C.1, risk=low)
+          [Unresolved → diagnostic_suggestions (C.2)]
+```
+
+### New modules (41 files, +4366 lines, 165 tests)
+
+| Module | Task | Description |
+|---|---|---|
+| `indexing/manual_overrides.py` | C.3 | Operator-configured path→target overrides |
+| `indexing/coupling_index.py` | B.2 | Git history co-change coupling |
+| `indexing/last_resort.py` | C.1 | Path-token Jaccard matching |
+| `indexing/method_diff.py` | A.1 | Hunk-level semantic diff classification |
+| `indexing/area_owners.py` | C.4 | Area-based fallback rules |
+| `indexing/idl_parser.py` | A.5 | IDL file parser |
+| `indexing/build_graph.py` | B.3 | BUILD.gn dependency graph |
+| `indexing/cpp_macro_patterns.py` | A.4 | C++ macro expansion config |
+| `coverage/` | B.1 | Coverage-driven test impact index |
+| `sdk_indexer.py` extensions | A.2, A.3 | Inheritance graph + alias graph |
+| `ets_indexer.py` extensions | B.4 | Import graph (imports_from, imported_by) |
+| `sdk_parser.py` extensions | A.3 | Export alias + type alias detection |
+| `source_to_api.py` extensions | A.1, C1.1 | body_changed, sdk_confirmed |
+
+### Default activation status
+
+**NOT recommended for default activation** until Phase 0-10 foundation is completed:
+- Canonical API resolution rate is still inflated by pseudo-IDs
+- Path collisions corrupt mapping data
+- No `golden-eval` CLI for precision/recall measurement
+- Non-API PRs inflate manual review rate
 | `tests/test_pr_api_cache.py` | Cache hit/miss/corrupt/refresh/backward-compat tests |
 

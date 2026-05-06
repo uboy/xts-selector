@@ -41,6 +41,7 @@ class SourceApiMapping:
     api_member_of: str | None = None  # Parent type (e.g. ButtonAttribute)
     ambiguity_state: str | None = None  # "unique" | "ambiguous" | "unresolved_parent"
     body_changed: bool = True  # Whether function body was modified (vs comments/whitespace)
+    sdk_confirmed: bool = False  # True only when SDK index verified this mapping
 
     def overlaps_range(self, start: int, end: int) -> bool:
         """Check if this mapping's method overlaps with a line range."""

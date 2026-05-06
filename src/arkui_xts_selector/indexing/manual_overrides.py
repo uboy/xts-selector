@@ -5,7 +5,7 @@ to a set of must-run XTS targets. Rules have an expiration date and require a
 ticket reference.
 
 Override rules are checked first in the resolver chain, before any algorithmic
-resolution. Expired rules are silently filtered at load time.
+resolution. Expired rules are filtered at load time with a warning to stderr.
 """
 from __future__ import annotations
 
@@ -59,6 +59,9 @@ def load_overrides(path: Path | None = None) -> list[OverrideRule]:
             except ValueError:
                 continue
         if expires_at and expires_at < today:
+            print(f"WARNING: manual override expired on {expires_at} for pattern '{pattern}' "
+                  f"(owner={raw.get('owner', '')}, ticket={raw.get('ticket', '')}). "
+                  f"Update expires_at or remove the rule.", file=__import__('sys').stderr)
             continue
         rules.append(OverrideRule(
             path_regex=re.compile(pattern),

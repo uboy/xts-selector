@@ -30,19 +30,19 @@ class CouplingIndex:
     def lookup_coupling(self, file_path: str) -> list[CouplingEntry]:
         """Look up coupled test files for a source file.
 
-        Checks the file path as-is and also tries basename matching.
-        Returns entries sorted by confidence descending.
+        Checks the file path as-is first, then basename fallback.
+        Filters: support >= 5 AND confidence >= 0.3, capped at top-10.
         """
         entries = self._index.get(file_path)
-        if entries:
-            return entries
-        # Try basename match
-        import os
-        basename = os.path.basename(file_path)
-        entries = self._index.get(basename)
-        if entries:
-            return entries
-        return []
+        if not entries:
+            import os
+            basename = os.path.basename(file_path)
+            entries = self._index.get(basename)
+        if not entries:
+            return []
+        filtered = [e for e in entries if e.support >= 5 and e.confidence >= 0.3]
+        filtered.sort(key=lambda e: e.confidence, reverse=True)
+        return filtered[:10]
 
     def is_empty(self) -> bool:
         return not self._index
