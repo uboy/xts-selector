@@ -646,8 +646,8 @@ class DailyPrebuiltCliTests(unittest.TestCase):
                 "command": ["python3", "flash.py"],
             }
             with mock.patch.object(sys, "argv", argv):
-                with mock.patch("arkui_xts_selector.cli.resolve_local_firmware_root", return_value=firmware_root), \
-                     mock.patch("arkui_xts_selector.cli.flash_image_bundle", return_value=flash_result), \
+                with mock.patch("arkui_xts_selector.progress.resolve_local_firmware_root", return_value=firmware_root), \
+                     mock.patch("arkui_xts_selector.utility_modes.flash_image_bundle", return_value=flash_result), \
                      mock.patch("arkui_xts_selector.cli.load_or_build_projects") as mocked_projects, \
                      redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()):
                     code = main()
@@ -683,8 +683,8 @@ class DailyPrebuiltCliTests(unittest.TestCase):
                 return flash_result
 
             with mock.patch.object(sys, "argv", argv):
-                with mock.patch("arkui_xts_selector.cli.resolve_local_firmware_root", return_value=firmware_root), \
-                     mock.patch("arkui_xts_selector.cli.flash_image_bundle", side_effect=fake_flash_image_bundle), \
+                with mock.patch("arkui_xts_selector.progress.resolve_local_firmware_root", return_value=firmware_root), \
+                     mock.patch("arkui_xts_selector.utility_modes.flash_image_bundle", side_effect=fake_flash_image_bundle), \
                      mock.patch("arkui_xts_selector.cli.load_or_build_projects") as mocked_projects, \
                      redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()) as stderr:
                     code = main()
