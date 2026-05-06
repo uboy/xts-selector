@@ -204,6 +204,7 @@ def infer_signals(
         "statemanagement" in _full_path_lower
         or "state_mgmt" in _full_path_lower
     )
+    is_manager_infra = "core/manager/" in _full_path_lower
 
     signals = {
         "modules": set(),
@@ -525,6 +526,11 @@ def infer_signals(
                     if _name and _name[:1].isupper():
                         signals["type_hints"].add(_name)
                         signals["symbols"].add(_name)
+
+    # Manager infrastructure — cross-cutting (focus, drag, privacy, etc.)
+    if is_manager_infra:
+        signals["project_hints"].update(COMMON_PROJECT_HINTS)
+        signals["method_hint_required"] = False
 
     if is_ts or is_dts:
         text = read_text(changed_file)

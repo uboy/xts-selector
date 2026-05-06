@@ -52,12 +52,12 @@ class DownloadHintTests(unittest.TestCase):
             ),
         ]
         with mock.patch(
-            "arkui_xts_selector.cli.resolve_daily_build",
+            "arkui_xts_selector.progress.resolve_daily_build",
             side_effect=FileNotFoundError(
                 "Daily build tag '20260408_180752' was not found for component 'dayu200' on 20260408"
             ),
         ):
-            with mock.patch("arkui_xts_selector.cli.list_daily_tags", return_value=recent_builds):
+            with mock.patch("arkui_xts_selector.progress.list_daily_tags", return_value=recent_builds):
                 with self.assertRaises(FileNotFoundError) as raised:
                     prepare_daily_firmware_from_config(app_config)
 
