@@ -8,6 +8,7 @@ from arkui_xts_selector.indexing.fanout_resolver import (
     FanoutTarget,
     load_fanout_config,
     resolve_fanout,
+    validate_fanout_contract,
 )
 
 
@@ -78,3 +79,34 @@ class TestFanoutResolve:
         all_dirs = {f"ace_ets_module_ui/ace_ets_module_scroll_{i}" for i in range(20)}
         selected, _, _ = resolve_fanout("small", all_dirs, config)
         assert len(selected) <= 2
+
+
+class TestFanoutContractValidation:
+    def test_all_broad_rules_have_fanout_targets(self):
+        """Every broad infra rule's fan_out_target must exist in config."""
+        broad_path = Path(__file__).resolve().parent.parent / "config" / "broad_infrastructure_files.json"
+        if not broad_path.exists():
+            pytest.skip("broad_infrastructure_files.json not found")
+        broad_rules = json.loads(broad_path.read_text())["rules"]
+        fanout_config = load_fanout_config()
+        unresolved = validate_fanout_contract(broad_rules, fanout_config)
+        assert unresolved == [], (
+            f"Missing fanout targets: {unresolved}. "
+            f"Add them to config/fanout_targets.json."
+        )
+
+    def test_validate_detects_missing(self):
+        rules = [
+            {"id": "r1", "fan_out_target": "existent"},
+            {"id": "r2", "fan_out_target": "missing_target"},
+        ]
+        config = {"existent": FanoutTarget(
+            fanout_id="existent", families=("button",),
+            mode="family_select", max_targets=10, bucket="recommended"
+        )}
+        unresolved = validate_fanout_contract(rules, config)
+        assert unresolved == ["missing_target"]
+
+    def test_validate_empty_rules(self):
+        unresolved = validate_fanout_contract([], {})
+        assert unresolved == []

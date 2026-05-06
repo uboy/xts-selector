@@ -57,6 +57,87 @@
       "families": ["common_seven_attrs"],
       "max_targets": 60,
       "bucket": "recommended"
+    },
+    "all_accessible_components": {
+      "description": "Accessibility-related components (broad change)",
+      "families": [],
+      "mode": "broad_warning",
+      "max_targets": 50,
+      "bucket": "recommended"
+    },
+    "all_arkts_koala_consumers": {
+      "description": "All ArkTS Koala/Arkoala consumer tests",
+      "families": ["arkoala", "koala"],
+      "max_targets": 40,
+      "bucket": "recommended"
+    },
+    "all_arkts_native_consumers": {
+      "description": "All ArkTS native consumer tests",
+      "families": ["native"],
+      "mode": "broad_warning",
+      "max_targets": 40,
+      "bucket": "recommended"
+    },
+    "all_arkts_runtime_consumers": {
+      "description": "All ArkTS runtime consumer tests",
+      "families": [],
+      "mode": "broad_warning",
+      "max_targets": 50,
+      "bucket": "recommended"
+    },
+    "all_common_utilities": {
+      "description": "Common utility and helper tests",
+      "families": [],
+      "mode": "broad_warning",
+      "max_targets": 40,
+      "bucket": "recommended"
+    },
+    "all_event_consuming_components": {
+      "description": "Components that consume events (gesture, touch, key)",
+      "families": ["gesture", "touch", "keyEvent", "mouseEvent", "commonEvent"],
+      "max_targets": 50,
+      "bucket": "recommended"
+    },
+    "all_js_bridge_components": {
+      "description": "JS bridge component tests",
+      "families": [],
+      "mode": "broad_warning",
+      "max_targets": 50,
+      "bucket": "recommended"
+    },
+    "all_layout_components": {
+      "description": "All layout component tests",
+      "families": ["column", "row", "flex", "stack", "grid", "list", "relativeContainer", "tabs", "navigation", "scroll"],
+      "max_targets": 60,
+      "bucket": "recommended"
+    },
+    "all_managed_components": {
+      "description": "All managed/component lifecycle tests",
+      "families": [],
+      "mode": "broad_warning",
+      "max_targets": 50,
+      "bucket": "recommended"
+    },
+    "all_native_module_components": {
+      "description": "All native module component tests",
+      "families": [],
+      "mode": "broad_warning",
+      "max_targets": 50,
+      "bucket": "recommended"
+    },
+    "all_platform_components": {
+      "description": "All platform-level component tests",
+      "families": [],
+      "mode": "broad_warning",
+      "max_targets": 50,
+      "bucket": "recommended"
+    },
+    "all_rendered_components": {
+      "description": "All rendered component tests",
+      "families": [],
+      "mode": "broad_warning",
+      "max_targets": 50,
+      "bucket": "recommended"
     }
   }
 }

@@ -203,7 +203,10 @@ def _expand_to_family_coverage(
             targets: set[str] = set()
             # Resolve broad infra fanout targets
             for fid in broad_fanout_ids:
-                selected, _reason, _is_broad = _resolve_fanout(fid, all_dirs, config)
+                selected, reason, _is_broad = _resolve_fanout(fid, all_dirs, config)
+                if reason and reason.startswith("missing_fanout_target:"):
+                    # Missing target is an error, not a silent zero-target rescue
+                    continue
                 targets.update(selected)
             # Resolve family targets
             for family in family_prefixes:

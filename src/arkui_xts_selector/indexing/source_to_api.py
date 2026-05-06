@@ -37,17 +37,12 @@ class SourceApiMapping:
     source_file_path: str  # Source file path (e.g., foundations/arkui/ace_engine/button.cpp)
     method_line: int | None = None  # Start line of the method (for hunk-level filtering)
     method_end_line: int | None = None  # End line of the method (for hunk-level filtering)
+    api_id: str | None = None  # Canonical API id (e.g. ButtonAttribute.role)
+    api_member_of: str | None = None  # Parent type (e.g. ButtonAttribute)
+    ambiguity_state: str | None = None  # "unique" | "ambiguous" | "unresolved_parent"
 
     def overlaps_range(self, start: int, end: int) -> bool:
-        """Check if this mapping's method overlaps with a line range.
-
-        Args:
-            start: Start line of the range (inclusive)
-            end: End line of the range (inclusive)
-
-        Returns:
-            True if the method's lines overlap with the given range
-        """
+        """Check if this mapping's method overlaps with a line range."""
         if self.method_line is None or self.method_end_line is None:
             return True  # No line info → include by default
         return self.method_line <= end and self.method_end_line >= start
@@ -65,6 +60,12 @@ class SourceApiMapping:
             d["method_line"] = self.method_line
         if self.method_end_line is not None:
             d["method_end_line"] = self.method_end_line
+        if self.api_id is not None:
+            d["api_id"] = self.api_id
+        if self.api_member_of is not None:
+            d["api_member_of"] = self.api_member_of
+        if self.ambiguity_state is not None:
+            d["ambiguity_state"] = self.ambiguity_state
         return d
 
 
@@ -104,6 +105,9 @@ def build_source_to_api_mapping(
                         source_file_path=mapping.source_file_path,
                         method_line=method.line,
                         method_end_line=method.end_line,
+                        api_id=mapping.api_id,
+                        api_member_of=mapping.api_member_of,
+                        ambiguity_state=mapping.ambiguity_state,
                     )
                     # Filter weak mappings against SDK registry
                     if sdk_index is not None and mapping.confidence == "weak":
@@ -119,6 +123,9 @@ def build_source_to_api_mapping(
                             source_file_path=mapping.source_file_path,
                             method_line=method.line,
                             method_end_line=method.end_line,
+                            api_id=mapping.api_id,
+                            api_member_of=mapping.api_member_of,
+                            ambiguity_state=mapping.ambiguity_state,
                         )
                     mappings.append(mapping)
 
@@ -140,6 +147,9 @@ def build_source_to_api_mapping(
                         confidence="medium",  # SDK-confirmed
                         file_role=mapping.file_role,
                         source_file_path=mapping.source_file_path,
+                        api_id=mapping.api_id,
+                        api_member_of=mapping.api_member_of,
+                        ambiguity_state=mapping.ambiguity_state,
                     )
                 mappings.append(mapping)
 
@@ -167,19 +177,19 @@ def _map_method_by_role(
     qualified = method.qualified or f"{family}::{method_name}" if family else method_name
 
     if role == "model_static":
-        return _map_model_static(method_name, qualified, role, file_path)
+        return _map_model_static(method_name, qualified, role, file_path, family)
 
     if role == "model_ng":
-        return _map_model_ng(method_name, qualified, role, file_path)
+        return _map_model_ng(method_name, qualified, role, file_path, family)
 
     if role == "native_modifier":
-        return _map_native_modifier(method_name, qualified, role, file_path)
+        return _map_native_modifier(method_name, qualified, role, file_path, family)
 
     if role == "native_node_accessor":
-        return _map_native_node_accessor(method_name, qualified, role, file_path)
+        return _map_native_node_accessor(method_name, qualified, role, file_path, family)
 
     if role == "jsview_dynamic":
-        return _map_jsview_dynamic(method_name, qualified, role, file_path)
+        return _map_jsview_dynamic(method_name, qualified, role, file_path, family)
 
     if role == "pattern":
         return _map_pattern(method_name, qualified, role, file_path)
@@ -187,125 +197,125 @@ def _map_method_by_role(
     return None
 
 
-def _map_model_static(method_name: str, qualified: str, role: str, file_path: str) -> SourceApiMapping | None:
+def _make_canonical_suffix(method_name: str, prefix: str) -> str | None:
+    """Strip prefix and camelCase the result: SetRole -> role, SetButtonStyle -> buttonStyle."""
+    if not method_name.startswith(prefix):
+        return None
+    name = method_name[len(prefix):]
+    if not name:
+        return None
+    return name[0].lower() + name[1:]
+
+
+def _resolve_canonical_id(
+    api_name: str,
+    family: str | None,
+) -> tuple[str | None, str | None, str]:
+    """Try to resolve bare api_name to canonical <Family>Attribute.<member>.
+
+    Returns (api_id, api_member_of, ambiguity_state).
+    """
+    if not family:
+        return None, None, "unresolved_parent"
+
+    # Capitalize family: button -> Button, slider -> Slider
+    family_cap = family[0].upper() + family[1:] if family else ""
+    parent = f"{family_cap}Attribute"
+
+    canonical = f"{parent}.{api_name}"
+    return canonical, parent, "unique"
+
+
+def _map_model_static(method_name: str, qualified: str, role: str, file_path: str, family: str | None = None) -> SourceApiMapping | None:
     """Map model_static method to API name.
 
     SetXxx() → Xxx (camelCase)
     SetButtonStyle() → buttonStyle
-    SetSelectedColor() → selectedColor
     """
-    if not method_name.startswith("Set"):
+    api_name = _make_canonical_suffix(method_name, "Set")
+    if api_name is None:
         return None
 
-    # Remove "Set" prefix
-    name = method_name[3:]
-
-    # First character lowercase: ButtonStyle → buttonStyle
-    if name:
-        api_name = name[0].lower() + name[1:]
-        return SourceApiMapping(
-            source_qualified=qualified,
-            api_public_name=api_name,
-            confidence="strong",
-            file_role=role,
-            source_file_path=file_path,
-        )
-
-    return None
+    api_id, member_of, ambiguity = _resolve_canonical_id(api_name, family)
+    return SourceApiMapping(
+        source_qualified=qualified,
+        api_public_name=api_name,
+        confidence="strong",
+        file_role=role,
+        source_file_path=file_path,
+        api_id=api_id,
+        api_member_of=member_of,
+        ambiguity_state=ambiguity,
+    )
 
 
-def _map_model_ng(method_name: str, qualified: str, role: str, file_path: str) -> SourceApiMapping | None:
-    """Map model_ng method to API name.
-
-    Similar to model_static but for NG API.
-    """
-    if not method_name.startswith("Set"):
+def _map_model_ng(method_name: str, qualified: str, role: str, file_path: str, family: str | None = None) -> SourceApiMapping | None:
+    """Map model_ng method to API name. Similar to model_static but for NG API."""
+    api_name = _make_canonical_suffix(method_name, "Set")
+    if api_name is None:
         return None
 
-    name = method_name[3:]
-
-    if name:
-        api_name = name[0].lower() + name[1:]
-        return SourceApiMapping(
-            source_qualified=qualified,
-            api_public_name=api_name,
-            confidence="strong",
-            file_role=role,
-            source_file_path=file_path,
-        )
-
-    return None
+    api_id, member_of, ambiguity = _resolve_canonical_id(api_name, family)
+    return SourceApiMapping(
+        source_qualified=qualified,
+        api_public_name=api_name,
+        confidence="strong",
+        file_role=role,
+        source_file_path=file_path,
+        api_id=api_id,
+        api_member_of=member_of,
+        ambiguity_state=ambiguity,
+    )
 
 
-def _map_native_modifier(method_name: str, qualified: str, role: str, file_path: str) -> SourceApiMapping | None:
+def _map_native_modifier(method_name: str, qualified: str, role: str, file_path: str, family: str | None = None) -> SourceApiMapping | None:
     """Map native modifier method to API name.
 
-    SetXxx() → Xxx (native API)
-    ResetXxx() → Xxx (reset maps to same attribute)
+    SetXxx() → Xxx (strong), ResetXxx() → Xxx (medium)
     """
-    if method_name.startswith("Set"):
-        name = method_name[3:]
-        if name:
-            api_name = name[0].lower() + name[1:]
+    for prefix, conf in [("Set", "strong"), ("Reset", "medium")]:
+        api_name = _make_canonical_suffix(method_name, prefix)
+        if api_name is not None:
+            api_id, member_of, ambiguity = _resolve_canonical_id(api_name, family)
             return SourceApiMapping(
                 source_qualified=qualified,
                 api_public_name=api_name,
-                confidence="strong",
+                confidence=conf,
                 file_role=role,
                 source_file_path=file_path,
+                api_id=api_id,
+                api_member_of=member_of,
+                ambiguity_state=ambiguity,
             )
-    elif method_name.startswith("Reset"):
-        name = method_name[5:]
-        if name:
-            api_name = name[0].lower() + name[1:]
-            return SourceApiMapping(
-                source_qualified=qualified,
-                api_public_name=api_name,
-                confidence="medium",  # Reset is weaker than Set
-                file_role=role,
-                source_file_path=file_path,
-            )
-
     return None
 
 
-def _map_native_node_accessor(method_name: str, qualified: str, role: str, file_path: str) -> SourceApiMapping | None:
+def _map_native_node_accessor(method_name: str, qualified: str, role: str, file_path: str, family: str | None = None) -> SourceApiMapping | None:
     """Map native node accessor method to API name.
 
-    GetXxx() → Xxx (read API)
-    SetXxx() → Xxx (write API)
+    GetXxx() → Xxx (strong), SetXxx() → Xxx (medium)
     """
-    if method_name.startswith("Get"):
-        name = method_name[3:]
-        if name:
-            api_name = name[0].lower() + name[1:]
+    for prefix, conf in [("Get", "strong"), ("Set", "medium")]:
+        api_name = _make_canonical_suffix(method_name, prefix)
+        if api_name is not None:
+            api_id, member_of, ambiguity = _resolve_canonical_id(api_name, family)
             return SourceApiMapping(
                 source_qualified=qualified,
                 api_public_name=api_name,
-                confidence="strong",
+                confidence=conf,
                 file_role=role,
                 source_file_path=file_path,
+                api_id=api_id,
+                api_member_of=member_of,
+                ambiguity_state=ambiguity,
             )
-    elif method_name.startswith("Set"):
-        name = method_name[3:]
-        if name:
-            api_name = name[0].lower() + name[1:]
-            return SourceApiMapping(
-                source_qualified=qualified,
-                api_public_name=api_name,
-                confidence="medium",  # Set in accessor is weaker than Get
-                file_role=role,
-                source_file_path=file_path,
-            )
-
     return None
 
 
-def _map_jsview_dynamic(method_name: str, qualified: str, role: str, file_path: str) -> SourceApiMapping | None:
+def _map_jsview_dynamic(method_name: str, qualified: str, role: str, file_path: str, family: str | None = None) -> SourceApiMapping | None:
     """Map JS view dynamic method to API name.
 
-    JsXxx() → Xxx
-    Create() → create
+    JsXxx() → Xxx, Create() → create
     """
     if method_name == "Create":
         return SourceApiMapping(
@@ -314,19 +324,24 @@ def _map_jsview_dynamic(method_name: str, qualified: str, role: str, file_path: 
             confidence="strong",
             file_role=role,
             source_file_path=file_path,
+            api_id=f"{family[0].upper() + family[1:]}.create" if family else None,
+            api_member_of=f"{family[0].upper() + family[1:]}" if family else None,
+            ambiguity_state="unique" if family else "unresolved_parent",
         )
 
-    if method_name.startswith("Js"):
-        name = method_name[2:]
-        if name:
-            api_name = name[0].lower() + name[1:]
-            return SourceApiMapping(
-                source_qualified=qualified,
-                api_public_name=api_name,
-                confidence="strong",
-                file_role=role,
-                source_file_path=file_path,
-            )
+    api_name = _make_canonical_suffix(method_name, "Js")
+    if api_name is not None:
+        api_id, member_of, ambiguity = _resolve_canonical_id(api_name, family)
+        return SourceApiMapping(
+            source_qualified=qualified,
+            api_public_name=api_name,
+            confidence="strong",
+            file_role=role,
+            source_file_path=file_path,
+            api_id=api_id,
+            api_member_of=member_of,
+            ambiguity_state=ambiguity,
+        )
 
     return None
 

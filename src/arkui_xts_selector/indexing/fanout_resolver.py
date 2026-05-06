@@ -54,6 +54,28 @@ def load_fanout_config(path: Path | None = None) -> dict[str, FanoutTarget]:
     return targets
 
 
+def validate_fanout_contract(
+    broad_rules: list[dict],
+    fanout_config: dict[str, FanoutTarget] | None = None,
+) -> list[str]:
+    """Validate that all fan_out_target refs from broad rules exist in config.
+
+    Returns list of unresolved target IDs (empty if all valid).
+    """
+    if fanout_config is None:
+        fanout_config = load_fanout_config()
+
+    unresolved: list[str] = []
+    seen: set[str] = set()
+    for rule in broad_rules:
+        target_id = rule.get("fan_out_target", "")
+        if target_id and target_id not in seen:
+            seen.add(target_id)
+            if target_id not in fanout_config:
+                unresolved.append(target_id)
+    return unresolved
+
+
 def resolve_fanout(
     fanout_id: str,
     all_test_dirs: set[str],
