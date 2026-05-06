@@ -54,6 +54,7 @@ class SdkDtsParser:
         tree = parser.parse(code)
 
         symbols: list[SymbolDiscovery] = []
+        aliases: list[tuple[str, str]] = []
         limitations: list[str] = []
 
         def walk(node: "tree_sitter.Node"):
@@ -69,6 +70,10 @@ class SdkDtsParser:
                 self._emit_function(node, code, symbols)
             elif node.type == "lexical_declaration":
                 self._emit_const(node, code, symbols)
+            elif node.type == "export_statement":
+                self._extract_export_aliases(node, code, aliases)
+            elif node.type == "type_alias_declaration":
+                self._extract_type_alias(node, code, symbols, aliases)
             else:
                 # Only recurse if we didn't handle this node type
                 for child in node.children:
@@ -86,6 +91,7 @@ class SdkDtsParser:
             parser_name="tree-sitter-typescript",
             parser_level=3,  # AST-level
             discovered_symbols=tuple(symbols),
+            aliases=tuple(aliases),
             limitations=tuple(limitations),
         )
 
@@ -309,6 +315,46 @@ class SdkDtsParser:
     def _child_named(self, node: "tree_sitter.Node", field_name: str) -> "tree_sitter.Node | None":
         """Helper to find a child node by field name."""
         return node.child_by_field_name(field_name)
+
+    def _extract_export_aliases(
+        self, node: "tree_sitter.Node", code: bytes, aliases: list[tuple[str, str]]
+    ) -> None:
+        """Extract aliases from export { X as Y } patterns."""
+        for child in node.children:
+            if child.type == "export_clause":
+                for spec in child.children:
+                    if spec.type == "export_specifier":
+                        name_node = spec.child_by_field_name("name")
+                        alias_node = spec.child_by_field_name("alias")
+                        if name_node and alias_node:
+                            original = code[name_node.start_byte:name_node.end_byte].decode("utf-8", errors="replace")
+                            alias = code[alias_node.start_byte:alias_node.end_byte].decode("utf-8", errors="replace")
+                            if original != alias:
+                                aliases.append((alias, original))
+            # Recurse into wrapped nodes (export default, etc.)
+            elif child.type in ("lexical_declaration", "function_declaration", "class_declaration", "interface_declaration"):
+                pass  # handled elsewhere
+
+    def _extract_type_alias(
+        self, node: "tree_sitter.Node", code: bytes, symbols: list[SymbolDiscovery], aliases: list[tuple[str, str]]
+    ) -> None:
+        """Extract type aliases: type Z = X."""
+        name_node = node.child_by_field_name("name")
+        value_node = node.child_by_field_name("value")
+        if name_node and value_node:
+            alias_name = code[name_node.start_byte:name_node.end_byte].decode("utf-8", errors="replace")
+            # Check if value is a simple type reference (not a complex type)
+            if value_node.type == "type_identifier":
+                original_name = code[value_node.start_byte:value_node.end_byte].decode("utf-8", errors="replace")
+                if alias_name != original_name:
+                    aliases.append((alias_name, original_name))
+                    symbols.append(SymbolDiscovery(
+                        symbol=alias_name,
+                        line=node.start_point[0] + 1,
+                        span=(node.start_byte, node.end_byte),
+                        kind="type_alias",
+                        confidence="medium",
+                    ))
 
 
 # ---------------------------------------------------------------------------

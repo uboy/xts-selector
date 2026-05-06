@@ -27,10 +27,11 @@ class CppMethod:
     line: int | None = None
     end_line: int | None = None
     body_span: tuple[int, int] | None = None  # (start_byte, end_byte) of method body
+    confidence: str = "strong"  # Confidence level: "strong", "medium", "weak"
 
     def to_dict(self) -> dict:
         """Return a JSON-compatible dict."""
-        d: dict[str, object] = {"name": self.name}
+        d: dict[str, object] = {"name": self.name, "confidence": self.confidence}
         if self.parent_class is not None:
             d["parent_class"] = self.parent_class
         if self.qualified is not None:

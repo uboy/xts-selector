@@ -20,6 +20,7 @@ class ParserResult:
     parser_name: str = ""      # e.g. "tree-sitter-cpp", "regex-import"
     parser_level: int = 0      # 0=fallback, 1=heuristic, 2=import-level, 3=AST
     discovered_symbols: tuple[SymbolDiscovery, ...] = ()
+    aliases: tuple[tuple[str, str], ...] = ()  # (alias_name, original_name) pairs
     limitations: tuple[str, ...] = ()
     parse_time_ms: float = 0.0
 

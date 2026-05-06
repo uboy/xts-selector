@@ -6,7 +6,7 @@ Import boundary: standard library only.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -95,6 +95,12 @@ class EtsIndexResult:
     total_usages: int = 0
     index_time_ms: float = 0.0
     source: str = "ets_indexer"
+    imports_from: dict[str, list[str]] = field(default_factory=dict, repr=False, compare=False)
+    imported_by: dict[str, list[str]] = field(default_factory=dict, repr=False, compare=False)
+
+    def find_importers(self, file_path: str) -> list[str]:
+        """Find all files that import from the given file path."""
+        return self.imported_by.get(file_path, [])
 
     def to_dict(self) -> dict:
         """Return a JSON-compatible dict."""
@@ -104,6 +110,8 @@ class EtsIndexResult:
             "total_usages": self.total_usages,
             "index_time_ms": self.index_time_ms,
             "source": self.source,
+            "imports_from": self.imports_from,
+            "imported_by": self.imported_by,
         }
 
     @classmethod
@@ -117,6 +125,8 @@ class EtsIndexResult:
             total_usages=data.get("total_usages", 0),
             index_time_ms=data.get("index_time_ms", 0.0),
             source=data.get("source", "ets_indexer"),
+            imports_from=data.get("imports_from", {}),
+            imported_by=data.get("imported_by", {}),
         )
 
 
@@ -240,6 +250,7 @@ def build_ets_index(xts_root: Path, max_depth: int | None = None) -> EtsIndexRes
     entries: list[EtsTestEntry] = []
     errors: list[EtsIndexError] = []
     total_usages = 0
+    parse_results: list[tuple[str, EtsParseResult]] = []
 
     for ets_file in ets_files:
         try:
@@ -257,12 +268,26 @@ def build_ets_index(xts_root: Path, max_depth: int | None = None) -> EtsIndexRes
             )
             entries.append(entry)
             total_usages += len(parse_result.usages)
+            parse_results.append((str(ets_file), parse_result))
 
         except Exception as e:
             errors.append(EtsIndexError(
                 file_path=str(ets_file),
                 error=str(e),
             ))
+
+    # Build import graphs from extracted imports
+    imports_from: dict[str, list[str]] = {}
+    imported_by: dict[str, list[str]] = {}
+    for file_path, parse_result in parse_results:
+        for imp in parse_result.imports:
+            module = imp.module
+            imports_from.setdefault(file_path, [])
+            if module not in imports_from[file_path]:
+                imports_from[file_path].append(module)
+            imported_by.setdefault(module, [])
+            if file_path not in imported_by[module]:
+                imported_by[module].append(file_path)
 
     index_time = (time.time() - start_time) * 1000
 
@@ -271,4 +296,6 @@ def build_ets_index(xts_root: Path, max_depth: int | None = None) -> EtsIndexRes
         errors=tuple(errors),
         total_usages=total_usages,
         index_time_ms=index_time,
+        imports_from=imports_from,
+        imported_by=imported_by,
     )

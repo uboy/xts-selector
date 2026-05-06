@@ -1,0 +1,15 @@
+{
+  "schema_version": "v1",
+  "patterns": [
+    {
+      "macro": "ACE_DEFINE_PROPERTY",
+      "synthetic_method_pattern": "Set{1}",
+      "confidence": "medium"
+    },
+    {
+      "macro": "ACE_EXPORT_MODULE",
+      "synthetic_method_pattern": null,
+      "confidence": "weak"
+    }
+  ]
+}

@@ -41,6 +41,8 @@ def _entry_to_dict(e: PrResolveEntry) -> dict:
     }
     if e.canonical_affected_apis:
         d["canonical_affected_apis"] = list(e.canonical_affected_apis)
+    if e.diagnostic_suggestions:
+        d["diagnostic_suggestions"] = e.diagnostic_suggestions
     if e.broad_infra_match is not None:
         d["broad_infra_match"] = {
             "rule_id": e.broad_infra_match.rule_id,
@@ -339,6 +341,28 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
     broad_rules_path = Path(__file__).resolve().parents[2] / "config" / "broad_infrastructure_files.json"
     rules = load_rules(broad_rules_path) if broad_rules_path.exists() else []
 
+    # Load manual overrides
+    from .indexing.manual_overrides import load_overrides
+    override_rules_path = Path(__file__).resolve().parents[2] / "config" / "manual_path_overrides.json"
+    override_rules = load_overrides(override_rules_path)
+
+    # Load coupling index if available
+    from .indexing.coupling_index import load_coupling_index
+    coupling_index = load_coupling_index(Path("local/coupling_index.json"))
+
+    # Load coverage index if available
+    from .coverage.coverage_index import load_coverage_index
+    coverage_index = load_coverage_index()
+
+    # Build ETS index with import graph (lightweight, from parsed files)
+    ets_import_index = None
+
+    # Load area ownership rules for fallback
+    from .indexing.area_owners import load_area_owners
+    area_rules = load_area_owners()
+    if area_rules:
+        print(f"Loaded {len(area_rules)} area ownership rules", flush=True)
+
     # Pre-build source-to-API mapping index once
     print("Building source-to-API mapping...", end=" ", flush=True)
     t_map = time.perf_counter()
@@ -429,6 +453,11 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                 changed_ranges=changed_ranges if changed_ranges else None,
                 xts_root=xts_root if xts_root else None,
                 target_index=target_index,
+                override_rules=override_rules if override_rules else None,
+                coupling_index=coupling_index if not coupling_index.is_empty() else None,
+                coverage_index=coverage_index if not coverage_index.is_stale() else None,
+                ets_index=ets_import_index,
+                area_rules=area_rules if area_rules else None,
             )
 
             pr_resolve_result = apply_fallback(

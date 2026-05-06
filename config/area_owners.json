@@ -1,0 +1,21 @@
+{
+  "schema_version": "v1",
+  "areas": [
+    {
+      "path_pattern": "frameworks/core/components_ng/pattern/button/",
+      "owner_team": "arkui-button",
+      "default_targets": [
+        "ace_ets_module_button_static",
+        "ace_ets_module_button_common"
+      ]
+    },
+    {
+      "path_pattern": "frameworks/core/components_ng/pattern/slider/",
+      "owner_team": "arkui-slider",
+      "default_targets": [
+        "ace_ets_module_slider_static",
+        "ace_ets_module_slider_common"
+      ]
+    }
+  ]
+}

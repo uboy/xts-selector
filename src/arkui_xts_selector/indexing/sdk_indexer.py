@@ -68,6 +68,8 @@ class SdkIndexResult:
     files_scanned: int = 0
     index_time_ms: float = 0.0
     source: str = "tree-sitter-typescript"
+    extends_graph: dict[str, list[str]] = field(default_factory=dict, repr=False, compare=False)
+    alias_graph: dict[str, list[str]] = field(default_factory=dict, repr=False, compare=False)
 
     def find(self, name: str) -> SdkIndexEntry | None:
         """Find an entry by its public name (or member name).
@@ -110,6 +112,13 @@ class SdkIndexResult:
             # Ambiguous — return None so callers know the name is not unique
             return None
 
+        # Last resort: check alias graph
+        if self.alias_graph and name in self.alias_graph:
+            for alias_target in self.alias_graph[name]:
+                for entry in self.entries:
+                    if entry.api_id.public_name == alias_target:
+                        return entry
+
         return None
 
     def find_all(self, name: str) -> list[SdkIndexEntry]:
@@ -132,6 +141,27 @@ class SdkIndexResult:
             if entry.api_id.member_name == name or entry.member_name == name:
                 results.append(entry)
         return results
+
+    def find_descendants(self, parent_name: str, max_depth: int = 3) -> list[str]:
+        """BFS traversal of extends_graph to find all descendant names."""
+        if not self.extends_graph:
+            return []
+        visited: set[str] = set()
+        queue: list[str] = [parent_name]
+        descendants: list[str] = []
+        depth = 0
+        while queue and depth < max_depth:
+            next_queue: list[str] = []
+            for name in queue:
+                children = self.extends_graph.get(name, [])
+                for child in children:
+                    if child not in visited:
+                        visited.add(child)
+                        descendants.append(child)
+                        next_queue.append(child)
+            queue = next_queue
+            depth += 1
+        return descendants
 
     def to_dict(self) -> dict:
         """Return a JSON-compatible dict."""
@@ -182,6 +212,7 @@ def build_sdk_index(
     entries: list[SdkIndexEntry] = []
     parse_errors: list[str] = []
     files_scanned = 0
+    all_aliases: list[tuple[str, str]] = []
 
     # Find all .d.ts files
     dts_files = list(sdk_root.rglob("*.d.ts"))
@@ -193,6 +224,9 @@ def build_sdk_index(
         # Collect any parse errors
         if result.limitations:
             parse_errors.append(f"{dts_file}: {', '.join(result.limitations)}")
+
+        # Collect aliases for alias_graph
+        all_aliases.extend(result.aliases)
 
         # Convert each SymbolDiscovery to an SdkIndexEntry
         for symbol in result.discovered_symbols:
@@ -207,11 +241,29 @@ def build_sdk_index(
 
     index_time_ms = (time.time() - start_time) * 1000
 
+    # Build extends_graph from parent_api_id relationships
+    extends_graph: dict[str, list[str]] = {}
+    for entry in entries:
+        if entry.parent_api_id and entry.api_id.public_name:
+            parent_name = entry.parent_api_id.public_name
+            child_name = entry.api_id.public_name
+            extends_graph.setdefault(parent_name, []).append(child_name)
+    extends_graph = {k: list(set(v)) for k, v in extends_graph.items()}
+
+    # Build alias_graph from collected aliases
+    alias_graph: dict[str, list[str]] = {}
+    for alias_name, original_name in all_aliases:
+        alias_graph.setdefault(alias_name, [])
+        if original_name not in alias_graph[alias_name]:
+            alias_graph[alias_name].append(original_name)
+
     return SdkIndexResult(
         entries=tuple(entries),
         parse_errors=tuple(parse_errors),
         files_scanned=files_scanned,
         index_time_ms=index_time_ms,
+        extends_graph=extends_graph,
+        alias_graph=alias_graph,
     )
 
 

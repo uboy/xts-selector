@@ -556,3 +556,86 @@ env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
 - Документация обновлена: какие метрики являются accuracy, а какие actionability.
 - Default activation остаётся выключенной до прохождения curated 50 и main 1000 PR gates.
 
+---
+
+## Implementation status (2026-05-06, commit 6deb8a1)
+
+### Completed tasks
+
+| Task | Status | Commit | Notes |
+|---|---|---|---|
+| Task 0: baseline freeze | Done | `572d5ab` | `local/quality_runs/20260506_task0_baseline/` |
+| Task 1: PR response cache | Done | `cd4eab5` | `pr_cache.py`, `PrCacheEntry`, 3 modes (read-write/read-only/refresh) |
+| Task 2: proxy + workers | Done | `cd4eab5` | 8 proxy vars cleared, `--workers` param, `ProxyHandler({})` |
+| Task 3: quality comparison | Done | `eb0f1a7` | Fanout contract validation, canonical API IDs |
+| Task 4: fanout contract | Done | `eb0f1a7` | Config validation, no silent zero-target rescue |
+| Task 5: canonical source-to-API | Done | `b104b2a` | `ApiEntityId.canonical()`, SDK-aware resolution, `unresolved_sdk` status |
+| Task 6: exact inverted lookup | Done | `b104b2a` | `consumers_for_api_id()`, family grouping, exact path |
+| Task 7: TargetIndex wiring | Done | `b104b2a`, `6deb8a1` | Wired in CLI and batch_validate, passed to resolve + fallback |
+| Task 8: resolver ordering | Done | `6deb8a1` | ArkTS bridge -> broad infra -> C++ naming -> source-to-API |
+| Task 9: metrics | Done | `b104b2a`, `6deb8a1` | Granular rates: canonical/exact/family/broad, per-entry provenance |
+
+### P0/P1 fix commit (6deb8a1)
+
+Post-implementation fixes based on review:
+
+- Restored broad-infra resolver block in `_resolve_pr_core` (accidentally removed)
+- Fixed resolver priority order (broad infra before C++ naming)
+- Fixed PR API cache `raw_patch_hunks` (fetch layer now returns raw patch text)
+- Fixed `--pr-cache-mode refresh` (resume/graph cache both skipped, PrApiCache.get returns None)
+- Fixed `scripts/cache_pr_list.py` (urllib import, hunk parsing, token from env)
+- Enforced strict canonical API ID contract (fallback marks `unresolved_sdk`, not `unique`)
+- Separated broad/family/fallback from real API metrics
+- Added backward compat for cache schema (list[str] -> str for raw_patch_hunks)
+
+### Batch validation results (20260506_fix_run)
+
+100 PRs from `ace_engine` merge requests, offline replay mode (read-only cache).
+
+| Metric | Value |
+|---|---|
+| OK / Errors | 100 / 0 |
+| Target resolution rate | 44.00% |
+| Canonical API resolution rate | 0.89% (9 PRs > 0) |
+| Exact consumer hit rate | 21.81% |
+| Family resolution rate | 28.02% |
+| Broad infra rate | 0.21% |
+| AAE population rate | 22.10% |
+| Manual review rate | 52.00% |
+| Unresolved file rate | 63.07% |
+| Fallback applied | 76/100 (safety_net=70, rescue=6) |
+| CI policy: broader / manual / warn | 40 / 52 / 8 |
+| Index load (cold) | 814.6s |
+| Processing (80 workers) | 275.7s (4.6 min) |
+
+Full analysis: `local/quality_runs/20260506_fix_run/README.md`
+
+### Remaining work
+
+- **Token rotation**: Hardcoded token was removed from `scripts/cache_pr_list.py` (now reads from env var), but the exposed token value should be rotated in GitCode.
+- **Curated PR set (Task 10)**: Need `local/pr_lists/ace_engine_quality_smoke_100.txt` (100 PRs with expected targets) and `curated_50.json` (50 PRs with manual annotation).
+- **1000 PR batch**: Need `ace_engine_quality_main_1000.txt` for main quality gate.
+- **Canonical API improvement**: 0.89% rate indicates source-to-API mapper generates IDs that rarely match the SDK index. Root cause: most mappings resolve to `unresolved_sdk`. This is the primary improvement target for future work.
+- **Broad infra expansion**: 0.21% rate suggests the rule set needs more entries.
+- **Warm-cache benchmark**: Need a second run to confirm sub-minute processing with warm index cache.
+
+### Test suite
+
+108 tests pass (fast subset: pr_api_cache, fallback_policy, pr_resolver, inverted_index, broad_infra).
+Full suite (including sdk_indexer which scans real .d.ts files): 144+ tests pass.
+
+### Key files added/modified
+
+| File | Purpose |
+|---|---|
+| `src/arkui_xts_selector/pr_cache.py` | PR API response cache (PrCacheEntry, PrApiCache, 3 modes) |
+| `src/arkui_xts_selector/quality_baseline.py` | Baseline metadata generation |
+| `src/arkui_xts_selector/batch_validate.py` | Batch validation with TargetIndex, granular metrics, cache integration |
+| `src/arkui_xts_selector/git_host.py` | API fetch returning raw_patch_hunks (3-tuple) |
+| `src/arkui_xts_selector/indexing/pr_resolver.py` | Broad infra restored, canonical_affected_apis, reordered chain |
+| `src/arkui_xts_selector/indexing/source_to_api.py` | SDK-aware canonical ID resolution, `unresolved_sdk` status |
+| `src/arkui_xts_selector/indexing/cache.py` | sdk_sig from sdk_api_root, not xts_root |
+| `src/arkui_xts_selector/cli.py` | TargetIndex wiring, --pr-api-cache-dir, --pr-cache-mode |
+| `scripts/cache_pr_list.py` | Standalone PR cache prefill tool (env token, proxy off, pagination) |
+| `tests/test_pr_api_cache.py` | Cache hit/miss/corrupt/refresh/backward-compat tests |
+

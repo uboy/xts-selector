@@ -11,15 +11,22 @@ to classify files by role (pattern, model_static, native_modifier, etc.)
 and parse them to extract classes, methods, and includes.
 
 Import boundary: standard library + arkui_xts_selector.indexing.file_role,
-arkui_xts_selector.indexing.cpp_parser only.
+arkui_xts_selector.indexing.cpp_parser, arkui_xts_selector.indexing.cpp_macro_patterns only.
 """
 from __future__ import annotations
 
+import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal
 
+from .cpp_macro_patterns import (
+    MacroPattern,
+    generate_synthetic_method_name,
+    load_macro_patterns,
+    match_macro_in_source,
+)
 from .cpp_parser import CppClass, CppMethod, CppParseResult, parse_cpp_file
 from .file_role import FileRole, classify
 
@@ -119,6 +126,7 @@ def _method_from_dict(data: dict) -> CppMethod:
         line=data.get("line"),
         end_line=data.get("end_line"),
         body_span=tuple(data.get("body_span", ())) if data.get("body_span") else None,
+        confidence=data.get("confidence", "strong"),
     )
 
 
@@ -187,6 +195,61 @@ class _LegacyAceIndexResult:
         )
 
 
+def _apply_macro_expansion_to_class(
+    cpp_class: CppClass,
+    source_content: str,
+    macro_patterns: list[MacroPattern],
+) -> CppClass:
+    """Apply macro expansion to add synthetic methods to a class.
+
+    Args:
+        cpp_class: The class to potentially add methods to
+        source_content: Source code content to scan for macro invocations
+        macro_patterns: List of macro patterns to match against
+
+    Returns:
+        New CppClass with synthetic methods added (if any matches found)
+    """
+    # Match macro invocations in source
+    match = match_macro_in_source(source_content, macro_patterns)
+    if not match:
+        return cpp_class
+
+    pattern, arg1 = match
+
+    # Generate synthetic method name
+    synthetic_name = generate_synthetic_method_name(
+        pattern.synthetic_method_pattern,
+        [arg1],
+    )
+    if not synthetic_name:
+        return cpp_class
+
+    # Check if method already exists to avoid duplicates
+    for existing_method in cpp_class.methods:
+        if existing_method.name == synthetic_name:
+            return cpp_class
+
+    # Create synthetic method
+    synthetic_method = CppMethod(
+        name=synthetic_name,
+        parent_class=cpp_class.name,
+        qualified=f"{cpp_class.name}::{synthetic_name}",
+        line=cpp_class.line,
+        confidence=pattern.confidence,  # type: ignore
+    )
+
+    # Add to class methods
+    existing_methods = list(cpp_class.methods)
+    existing_methods.append(synthetic_method)
+
+    # Return new class with synthetic method
+    return replace(
+        cpp_class,
+        methods=tuple(existing_methods),
+    )
+
+
 def build_ace_index(
     ace_root: Path | str,
     families: list[str] | None = None,
@@ -216,6 +279,9 @@ def build_ace_index(
 
     entries: list[AceIndexEntry] = []
     errors: list[str] = []
+
+    # Load macro expansion patterns once (A.4: C++ Macro Expansion Table)
+    macro_patterns = load_macro_patterns()
 
     # Directories to walk (Phase 6.3: expanded roots)
     directories = [
@@ -300,11 +366,35 @@ def build_ace_index(
         # Parse the file
         try:
             parse_result = parse_cpp_file(file_path)
+
+            # A.4: Apply macro expansion to add synthetic methods
+            expanded_classes: list[CppClass] = []
+            if macro_patterns:
+                try:
+                    # Read source content for macro matching
+                    source_content = file_path.read_text(encoding="utf-8", errors="replace")
+                    for cpp_class in parse_result.classes:
+                        # Only apply to pattern classes (not infrastructure)
+                        if role == "pattern" and cpp_class.name:
+                            expanded = _apply_macro_expansion_to_class(
+                                cpp_class,
+                                source_content,
+                                macro_patterns,
+                            )
+                            expanded_classes.append(expanded)
+                        else:
+                            expanded_classes.append(cpp_class)
+                except (OSError, IOError):
+                    # If we can't read the file, use original classes
+                    expanded_classes = list(parse_result.classes)
+            else:
+                expanded_classes = list(parse_result.classes)
+
             entry = AceIndexEntry(
                 file_path=str(file_path),
                 role=role,
                 family=family,
-                classes=parse_result.classes,
+                classes=tuple(expanded_classes),
                 free_functions=parse_result.free_functions,
                 includes=parse_result.includes,
                 paired_header=paired_header,
