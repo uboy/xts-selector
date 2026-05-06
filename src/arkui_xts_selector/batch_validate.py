@@ -523,6 +523,28 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         print(f"Naming-resolved files: {naming_resolved}")
         print(f"Unresolved files: {total_unresolved}")
 
+        # Quality metrics (Task 9)
+        unresolved_rate = total_unresolved / max(1, total_files)
+        target_resolved = sum(1 for s in summaries if s["status"] == "ok" and s.get("target_count", 0) > 0)
+        target_resolution_rate = target_resolved / ok if ok else 0
+        manual_review = sum(1 for s in summaries if s["status"] == "ok" and s.get("ci_policy") == "manual_review")
+        manual_review_rate = manual_review / ok if ok else 0
+        print(f"Target resolution rate: {target_resolution_rate:.2%} ({target_resolved}/{ok} PRs)")
+        print(f"Unresolved file rate: {unresolved_rate:.2%}")
+        print(f"Manual review rate: {manual_review_rate:.2%} ({manual_review}/{ok} PRs)")
+
+        # Write quality metrics to summary
+        quality_metrics = {
+            "api_resolution_rate": avg_aae,
+            "target_resolution_rate": target_resolution_rate,
+            "manual_review_rate": manual_review_rate,
+            "unresolved_rate": unresolved_rate,
+            "total_files": total_files,
+            "total_covered": total_covered,
+            "total_unresolved": total_unresolved,
+            "naming_resolved": naming_resolved,
+        }
+
         # Fallback statistics
         fb_applied = sum(1 for s in summaries if s["status"] == "ok" and s.get("fallback_applied"))
         fb_rescue = sum(1 for s in summaries if s["status"] == "ok" and s.get("fallback_level") == "rescue")
@@ -542,7 +564,27 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         src_dist = Counter(sources)
         print(f"Semantic source distribution: {dict(src_dist)}")
 
+    # Write quality metrics summary
+    quality_path = output_path.with_name(output_path.stem + "_quality.json")
+    quality_data = {
+        "total_prs": len(pr_urls),
+        "ok": ok,
+        "errors": errors,
+        "workers_requested": workers_requested,
+        "workers_effective": max_workers,
+        "proxy_disabled": True,
+        "cleared_proxy_vars": cleared_proxy_vars,
+        "pr_cache_mode": pr_cache_mode,
+        "index_load_seconds": idx_time,
+        "total_seconds": total_time,
+    }
+    if ok > 0:
+        quality_data.update(quality_metrics)
+    quality_path.write_text(
+        json.dumps(quality_data, ensure_ascii=False, indent=2), encoding="utf-8")
+
     print(f"\nResults saved to {output_path}")
     print(f"Summaries saved to {summary_path}")
+    print(f"Quality metrics saved to {quality_path}")
 
     return 0

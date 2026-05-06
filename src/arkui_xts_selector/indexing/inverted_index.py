@@ -48,8 +48,43 @@ class InvertedIndex:
         """Look up consumers by exact ApiEntityId."""
         return self.by_api.get(api_id.canonical(), [])
 
+    def consumers_for_api_id(self, api_id_str: str) -> list[ConsumerEntry]:
+        """Look up consumers by canonical API id string (e.g. 'ButtonAttribute.role').
+
+        This is the primary exact lookup path. Returns consumers whose
+        canonical index key matches exactly.
+        """
+        return self.by_api.get(api_id_str, [])
+
+    def consumers_for_canonical(self, canonical_id: str) -> list[ConsumerEntry]:
+        """Look up consumers by canonical ID string.
+
+        Tries exact match first, then member_name suffix match.
+        """
+        # Exact match
+        entries = self.by_api.get(canonical_id, [])
+        if entries:
+            return entries
+
+        # Try matching by the member portion (e.g. "role" from "ButtonAttribute.role")
+        if "." in canonical_id:
+            member = canonical_id.rsplit(".", 1)[-1]
+            # Find entries where the canonical contains this member in context
+            results = []
+            for key, consumers in self.by_api.items():
+                if key.endswith(f".{member}") or f".{member}:" in key:
+                    results.extend(consumers)
+            return results
+
+        return []
+
     def consumers_for_name(self, public_name: str) -> list[ConsumerEntry]:
-        """Look up consumers by public name (fuzzy)."""
+        """Look up consumers by public name (fuzzy substring).
+
+        This is the fallback path with provenance=fuzzy_name_fallback.
+        Prefer consumers_for_api_id() or consumers_for_canonical() for
+        production paths.
+        """
         results = []
         for canonical, entries in self.by_api.items():
             if public_name in canonical:

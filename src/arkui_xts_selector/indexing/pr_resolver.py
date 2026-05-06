@@ -38,6 +38,12 @@ except ImportError:
     _load_fanout_config = None  # type: ignore[assignment]
     _resolve_fanout = None  # type: ignore[assignment]
 
+try:
+    from .target_index import TargetIndexResult, build_target_index, targets_for_family as _targets_for_family
+except ImportError:
+    _targets_for_family = None  # type: ignore[assignment]
+    TargetIndexResult = None  # type: ignore[assignment,misc]
+
 
 FalseNegativeRisk = str  # Literal["low", "medium", "high", "critical"]
 
@@ -116,6 +122,7 @@ def _compute_aae_rate(result: PrResolveResult) -> float:
 def _compute_fallback_decision(
     result: PrResolveResult,
     xts_root: Path | None = None,
+    target_index: "TargetIndexResult | None" = None,
 ) -> FallbackDecision:
     """Determine conservative fallback action for a PR resolution.
 
@@ -129,7 +136,7 @@ def _compute_fallback_decision(
     aae = _compute_aae_rate(result)
 
     if risk == "critical":
-        extra = _expand_to_family_coverage(result, xts_root)
+        extra = _expand_to_family_coverage(result, xts_root, target_index)
         return FallbackDecision(
             apply=True,
             reason=f"critical risk (AAE={aae:.0%}); auto-rescue: add {len(extra)} family test suites",
@@ -138,7 +145,7 @@ def _compute_fallback_decision(
         )
 
     if risk == "high" and aae < 0.4:
-        extra = _expand_to_family_coverage(result, xts_root)
+        extra = _expand_to_family_coverage(result, xts_root, target_index)
         return FallbackDecision(
             apply=True,
             reason=f"high risk + low AAE ({aae:.0%}); safety net: add {len(extra)} broader family suites",
@@ -152,13 +159,14 @@ def _compute_fallback_decision(
 def _expand_to_family_coverage(
     result: PrResolveResult,
     xts_root: Path | None = None,
+    target_index: "TargetIndexResult | None" = None,
 ) -> set[str]:
-    """Expand selection using bounded fanout targets instead of uncapped walk.
+    """Expand selection using bounded fanout targets and optional TargetIndex.
 
     Uses fanout_targets.json config to cap expansion. For broad-infra entries,
     looks up the fan_out_target from the broad_infra match and uses bounded
-    family_select or broad_warning mode. Falls back to family prefix matching
-    with a hard cap of 60 targets when no config is available.
+    family_select or broad_warning mode. Falls back to TargetIndex or family
+    prefix matching with a hard cap.
     """
     if xts_root is None or not xts_root.is_dir():
         return set()
@@ -189,34 +197,46 @@ def _expand_to_family_coverage(
     if _load_fanout_config is not None and _resolve_fanout is not None:
         config = _load_fanout_config()
         if config:
-            # Collect all test dirs for matching
-            all_dirs: set[str] = set()
-            xts_root_str = str(xts_root)
-            base_depth = xts_root_str.rstrip("/").count("/")
-            for dirpath, dirnames, _ in os.walk(xts_root):
-                dirname = os.path.basename(dirpath)
-                if dirname.startswith("ace_ets_module_"):
-                    all_dirs.add(dirname)
-                if dirpath.count("/") - base_depth >= 4:
-                    dirnames.clear()
+            # Use TargetIndex if available, else collect dirs via os.walk
+            if target_index is not None and _targets_for_family is not None:
+                all_dirs = {e.module_name for e in target_index.entries if e.module_name}
+            else:
+                all_dirs: set[str] = set()
+                xts_root_str = str(xts_root)
+                base_depth = xts_root_str.rstrip("/").count("/")
+                for dirpath, dirnames, _ in os.walk(xts_root):
+                    dirname = os.path.basename(dirpath)
+                    if dirname.startswith("ace_ets_module_"):
+                        all_dirs.add(dirname)
+                    if dirpath.count("/") - base_depth >= 4:
+                        dirnames.clear()
 
             targets: set[str] = set()
-            # Resolve broad infra fanout targets
             for fid in broad_fanout_ids:
                 selected, reason, _is_broad = _resolve_fanout(fid, all_dirs, config)
                 if reason and reason.startswith("missing_fanout_target:"):
-                    # Missing target is an error, not a silent zero-target rescue
                     continue
                 targets.update(selected)
-            # Resolve family targets
             for family in family_prefixes:
                 selected, _reason, _is_broad = _resolve_fanout(family, all_dirs, config)
                 targets.update(selected)
             if targets:
                 return targets
 
-    # Fallback: family prefix matching with hard cap
-    expanded: set[str] = set()
+    # Fallback: TargetIndex or os.walk family prefix matching
+    if target_index is not None and _targets_for_family is not None:
+        expanded: set[str] = set()
+        for family in family_prefixes:
+            matched = _targets_for_family(target_index, family, max_targets=60)
+            for entry in matched:
+                if entry.module_name:
+                    expanded.add(entry.module_name)
+        if len(expanded) > 60:
+            expanded = set(sorted(expanded)[:60])
+        return expanded
+
+    # Final fallback: os.walk with hard cap
+    expanded = set()
     xts_root_str = str(xts_root)
     base_depth = xts_root_str.rstrip("/").count("/")
     for dirpath, dirnames, _ in os.walk(xts_root):
@@ -232,7 +252,6 @@ def _expand_to_family_coverage(
                 break
         if dirpath.count("/") - base_depth >= 4:
             dirnames.clear()
-    # Hard cap at 60 targets
     if len(expanded) > 60:
         expanded = set(sorted(expanded)[:60])
     return expanded
@@ -241,13 +260,14 @@ def _expand_to_family_coverage(
 def apply_fallback(
     result: PrResolveResult,
     xts_root: Path | None = None,
+    target_index: "TargetIndexResult | None" = None,
 ) -> PrResolveResult:
     """Apply conservative fallback policy to a resolve result.
 
     Returns a new PrResolveResult with fallback fields populated and
     extra targets added to consumer_projects.
     """
-    decision = _compute_fallback_decision(result, xts_root)
+    decision = _compute_fallback_decision(result, xts_root, target_index)
 
     if not decision.apply:
         return result
@@ -335,6 +355,7 @@ def resolve_pr_with_context(
     rules: list,
     changed_ranges: dict[str, list[tuple[int, int]]] | None = None,
     xts_root: Path | None = None,
+    target_index: "TargetIndexResult | None" = None,
 ) -> PrResolveResult:
     """Resolve PR using pre-built mapping index (for batch mode).
 
@@ -345,6 +366,7 @@ def resolve_pr_with_context(
         rules: Pre-loaded broad infra rules
         changed_ranges: Optional hunk-level ranges per file
         xts_root: Optional XTS test root for C++ naming resolution
+        target_index: Optional pre-built TargetIndex for family lookup
 
     Returns:
         PrResolveResult with entries per changed file
@@ -356,6 +378,7 @@ def resolve_pr_with_context(
         rules=rules,
         changed_ranges=changed_ranges,
         xts_root=xts_root,
+        target_index=target_index,
     )
 
 
@@ -366,6 +389,7 @@ def _resolve_pr_core(
     rules: list,
     changed_ranges: dict[str, list[tuple[int, int]]] | None = None,
     xts_root: Path | None = None,
+    target_index: "TargetIndexResult | None" = None,
 ) -> PrResolveResult:
     """Shared core resolver logic used by both resolve_pr and resolve_pr_with_context."""
     entries: list[PrResolveEntry] = []
@@ -379,7 +403,9 @@ def _resolve_pr_core(
     has_api = False
 
     for cf in changed_files:
-        # 1. Broad infra check
+        cf_normalized = cf.replace("\\", "/")
+
+        # 1. Broad infra check (highest priority for known infrastructure files)
         infra = match_changed_file(cf, rules)
         if infra is not None:
             has_broad = True
@@ -397,7 +423,28 @@ def _resolve_pr_core(
                 overall_risk = infra.false_negative_risk
             continue
 
-        # 1b. C++ naming convention resolution (typed ImpactCandidate path)
+        # 2. ArkTS bridge resolution (specific component bridges before generic C++ naming)
+        if _resolve_arkts_bridge is not None:
+            bridge_candidate = _resolve_arkts_bridge(cf)
+            if bridge_candidate is not None:
+                has_family = bridge_candidate.impact_kind in ("generated_bridge", "authored_bridge")
+                bridge_risk: FalseNegativeRisk = bridge_candidate.false_negative_risk
+                entries.append(PrResolveEntry(
+                    changed_file=cf,
+                    affected_apis=(),
+                    consumer_projects=(),
+                    selection_reasons=(),
+                    broad_infra_match=None,
+                    false_negative_risk=bridge_risk,
+                    parser_level=1,
+                    impact_candidates=(bridge_candidate.to_dict(),),
+                    unresolved_reason=bridge_candidate.unresolved_reason,
+                ))
+                if risk_order.get(bridge_risk, 0) > risk_order.get(overall_risk, 0):
+                    overall_risk = bridge_risk
+                continue
+
+        # 3. C++ naming convention resolution (typed ImpactCandidate path)
         # Only use typed candidate for files that look like ACE engine paths.
         # For bare filenames without path context, fall through to legacy naming.
         cf_normalized = cf.replace("\\", "/")
@@ -486,28 +533,7 @@ def _resolve_pr_core(
                     overall_risk = "medium"
                 continue
 
-        # 1d. ArkTS bridge resolution (Koala/Arkoala .ets files)
-        if _resolve_arkts_bridge is not None:
-            bridge_candidate = _resolve_arkts_bridge(cf)
-            if bridge_candidate is not None:
-                has_family = bridge_candidate.impact_kind in ("generated_bridge", "authored_bridge")
-                bridge_risk: FalseNegativeRisk = bridge_candidate.false_negative_risk
-                entries.append(PrResolveEntry(
-                    changed_file=cf,
-                    affected_apis=(),
-                    consumer_projects=(),
-                    selection_reasons=(),
-                    broad_infra_match=None,
-                    false_negative_risk=bridge_risk,
-                    parser_level=1,
-                    impact_candidates=(bridge_candidate.to_dict(),),
-                    unresolved_reason=bridge_candidate.unresolved_reason,
-                ))
-                if risk_order.get(bridge_risk, 0) > risk_order.get(overall_risk, 0):
-                    overall_risk = bridge_risk
-                continue
-
-        # 2. Find mappings for this file
+        # 4. Source-to-API mapping
         file_mappings = _find_mappings_for_file(cf, by_file)
 
         # 2b. Hunk-level filtering: only keep mappings overlapping changed ranges
@@ -532,8 +558,16 @@ def _resolve_pr_core(
                                    3 if mapping.confidence == "strong" else
                                    2 if mapping.confidence == "medium" else 1)
 
-            # Look up consumers
-            for consumer in inverted.consumers_for_name(api_name):
+            # Look up consumers: prefer exact canonical, fallback to fuzzy
+            consumers = []
+            if mapping.api_id:
+                consumers = inverted.consumers_for_api_id(mapping.api_id)
+            if not consumers:
+                consumers = inverted.consumers_for_canonical(api_name)
+            if not consumers:
+                consumers = inverted.consumers_for_name(api_name)
+
+            for consumer in consumers:
                 proj = consumer.project_path
                 if proj not in project_reasons:
                     project_reasons[proj] = {"apis": set(), "kinds": set(), "confidence": "weak"}
