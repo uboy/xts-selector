@@ -21,6 +21,7 @@ from arkui_xts_selector.indexing.pr_resolver import (
     resolve_pr,
     _find_mappings_for_file,
     _classify_risk,
+    _compute_ci_policy,
 )
 from arkui_xts_selector.indexing.ace_indexer import build_ace_index
 from arkui_xts_selector.indexing.sdk_indexer import build_sdk_index
@@ -776,3 +777,168 @@ def xts_root():
     if not root.is_dir():
         pytest.skip(f"XTS root not found: {root}")
     return root
+
+
+class TestCanonicalFieldStrictGate:
+    """R1: canonical_affected_apis only includes SDK-confirmed api:v1: IDs."""
+
+    def test_canonical_excludes_non_sdk_confirmed(self):
+        """Mapping with sdk_confirmed=False is excluded from canonical_affected_apis."""
+        from arkui_xts_selector.indexing.pr_resolver import _resolve_pr_core
+        from arkui_xts_selector.indexing.source_to_api import SourceApiMapping
+
+        mapping = SourceApiMapping(
+            source_qualified="ButtonModel::SetRole",
+            api_public_name="role",
+            confidence="strong",
+            file_role="model_static",
+            source_file_path="button.cpp",
+            api_id="api:v1:ButtonAttribute#role",
+            api_member_of="ButtonAttribute",
+            ambiguity_state="unresolved_sdk",
+            sdk_confirmed=False,
+        )
+
+        from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+        result = _resolve_pr_core(
+            changed_files=["button.cpp"],
+            by_file={"button.cpp": [mapping]},
+            inverted=InvertedIndex(),
+            rules=[],
+        )
+        assert len(result.entries) == 1
+        # api_id starts with "api:v1:" but sdk_confirmed=False → excluded
+        assert result.entries[0].canonical_affected_apis == ()
+
+    def test_canonical_includes_sdk_confirmed(self):
+        """Mapping with sdk_confirmed=True and api:v1: prefix is included."""
+        from arkui_xts_selector.indexing.pr_resolver import _resolve_pr_core
+        from arkui_xts_selector.indexing.source_to_api import SourceApiMapping
+
+        mapping = SourceApiMapping(
+            source_qualified="ButtonModel::SetRole",
+            api_public_name="role",
+            confidence="strong",
+            file_role="model_static",
+            source_file_path="button.cpp",
+            api_id="api:v1:ButtonAttribute#role",
+            api_member_of="ButtonAttribute",
+            ambiguity_state="unique",
+            sdk_confirmed=True,
+        )
+
+        from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+        result = _resolve_pr_core(
+            changed_files=["button.cpp"],
+            by_file={"button.cpp": [mapping]},
+            inverted=InvertedIndex(),
+            rules=[],
+        )
+        assert len(result.entries) == 1
+        assert result.entries[0].canonical_affected_apis == ("api:v1:ButtonAttribute#role",)
+
+    def test_canonical_excludes_non_api_v1_prefix(self):
+        """sdk_confirmed=True but api_id without api:v1: prefix → excluded."""
+        from arkui_xts_selector.indexing.pr_resolver import _resolve_pr_core
+        from arkui_xts_selector.indexing.source_to_api import SourceApiMapping
+
+        mapping = SourceApiMapping(
+            source_qualified="ButtonModel::SetRole",
+            api_public_name="role",
+            confidence="strong",
+            file_role="model_static",
+            source_file_path="button.cpp",
+            api_id="ButtonAttribute.role",
+            api_member_of="ButtonAttribute",
+            ambiguity_state="unique",
+            sdk_confirmed=True,
+        )
+
+        from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+        result = _resolve_pr_core(
+            changed_files=["button.cpp"],
+            by_file={"button.cpp": [mapping]},
+            inverted=InvertedIndex(),
+            rules=[],
+        )
+        assert len(result.entries) == 1
+        # Not api:v1: prefix → excluded
+        assert result.entries[0].canonical_affected_apis == ()
+
+
+class TestLowConfidenceResolvedFiles:
+    """R4: low_confidence_resolved_files populated for last_resort/area_fallback."""
+
+    def test_low_confidence_populated_for_last_resort(self):
+        """Files resolved via last_resort appear in low_confidence_resolved_files."""
+        from arkui_xts_selector.indexing.pr_resolver import _resolve_pr_core
+        from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+        from arkui_xts_selector.indexing.target_index import RunnableTargetEntry, TargetIndexResult
+
+        # Use a bare filename that won't match ACE path markers or naming conventions
+        # but has high token overlap with the target (button → button, jaccard=1.0)
+        target_index = TargetIndexResult(entries=[
+            RunnableTargetEntry(
+                project_path="ace_ets_module_button_test",
+                project_id="ace_ets_module_button_test",
+                module_name="ace_ets_module_button_test",
+                family_keys=("button",),
+            ),
+        ])
+
+        result = _resolve_pr_core(
+            changed_files=["button.cpp"],
+            by_file={},
+            inverted=InvertedIndex(),
+            rules=[],
+            target_index=target_index,
+        )
+        assert len(result.entries) == 1
+        entry = result.entries[0]
+        # Must have been resolved by last_resort (token match)
+        assert entry.consumer_projects, "last_resort should resolve button.cpp via token match"
+        assert "button.cpp" in result.low_confidence_resolved_files
+        assert entry.unresolved_reason is None
+
+
+class TestCiPolicyLowConfidence:
+    """R4: _compute_ci_policy considers low_confidence_files."""
+
+    def test_high_low_confidence_ratio_triggers_warn(self):
+        """Majority low-confidence files → warn policy."""
+        entries = [
+            PrResolveEntry(
+                changed_file=f"file_{i}.cpp",
+                affected_apis=(),
+                consumer_projects=(f"test_{i}",),
+            )
+            for i in range(10)
+        ]
+        low_conf = [f"file_{i}.cpp" for i in range(7)]  # 70% low-confidence
+        policy, reason = _compute_ci_policy(
+            overall_risk="low",
+            entries=entries,
+            unresolved_files=[],
+            low_confidence_files=low_conf,
+        )
+        assert policy == "warn"
+        assert "7 files resolved only via weak fallback" in reason
+
+    def test_low_confidence_no_effect_below_threshold(self):
+        """Minority low-confidence files → still ok."""
+        entries = [
+            PrResolveEntry(
+                changed_file=f"file_{i}.cpp",
+                affected_apis=(),
+                consumer_projects=(f"test_{i}",),
+            )
+            for i in range(10)
+        ]
+        low_conf = [f"file_{i}.cpp" for i in range(2)]  # 20% low-confidence
+        policy, reason = _compute_ci_policy(
+            overall_risk="low",
+            entries=entries,
+            unresolved_files=[],
+            low_confidence_files=low_conf,
+        )
+        assert policy == "ok"

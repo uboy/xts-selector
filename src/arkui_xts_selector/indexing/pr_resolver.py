@@ -300,6 +300,7 @@ def apply_fallback(
         ci_policy_recommendation=result.ci_policy_recommendation,
         ci_policy_reason=result.ci_policy_reason,
         unresolved_files=result.unresolved_files,
+        low_confidence_resolved_files=result.low_confidence_resolved_files,
         semantic_source=result.semantic_source,
     )
 
@@ -371,6 +372,8 @@ def resolve_pr_with_context(
     coverage_index: "CoverageIndex | None" = None,
     ets_index: "EtsIndexResult | None" = None,
     area_rules: list | None = None,
+    repo_root: Path | None = None,
+    raw_patch_hunks: dict[str, str] | None = None,
 ) -> PrResolveResult:
     """Resolve PR using pre-built mapping index (for batch mode).
 
@@ -387,6 +390,8 @@ def resolve_pr_with_context(
         coverage_index: Optional coverage-driven test impact index
         ets_index: Optional ETS index with import graph
         area_rules: Optional area ownership rules for fallback
+        repo_root: Optional repo root for reading file content (method_diff)
+        raw_patch_hunks: Optional raw diff text per file (method_diff)
 
     Returns:
         PrResolveResult with entries per changed file
@@ -404,6 +409,8 @@ def resolve_pr_with_context(
         coverage_index=coverage_index,
         ets_index=ets_index,
         area_rules=area_rules,
+        repo_root=repo_root,
+        raw_patch_hunks=raw_patch_hunks,
     )
 
 
@@ -420,6 +427,8 @@ def _resolve_pr_core(
     coverage_index: "CoverageIndex | None" = None,
     ets_index: "EtsIndexResult | None" = None,
     area_rules: list | None = None,
+    repo_root: Path | None = None,
+    raw_patch_hunks: dict[str, str] | None = None,
 ) -> PrResolveResult:
     """Shared core resolver logic used by both resolve_pr and resolve_pr_with_context."""
     entries: list[PrResolveEntry] = []
@@ -683,24 +692,23 @@ def _resolve_pr_core(
             ]
 
         # A.1: Semantic diff — determine if changes are body vs comment-only
-        if file_mappings and changed_ranges and cf in changed_ranges:
+        # TODO(api-xts-quality): R2 from REVIEW_FIX_COMMIT_1a33a0d — when repo_root is None
+        # or file doesn't exist locally, file_content=None → classify_hunk_impact assumes
+        # body change. Path normalization (Phase 1, R7) will make repo_root resolution reliable.
+        if file_mappings and raw_patch_hunks and cf in raw_patch_hunks:
             try:
                 from .method_diff import classify_hunk_impact
-                # Try to read file content for AST-based classification
+                # Read file content using repo_root for AST-based classification
                 file_content: bytes | None = None
-                try:
-                    candidate = Path(cf)
-                    if candidate.is_file():
-                        file_content = candidate.read_bytes()
-                except OSError:
-                    pass
-                # Build a synthetic patch from changed_ranges
-                patch_lines = []
-                for start, end in changed_ranges[cf]:
-                    count = end - start + 1
-                    patch_lines.append(f"@@ -{start},{count} +{start},{count} @@")
-                patch_text = "\n".join(patch_lines)
-                impacts = classify_hunk_impact(cf, patch_text, file_content)
+                if repo_root:
+                    try:
+                        candidate = Path(repo_root) / cf
+                        if candidate.is_file():
+                            file_content = candidate.read_bytes()
+                    except OSError:
+                        pass
+                # Use real unified diff from PR cache
+                impacts = classify_hunk_impact(cf, raw_patch_hunks[cf], file_content)
                 if impacts:
                     any_body = any(imp.is_body_change for imp in impacts)
                     if not any_body:
@@ -735,8 +743,10 @@ def _resolve_pr_core(
             api_name = mapping.api_public_name
             affected_apis.append(api_name)
             all_affected_apis.add(api_name)
-            # Only include canonical IDs that were SDK-verified (ambiguity_state="unique")
-            if mapping.api_id and mapping.ambiguity_state == "unique":
+            # Only include canonical IDs that were SDK-verified (double gate)
+            if (mapping.sdk_confirmed
+                    and mapping.api_id
+                    and mapping.api_id.startswith("api:v1:")):
                 canonical_affected_apis.append(mapping.api_id)
             max_parser_level = max(max_parser_level,
                                    3 if mapping.confidence == "strong" else
@@ -776,30 +786,6 @@ def _resolve_pr_core(
                         "apis": set(), "kinds": {"import_graph"}, "confidence": "weak",
                     }
             unique_consumers = sorted(set(project_reasons.keys()))
-
-        # 4.3b. Coverage replay — additive, supplements existing consumers
-        if coverage_index is not None:
-            coverage_entries = coverage_index.lookup_coverage(cf)
-            for ce in coverage_entries:
-                if ce.is_significant and ce.test_id not in project_reasons:
-                    project_reasons[ce.test_id] = {
-                        "apis": set(), "kinds": {"coverage_replay"},
-                        "confidence": "medium" if ce.coverage_ratio >= 0.3 else "weak",
-                    }
-            if coverage_entries:
-                unique_consumers = sorted(set(project_reasons.keys()))
-
-        # 4.3c. Git history coupling — additive, supplements existing consumers
-        if coupling_index is not None:
-            coupled = coupling_index.lookup_coupling(cf)
-            for c in coupled:
-                if c.test_file not in project_reasons:
-                    project_reasons[c.test_file] = {
-                        "apis": set(), "kinds": {"git_coupling"},
-                        "confidence": "medium" if c.confidence >= 0.5 else "weak",
-                    }
-            if coupled:
-                unique_consumers = sorted(set(project_reasons.keys()))
 
         # Build selection reasons
         selection_reasons = tuple(
@@ -902,6 +888,47 @@ def _resolve_pr_core(
         if risk_order.get(risk, 0) > risk_order.get(overall_risk, 0):
             overall_risk = risk
 
+    # Post-pass: coverage/coupling enrichment for ALL entries
+    # (moved from inline 4.3b/4.3c so broad_infra/cpp_naming/arkts_bridge entries also benefit)
+    if coverage_index is not None or coupling_index is not None:
+        from dataclasses import replace as _dc_replace
+        enriched_entries: list[PrResolveEntry] = []
+        for entry in entries:
+            cf_post = entry.changed_file
+            new_consumers: set[str] = set(entry.consumer_projects)
+            new_reasons: list[SelectionReason] = list(entry.selection_reasons)
+
+            if coverage_index is not None:
+                for ce in coverage_index.lookup_coverage(cf_post):
+                    if ce.is_significant and ce.test_id not in new_consumers:
+                        new_consumers.add(ce.test_id)
+                        new_reasons.append(SelectionReason(
+                            project_path=ce.test_id,
+                            matched_apis=(),
+                            usage_kinds=("coverage_replay",),
+                            confidence="medium" if ce.coverage_ratio >= 0.3 else "weak",
+                        ))
+
+            if coupling_index is not None:
+                for c in coupling_index.lookup_coupling(cf_post):
+                    if c.test_file not in new_consumers:
+                        new_consumers.add(c.test_file)
+                        new_reasons.append(SelectionReason(
+                            project_path=c.test_file,
+                            matched_apis=(),
+                            usage_kinds=("git_coupling",),
+                            confidence="medium" if c.confidence >= 0.5 else "weak",
+                        ))
+
+            if new_consumers != set(entry.consumer_projects):
+                enriched_entries.append(_dc_replace(entry,
+                    consumer_projects=tuple(sorted(new_consumers)),
+                    selection_reasons=tuple(new_reasons),
+                ))
+            else:
+                enriched_entries.append(entry)
+        entries = enriched_entries
+
     # T9.6: Coverage gap = affected APIs with no consumers
     coverage_gap = tuple(sorted(all_affected_apis - all_covered_apis))
 
@@ -910,6 +937,7 @@ def _resolve_pr_core(
         overall_risk=overall_risk,
         entries=entries,
         unresolved_files=unresolved_files,
+        low_confidence_files=low_confidence_resolved,
     )
 
     # Phase 7: Compute semantic source
@@ -1052,6 +1080,7 @@ def _compute_ci_policy(
     overall_risk: FalseNegativeRisk,
     entries: list[PrResolveEntry],
     unresolved_files: list[str],
+    low_confidence_files: list[str] | None = None,
 ) -> tuple[str, str]:
     """Compute CI policy recommendation and reason.
 
@@ -1089,6 +1118,12 @@ def _compute_ci_policy(
 
     if overall_risk == "medium":
         return "warn", "medium risk, some coverage gaps possible"
+
+    # Low risk: check low-confidence resolution ratio
+    if low_confidence_files and total > 2:
+        low_conf_ratio = len(low_confidence_files) / total
+        if low_conf_ratio > 0.5:
+            return "warn", f"{len(low_confidence_files)} files resolved only via weak fallback"
 
     # Low risk with some unresolved — warn if any
     if unresolved_files:

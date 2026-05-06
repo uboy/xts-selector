@@ -60,6 +60,10 @@ class InvertedIndex:
         """Look up consumers by canonical ID string.
 
         Tries exact match first, then member_name suffix match.
+
+        TODO(api-xts-quality): R6 from REVIEW_FIX_COMMIT_1a33a0d — Phase 0.3 prerequisite.
+        Substring fallback (lines 74-77) inflates exact_consumer_hit_rate.
+        Replace with dedicated member_name index for precise lookup.
         """
         # Exact match
         entries = self.by_api.get(canonical_id, [])

@@ -244,6 +244,7 @@ def _summarize_result(result: dict) -> dict:
             "broad_infra_rate": round(broad_infra_files / max(1, len(graph_entries)), 4),
             "fallback_rescue_rate": round(len(gs.get("fallback_extra_targets", [])) / max(1, len(all_projects)), 4) if all_projects else 0,
             "manual_review_rate": round((1 if gs.get("ci_policy_recommendation") == "manual_review" else 0), 4),
+            "low_confidence_count": len(gs.get("low_confidence_resolved_files", [])),
         }
 
     # Legacy subprocess format
@@ -342,9 +343,19 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
     rules = load_rules(broad_rules_path) if broad_rules_path.exists() else []
 
     # Load manual overrides
-    from .indexing.manual_overrides import load_overrides
+    from .indexing.manual_overrides import load_overrides, check_expired_overrides
     override_rules_path = Path(__file__).resolve().parents[2] / "config" / "manual_path_overrides.json"
     override_rules = load_overrides(override_rules_path)
+
+    # CI gate: fail if expired overrides exist unless --allow-expired-overrides
+    expired = check_expired_overrides(override_rules_path)
+    if expired and not getattr(args, "allow_expired_overrides", False):
+        print(f"ERROR: {len(expired)} expired manual override(s) found:", file=sys.stderr)
+        for ex in expired:
+            print(f"  pattern='{ex['path_regex']}' expired={ex['expires_at']} "
+                  f"owner={ex['owner']} ticket={ex['ticket']}", file=sys.stderr)
+        print("Update expires_at or remove the rule, or pass --allow-expired-overrides.", file=sys.stderr)
+        return 2
 
     # Load coupling index if available
     from .indexing.coupling_index import load_coupling_index
@@ -458,6 +469,8 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                 coverage_index=coverage_index if not coverage_index.is_stale() else None,
                 ets_index=ets_import_index,
                 area_rules=area_rules if area_rules else None,
+                repo_root=repo_root,
+                raw_patch_hunks=raw_patch_hunks if raw_patch_hunks else None,
             )
 
             pr_resolve_result = apply_fallback(
@@ -479,6 +492,8 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                 graph_selection["fallback_extra_targets"] = list(pr_resolve_result.fallback_extra_targets)
             if pr_resolve_result.unresolved_files:
                 graph_selection["unresolved_files"] = list(pr_resolve_result.unresolved_files)
+            if pr_resolve_result.low_confidence_resolved_files:
+                graph_selection["low_confidence_resolved_files"] = list(pr_resolve_result.low_confidence_resolved_files)
 
             pr_result = {
                 "pr_number": pr_number,
@@ -604,6 +619,11 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         print(f"Family resolution rate (avg): {avg_family:.2%}")
         print(f"Broad infra rate (avg): {avg_broad:.2%}")
 
+        # Low-confidence resolution statistics
+        total_low_conf = sum(s.get("low_confidence_count", 0) for s in summaries if s["status"] == "ok")
+        low_conf_rate = total_low_conf / max(1, total_files)
+        print(f"Low-confidence resolutions: {total_low_conf} files ({low_conf_rate:.2%})")
+
         # Write quality metrics to summary
         quality_metrics = {
             "api_resolution_rate": avg_aae,
@@ -618,6 +638,8 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
             "total_covered": total_covered,
             "total_unresolved": total_unresolved,
             "naming_resolved": naming_resolved,
+            "low_confidence_resolution_rate": low_conf_rate,
+            "total_low_confidence": total_low_conf,
         }
 
         # Fallback statistics

@@ -5,11 +5,17 @@ import json
 import tempfile
 from datetime import date, timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+import pytest
+if TYPE_CHECKING:
+    from pytest import CaptureFixture
 
 from arkui_xts_selector.indexing.manual_overrides import (
     OverrideRule,
     load_overrides,
     match_override,
+    check_expired_overrides,
 )
 
 
@@ -115,3 +121,51 @@ class TestMatchOverride:
 
     def test_no_rules_returns_none(self) -> None:
         assert match_override("anything.cpp", []) is None
+
+
+class TestExpiredOverrideWarning:
+    """R5: expired override emits stderr warning and is detectable."""
+
+    def test_expired_override_emits_stderr_warning(self, tmp_path: Path, capsys: CaptureFixture) -> None:
+        """load_overrides prints warning to stderr for expired rules."""
+        p = _write_config(tmp_path, [{
+            "path_regex": ".*\\.cpp$",
+            "must_run_targets": ["some_target"],
+            "expires_at": (date.today() - timedelta(days=5)).isoformat(),
+            "owner": "test-team",
+            "ticket": "OHOS-EXPIRED",
+            "rationale": "expired test",
+        }])
+        rules = load_overrides(p)
+        assert rules == []
+        captured = capsys.readouterr()
+        assert "WARNING" in captured.err
+        assert "expired" in captured.err
+        assert "OHOS-EXPIRED" in captured.err
+
+    def test_check_expired_overrides_returns_expired(self, tmp_path: Path) -> None:
+        """check_expired_overrides returns list of expired rule descriptors."""
+        p = _write_config(tmp_path, [{
+            "path_regex": ".*\\.cpp$",
+            "must_run_targets": ["some_target"],
+            "expires_at": (date.today() - timedelta(days=5)).isoformat(),
+            "owner": "test-team",
+            "ticket": "OHOS-EXPIRED",
+            "rationale": "expired test",
+        }])
+        expired = check_expired_overrides(p)
+        assert len(expired) == 1
+        assert expired[0]["ticket"] == "OHOS-EXPIRED"
+        assert expired[0]["path_regex"] == r".*\.cpp$"
+
+    def test_check_expired_overrides_empty_when_valid(self, tmp_path: Path) -> None:
+        """check_expired_overrides returns empty for valid rules."""
+        p = _write_config(tmp_path, [{
+            "path_regex": ".*\\.cpp$",
+            "must_run_targets": ["some_target"],
+            "expires_at": (date.today() + timedelta(days=30)).isoformat(),
+            "owner": "test-team",
+            "ticket": "OHOS-VALID",
+            "rationale": "valid",
+        }])
+        assert check_expired_overrides(p) == []

@@ -80,3 +80,38 @@ def match_override(file_path: str, rules: list[OverrideRule]) -> OverrideRule | 
         if rule.path_regex.search(file_path):
             return rule
     return None
+
+
+def check_expired_overrides(path: Path | None = None) -> list[dict]:
+    """Return list of expired override rule descriptors (for CI gate).
+
+    Each descriptor has: path_regex, expires_at, owner, ticket.
+    """
+    if path is None:
+        path = Path(__file__).resolve().parents[2] / "config" / "manual_path_overrides.json"
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
+    expired: list[dict] = []
+    today = date.today()
+    for raw in data.get("rules", []):
+        if not isinstance(raw, dict):
+            continue
+        expires_str = raw.get("expires_at", "")
+        if not expires_str:
+            continue
+        try:
+            expires_at = date.fromisoformat(expires_str)
+        except ValueError:
+            continue
+        if expires_at < today:
+            expired.append({
+                "path_regex": raw.get("path_regex", ""),
+                "expires_at": expires_str,
+                "owner": raw.get("owner", ""),
+                "ticket": raw.get("ticket", ""),
+            })
+    return expired

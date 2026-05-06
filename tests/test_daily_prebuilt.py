@@ -713,7 +713,7 @@ class DailyPrebuiltCliTests(unittest.TestCase):
             "/tmp/ignored.json",
         ]
         with mock.patch.object(sys, "argv", argv):
-            with mock.patch("arkui_xts_selector.cli.list_daily_tags", return_value=[build]):
+            with mock.patch("arkui_xts_selector.utility_modes.list_daily_tags", return_value=[build]):
                 with redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()):
                     code = main()
 
