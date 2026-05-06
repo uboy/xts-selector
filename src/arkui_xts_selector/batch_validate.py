@@ -25,6 +25,7 @@ from .indexing.pr_resolver import (
 )
 from .indexing.broad_infra import load_rules
 from .indexing.sdk_indexer import SdkIndexResult
+from .pr_cache import PrApiCache, PrCacheEntry, MissingPrCacheError
 
 
 def _entry_to_dict(e: PrResolveEntry) -> dict:
@@ -266,8 +267,11 @@ def _summarize_result(result: dict) -> dict:
 def cmd_validate_batch(args: argparse.Namespace) -> int:
     """Execute the validate-batch subcommand."""
     # Clear proxy env vars to avoid API timeouts
-    for proxy_var in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY"):
-        os.environ.pop(proxy_var, None)
+    _PROXY_VARS = (
+        "http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY",
+        "all_proxy", "ALL_PROXY", "no_proxy", "NO_PROXY",
+    )
+    cleared_proxy_vars = [v for v in _PROXY_VARS if os.environ.pop(v, None) is not None]
 
     # Install urllib opener without proxy to prevent cached proxy settings
     import urllib.request
@@ -284,7 +288,12 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
 
     output_path = Path(args.output) if args.output else Path("local/batch_results.json")
     cache_dir = Path(args.cache_dir) if args.cache_dir else Path("local/pr_cache")
+    pr_api_cache_dir = Path(args.pr_api_cache_dir) if hasattr(args, "pr_api_cache_dir") and args.pr_api_cache_dir else Path("local/pr_api_cache")
+    pr_cache_mode = getattr(args, "pr_cache_mode", "read-write")
     timeout = args.timeout
+
+    # Initialize PR API cache
+    pr_api_cache = PrApiCache(pr_api_cache_dir, mode=pr_cache_mode)
 
     # Load PR list
     pr_list_file = Path(args.pr_list_file)
@@ -354,8 +363,36 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
             return cached
 
         try:
-            changed_files, changed_ranges = _fetch_pr_changed_files(
-                pr_url, git_host_config=git_host_config, git_repo_root=git_repo_root)
+            # Use PR API cache for raw API responses
+            cached_pr = pr_api_cache.get(pr_url)
+            if cached_pr is not None and cached_pr.fetch_status == "ok":
+                changed_files = cached_pr.changed_files
+                changed_ranges = cached_pr.normalized_ranges
+            else:
+                changed_files, changed_ranges = _fetch_pr_changed_files(
+                    pr_url, git_host_config=git_host_config, git_repo_root=git_repo_root)
+
+                # Cache the raw API response
+                from datetime import datetime, timezone
+                import re as _re
+                _m = _re.match(r"https?://[^/]+/([^/]+)/([^/]+)/", pr_url)
+                _owner = _m.group(1) if _m else "unknown"
+                _repo = _m.group(2) if _m else "unknown"
+                _host = "gitcode"
+                if "codehub" in pr_url.lower():
+                    _host = "codehub"
+                cache_entry = PrCacheEntry(
+                    pr_url=pr_url,
+                    host_kind=_host,
+                    owner=_owner,
+                    repo=_repo,
+                    pr_number=pr_number,
+                    changed_files=changed_files,
+                    normalized_ranges=changed_ranges,
+                    fetch_status="ok",
+                    fetched_at=datetime.now(timezone.utc).isoformat(),
+                )
+                pr_api_cache.put(cache_entry)
 
             pr_resolve_result = resolve_pr_with_context(
                 changed_files=changed_files,
@@ -398,8 +435,10 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         except Exception as exc:
             return {"pr_number": pr_number, "status": "error", "error": str(exc)[:500]}
 
-    # Determine worker count — use up to 80 threads for parallel API fetch
-    max_workers = min(os.cpu_count() or 4, 80)
+    # Determine worker count
+    workers_requested = getattr(args, "workers", 80)
+    cpu = os.cpu_count() or 4
+    max_workers = min(workers_requested, cpu)
     if len(pending) < max_workers:
         max_workers = max(1, len(pending))
 
@@ -465,6 +504,9 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
     print(f"=== Batch Summary ===")
     print(f"Total: {len(pr_urls)}, OK: {ok}, Errors: {errors}")
     print(f"Index load: {idx_time:.1f}s, Total: {total_time:.1f}s ({total_time/60:.1f}m)")
+    print(f"Workers: requested={workers_requested}, effective={max_workers}")
+    print(f"Proxy: disabled, cleared vars: {cleared_proxy_vars or 'none'}")
+    print(f"PR cache mode: {pr_cache_mode}, dir: {pr_api_cache_dir}")
 
     if ok > 0:
         aae_rates = [s["aae_population_rate"] for s in summaries if s["status"] == "ok" and "aae_population_rate" in s]

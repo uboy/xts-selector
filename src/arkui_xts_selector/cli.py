@@ -1478,6 +1478,9 @@ def parse_args() -> argparse.Namespace:
     batch_parser.add_argument("--xts-root", default=None, help="XTS tests root")
     batch_parser.add_argument("--sdk-api-root", default=None, help="SDK API root")
     batch_parser.add_argument("--git-host-config", default=None, help="Git host config file (INI with token)")
+    batch_parser.add_argument("--workers", type=int, default=80, help="Max parallel workers (default: 80, clamped to cpu_count)")
+    batch_parser.add_argument("--pr-api-cache-dir", default="local/pr_api_cache", help="Cache directory for raw PR API responses")
+    batch_parser.add_argument("--pr-cache-mode", choices=["read-write", "read-only", "refresh"], default="read-write", help="PR API cache mode (default: read-write)")
 
     parser.add_argument(
         "--use-graph-resolver", action="store_true",
