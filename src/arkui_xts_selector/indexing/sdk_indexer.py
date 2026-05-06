@@ -78,6 +78,9 @@ class SdkIndexResult:
 
         Returns:
             The matching SdkIndexEntry, or None if not found.
+            If ``name`` is a bare member name (no dot) and it matches
+            multiple entries with *different* parents, returns None to
+            signal ambiguity instead of silently returning the first match.
         """
         # First, try exact match on public_name
         for entry in self.entries:
@@ -92,13 +95,43 @@ class SdkIndexResult:
                     return entry
 
         # Also try matching by member_name alone (for pattern role mappings)
+        # But check for ambiguity first — bare member names like "role" can
+        # belong to ButtonAttribute, CheckboxAttribute, etc.
+        candidates: list[SdkIndexEntry] = []
         for entry in self.entries:
             if entry.api_id.member_name == name:
-                return entry
-            if entry.member_name == name:
-                return entry
+                candidates.append(entry)
+            elif entry.member_name == name:
+                candidates.append(entry)
+
+        if len(candidates) == 1:
+            return candidates[0]
+        if len(candidates) > 1:
+            # Ambiguous — return None so callers know the name is not unique
+            return None
 
         return None
+
+    def find_all(self, name: str) -> list[SdkIndexEntry]:
+        """Find all entries matching a name (public or member).
+
+        Unlike ``find()``, this does not treat ambiguity as a special case;
+        it returns every match.  Useful for discovering all candidates when
+        the parent context is unknown.
+        """
+        results: list[SdkIndexEntry] = []
+        for entry in self.entries:
+            if entry.api_id.public_name == name:
+                results.append(entry)
+                continue
+            if entry.member_name and entry.api_id.member_of:
+                full_member = f"{entry.api_id.member_of}.{entry.member_name}"
+                if full_member == name:
+                    results.append(entry)
+                    continue
+            if entry.api_id.member_name == name or entry.member_name == name:
+                results.append(entry)
+        return results
 
     def to_dict(self) -> dict:
         """Return a JSON-compatible dict."""
@@ -250,32 +283,34 @@ def _symbol_to_entry(
 # ---------------------------------------------------------------------------
 
 def _module_from_path(file_path: str) -> str:
-    """Derive a module name from a file path.
+    """Derive a stable module name from a file path.
 
-    Args:
-        file_path: The absolute file path.
+    Priority order:
+      1. ``ohos.<name>`` segment right after ``interface/sdk-js/api``
+      2. ``<name>`` segment right after a plain ``api/`` directory
+      3. Parent directory of the .d.ts file (fallback)
 
-    Returns:
-        A module name (e.g., "ohos.arkui" or "arkui" if no clear module can be inferred).
+    This ensures Button, ButtonAttribute, and ButtonModifier that live
+    in the same ``button.d.ts`` all get the same module id.
     """
     path = Path(file_path)
-
-    # Try to find a module-like directory structure
-    # Common patterns: .../interface/sdk-js/api/ohos.arkui/...
     parts = path.parts
 
-    # Look for "interface" or "sdk-js" or "api" in the path
+    # Pattern: .../interface/sdk-js/api/<module>/...
     for i, part in enumerate(parts):
-        if part in ("interface", "sdk-js", "api"):
-            if i + 1 < len(parts):
-                potential_module = parts[i + 1]
-                if potential_module.startswith("ohos."):
-                    return potential_module
-                if potential_module.startswith("arkui"):
-                    return potential_module
+        if part == "api" and i + 1 < len(parts):
+            potential = parts[i + 1]
+            if potential.startswith("ohos."):
+                return potential
+            # Non-ohos module under api/ — still stable
+            if not potential.endswith(".d.ts"):
+                return potential
 
-    # Fallback to a simple module name based on the parent directory
+    # Fallback: parent directory name (e.g. "button" from button/button.d.ts)
     if len(parts) >= 2:
-        return parts[-2]
+        parent = parts[-2]
+        # Avoid using the filename stem itself
+        if parent != path.stem:
+            return parent
 
     return "unknown"

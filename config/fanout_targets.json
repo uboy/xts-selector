@@ -1,0 +1,62 @@
+{
+  "schema_version": "v1",
+  "targets": {
+    "all_pattern_components": {
+      "description": "All component pattern tests (pattern/ dir changes)",
+      "families": [],
+      "mode": "broad_warning",
+      "max_targets": 50,
+      "bucket": "recommended"
+    },
+    "all_components": {
+      "description": "All component tests (broad changes affecting all)",
+      "families": [],
+      "mode": "broad_warning",
+      "max_targets": 60,
+      "bucket": "recommended"
+    },
+    "all_arkts_generated_bridges": {
+      "description": "All ArkTS generated bridge tests",
+      "families": [],
+      "mode": "broad_warning",
+      "max_targets": 60,
+      "bucket": "recommended"
+    },
+    "image_related_components": {
+      "description": "Image, ImageText, SymbolGlyph and related",
+      "families": ["image", "imageText", "symbolGlyph", "backgroundImage", "imageSpan"],
+      "max_targets": 40,
+      "bucket": "recommended"
+    },
+    "scroll_related_components": {
+      "description": "Scroll, ArcScroll and related",
+      "families": ["scroll", "arcScroll"],
+      "max_targets": 40,
+      "bucket": "recommended"
+    },
+    "dialog_related_components": {
+      "description": "Dialog, AlertDialog, ActionSheet, Menu, Select",
+      "families": ["dialog", "alertDialog", "actionSheet", "menu", "select"],
+      "max_targets": 40,
+      "bucket": "recommended"
+    },
+    "text_related_components": {
+      "description": "Text, RichEditor, TextInput and related",
+      "families": ["text", "richEditor", "textInput", "textArea", "search"],
+      "max_targets": 40,
+      "bucket": "recommended"
+    },
+    "layout_related_components": {
+      "description": "Layout containers",
+      "families": ["column", "row", "flex", "stack", "grid", "list", "relativeContainer"],
+      "max_targets": 40,
+      "bucket": "recommended"
+    },
+    "common_seven_attrs": {
+      "description": "Common seven attribute tests",
+      "families": ["common_seven_attrs"],
+      "max_targets": 60,
+      "bucket": "recommended"
+    }
+  }
+}

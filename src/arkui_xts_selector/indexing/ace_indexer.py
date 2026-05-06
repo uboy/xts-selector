@@ -33,6 +33,8 @@ class AceIndexEntry:
     classes: tuple[CppClass, ...] = ()
     free_functions: tuple[str, ...] = ()
     includes: tuple[str, ...] = ()
+    paired_header: str | None = None
+    """For .cpp files, the .h file in the same directory with matching stem, if any."""
 
     def to_dict(self) -> dict:
         """Return a JSON-compatible dict."""
@@ -48,6 +50,8 @@ class AceIndexEntry:
             d["free_functions"] = list(self.free_functions)
         if self.includes:
             d["includes"] = list(self.includes)
+        if self.paired_header is not None:
+            d["paired_header"] = self.paired_header
         return d
 
     @classmethod
@@ -61,6 +65,7 @@ class AceIndexEntry:
             classes=tuple(_class_from_dict(c) for c in classes_data),
             free_functions=tuple(data.get("free_functions", ())),
             includes=tuple(data.get("includes", ())),
+            paired_header=data.get("paired_header"),
         )
 
 
@@ -212,55 +217,101 @@ def build_ace_index(
     entries: list[AceIndexEntry] = []
     errors: list[str] = []
 
-    # Directories to walk
+    # Directories to walk (Phase 6.3: expanded roots)
     directories = [
         ace_root / "frameworks" / "core" / "components_ng" / "pattern",
         ace_root / "frameworks" / "core" / "interfaces" / "native" / "implementation",
         ace_root / "frameworks" / "core" / "interfaces" / "native" / "node",
+        ace_root / "frameworks" / "core" / "interfaces" / "native" / "generated",
+        ace_root / "frameworks" / "core" / "interfaces" / "native" / "utility",
+        ace_root / "frameworks" / "core" / "components_v2",
         ace_root / "frameworks" / "bridge" / "declarative_frontend" / "jsview",
     ]
 
-    # Walk each directory
+    # Phase 6.3: koala_projects root — skip node_modules
+    _KOALA_ROOT = ace_root / "frameworks" / "bridge" / "arkts_frontend" / "koala_projects"
+
+    # Collect all file paths first for header pairing (Phase 6.2)
+    all_file_paths: list[tuple[Path, str, FileRole, str | None]] = []
+
     for directory in directories:
         if not directory.is_dir():
             continue
 
         for ext in extensions:
             for file_path in sorted(directory.rglob(f"*{ext}")):
-                # Get relative path from ace_root
                 try:
                     rel_path = file_path.relative_to(ace_root)
                 except ValueError:
-                    # File is not relative to ace_root, skip
                     continue
 
                 rel_path_str = str(rel_path).replace("\\", "/")
-
-                # Classify file role
                 role, family = classify(rel_path_str)
 
-                # Filter by family if specified
                 if families is not None and family not in families:
                     continue
 
-                # Skip unknown and infrastructure roles
-                if role in ("unknown", "infrastructure"):
+                # Skip infrastructure (but keep unknown for unresolved tracking)
+                if role == "infrastructure":
                     continue
 
-                # Parse the file
+                all_file_paths.append((file_path, rel_path_str, role, family))
+
+    # Phase 6.3: koala_projects — generated/component/ and src/component/
+    # Bridge files are .ets, not .cpp/.h, so scan with .ets explicitly
+    _KOALA_EXTENSIONS = extensions + (".ets",)
+    if _KOALA_ROOT.is_dir():
+        for ext in _KOALA_EXTENSIONS:
+            for file_path in sorted(_KOALA_ROOT.rglob(f"*{ext}")):
+                # Skip node_modules
+                if "node_modules" in str(file_path):
+                    continue
                 try:
-                    parse_result = parse_cpp_file(file_path)
-                    entry = AceIndexEntry(
-                        file_path=str(file_path),
-                        role=role,
-                        family=family,
-                        classes=parse_result.classes,
-                        free_functions=parse_result.free_functions,
-                        includes=parse_result.includes,
-                    )
-                    entries.append(entry)
-                except Exception as e:
-                    errors.append(f"Failed to parse {file_path}: {e}")
+                    rel_path = file_path.relative_to(ace_root)
+                except ValueError:
+                    continue
+                rel_path_str = str(rel_path).replace("\\", "/")
+                # Classify as "jsview_dynamic" for bridge files
+                role: FileRole = "unknown"
+                family: str | None = None
+                if "generated/component/" in rel_path_str or "src/component/" in rel_path_str:
+                    role = "jsview_dynamic"
+                all_file_paths.append((file_path, rel_path_str, role, family))
+
+    # Phase 6.2: Build stem → header map for pairing
+    _stem_to_header: dict[str, str] = {}
+    for fp, rel, role_val, fam in all_file_paths:
+        if fp.suffix in (".h",) and role_val != "unknown":
+            stem = fp.stem
+            _stem_to_header[f"{fp.parent}|{stem}"] = str(fp)
+
+    # Walk all collected files and build entries
+    for file_path, rel_path_str, role, family in all_file_paths:
+        # Skip truly unknown files (no role match at all)
+        if role == "unknown":
+            continue
+
+        # Phase 6.2: find paired header for .cpp files
+        paired_header: str | None = None
+        if file_path.suffix == ".cpp":
+            key = f"{file_path.parent}|{file_path.stem}"
+            paired_header = _stem_to_header.get(key)
+
+        # Parse the file
+        try:
+            parse_result = parse_cpp_file(file_path)
+            entry = AceIndexEntry(
+                file_path=str(file_path),
+                role=role,
+                family=family,
+                classes=parse_result.classes,
+                free_functions=parse_result.free_functions,
+                includes=parse_result.includes,
+                paired_header=paired_header,
+            )
+            entries.append(entry)
+        except Exception as e:
+            errors.append(f"Failed to parse {file_path}: {e}")
 
     index_time_ms = (time.perf_counter() - start_time) * 1000
 

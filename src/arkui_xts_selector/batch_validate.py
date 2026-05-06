@@ -1,4 +1,4 @@
-"""In-process batch validation: load indices once, process multiple PRs sequentially.
+"""In-process batch validation: load indices once, process multiple PRs in parallel.
 
 This module provides the `validate-batch` CLI subcommand that avoids the
 per-PR subprocess overhead by loading SDK/ACE/ETS/inverted indices once
@@ -12,6 +12,8 @@ import os
 import re
 import sys
 import time
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from .indexing.ace_indexer import AceIndexResult, build_ace_index
@@ -42,6 +44,10 @@ def _entry_to_dict(e: PrResolveEntry) -> dict:
             "fan_out_target": e.broad_infra_match.fan_out_target,
             "risk": e.broad_infra_match.false_negative_risk,
         }
+    if e.impact_candidates:
+        d["impact_candidates"] = list(e.impact_candidates)
+    if e.unresolved_reason is not None:
+        d["unresolved_reason"] = e.unresolved_reason
     return d
 
 
@@ -141,29 +147,22 @@ def _save_cache_result(pr_number: int, result: dict, cache_dir: Path) -> None:
 
 
 def _summarize_result(result: dict) -> dict:
-    """Extract summary metrics from a PR result.
-
-    Handles two formats:
-      - In-process batch: result has 'graph_selection' with 'entries'
-      - Cached subprocess: result has 'report' with 'results' and 'coverage_recommendations'
-    """
+    """Extract summary metrics from a PR result."""
     if result.get("status") != "ok":
         return {"pr_number": result.get("pr_number", 0), "status": result.get("status", "error"),
                 "error": result.get("error", "")[:200]}
 
     gs = result.get("graph_selection")
     if isinstance(gs, dict) and "entries" in gs:
-        # In-process batch format
         graph_entries = gs["entries"]
         changed_files = [e.get("changed_file", "") for e in graph_entries]
         files_with_apis = sum(1 for e in graph_entries if e.get("affected_apis"))
         naming_resolved = sum(1 for e in graph_entries if e.get("parser_level") == 2)
-        # AAE: files with APIs OR naming-resolved OR broad-infra (all provide actionable coverage)
         files_with_coverage = sum(1 for e in graph_entries
                                   if e.get("affected_apis") or e.get("consumer_projects")
                                   or e.get("broad_infra_match"))
 
-        # Excludable files: examples, test_code, build_config, generated bridges, assets
+        # Excludable files
         _SKIP_PATTERNS = (
             "/examples/", "/test/unittest/", "/test/mock/",
             ".gn", ".gni", ".json", ".json5", ".png", ".map", ".gitignore",
@@ -178,13 +177,21 @@ def _summarize_result(result: dict) -> dict:
                 actionable_files += 1
         actionable_files = max(1, actionable_files)
 
+        # Unresolved files count
+        unresolved_count = sum(1 for e in graph_entries if e.get("unresolved_reason"))
+        impact_families = set()
+        for e in graph_entries:
+            for ic in e.get("impact_candidates", []):
+                fam = ic.get("family")
+                if fam:
+                    impact_families.add(fam)
+
         # Collect unique consumer projects as targets
         all_projects: dict[str, dict] = {}
         for e in graph_entries:
             for p in e.get("consumer_projects", []):
                 if p not in all_projects:
                     all_projects[p] = {"project": p, "bucket": "required", "score": 0, "variant": ""}
-        # Include fallback extra targets
         for p in gs.get("fallback_extra_targets", []):
             if p not in all_projects:
                 all_projects[p] = {"project": p, "bucket": "required", "score": 0, "variant": ""}
@@ -209,9 +216,14 @@ def _summarize_result(result: dict) -> dict:
             "fallback_reason": gs.get("fallback_reason", ""),
             "fallback_level": gs.get("fallback_level", "none"),
             "fallback_extra_targets_count": len(gs.get("fallback_extra_targets", [])),
+            "ci_policy": gs.get("ci_policy_recommendation", "unknown"),
+            "ci_policy_reason": gs.get("ci_policy_reason", ""),
+            "semantic_source": gs.get("semantic_source", "unknown"),
+            "unresolved_count": unresolved_count,
+            "impact_families": sorted(impact_families),
         }
 
-    # Legacy subprocess format (report key)
+    # Legacy subprocess format
     report = result.get("report", {})
     if isinstance(report, str):
         return {"pr_number": result["pr_number"], "status": "ok", "error": "report is string"}
@@ -297,7 +309,7 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
     broad_rules_path = Path(__file__).resolve().parents[2] / "config" / "broad_infrastructure_files.json"
     rules = load_rules(broad_rules_path) if broad_rules_path.exists() else []
 
-    # Pre-build source-to-API mapping index once (saves ~7min/PR in batch)
+    # Pre-build source-to-API mapping index once
     print("Building source-to-API mapping...", end=" ", flush=True)
     t_map = time.perf_counter()
     by_file = _build_file_mapping_index(ace, sdk)
@@ -307,11 +319,12 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
     total_setup = time.perf_counter() - t0
     print(f"Total setup: {total_setup:.1f}s", flush=True)
 
-    # Process PRs sequentially
+    # Process PRs — parallel fetch + resolve
     results: list[dict] = []
     summaries: list[dict] = []
     completed = 0
     start_time = time.perf_counter()
+    _lock = threading.Lock()
 
     # Check for existing results (resume support)
     if output_path.exists():
@@ -328,28 +341,19 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
 
     done_pr_numbers = {r["pr_number"] for r in results}
 
-    for pr_url, pr_number in pr_urls:
-        if pr_number in done_pr_numbers:
-            completed += 1
-            continue
+    # Filter to only pending PRs
+    pending = [(url, num) for url, num in pr_urls if num not in done_pr_numbers]
+    print(f"Cached: {done_pr_numbers & {num for _, num in pr_urls}}", len(done_pr_numbers & {num for _, num in pr_urls}), "PRs")
+    print(f"Pending: {len(pending)} PRs to process", flush=True)
 
-        # Check cache
+    def _process_one(pr_url: str, pr_number: int) -> dict:
+        """Fetch and resolve a single PR. Thread-safe (read-only shared state)."""
+        # Check cache first
         cached = _load_cached_result(pr_number, cache_dir)
         if cached and cached.get("status") == "ok":
-            result = cached
-            summaries.append(_summarize_result(result))
-            results.append(result)
-            completed += 1
-            done_pr_numbers.add(pr_number)
-            elapsed = time.perf_counter() - start_time
-            rate = completed / elapsed if elapsed > 0 else 0
-            print(f"  [{completed}/{len(pr_urls)}] PR #{pr_number}: ok (cached)  ({rate:.1f}/s)", flush=True)
-            continue
+            return cached
 
-        # Fetch PR diff and resolve
-        pr_result: dict
         try:
-            t_pr = time.perf_counter()
             changed_files, changed_ranges = _fetch_pr_changed_files(
                 pr_url, git_host_config=git_host_config, git_repo_root=git_repo_root)
 
@@ -362,7 +366,6 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                 xts_root=xts_root if xts_root else None,
             )
 
-            # Apply conservative fallback policy (Phase 11)
             pr_resolve_result = apply_fallback(
                 pr_resolve_result, xts_root=xts_root if xts_root else None)
 
@@ -374,9 +377,14 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                 "fallback_applied": pr_resolve_result.fallback_applied,
                 "fallback_reason": pr_resolve_result.fallback_reason,
                 "fallback_level": pr_resolve_result.fallback_level,
+                "ci_policy_recommendation": pr_resolve_result.ci_policy_recommendation,
+                "ci_policy_reason": pr_resolve_result.ci_policy_reason,
+                "semantic_source": pr_resolve_result.semantic_source,
             }
             if pr_resolve_result.fallback_extra_targets:
                 graph_selection["fallback_extra_targets"] = list(pr_resolve_result.fallback_extra_targets)
+            if pr_resolve_result.unresolved_files:
+                graph_selection["unresolved_files"] = list(pr_resolve_result.unresolved_files)
 
             pr_result = {
                 "pr_number": pr_number,
@@ -384,35 +392,64 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                 "graph_selection": graph_selection,
             }
 
-            elapsed_pr = time.perf_counter() - t_pr
-            naming_count = sum(1 for e in pr_resolve_result.entries if e.parser_level == 2)
-            api_count = sum(1 for e in pr_resolve_result.entries if e.affected_apis)
-
             _save_cache_result(pr_number, pr_result, cache_dir)
-            summaries.append(_summarize_result(pr_result))
+            return pr_result
 
         except Exception as exc:
-            pr_result = {"pr_number": pr_number, "status": "error", "error": str(exc)[:500]}
-            summaries.append({"pr_number": pr_number, "status": "error", "error": str(exc)[:200]})
+            return {"pr_number": pr_number, "status": "error", "error": str(exc)[:500]}
 
-        results.append(pr_result)
-        done_pr_numbers.add(pr_number)
-        completed += 1
+    # Determine worker count — use up to 80 threads for parallel API fetch
+    max_workers = min(os.cpu_count() or 4, 80)
+    if len(pending) < max_workers:
+        max_workers = max(1, len(pending))
 
-        elapsed = time.perf_counter() - start_time
-        rate = completed / elapsed if elapsed > 0 else 0
-        eta = (len(pr_urls) - completed) / rate if rate > 0 else 0
-        status = pr_result["status"]
-        extra = f" naming={naming_count} api={api_count}" if status == "ok" else ""
-        print(f"  [{completed}/{len(pr_urls)}] PR #{pr_number}: {status}{extra}  ({rate:.1f}/s, ETA {eta/60:.0f}m)", flush=True)
+    if pending:
+        print(f"Processing {len(pending)} PRs with {max_workers} parallel workers...", flush=True)
 
-        # Incremental save after each PR
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(
-            json.dumps(results, ensure_ascii=False, indent=None), encoding="utf-8")
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {}
+            for pr_url, pr_number in pending:
+                future = executor.submit(_process_one, pr_url, pr_number)
+                futures[future] = (pr_url, pr_number)
+
+            for future in as_completed(futures):
+                pr_url, pr_number = futures[future]
+                try:
+                    pr_result = future.result()
+                except Exception as exc:
+                    pr_result = {"pr_number": pr_number, "status": "error", "error": str(exc)[:500]}
+
+                summary = _summarize_result(pr_result)
+
+                with _lock:
+                    results.append(pr_result)
+                    summaries.append(summary)
+                    completed += 1
+
+                    elapsed = time.perf_counter() - start_time
+                    rate = completed / elapsed if elapsed > 0 else 0
+                    eta = (len(pending) - completed) / rate if rate > 0 else 0
+                    status = pr_result["status"]
+                    extra = ""
+                    if status == "ok" and "graph_selection" in pr_result:
+                        gs = pr_result["graph_selection"]
+                        entries = gs.get("entries", [])
+                        naming_count = sum(1 for e in entries if e.get("parser_level") == 2)
+                        api_count = sum(1 for e in entries if e.get("affected_apis"))
+                        unresolved_count = len(gs.get("unresolved_files", []))
+                        ci = gs.get("ci_policy_recommendation", "")
+                        extra = f" naming={naming_count} api={api_count} unresolved={unresolved_count} ci={ci}"
+                    print(f"  [{completed}/{len(pending)}] PR #{pr_number}: {status}{extra}  ({rate:.1f}/s, ETA {eta/60:.0f}m)", flush=True)
+
+                    # Incremental save every 10 PRs
+                    if completed % 10 == 0:
+                        output_path.parent.mkdir(parents=True, exist_ok=True)
+                        output_path.write_text(
+                            json.dumps(results, ensure_ascii=False, indent=None), encoding="utf-8")
 
     # Final save
     total_time = time.perf_counter() - start_time
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         json.dumps(results, ensure_ascii=False, indent=None), encoding="utf-8")
 
@@ -437,10 +474,12 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         naming_resolved = sum(s.get("graph_naming_resolved", 0) for s in summaries if s["status"] == "ok")
         total_files = sum(s.get("changed_files_count", 0) for s in summaries if s["status"] == "ok")
         total_covered = sum(s.get("files_with_aae", 0) for s in summaries if s["status"] == "ok")
+        total_unresolved = sum(s.get("unresolved_count", 0) for s in summaries if s["status"] == "ok")
         print(f"AAE population rate (avg per PR): {avg_aae:.2%}")
         print(f"AAE actionable rate (excl. examples/tests/config, avg): {avg_aae_actionable:.2%}")
         print(f"Total coverage: {total_covered}/{total_files} files")
         print(f"Naming-resolved files: {naming_resolved}")
+        print(f"Unresolved files: {total_unresolved}")
 
         # Fallback statistics
         fb_applied = sum(1 for s in summaries if s["status"] == "ok" and s.get("fallback_applied"))
@@ -449,6 +488,17 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         fb_targets = sum(s.get("fallback_extra_targets_count", 0) for s in summaries if s["status"] == "ok")
         print(f"Fallback applied: {fb_applied}/{ok} (rescue={fb_rescue}, safety_net={fb_safety})")
         print(f"Fallback extra targets total: {fb_targets}")
+
+        # CI policy distribution
+        ci_policies = [s.get("ci_policy", "unknown") for s in summaries if s["status"] == "ok"]
+        from collections import Counter
+        ci_dist = Counter(ci_policies)
+        print(f"CI policy distribution: {dict(ci_dist)}")
+
+        # Semantic source distribution
+        sources = [s.get("semantic_source", "unknown") for s in summaries if s["status"] == "ok"]
+        src_dist = Counter(sources)
+        print(f"Semantic source distribution: {dict(src_dist)}")
 
     print(f"\nResults saved to {output_path}")
     print(f"Summaries saved to {summary_path}")

@@ -21,8 +21,22 @@ from .source_to_api import build_source_to_api_mapping, SourceApiMapping
 # Lazy import to avoid circular dependency on xts_root at module level
 try:
     from .cpp_naming_resolver import resolve_changed_cpp_file as _resolve_cpp_naming
+    from .cpp_naming_resolver import resolve_cpp_family_candidate as _resolve_cpp_family
 except ImportError:
     _resolve_cpp_naming = None  # type: ignore[assignment]
+    _resolve_cpp_family = None  # type: ignore[assignment]
+
+try:
+    from .arkts_bridge_resolver import resolve_arkts_bridge_candidate as _resolve_arkts_bridge
+except ImportError:
+    _resolve_arkts_bridge = None  # type: ignore[assignment]
+
+try:
+    from .fanout_resolver import load_fanout_config as _load_fanout_config
+    from .fanout_resolver import resolve_fanout as _resolve_fanout
+except ImportError:
+    _load_fanout_config = None  # type: ignore[assignment]
+    _resolve_fanout = None  # type: ignore[assignment]
 
 
 FalseNegativeRisk = str  # Literal["low", "medium", "high", "critical"]
@@ -55,6 +69,8 @@ class PrResolveEntry:
     broad_infra_match: BroadInfraMatch | None = None
     false_negative_risk: FalseNegativeRisk = "low"
     parser_level: int = 0  # max parser_level used (0-3)
+    impact_candidates: tuple[dict, ...] = ()  # Phase 7: serialized ImpactCandidate dicts
+    unresolved_reason: str | None = None  # Phase 7: reason if file could not be resolved
 
 
 @dataclass(frozen=True)
@@ -67,6 +83,11 @@ class PrResolveResult:
     fallback_reason: str = ""
     fallback_level: str = "none"  # "rescue" | "safety_net" | "none"
     fallback_extra_targets: tuple[str, ...] = ()  # additional targets from fallback
+    # Phase 7: CI policy recommendation fields
+    ci_policy_recommendation: str = "ok"  # "ok" | "warn" | "require_broader_suite" | "manual_review"
+    ci_policy_reason: str = ""
+    unresolved_files: tuple[str, ...] = ()  # files with no mapping at all
+    semantic_source: str = "unknown"  # "api" | "family" | "broad" | "unknown"
 
 
 @dataclass(frozen=True)
@@ -132,59 +153,66 @@ def _expand_to_family_coverage(
     result: PrResolveResult,
     xts_root: Path | None = None,
 ) -> set[str]:
-    """Expand selection to include all XTS test directories for affected families.
+    """Expand selection using bounded fanout targets instead of uncapped walk.
 
-    For each naming-resolved or API-resolved entry, extract the component family
-    prefix (e.g. "grid" from "ace_ets_module_layout_gridrow_gridcol") and find
-    all matching test directories under xts_root.
-
-    For broad-infra entries (no specific component), returns ALL XTS test dirs.
+    Uses fanout_targets.json config to cap expansion. For broad-infra entries,
+    looks up the fan_out_target from the broad_infra match and uses bounded
+    family_select or broad_warning mode. Falls back to family prefix matching
+    with a hard cap of 60 targets when no config is available.
     """
     if xts_root is None or not xts_root.is_dir():
         return set()
 
     # Collect family prefixes from resolved entries
     family_prefixes: set[str] = set()
-    has_broad_infra = False
+    broad_fanout_ids: set[str] = set()
 
     for entry in result.entries:
         if entry.broad_infra_match is not None:
-            has_broad_infra = True
+            fanout_id = getattr(entry.broad_infra_match, 'fan_out_target', None)
+            if fanout_id:
+                broad_fanout_ids.add(fanout_id)
             continue
 
         for proj in entry.consumer_projects:
-            # Extract family from paths like:
-            # ace_ets_module_layout_gridrow_gridcol → layout_gridrow_gridcol
-            # ace_ets_module_imageText → imageText
             basename = Path(proj).name if "/" not in proj else proj.rstrip("/").split("/")[-1]
             m = re.match(r"ace_ets_module_(.+?)(?:_nowear_api\d+_static)?$", basename)
             if m:
                 raw = m.group(1)
-                # Split on _ to get family parts: "layout_gridrow_gridcol" → "layout"
-                # For simple names: "imageText" → "imageText"
                 parts = raw.split("_")
                 if len(parts) > 1:
-                    family_prefixes.add(parts[0])  # e.g. "layout"
+                    family_prefixes.add(parts[0])
                 else:
-                    family_prefixes.add(raw)  # e.g. "imageText"
+                    family_prefixes.add(raw)
 
-    if has_broad_infra:
-        # Broad infra → return ALL test directories (recursive, up to depth 4)
-        all_dirs: set[str] = set()
-        xts_root_str = str(xts_root)
-        base_depth = xts_root_str.rstrip("/").count("/")
-        for dirpath, dirnames, _ in os.walk(xts_root):
-            dirname = os.path.basename(dirpath)
-            if dirname.startswith("ace_ets_module_"):
-                all_dirs.add(dirname)
-            if dirpath.count("/") - base_depth >= 4:
-                dirnames.clear()
-        return all_dirs
+    # Try bounded fanout via config
+    if _load_fanout_config is not None and _resolve_fanout is not None:
+        config = _load_fanout_config()
+        if config:
+            # Collect all test dirs for matching
+            all_dirs: set[str] = set()
+            xts_root_str = str(xts_root)
+            base_depth = xts_root_str.rstrip("/").count("/")
+            for dirpath, dirnames, _ in os.walk(xts_root):
+                dirname = os.path.basename(dirpath)
+                if dirname.startswith("ace_ets_module_"):
+                    all_dirs.add(dirname)
+                if dirpath.count("/") - base_depth >= 4:
+                    dirnames.clear()
 
-    if not family_prefixes:
-        return set()
+            targets: set[str] = set()
+            # Resolve broad infra fanout targets
+            for fid in broad_fanout_ids:
+                selected, _reason, _is_broad = _resolve_fanout(fid, all_dirs, config)
+                targets.update(selected)
+            # Resolve family targets
+            for family in family_prefixes:
+                selected, _reason, _is_broad = _resolve_fanout(family, all_dirs, config)
+                targets.update(selected)
+            if targets:
+                return targets
 
-    # Find all matching test directories (recursive, up to depth 4)
+    # Fallback: family prefix matching with hard cap
     expanded: set[str] = set()
     xts_root_str = str(xts_root)
     base_depth = xts_root_str.rstrip("/").count("/")
@@ -201,7 +229,9 @@ def _expand_to_family_coverage(
                 break
         if dirpath.count("/") - base_depth >= 4:
             dirnames.clear()
-
+    # Hard cap at 60 targets
+    if len(expanded) > 60:
+        expanded = set(sorted(expanded)[:60])
     return expanded
 
 
@@ -234,6 +264,10 @@ def apply_fallback(
         fallback_reason=decision.reason,
         fallback_level=decision.level,
         fallback_extra_targets=tuple(sorted(new_targets)),
+        ci_policy_recommendation=result.ci_policy_recommendation,
+        ci_policy_reason=result.ci_policy_reason,
+        unresolved_files=result.unresolved_files,
+        semantic_source=result.semantic_source,
     )
 
 
@@ -336,11 +370,16 @@ def _resolve_pr_core(
     risk_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
     all_affected_apis: set[str] = set()
     all_covered_apis: set[str] = set()
+    unresolved_files: list[str] = []
+    has_broad = False
+    has_family = False
+    has_api = False
 
     for cf in changed_files:
         # 1. Broad infra check
         infra = match_changed_file(cf, rules)
         if infra is not None:
+            has_broad = True
             entries.append(PrResolveEntry(
                 changed_file=cf,
                 affected_apis=(),
@@ -349,15 +388,79 @@ def _resolve_pr_core(
                 broad_infra_match=infra,
                 false_negative_risk=infra.false_negative_risk,
                 parser_level=1,
+                impact_candidates=(),
             ))
             if risk_order.get(infra.false_negative_risk, 0) > risk_order.get(overall_risk, 0):
                 overall_risk = infra.false_negative_risk
             continue
 
-        # 1b. C++ naming convention resolution (bypasses API layer)
+        # 1b. C++ naming convention resolution (typed ImpactCandidate path)
+        # Only use typed candidate for files that look like ACE engine paths.
+        # For bare filenames without path context, fall through to legacy naming.
+        cf_normalized = cf.replace("\\", "/")
+        _ACE_PATH_MARKERS = ("frameworks/", "components_ng/", "ace_engine/",
+                             "foundation/arkui/", "interfaces/native/")
+        _looks_like_ace_path = any(m in cf_normalized for m in _ACE_PATH_MARKERS)
+
+        if _looks_like_ace_path and _resolve_cpp_family is not None:
+            candidate = _resolve_cpp_family(cf)
+            if candidate is not None:
+                has_family = True
+                naming_risk: FalseNegativeRisk = candidate.false_negative_risk
+                # Still resolve actual XTS dirs if xts_root is available
+                naming_dirs: list[str] = []
+                if xts_root and _resolve_cpp_naming is not None:
+                    naming_dirs = _resolve_cpp_naming(cf, xts_root)
+                entries.append(PrResolveEntry(
+                    changed_file=cf,
+                    affected_apis=(),
+                    consumer_projects=tuple(naming_dirs),
+                    selection_reasons=tuple(
+                        SelectionReason(
+                            project_path=d,
+                            matched_apis=(),
+                            usage_kinds=("cpp_naming_convention",),
+                            confidence="medium",
+                        )
+                        for d in naming_dirs
+                    ) if naming_dirs else (),
+                    broad_infra_match=None,
+                    false_negative_risk=naming_risk,
+                    parser_level=2,
+                    impact_candidates=(candidate.to_dict(),),
+                ))
+                if risk_order.get(naming_risk, 0) > risk_order.get(overall_risk, 0):
+                    overall_risk = naming_risk
+                continue
+
+        # 1c. Legacy C++ naming resolution for bare filenames (no ACE engine path)
         if xts_root and _resolve_cpp_naming is not None:
             naming_dirs = _resolve_cpp_naming(cf, xts_root)
             if naming_dirs:
+                has_family = True
+                # Build a lightweight ImpactCandidate for bare filename matches
+                import os as _os
+                _basename = _os.path.basename(cf)
+                _family = None
+                # Try to extract family from the naming dirs
+                if naming_dirs:
+                    first = naming_dirs[0]
+                    _dirname = first.rsplit("/", 1)[-1] if "/" in first else first
+                    _m = re.match(r"ace_ets_module_(.+?)(?:_nowear_api\d+_static)?$", _dirname)
+                    if _m:
+                        _parts = _m.group(1).split("_")
+                        _family = _parts[0] if len(_parts) > 1 else _m.group(1)
+
+                _legacy_candidate_dict = {
+                    "changed_file": cf,
+                    "impact_kind": "component_family",
+                    "family": _family,
+                    "source_confidence": "medium",
+                    "parser_level": 1,
+                    "provenance": "cpp_naming_convention_legacy",
+                    "relation_scope": "family",
+                    "false_negative_risk": "medium",
+                }
                 entries.append(PrResolveEntry(
                     changed_file=cf,
                     affected_apis=(),
@@ -372,9 +475,33 @@ def _resolve_pr_core(
                         for d in naming_dirs
                     ),
                     broad_infra_match=None,
-                    false_negative_risk="low",
+                    false_negative_risk="medium",
                     parser_level=2,
+                    impact_candidates=(_legacy_candidate_dict,),
                 ))
+                if risk_order.get("medium", 0) > risk_order.get(overall_risk, 0):
+                    overall_risk = "medium"
+                continue
+
+        # 1d. ArkTS bridge resolution (Koala/Arkoala .ets files)
+        if _resolve_arkts_bridge is not None:
+            bridge_candidate = _resolve_arkts_bridge(cf)
+            if bridge_candidate is not None:
+                has_family = bridge_candidate.impact_kind in ("generated_bridge", "authored_bridge")
+                bridge_risk: FalseNegativeRisk = bridge_candidate.false_negative_risk
+                entries.append(PrResolveEntry(
+                    changed_file=cf,
+                    affected_apis=(),
+                    consumer_projects=(),
+                    selection_reasons=(),
+                    broad_infra_match=None,
+                    false_negative_risk=bridge_risk,
+                    parser_level=1,
+                    impact_candidates=(bridge_candidate.to_dict(),),
+                    unresolved_reason=bridge_candidate.unresolved_reason,
+                ))
+                if risk_order.get(bridge_risk, 0) > risk_order.get(overall_risk, 0):
+                    overall_risk = bridge_risk
                 continue
 
         # 2. Find mappings for this file
@@ -433,6 +560,16 @@ def _resolve_pr_core(
         # 4. Classify risk
         risk = _classify_risk(affected_apis, unique_consumers, file_mappings)
 
+        # 5. Phase 7: Track unresolved files
+        unresolved_reason: str | None = None
+        if not affected_apis and not unique_consumers:
+            unresolved_reason = _determine_unresolved_reason(cf)
+            unresolved_files.append(cf)
+        elif affected_apis:
+            has_api = True
+        if affected_apis and not unique_consumers:
+            has_family = True  # APIs found but no tests — family-level gap
+
         entries.append(PrResolveEntry(
             changed_file=cf,
             affected_apis=tuple(affected_apis),
@@ -441,6 +578,7 @@ def _resolve_pr_core(
             broad_infra_match=None,
             false_negative_risk=risk,
             parser_level=max_parser_level,
+            unresolved_reason=unresolved_reason,
         ))
 
         if risk_order.get(risk, 0) > risk_order.get(overall_risk, 0):
@@ -449,10 +587,31 @@ def _resolve_pr_core(
     # T9.6: Coverage gap = affected APIs with no consumers
     coverage_gap = tuple(sorted(all_affected_apis - all_covered_apis))
 
+    # Phase 7: Compute CI policy recommendation
+    ci_policy, ci_reason = _compute_ci_policy(
+        overall_risk=overall_risk,
+        entries=entries,
+        unresolved_files=unresolved_files,
+    )
+
+    # Phase 7: Compute semantic source
+    if has_api:
+        semantic_source = "api"
+    elif has_family:
+        semantic_source = "family"
+    elif has_broad:
+        semantic_source = "broad"
+    else:
+        semantic_source = "unknown"
+
     return PrResolveResult(
         entries=tuple(entries),
         overall_false_negative_risk=overall_risk,
         coverage_gap=coverage_gap,
+        ci_policy_recommendation=ci_policy,
+        ci_policy_reason=ci_reason,
+        unresolved_files=tuple(unresolved_files),
+        semantic_source=semantic_source,
     )
 
 
@@ -498,3 +657,77 @@ def _classify_risk(
     if len(consumers) < 3 and not has_strong:
         return "medium"
     return "low"
+
+
+# ---------------------------------------------------------------------------
+# Phase 7 helpers: unresolved reason and CI policy
+# ---------------------------------------------------------------------------
+
+_UNRESOLVED_PATTERNS = [
+    (re.compile(r"animation/"), "unsupported_subsystem_no_fanout"),
+    (re.compile(r"render_service/"), "unsupported_subsystem_no_fanout"),
+    (re.compile(r"components_ng/manager/"), "manager_subsystem_no_fanout"),
+    (re.compile(r"pipeline/"), "pipeline_infrastructure_no_fanout"),
+    (re.compile(r"components_ng/base/"), "base_infrastructure_no_fanout"),
+]
+
+
+def _determine_unresolved_reason(changed_file: str) -> str:
+    """Determine why a changed file could not be resolved to any test targets."""
+    cf_lower = changed_file.lower().replace("\\", "/")
+    for pattern, reason in _UNRESOLVED_PATTERNS:
+        if pattern.search(cf_lower):
+            return reason
+    # Check for non-C++ files that don't have naming patterns
+    if not changed_file.endswith((".cpp", ".h", ".ets", ".ts")):
+        return "non_source_file"
+    return "no_matching_pattern"
+
+
+def _compute_ci_policy(
+    overall_risk: FalseNegativeRisk,
+    entries: list[PrResolveEntry],
+    unresolved_files: list[str],
+) -> tuple[str, str]:
+    """Compute CI policy recommendation and reason.
+
+    Returns (recommendation, reason) where recommendation is one of:
+      - "ok": confident resolution, low risk
+      - "warn": medium risk, some gaps
+      - "require_broader_suite": high risk, need broader testing
+      - "manual_review": critical risk or too many unresolved files
+    """
+    total = len(entries)
+    if total == 0:
+        return "ok", "no files to resolve"
+
+    unresolved_ratio = len(unresolved_files) / total
+
+    # Critical broad infra with no bounded target → manual_review
+    has_critical_broad = any(
+        e.broad_infra_match is not None and e.false_negative_risk == "critical"
+        for e in entries
+    )
+    if has_critical_broad:
+        return "manual_review", "critical broad infrastructure change requires manual review"
+
+    # High ratio of unresolved files → manual_review
+    if unresolved_ratio > 0.5 and total > 2:
+        return "manual_review", f"{len(unresolved_files)}/{total} files unresolved ({unresolved_ratio:.0%})"
+
+    if overall_risk == "critical":
+        return "manual_review", "overall risk is critical"
+
+    if overall_risk == "high":
+        if unresolved_ratio > 0.3:
+            return "require_broader_suite", f"high risk + {len(unresolved_files)} unresolved files"
+        return "require_broader_suite", "high overall risk, recommend broader test suite"
+
+    if overall_risk == "medium":
+        return "warn", "medium risk, some coverage gaps possible"
+
+    # Low risk with some unresolved — warn if any
+    if unresolved_files:
+        return "warn", f"low risk but {len(unresolved_files)} file(s) unresolved"
+
+    return "ok", "all files resolved with low risk"

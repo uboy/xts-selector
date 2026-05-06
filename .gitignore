@@ -16,3 +16,4 @@ work.zip
 local/
 
 .codex
+.runtime/

@@ -63,3 +63,24 @@ def resolve_with_broad_infra(
 def _max_risk(a: FalseNegativeRisk, b: FalseNegativeRisk) -> FalseNegativeRisk:
     order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
     return a if order.get(a, 0) >= order.get(b, 0) else b
+
+
+def match_to_impact(changed_file: str, match: BroadInfraMatch) -> "ImpactCandidate":
+    """Convert a broad infra match to a typed ImpactCandidate.
+
+    The impact kind is always broad_infrastructure. Provenance is config_rule.
+    """
+    from arkui_xts_selector.indexing.impact import ImpactCandidate
+
+    return ImpactCandidate(
+        changed_file=changed_file,
+        impact_kind="broad_infrastructure",
+        family=None,
+        source_surface="unknown",
+        source_confidence="weak",
+        parser_level=1,
+        provenance="config_rule",
+        relation_scope="generic",
+        false_negative_risk=match.false_negative_risk,
+        unresolved_reason=None,
+    )

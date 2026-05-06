@@ -2277,6 +2277,10 @@ def main() -> int:
                         "fan_out_target": e.broad_infra_match.fan_out_target,
                         "risk": e.broad_infra_match.false_negative_risk,
                     }
+                if e.impact_candidates:
+                    d["impact_candidates"] = list(e.impact_candidates)
+                if e.unresolved_reason is not None:
+                    d["unresolved_reason"] = e.unresolved_reason
                 return d
 
             graph_selection = {
@@ -2297,6 +2301,12 @@ def main() -> int:
             graph_selection["fallback_level"] = _result.fallback_level
             if _result.fallback_extra_targets:
                 graph_selection["fallback_extra_targets"] = list(_result.fallback_extra_targets)
+            # Phase 7: CI policy and unresolved tracking
+            graph_selection["ci_policy_recommendation"] = _result.ci_policy_recommendation
+            graph_selection["ci_policy_reason"] = _result.ci_policy_reason
+            graph_selection["semantic_source"] = _result.semantic_source
+            if _result.unresolved_files:
+                graph_selection["unresolved_files"] = list(_result.unresolved_files)
             report["graph_selection"] = graph_selection
             report["timings_ms"]["graph_resolver"] = round((time.perf_counter() - graph_started) * 1000, 3)
         except Exception as exc:

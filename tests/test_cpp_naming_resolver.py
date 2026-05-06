@@ -237,3 +237,66 @@ def xts_root():
     if not root.is_dir():
         pytest.skip(f"XTS root not found: {root}")
     return root
+
+
+class TestCppFamilyCandidate:
+    """Tests for resolve_cpp_family_candidate (Phase 2, Task 2.2)."""
+
+    def test_button_pattern_returns_component_family(self):
+        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        c = resolve_cpp_family_candidate(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
+        assert c is not None
+        assert c.impact_kind == "component_family"
+        assert c.family == "button"
+        assert c.source_confidence == "medium"
+        assert c.false_negative_risk == "medium"
+
+    def test_button_event_hub_header_returns_component_family(self):
+        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        c = resolve_cpp_family_candidate(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_event_hub.h"
+        )
+        assert c is not None
+        assert c.impact_kind == "component_family"
+        assert c.family == "button"
+        assert c.false_negative_risk == "medium"
+
+    def test_manager_returns_subsystem(self):
+        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        c = resolve_cpp_family_candidate(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/manager/select_overlay/select_overlay_manager.cpp"
+        )
+        assert c is not None
+        assert c.impact_kind == "subsystem"
+        assert c.false_negative_risk == "high"
+
+    def test_animation_returns_none(self):
+        """animation/ dir is not under components_ng pattern/ - returns None."""
+        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        c = resolve_cpp_family_candidate(
+            "foundation/arkui/ace_engine/frameworks/core/animation/animator.cpp"
+        )
+        assert c is None
+
+    def test_random_file_returns_none(self):
+        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        c = resolve_cpp_family_candidate("some/random/file.cpp")
+        assert c is None
+
+    def test_never_returns_exact_api(self):
+        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        c = resolve_cpp_family_candidate(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/rich_editor/rich_editor_modifier.cpp"
+        )
+        assert c is not None
+        assert c.impact_kind != "exact_api"
+
+    def test_never_returns_low_risk(self):
+        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        c = resolve_cpp_family_candidate(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
+        assert c is not None
+        assert c.false_negative_risk != "low"

@@ -264,14 +264,18 @@ class TestResolvePrWithButtonModelStatic:
         assert len(result.entries) == 1
         entry = result.entries[0]
 
-        # Verify affected_apis contains "role"
-        assert "role" in entry.affected_apis
-
-        # Verify false_negative_risk is not "critical"
+        # With ACE path markers, resolves via typed ImpactCandidate (step 1b)
+        # → impact_candidates populated, false_negative_risk="medium"
         assert entry.false_negative_risk != "critical"
+        assert entry.false_negative_risk != "low"  # Naming evidence → medium
 
         # Verify it's not a broad infra match
         assert entry.broad_infra_match is None
+
+        # Impact candidate should be populated
+        assert len(entry.impact_candidates) > 0
+        assert entry.impact_candidates[0]["impact_kind"] == "component_family"
+        assert entry.impact_candidates[0]["family"] == "button"
 
         # Verify parser_level is set
         assert entry.parser_level > 0
@@ -683,7 +687,11 @@ class TestCppNamingResolution:
         entry = result.entries[0]
         assert entry.parser_level == 2
         assert len(entry.consumer_projects) > 0
-        assert entry.false_negative_risk == "low"
+        # Naming evidence must not produce low risk (P1-1 fix)
+        assert entry.false_negative_risk != "low"
+        assert entry.false_negative_risk in ("medium", "high")
+        # Impact candidate should be populated
+        assert len(entry.impact_candidates) > 0
         # Selection reasons should have cpp_naming_convention usage_kind
         assert len(entry.selection_reasons) > 0
         assert "cpp_naming_convention" in entry.selection_reasons[0].usage_kinds
@@ -715,7 +723,7 @@ class TestCppNamingResolution:
         assert len(result.entries[0].consumer_projects) > 0
 
     def test_naming_resolver_skipped_without_xts_root(self, empty_indices):
-        """Without xts_root, naming resolver is skipped, falls through to SDK API path."""
+        """Without xts_root, bare filename falls through to SDK API path."""
         ace, sdk, inv = empty_indices
         result = resolve_pr(
             changed_files=["button_modifier.cpp"],
@@ -726,7 +734,8 @@ class TestCppNamingResolution:
         )
         # Should still have 1 entry but from SDK API path (0 consumers in empty index)
         assert len(result.entries) == 1
-        assert result.entries[0].parser_level != 2  # Not naming-resolved
+        # No ACE path markers → falls through to SDK API path → parser_level 0
+        assert result.entries[0].parser_level == 0
 
     def test_naming_resolver_skipped_for_non_matching(self, empty_indices, xts_root):
         """BUILD.gn does not match any naming convention."""
