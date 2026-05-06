@@ -153,7 +153,7 @@ def cached_ets_index(xts_root: Path) -> EtsIndexResult:
     return result
 
 
-def cached_inverted_index(xts_root: Path, sdk_index: SdkIndexResult) -> InvertedIndex:
+def cached_inverted_index(xts_root: Path, sdk_index: SdkIndexResult, sdk_api_root: Path | None = None) -> InvertedIndex:
     """Build or load cached inverted index.
 
     Depends on ETS index + SDK index signatures for invalidation.
@@ -161,12 +161,13 @@ def cached_inverted_index(xts_root: Path, sdk_index: SdkIndexResult) -> Inverted
     Args:
         xts_root: Root directory containing XTS test files
         sdk_index: SDK index for API resolution
+        sdk_api_root: SDK API root path for computing SDK signature
 
     Returns:
         InvertedIndex mapping API canonical IDs to consumer entries
     """
     ets_sig = _dir_signature(xts_root, (".ets", ".ts"))
-    sdk_sig = _dir_signature(xts_root, (".d.ts",))  # simplified: use xts_root sig
+    sdk_sig = _dir_signature(sdk_api_root if sdk_api_root else xts_root, (".d.ts",))
     cache_file = CACHE_ROOT / f"inverted_index_{ets_sig}_{sdk_sig}.json"
 
     data = _load_cache(cache_file)

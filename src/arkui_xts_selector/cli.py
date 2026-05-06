@@ -2242,7 +2242,10 @@ def main() -> int:
 
             _sdk = cached_sdk_index(_sdk_root) if _sdk_root.is_dir() else SdkIndexResult()
             _ace = cached_ace_index(_ace_root) if _ace_root.is_dir() else AceIndexResult()
-            _inverted = cached_inverted_index(_xts_root, sdk_index=_sdk) if _xts_root and _xts_root.is_dir() else InvertedIndex()
+            _inverted = cached_inverted_index(_xts_root, sdk_index=_sdk, sdk_api_root=_sdk_root) if _xts_root and _xts_root.is_dir() else InvertedIndex()
+
+            from .indexing.target_index import build_target_index, TargetIndexResult
+            _target_index = build_target_index(_xts_root) if _xts_root and _xts_root.is_dir() else TargetIndexResult()
 
             _broad_rules = PROJECT_ROOT / "config" / "broad_infrastructure_files.json"
 
@@ -2262,7 +2265,7 @@ def main() -> int:
             )
 
             # Apply conservative fallback policy (Phase 11)
-            _result = apply_fallback(_result, xts_root=_xts_root if _xts_root else None)
+            _result = apply_fallback(_result, xts_root=_xts_root if _xts_root else None, target_index=_target_index)
 
             def _entry_to_dict(e):
                 d = {

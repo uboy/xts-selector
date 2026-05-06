@@ -325,7 +325,7 @@ def fetch_pr_changed_files_via_api(
     repo_root: Path,
 ) -> list[Path]:
     """Fetch PR changed files from git host API."""
-    changed_files, _changed_ranges = fetch_pr_changed_files_and_ranges_via_api(
+    changed_files, _changed_ranges, _raw_hunks = fetch_pr_changed_files_and_ranges_via_api(
         api_kind=api_kind,
         api_url=api_url,
         token=token,
@@ -345,11 +345,16 @@ def fetch_pr_changed_files_and_ranges_via_api(
     repo: str,
     pr_ref: str,
     repo_root: Path,
-) -> tuple[list[Path], dict[Path, list[tuple[int, int]]]]:
-    """Fetch PR changed files and line ranges from git host API."""
+) -> tuple[list[Path], dict[Path, list[tuple[int, int]]], dict[str, str]]:
+    """Fetch PR changed files, line ranges, and raw patch hunks from git host API.
+
+    Returns (changed_files, changed_ranges_by_file, raw_patch_hunks).
+    raw_patch_hunks maps filename -> raw patch text for offline replay.
+    """
     pr_number = parse_pr_number(pr_ref)
     changed_files: list[Path] = []
     changed_ranges_by_file: dict[Path, list[tuple[int, int]]] = {}
+    raw_patch_hunks: dict[str, str] = {}
 
     def _append_item(path_value: str | None, item: dict[str, object]) -> None:
         if not path_value:
@@ -360,6 +365,8 @@ def fetch_pr_changed_files_and_ranges_via_api(
         normalized_path = normalized_paths[0]
         changed_files.append(normalized_path)
         patch_text = extract_patch_text_from_pr_file_item(item)
+        if patch_text:
+            raw_patch_hunks[path_value] = patch_text
         parsed_ranges = parse_unified_diff_changed_ranges(patch_text)
         if parsed_ranges:
             resolved_path = normalized_path.resolve()
@@ -411,7 +418,7 @@ def fetch_pr_changed_files_and_ranges_via_api(
             continue
         deduped_files.append(changed_file)
         seen_paths.add(resolved)
-    return deduped_files, changed_ranges_by_file
+    return deduped_files, changed_ranges_by_file, raw_patch_hunks
 
 
 def resolve_pr_changed_files_with_ranges(
@@ -440,7 +447,7 @@ def resolve_pr_changed_files_with_ranges(
                     repo=owner_repo[1],
                     pr_ref=pr_ref,
                 )
-                return fetch_pr_changed_files_and_ranges_via_api(
+                files, ranges, _raw = fetch_pr_changed_files_and_ranges_via_api(
                     api_kind=api_kind,
                     api_url=api_url,
                     token=token,
@@ -449,6 +456,7 @@ def resolve_pr_changed_files_with_ranges(
                     pr_ref=pr_ref,
                     repo_root=app_config.git_repo_root,
                 )
+                return files, ranges
             except RuntimeError as exc:
                 api_error = exc
         if pr_source == "api":

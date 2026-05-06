@@ -77,6 +77,7 @@ class PrResolveEntry:
     parser_level: int = 0  # max parser_level used (0-3)
     impact_candidates: tuple[dict, ...] = ()  # Phase 7: serialized ImpactCandidate dicts
     unresolved_reason: str | None = None  # Phase 7: reason if file could not be resolved
+    canonical_affected_apis: tuple[str, ...] = ()  # Canonical API IDs (e.g. "api:v1:...")
 
 
 @dataclass(frozen=True)
@@ -405,25 +406,10 @@ def _resolve_pr_core(
     for cf in changed_files:
         cf_normalized = cf.replace("\\", "/")
 
-        # 1. Broad infra check (highest priority for known infrastructure files)
-        infra = match_changed_file(cf, rules)
-        if infra is not None:
-            has_broad = True
-            entries.append(PrResolveEntry(
-                changed_file=cf,
-                affected_apis=(),
-                consumer_projects=(),
-                selection_reasons=(),
-                broad_infra_match=infra,
-                false_negative_risk=infra.false_negative_risk,
-                parser_level=1,
-                impact_candidates=(),
-            ))
-            if risk_order.get(infra.false_negative_risk, 0) > risk_order.get(overall_risk, 0):
-                overall_risk = infra.false_negative_risk
-            continue
+        # Track whether this file has been handled by a specific rule
+        file_handled = False
 
-        # 2. ArkTS bridge resolution (specific component bridges before generic C++ naming)
+        # 1. ArkTS bridge resolution (specific component bridges before generic rules)
         if _resolve_arkts_bridge is not None:
             bridge_candidate = _resolve_arkts_bridge(cf)
             if bridge_candidate is not None:
@@ -442,6 +428,27 @@ def _resolve_pr_core(
                 ))
                 if risk_order.get(bridge_risk, 0) > risk_order.get(overall_risk, 0):
                     overall_risk = bridge_risk
+                file_handled = True
+                continue
+
+        # 2. Broad infra check (known infrastructure files — before generic C++ naming)
+        if rules:
+            infra = match_changed_file(cf, rules)
+            if infra is not None:
+                has_broad = True
+                entries.append(PrResolveEntry(
+                    changed_file=cf,
+                    affected_apis=(),
+                    consumer_projects=(),
+                    selection_reasons=(),
+                    broad_infra_match=infra,
+                    false_negative_risk=infra.false_negative_risk,
+                    parser_level=1,
+                    impact_candidates=(),
+                ))
+                if risk_order.get(infra.false_negative_risk, 0) > risk_order.get(overall_risk, 0):
+                    overall_risk = infra.false_negative_risk
+                file_handled = True
                 continue
 
         # 3. C++ naming convention resolution (typed ImpactCandidate path)
@@ -483,7 +490,7 @@ def _resolve_pr_core(
                     overall_risk = naming_risk
                 continue
 
-        # 1c. Legacy C++ naming resolution for bare filenames (no ACE engine path)
+        # 3b. Legacy C++ naming resolution for bare filenames (no ACE engine path)
         if xts_root and _resolve_cpp_naming is not None:
             naming_dirs = _resolve_cpp_naming(cf, xts_root)
             if naming_dirs:
@@ -546,6 +553,7 @@ def _resolve_pr_core(
 
         # 3. Collect affected APIs and consumer projects with reasons
         affected_apis: list[str] = []
+        canonical_affected_apis: list[str] = []
         max_parser_level = 0
         # Track per-project: matched APIs and usage kinds
         project_reasons: dict[str, dict] = {}  # project_path -> {apis: set, kinds: set, confidence: str}
@@ -554,6 +562,8 @@ def _resolve_pr_core(
             api_name = mapping.api_public_name
             affected_apis.append(api_name)
             all_affected_apis.add(api_name)
+            if mapping.api_id:
+                canonical_affected_apis.append(mapping.api_id)
             max_parser_level = max(max_parser_level,
                                    3 if mapping.confidence == "strong" else
                                    2 if mapping.confidence == "medium" else 1)
@@ -616,6 +626,7 @@ def _resolve_pr_core(
             false_negative_risk=risk,
             parser_level=max_parser_level,
             unresolved_reason=unresolved_reason,
+            canonical_affected_apis=tuple(canonical_affected_apis),
         ))
 
         if risk_order.get(risk, 0) > risk_order.get(overall_risk, 0):

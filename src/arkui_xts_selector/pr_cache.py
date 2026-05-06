@@ -37,7 +37,8 @@ class PrCacheEntry:
     repo: str
     pr_number: int
     changed_files: list[str] = field(default_factory=list)
-    raw_patch_hunks: dict[str, list[str]] = field(default_factory=dict)
+    raw_files: list[dict] = field(default_factory=list)
+    raw_patch_hunks: dict[str, str] = field(default_factory=dict)
     normalized_ranges: dict[str, list[tuple[int, int]]] = field(default_factory=dict)
     fetch_status: str = "ok"  # "ok" | "error" | "empty"
     api_error: str = ""
@@ -61,6 +62,19 @@ class PrCacheEntry:
         for k, v in ranges.items():
             converted[k] = [tuple(pair) for pair in v]
         d["normalized_ranges"] = converted
+        # Backward compat: raw_patch_hunks was dict[str, list[str]], now dict[str, str]
+        hunks = d.get("raw_patch_hunks", {})
+        if isinstance(hunks, dict):
+            coerced: dict[str, str] = {}
+            for k, v in hunks.items():
+                if isinstance(v, list):
+                    coerced[k] = "\n".join(str(x) for x in v)
+                else:
+                    coerced[k] = str(v)
+            d["raw_patch_hunks"] = coerced
+        # Backward compat: raw_files may be missing in old entries
+        if "raw_files" not in d:
+            d["raw_files"] = []
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 
 
@@ -100,7 +114,12 @@ class PrApiCache:
         return self.cache_dir / host / owner / repo / f"PR_{pr_number}.json"
 
     def get(self, pr_url: str) -> PrCacheEntry | None:
-        """Load cached entry. Returns None if not found (unless read-only)."""
+        """Load cached entry. Returns None if not found (unless read-only).
+
+        In refresh mode, always returns None so callers re-fetch.
+        """
+        if self.mode == "refresh":
+            return None
         path = self._entry_path(pr_url)
         if not path.exists():
             if self.mode == "read-only":

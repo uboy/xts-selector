@@ -23,6 +23,7 @@ from .indexing.pr_resolver import (
     PrResolveEntry, SelectionReason,
     _build_file_mapping_index, resolve_pr_with_context, apply_fallback,
 )
+from .indexing.target_index import build_target_index, TargetIndexResult
 from .indexing.broad_infra import load_rules
 from .indexing.sdk_indexer import SdkIndexResult
 from .pr_cache import PrApiCache, PrCacheEntry, MissingPrCacheError
@@ -38,6 +39,8 @@ def _entry_to_dict(e: PrResolveEntry) -> dict:
         "false_negative_risk": e.false_negative_risk,
         "parser_level": e.parser_level,
     }
+    if e.canonical_affected_apis:
+        d["canonical_affected_apis"] = list(e.canonical_affected_apis)
     if e.broad_infra_match is not None:
         d["broad_infra_match"] = {
             "rule_id": e.broad_infra_match.rule_id,
@@ -74,10 +77,11 @@ def _fetch_pr_changed_files(
     pr_url: str,
     git_host_config: Path | None = None,
     git_repo_root: Path | None = None,
-) -> tuple[list[str], dict[str, list[tuple[int, int]]]]:
+) -> tuple[list[str], dict[str, list[tuple[int, int]]], dict[str, str]]:
     """Fetch changed files for a PR via GitCode API.
 
-    Returns (changed_files, changed_ranges) where changed_files are absolute paths.
+    Returns (changed_files, changed_ranges, raw_patch_hunks) where
+    raw_patch_hunks maps filename to raw diff text for offline replay.
     """
     from .git_host import fetch_pr_changed_files_and_ranges_via_api, load_ini_git_host_config
 
@@ -112,7 +116,7 @@ def _fetch_pr_changed_files(
 
     owner, repo, _ = m.group(1), m.group(2), m.group(3)
 
-    changed_paths, ranges = fetch_pr_changed_files_and_ranges_via_api(
+    changed_paths, ranges, raw_hunks = fetch_pr_changed_files_and_ranges_via_api(
         api_kind="gitcode",
         api_url=api_url,
         token=token,
@@ -126,7 +130,7 @@ def _fetch_pr_changed_files(
     changed_files = [str(p) for p in changed_paths]
     changed_ranges = {str(k): v for k, v in ranges.items()}
 
-    return changed_files, changed_ranges
+    return changed_files, changed_ranges, raw_hunks
 
 
 def _load_cached_result(pr_number: int, cache_dir: Path) -> dict | None:
@@ -162,6 +166,15 @@ def _summarize_result(result: dict) -> dict:
         files_with_coverage = sum(1 for e in graph_entries
                                   if e.get("affected_apis") or e.get("consumer_projects")
                                   or e.get("broad_infra_match"))
+
+        # Separate resolution sources
+        canonical_api_files = sum(1 for e in graph_entries if e.get("canonical_affected_apis"))
+        broad_infra_files = sum(1 for e in graph_entries if e.get("broad_infra_match"))
+        family_files = sum(1 for e in graph_entries
+                          if e.get("impact_candidates")
+                          and any(c.get("relation_scope") == "family" for c in e.get("impact_candidates", []))
+                          and not e.get("broad_infra_match"))
+        exact_consumer_files = sum(1 for e in graph_entries if e.get("consumer_projects") and not e.get("broad_infra_match"))
 
         # Excludable files
         _SKIP_PATTERNS = (
@@ -222,6 +235,13 @@ def _summarize_result(result: dict) -> dict:
             "semantic_source": gs.get("semantic_source", "unknown"),
             "unresolved_count": unresolved_count,
             "impact_families": sorted(impact_families),
+            # Granular resolution metrics
+            "canonical_api_resolution_rate": round(canonical_api_files / max(1, len(graph_entries)), 4),
+            "exact_consumer_hit_rate": round(exact_consumer_files / max(1, len(graph_entries)), 4),
+            "family_resolution_rate": round(family_files / max(1, len(graph_entries)), 4),
+            "broad_infra_rate": round(broad_infra_files / max(1, len(graph_entries)), 4),
+            "fallback_rescue_rate": round(len(gs.get("fallback_extra_targets", [])) / max(1, len(all_projects)), 4) if all_projects else 0,
+            "manual_review_rate": round((1 if gs.get("ci_policy_recommendation") == "manual_review" else 0), 4),
         }
 
     # Legacy subprocess format
@@ -310,10 +330,11 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
 
     sdk = cached_sdk_index(sdk_root) if sdk_root.is_dir() else SdkIndexResult()
     ace = cached_ace_index(ace_root) if ace_root.is_dir() else AceIndexResult()
-    inverted = cached_inverted_index(xts_root, sdk_index=sdk) if xts_root.is_dir() else InvertedIndex()
+    inverted = cached_inverted_index(xts_root, sdk_index=sdk, sdk_api_root=sdk_root) if xts_root.is_dir() else InvertedIndex()
+    target_index = build_target_index(xts_root) if xts_root and xts_root.is_dir() else TargetIndexResult()
 
     idx_time = time.perf_counter() - t0
-    print(f"done ({idx_time:.1f}s: sdk={len(sdk.entries)}, ace={len(ace.entries)}, inv={len(inverted.all_api_names())})", flush=True)
+    print(f"done ({idx_time:.1f}s: sdk={len(sdk.entries)}, ace={len(ace.entries)}, inv={len(inverted.all_api_names())}, tgt={len(target_index.entries)})", flush=True)
 
     broad_rules_path = Path(__file__).resolve().parents[2] / "config" / "broad_infrastructure_files.json"
     rules = load_rules(broad_rules_path) if broad_rules_path.exists() else []
@@ -335,8 +356,8 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
     start_time = time.perf_counter()
     _lock = threading.Lock()
 
-    # Check for existing results (resume support)
-    if output_path.exists():
+    # Check for existing results (resume support — skip in refresh mode)
+    if pr_cache_mode != "refresh" and output_path.exists():
         try:
             existing = json.loads(output_path.read_text(encoding="utf-8"))
             if isinstance(existing, list):
@@ -357,19 +378,23 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
 
     def _process_one(pr_url: str, pr_number: int) -> dict:
         """Fetch and resolve a single PR. Thread-safe (read-only shared state)."""
-        # Check cache first
-        cached = _load_cached_result(pr_number, cache_dir)
-        if cached and cached.get("status") == "ok":
-            return cached
+        # Skip graph cache in refresh mode
+        if pr_cache_mode != "refresh":
+            cached = _load_cached_result(pr_number, cache_dir)
+            if cached and cached.get("status") == "ok":
+                return cached
 
         try:
             # Use PR API cache for raw API responses
+            # PrApiCache.get() returns None in refresh mode, forcing re-fetch
             cached_pr = pr_api_cache.get(pr_url)
+            raw_patch_hunks = {}
             if cached_pr is not None and cached_pr.fetch_status == "ok":
                 changed_files = cached_pr.changed_files
                 changed_ranges = cached_pr.normalized_ranges
+                raw_patch_hunks = cached_pr.raw_patch_hunks
             else:
-                changed_files, changed_ranges = _fetch_pr_changed_files(
+                changed_files, changed_ranges, raw_patch_hunks = _fetch_pr_changed_files(
                     pr_url, git_host_config=git_host_config, git_repo_root=git_repo_root)
 
                 # Cache the raw API response
@@ -388,6 +413,8 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                     repo=_repo,
                     pr_number=pr_number,
                     changed_files=changed_files,
+                    raw_files=[],
+                    raw_patch_hunks=raw_patch_hunks,
                     normalized_ranges=changed_ranges,
                     fetch_status="ok",
                     fetched_at=datetime.now(timezone.utc).isoformat(),
@@ -401,10 +428,11 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                 rules=rules,
                 changed_ranges=changed_ranges if changed_ranges else None,
                 xts_root=xts_root if xts_root else None,
+                target_index=target_index,
             )
 
             pr_resolve_result = apply_fallback(
-                pr_resolve_result, xts_root=xts_root if xts_root else None)
+                pr_resolve_result, xts_root=xts_root if xts_root else None, target_index=target_index)
 
             graph_selection = {
                 "schema_version": "graph-pr-v1",
@@ -533,9 +561,27 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         print(f"Unresolved file rate: {unresolved_rate:.2%}")
         print(f"Manual review rate: {manual_review_rate:.2%} ({manual_review}/{ok} PRs)")
 
+        # Granular resolution metrics (Task 14)
+        canon_rates = [s["canonical_api_resolution_rate"] for s in summaries if s["status"] == "ok" and "canonical_api_resolution_rate" in s]
+        consumer_rates = [s["exact_consumer_hit_rate"] for s in summaries if s["status"] == "ok" and "exact_consumer_hit_rate" in s]
+        family_rates = [s["family_resolution_rate"] for s in summaries if s["status"] == "ok" and "family_resolution_rate" in s]
+        broad_rates = [s["broad_infra_rate"] for s in summaries if s["status"] == "ok" and "broad_infra_rate" in s]
+        avg_canonical = sum(canon_rates) / len(canon_rates) if canon_rates else 0
+        avg_consumer = sum(consumer_rates) / len(consumer_rates) if consumer_rates else 0
+        avg_family = sum(family_rates) / len(family_rates) if family_rates else 0
+        avg_broad = sum(broad_rates) / len(broad_rates) if broad_rates else 0
+        print(f"Canonical API resolution rate (avg): {avg_canonical:.2%}")
+        print(f"Exact consumer hit rate (avg): {avg_consumer:.2%}")
+        print(f"Family resolution rate (avg): {avg_family:.2%}")
+        print(f"Broad infra rate (avg): {avg_broad:.2%}")
+
         # Write quality metrics to summary
         quality_metrics = {
             "api_resolution_rate": avg_aae,
+            "canonical_api_resolution_rate": avg_canonical,
+            "exact_consumer_hit_rate": avg_consumer,
+            "family_resolution_rate": avg_family,
+            "broad_infra_rate": avg_broad,
             "target_resolution_rate": target_resolution_rate,
             "manual_review_rate": manual_review_rate,
             "unresolved_rate": unresolved_rate,

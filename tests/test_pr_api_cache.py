@@ -183,5 +183,77 @@ class TestProxyCleanup(unittest.TestCase):
             self.assertIn(f'"{var}"', source, f"Proxy var {var} not found in cleanup list")
 
 
+class TestBackwardCompat(unittest.TestCase):
+    def test_old_raw_patch_hunks_list_format(self) -> None:
+        """Old cache stored raw_patch_hunks as dict[str, list[str]]."""
+        d = {
+            "pr_url": "https://gitcode.com/openharmony/ace_engine/pull/900",
+            "host_kind": "gitcode",
+            "owner": "openharmony",
+            "repo": "ace_engine",
+            "pr_number": 900,
+            "changed_files": ["a.cpp"],
+            "raw_patch_hunks": {"a.cpp": ["@@ -1,3 +1,4 @@", "@@ -10,2 +10,3 @@"]},
+            "normalized_ranges": {},
+            "fetch_status": "ok",
+            "api_error": "",
+            "fetched_at": "2026-05-06T00:00:00+00:00",
+            "schema_version": SCHEMA_VERSION,
+        }
+        entry = PrCacheEntry.from_dict(d)
+        self.assertIsInstance(entry.raw_patch_hunks["a.cpp"], str)
+        self.assertIn("@@ -1,3 +1,4 @@", entry.raw_patch_hunks["a.cpp"])
+
+    def test_missing_raw_files_field(self) -> None:
+        """Old cache entries don't have raw_files field."""
+        d = {
+            "pr_url": "https://gitcode.com/openharmony/ace_engine/pull/901",
+            "host_kind": "gitcode",
+            "owner": "openharmony",
+            "repo": "ace_engine",
+            "pr_number": 901,
+            "changed_files": ["b.cpp"],
+            "normalized_ranges": {},
+            "fetch_status": "ok",
+            "fetched_at": "2026-05-06T00:00:00+00:00",
+            "schema_version": SCHEMA_VERSION,
+        }
+        entry = PrCacheEntry.from_dict(d)
+        self.assertEqual(entry.raw_files, [])
+
+
+class TestRefreshModeSkipsCache(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = Path(__file__).parent / "__test_refresh_skip_tmp__"
+        self.cache_rw = PrApiCache(self.tmp, mode="read-write")
+        self.cache_refresh = PrApiCache(self.tmp, mode="refresh")
+
+    def tearDown(self) -> None:
+        import shutil
+        if self.tmp.exists():
+            shutil.rmtree(self.tmp)
+
+    def test_refresh_get_returns_none_despite_existing_entry(self) -> None:
+        entry = _make_entry(700)
+        self.cache_rw.put(entry)
+        # File exists on disk
+        self.assertTrue(self.cache_rw.has(entry.pr_url))
+        # But refresh mode returns None
+        got = self.cache_refresh.get(entry.pr_url)
+        self.assertIsNone(got)
+
+    def test_refresh_put_overwrites(self) -> None:
+        entry1 = _make_entry(701)
+        entry1.changed_files = ["old.cpp"]
+        self.cache_rw.put(entry1)
+
+        entry2 = _make_entry(701)
+        entry2.changed_files = ["new.cpp"]
+        self.cache_refresh.put(entry2)
+
+        got = self.cache_rw.get(entry1.pr_url)
+        self.assertEqual(got.changed_files, ["new.cpp"])
+
+
 if __name__ == "__main__":
     unittest.main()
