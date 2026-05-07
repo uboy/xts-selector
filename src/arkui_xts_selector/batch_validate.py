@@ -22,6 +22,7 @@ from .indexing.inverted_index import InvertedIndex
 from .indexing.pr_resolver import (
     PrResolveEntry, SelectionReason,
     _build_file_mapping_index, resolve_pr_with_context, apply_fallback,
+    apply_target_ranking,
 )
 from .indexing.target_index import build_target_index, TargetIndexResult
 from .indexing.broad_infra import load_rules
@@ -488,6 +489,8 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
             pr_resolve_result = apply_fallback(
                 pr_resolve_result, xts_root=xts_root if xts_root else None, target_index=target_index)
 
+            pr_resolve_result = apply_target_ranking(pr_resolve_result)
+
             graph_selection = {
                 "schema_version": "graph-pr-v1",
                 "entries": [_entry_to_dict(e) for e in pr_resolve_result.entries],
@@ -499,7 +502,12 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                 "ci_policy_recommendation": pr_resolve_result.ci_policy_recommendation,
                 "ci_policy_reason": pr_resolve_result.ci_policy_reason,
                 "semantic_source": pr_resolve_result.semantic_source,
+                "dropped_count": pr_resolve_result.dropped_count,
             }
+            if pr_resolve_result.provenance:
+                graph_selection["provenance"] = [
+                    {k: v for k, v in p.items() if k != "ranking"} for p in pr_resolve_result.provenance
+                ]
             if pr_resolve_result.fallback_extra_targets:
                 graph_selection["fallback_extra_targets"] = list(pr_resolve_result.fallback_extra_targets)
             if pr_resolve_result.unresolved_files:
