@@ -1,7 +1,7 @@
 {
   "schema_version": "v1",
-  "source_run": "post_wiring_300pr",
-  "labeled_at": "2026-05-07",
+  "source_run": "post_session4_300pr",
+  "labeled_at": "2026-05-08",
   "items": [
     {
       "pr_number": 81536,
@@ -10,11 +10,12 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_interop"
+          "^arkui/ace_ets_module_interop(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -22,24 +23,1222 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 81882,
       "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/81882",
       "expected_apis": {
-        "high_confidence": [],
-        "medium_confidence": [],
+        "high_confidence": [
+          {
+            "canonical_id": "text/SetOnWillCopy",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetStyledString",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ResetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetOnWillCopy",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetStyledString",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ResetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetOnWillCopy",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetStyledString",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ResetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/unknown",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetOnWillCopy",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetStyledString",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ResetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/unknown",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ResetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/unknown",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ResetFontVariations",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/unknown",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetFontVariationsImpl",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetOnWillCopyImpl",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetFontVariationsImpl",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetOnWillCopyImpl",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          }
+        ],
+        "medium_confidence": [
+          {
+            "canonical_id": "text/InitDefaultTextDraggable",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ShouldUseDefaultTextDrag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ReportCommandResult",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnColorModeChange",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ReportSelectionChangeEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnLanguageConfigurationUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ResetMouseReleaseState",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetFallbackLineSpacingStyleOptimizeFlag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnInjectionEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ParseCommand",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetFallbackLineSpacingAndIncludeFontPadding",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/InitCopyOptionAndOverlay",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ClearTextDefaultDrag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ActSetSelectionFlag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleMouseRightButton",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/CalculateHandleOffsetAndShowOverlay",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleMouseEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetStyledString",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ActSetSelection",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ReportSelectedText",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleMouseLeftPressAction",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/StyledStringRegisterResource",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/InitAiSelection",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleSurfaceChanged",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnDetachFromFrameNode",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnSelectionMenuOptionsUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ChangeHandleHeight",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetupMagnifier",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetResponseRegion",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleMouseLeftReleaseAction",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetSpanItemAttributeUseForHtml",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleSpanLongPressEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnThemeScopeUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/FireOnMarqueeStateChange",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleOnCopy",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnModifyDone",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/TextPattern",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/RecoverCopyOption",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ConvertGlobalToLocalOffset",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/CreateTextDragInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/CloseSelectOverlay",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HiddenMenu",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleOnSelectAll",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleUrlMouseEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ClearDragEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleUrlTouchEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnHandleAreaChanged",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ProcessOverlayAfterLayout",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetSelectOverlay",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetSpanSelectedContent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GlobalOffsetInSelectedArea",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ProcessOverlay",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleSpanMouseEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/InitCopyOption",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/InitSpanItemEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/AsyncHandleOnCopyWithoutSpanStringHtml",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetParentGlobalOffset",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleSingleClickEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/CalcAIMenuPosition",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleMouseLeftMoveAction",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/BetweenSelectedPosition",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnFrameNodeChanged",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/DumpInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/StartGestureSelection",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnAttachToFrameNode",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleClickEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnTextGestureSelectionUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleLongPress",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/InitSurfaceChangedCallback",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnTextGestureSelectionEnd",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/BeforeCreateLayoutWrapper",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/DumpTextStyleInfo5",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnDirtyLayoutWrapperSwap",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/InitDefaultTextDraggable",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ShouldUseDefaultTextDrag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ReportCommandResult",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnColorModeChange",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ReportSelectionChangeEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnLanguageConfigurationUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ResetMouseReleaseState",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetFallbackLineSpacingStyleOptimizeFlag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnInjectionEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ParseCommand",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetFallbackLineSpacingAndIncludeFontPadding",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/InitCopyOptionAndOverlay",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ClearTextDefaultDrag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ActSetSelectionFlag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleMouseRightButton",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/CalculateHandleOffsetAndShowOverlay",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleMouseEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetStyledString",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ActSetSelection",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ReportSelectedText",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleMouseLeftPressAction",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/StyledStringRegisterResource",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/InitAiSelection",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleSurfaceChanged",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnDetachFromFrameNode",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnSelectionMenuOptionsUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ChangeHandleHeight",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetupMagnifier",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetResponseRegion",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleMouseLeftReleaseAction",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetSpanItemAttributeUseForHtml",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleSpanLongPressEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnThemeScopeUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/FireOnMarqueeStateChange",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleOnCopy",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnModifyDone",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/TextPattern",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/RecoverCopyOption",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ConvertGlobalToLocalOffset",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/CreateTextDragInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/CloseSelectOverlay",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HiddenMenu",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleOnSelectAll",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleUrlMouseEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ClearDragEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleUrlTouchEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnHandleAreaChanged",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ProcessOverlayAfterLayout",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetSelectOverlay",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetSpanSelectedContent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GlobalOffsetInSelectedArea",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ProcessOverlay",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleSpanMouseEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/InitCopyOption",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/InitSpanItemEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/AsyncHandleOnCopyWithoutSpanStringHtml",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetParentGlobalOffset",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleSingleClickEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/CalcAIMenuPosition",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleMouseLeftMoveAction",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/BetweenSelectedPosition",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnFrameNodeChanged",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/DumpInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/StartGestureSelection",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnAttachToFrameNode",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleClickEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnTextGestureSelectionUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleLongPress",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/InitSurfaceChangedCallback",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnTextGestureSelectionEnd",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/BeforeCreateLayoutWrapper",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/DumpTextStyleInfo5",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnDirtyLayoutWrapperSwap",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetPrintInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetHasStart",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/InitDefaultTextDraggable",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnColorModeChange",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ResetMouseReleaseState",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ParseCommand",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetFallbackLineSpacingAndIncludeFontPadding",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ClearTextDefaultDrag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnLanguageConfigurationUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetFallbackLineSpacingStyleOptimizeFlag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ReportSelectionChangeEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnInjectionEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ReportCommandResult",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/InitCopyOptionAndOverlay",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnAttachToMainTreeMultiThreadExtension",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ShouldUseDefaultTextDrag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetExternalParagraphStyle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleSurfaceChanged",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnPrepareMenuCallbackUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetStyledString",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnCreateMenuCallbackUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetSpanItemAttributeUseForHtml",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetStyledStringMultiThread",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetExternalParagraphStyle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnMenuItemClickCallbackUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetPrintInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetHasStart",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/InitDefaultTextDraggable",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnColorModeChange",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ResetMouseReleaseState",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ParseCommand",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetFallbackLineSpacingAndIncludeFontPadding",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ClearTextDefaultDrag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnLanguageConfigurationUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetFallbackLineSpacingStyleOptimizeFlag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ReportSelectionChangeEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnInjectionEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ReportCommandResult",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/InitCopyOptionAndOverlay",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnAttachToMainTreeMultiThreadExtension",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ShouldUseDefaultTextDrag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetExternalParagraphStyle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/HandleSurfaceChanged",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnPrepareMenuCallbackUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetStyledString",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnCreateMenuCallbackUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetSpanItemAttributeUseForHtml",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/SetStyledStringMultiThread",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/GetExternalParagraphStyle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnMenuItemClickCallbackUpdate",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/unknown",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/AssignArkValue",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/unknown",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/AssignArkValue",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          }
+        ],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": [
+          "text/SetFontVariations",
+          "text/ParseJsFontVariations",
+          "text/SetOnWillCopy",
+          "text/CreateSimpleJsOnWillObj",
+          "text/SetFontWeight",
+          "text/SetTextContentAlign",
+          "text/JSBind",
+          "text/ParseFontWeightInfo",
+          "text/SetFontVariations",
+          "text/ParseJsFontVariations",
+          "text/SetOnWillCopy",
+          "text/CreateSimpleJsOnWillObj",
+          "text/SetFontWeight",
+          "text/SetTextContentAlign",
+          "text/JSBind",
+          "text/ParseFontWeightInfo",
+          "text/SetFontVariations",
+          "text/SetOnWillCopy",
+          "text/CreateSimpleJsOnWillObj",
+          "text/SetFontVariations",
+          "text/SetOnWillCopy",
+          "text/CreateSimpleJsOnWillObj",
+          "text/RegisterColorResource",
+          "text/RegisterColorResource"
+        ]
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_implementation",
-          "ace_ets_module_rich_editor",
-          "ace_ets_module_text"
+          "^arkui/ace_ets_module_implementation(?:_|$)",
+          "^arkui/ace_ets_module_(rich_editor|richEditor)(?:_|$)",
+          "^arkui/ace_ets_module_text(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -47,23 +1246,55 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=34, med=200, unmapped=24. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 82131,
       "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/82131",
       "expected_apis": {
         "high_confidence": [],
-        "medium_confidence": [],
+        "medium_confidence": [
+          {
+            "canonical_id": "select/SetMenuBackgroundEffect",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "select/GetMenuBackgroundBlurStyle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "select/SetMenuBackgroundBlurStyleOptions",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "select/SetMenuBackgroundEffect",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "select/GetMenuBackgroundBlurStyle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "select/SetMenuBackgroundBlurStyleOptions",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          }
+        ],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_implementation",
-          "ace_ets_module_select"
+          "^arkui/ace_ets_module_implementation(?:_|$)",
+          "^arkui/ace_ets_module_select(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -71,26 +1302,248 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=6, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 82604,
       "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/82604",
       "expected_apis": {
         "high_confidence": [],
-        "medium_confidence": [],
+        "medium_confidence": [
+          {
+            "canonical_id": "rich_editor/FillSelectOverlayExtraInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateSelectOverlayHandleInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/FillSelectOverlayBaseInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ResetMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetMagnifierOffset",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/CloseMagnifier",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/OnHandleMoveDone",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/OnUpdateSelectOverlayInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/FillSelectOverlayExtraInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateSelectOverlayHandleInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/FillSelectOverlayBaseInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ResetMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetMagnifierOffset",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/CloseMagnifier",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/OnHandleMoveDone",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/OnUpdateSelectOverlayInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/UpdateMenuFromThemeChange",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/UpdateMenuFromThemeChange",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/UpdateMenuFromThemeChange",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/UpdateMenuFromThemeChange",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/UpdateMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ResetMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnUpdateSelectOverlayInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnHandleMoveDone",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnHandleMove",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/UpdateMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/ResetMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnUpdateSelectOverlayInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnHandleMoveDone",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text/OnHandleMove",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text_field/ResetMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text_field/UpdateMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text_field/OnUpdateSelectOverlayInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text_field/OnHandleMoveDone",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text_field/CloseMagnifier",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text_field/UpdateMagnifier",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text_field/ResetMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text_field/UpdateMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text_field/OnUpdateSelectOverlayInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text_field/OnHandleMoveDone",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text_field/CloseMagnifier",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "text_field/UpdateMagnifier",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          }
+        ],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_implementation",
-          "ace_ets_module_rich_editor",
-          "ace_ets_module_select_content_overlay",
-          "ace_ets_module_text",
-          "ace_ets_module_text_field"
+          "^arkui/ace_ets_module_implementation(?:_|$)",
+          "^arkui/ace_ets_module_(rich_editor|richEditor)(?:_|$)",
+          "^arkui/ace_ets_module_(select_content_overlay|selectContentOverlay)(?:_|$)",
+          "^arkui/ace_ets_module_text(?:_|$)",
+          "^arkui/ace_ets_module_(text_field|textField)(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -98,22 +1551,34 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=44, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 82620,
       "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/82620",
       "expected_apis": {
-        "high_confidence": [],
+        "high_confidence": [
+          {
+            "canonical_id": "button/SetTextDefaultStyle",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "button/SetTextDefaultStyle",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          }
+        ],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_button"
+          "^arkui/ace_ets_module_button(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -121,23 +1586,266 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=2, med=0, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 82928,
       "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/82928",
       "expected_apis": {
-        "high_confidence": [],
-        "medium_confidence": [],
+        "high_confidence": [
+          {
+            "canonical_id": "navigation/UpdateDividerEndMargin",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/UpdateDividerStartMargin",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/Create",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/SetTitleHeight",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/UpdateDividerEndMargin",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/UpdateDividerStartMargin",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/Create",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/SetTitleHeight",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navrouter/SetTitleHeight",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navrouter/SetTitleHeight",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          }
+        ],
+        "medium_confidence": [
+          {
+            "canonical_id": "navigation/SetUseHomeDestinatoin",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/InitPushCurList",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/InitPopCurList",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/InitPopPreList",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/InitPushPreList",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/SetUseHomeDestinatoin",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/InitPushCurList",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/InitPopCurList",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/InitPopPreList",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/InitPushPreList",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/SetUseHomeDestinatoin",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/SetUseHomeDestination",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/SetUseHomeDestinatoin",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/SetUseHomeDestination",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/SizeCalculation",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/Layout",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/SizeCalculation",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/Layout",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/FireNavigationInner",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/SyncWithJsStackIfNeeded",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/BuildSplitDisplaySyncScenario",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/RebuildSplitDisplayNodes",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/FirePrimaryNodesLifecycle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/TransitionWithAnimation",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/FireNavigationInner",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/SyncWithJsStackIfNeeded",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/BuildSplitDisplaySyncScenario",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/RebuildSplitDisplayNodes",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/FirePrimaryNodesLifecycle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navigation/TransitionWithAnimation",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navrouter/SplitTransitionPopStart",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navrouter/SplitTransitionPushEnd",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navrouter/SplitTransitionPopEnd",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navrouter/SplitTransitionPushStart",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navrouter/SplitTransitionPopStart",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navrouter/SplitTransitionPushEnd",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navrouter/SplitTransitionPopEnd",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "navrouter/SplitTransitionPushStart",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          }
+        ],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_navigation",
-          "ace_ets_module_navrouter"
+          "^arkui/ace_ets_module_navigation(?:_|$)",
+          "^arkui/ace_ets_module_navrouter(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -145,9 +1853,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=10, med=38, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 83100,
@@ -156,12 +1864,16 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": [
+          "navigation_stack/ExecutePopCallbackForHomeNavDestination",
+          "navigation_stack/ExecutePopCallbackForHomeNavDestination"
+        ]
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_navigation",
-          "ace_ets_module_navrouter"
+          "^arkui/ace_ets_module_navigation(?:_|$)",
+          "^arkui/ace_ets_module_navrouter(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -169,9 +1881,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=2. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 83256,
@@ -180,11 +1892,12 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_overlay"
+          "^arkui/ace_ets_module_overlay(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -192,9 +1905,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 83403,
@@ -203,11 +1916,12 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_node"
+          "^arkui/ace_ets_module_node(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -215,9 +1929,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 83580,
@@ -226,11 +1940,12 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_node"
+          "^arkui/ace_ets_module_node(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -238,24 +1953,46 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 83761,
       "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/83761",
       "expected_apis": {
         "high_confidence": [],
-        "medium_confidence": [],
+        "medium_confidence": [
+          {
+            "canonical_id": "security_component/InitButtonRect",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "security_component/InitBaseInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "security_component/InitButtonRect",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "security_component/InitBaseInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          }
+        ],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_ability_component",
-          "ace_ets_module_security_component",
-          "ace_ets_module_window_scene"
+          "^arkui/ace_ets_module_(ability_component|abilityComponent)(?:_|$)",
+          "^arkui/ace_ets_module_(security_component|securityComponent)(?:_|$)",
+          "^arkui/ace_ets_module_(window_scene|windowScene)(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -263,9 +2000,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=4, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 83822,
@@ -274,11 +2011,27 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": [
+          "node_common/ResetInspectorLabel",
+          "node_common/SetInspectorLabel",
+          "node_common/GetInspectorLabel",
+          "node_common/ResetPointLightBloom",
+          "node_common/SetHistoryTouchEvent",
+          "node_common/unknown",
+          "node_common/CheckBackShadowResObj",
+          "node_common/ResetInspectorLabel",
+          "node_common/SetInspectorLabel",
+          "node_common/GetInspectorLabel",
+          "node_common/ResetPointLightBloom",
+          "node_common/SetHistoryTouchEvent",
+          "node_common/unknown",
+          "node_common/CheckBackShadowResObj"
+        ]
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_node"
+          "^arkui/ace_ets_module_node(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -286,9 +2039,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=14. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 83851,
@@ -297,14 +2050,32 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": [
+          "view_abstract/JsInspectorLabel",
+          "view_abstract/JSBind",
+          "view_abstract/JSUseUnion",
+          "view_abstract/JsInspectorLabel",
+          "view_abstract/JSBind",
+          "view_abstract/JSUseUnion",
+          "view_abstract/JsInspectorLabel",
+          "view_abstract/JsAccessibilityCustomActions",
+          "view_abstract/JsInspectorLabel",
+          "view_abstract/JsAccessibilityCustomActions",
+          "node_gesture/GetGestureAttachNodeId",
+          "node_gesture/registerGestureEvent",
+          "node_gesture/SendGestureEvent",
+          "node_gesture/GetGestureAttachNodeId",
+          "node_gesture/registerGestureEvent",
+          "node_gesture/SendGestureEvent"
+        ]
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_gesture",
-          "ace_ets_module_implementation",
-          "ace_ets_module_node",
-          "ace_ets_module_view_abstract"
+          "^arkui/ace_ets_module_gesture(?:_|$)",
+          "^arkui/ace_ets_module_implementation(?:_|$)",
+          "^arkui/ace_ets_module_node(?:_|$)",
+          "^arkui/ace_ets_module_(view_abstract|viewAbstract)(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -312,32 +2083,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
-    },
-    {
-      "pr_number": 83878,
-      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/83878",
-      "expected_apis": {
-        "high_confidence": [],
-        "medium_confidence": [],
-        "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
-      },
-      "expected_targets": {
-        "must_run_patterns": [
-          "ace_ets_module_video"
-        ],
-        "must_run_count_min": 1,
-        "recommended_patterns": [],
-        "recommended_count_max": 50,
-        "explicitly_not_targets": []
-      },
-      "labeling_method": "auto_only",
-      "labeler": "auto-script",
-      "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=16. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 83913,
@@ -346,13 +2094,14 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_ani",
-          "ace_ets_module_drag_drop",
-          "ace_ets_module_gesture"
+          "^arkui/ace_ets_module_ani(?:_|$)",
+          "^arkui/ace_ets_module_(drag_drop|dragDrop)(?:_|$)",
+          "^arkui/ace_ets_module_gesture(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -360,9 +2109,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 83970,
@@ -371,12 +2120,13 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_implementation",
-          "ace_ets_module_node"
+          "^arkui/ace_ets_module_implementation(?:_|$)",
+          "^arkui/ace_ets_module_node(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -384,9 +2134,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 83998,
@@ -395,7 +2145,21 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": [
+          "view_abstract/JsShouldRecognizerParallelWith",
+          "view_abstract/JsInspectorLabel",
+          "view_abstract/ParseShadowProps",
+          "view_abstract/JSBind",
+          "view_abstract/ParseDepthVector3",
+          "view_abstract/ParseShadowPropsUpdate",
+          "view_abstract/JsShouldRecognizerParallelWith",
+          "view_abstract/JsInspectorLabel",
+          "view_abstract/ParseShadowProps",
+          "view_abstract/JSBind",
+          "view_abstract/ParseDepthVector3",
+          "view_abstract/ParseShadowPropsUpdate"
+        ]
       },
       "expected_targets": {
         "must_run_patterns": [],
@@ -405,23 +2169,936 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=12. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 84055,
       "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84055",
       "expected_apis": {
-        "high_confidence": [],
-        "medium_confidence": [],
+        "high_confidence": [
+          {
+            "canonical_id": "rich_editor/ScrollToVisible",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetMaxLines",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ScrollToVisible",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetMaxLines",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ScrollToVisible",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/RichEditorModel",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ScrollToVisible",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/RichEditorModel",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          }
+        ],
+        "medium_confidence": [
+          {
+            "canonical_id": "rich_editor/GetInnerPadding",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleScrollStart",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HasLpxUnitStyle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ResetMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateLpxUnitFlag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/GetScrollController",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ScrollToVisible",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ClearAISpanRects",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/RemoveOverlayModifier",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateRichTextRectOffsetWithPadding",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/IsMouseOverScrollBar",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/IsFreeScrollEnabled",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ScheduleDisappearDelayTask",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/CalculateSelectedRect",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/StopScrolling",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/OnAttachToMainTreeMultiThreadExtension",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ClearParagraphCache",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleHorizontalScroll",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleMenuCallbackOnSelectAll",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleTouchUp",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/GetSymbolSpanOptions",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetStyledPlaceholder",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleDoubleClickEditLogic",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/CreateRichEditorOverlayModifier",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/MountImageNode",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleTouchUpAfterLongPress",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleSurfaceChanged",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/CheckScrollable",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/InitScrollablePattern",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/AutoScrollByEdgeDetection",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/RemoveEmptySpans",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleTouchEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ProcessInnerPadding",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ProcessDeleteNodes",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/AddSymbolSpanOperation",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateScrollBarOffset",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/FinishTextPreview",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/AddImageSpan",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateSpanStyle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleOnSelectAll",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/GetParagraphInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/OnAttachToFrameNode",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ToJsonValue",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/OnScrollCallback",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ReportSelectionChangeEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetStringPlaceholder",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/GetParagraphNodes",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateCaretStyleByTypingStyle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateImageAttribute",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleUserGestureEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateScrollStateAfterLayout",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleSingleClickEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandlePageScroll",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/AddTextSpanOperation",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateSpanItems",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetMagnifierLocalOffset",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleMouseEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/CreateTextSpanNode",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleMouseLeftButtonRelease",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetSelection",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateShiftFlag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetPlaceholder",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleSetCaretPositionCommand",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleAISpanHoverEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateScrollBarColor",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/GetInnerPadding",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleScrollStart",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HasLpxUnitStyle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ResetMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateLpxUnitFlag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/GetScrollController",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ScrollToVisible",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ClearAISpanRects",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/RemoveOverlayModifier",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateRichTextRectOffsetWithPadding",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/IsMouseOverScrollBar",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/IsFreeScrollEnabled",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ScheduleDisappearDelayTask",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/CalculateSelectedRect",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/StopScrolling",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/OnAttachToMainTreeMultiThreadExtension",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ClearParagraphCache",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleHorizontalScroll",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleMenuCallbackOnSelectAll",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleTouchUp",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/GetSymbolSpanOptions",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetStyledPlaceholder",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleDoubleClickEditLogic",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/CreateRichEditorOverlayModifier",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/MountImageNode",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleTouchUpAfterLongPress",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleSurfaceChanged",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/CheckScrollable",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/InitScrollablePattern",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/AutoScrollByEdgeDetection",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/RemoveEmptySpans",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleTouchEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ProcessInnerPadding",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ProcessDeleteNodes",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/AddSymbolSpanOperation",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateScrollBarOffset",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/FinishTextPreview",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/AddImageSpan",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateSpanStyle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleOnSelectAll",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/GetParagraphInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/OnAttachToFrameNode",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ToJsonValue",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/OnScrollCallback",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ReportSelectionChangeEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetStringPlaceholder",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/GetParagraphNodes",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateCaretStyleByTypingStyle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateImageAttribute",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleUserGestureEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateScrollStateAfterLayout",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleSingleClickEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandlePageScroll",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/AddTextSpanOperation",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateSpanItems",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetMagnifierLocalOffset",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleMouseEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/CreateTextSpanNode",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleMouseLeftButtonRelease",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetSelection",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateShiftFlag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetPlaceholder",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleSetCaretPositionCommand",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleAISpanHoverEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateScrollBarColor",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/GetInnerPadding",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleScrollStart",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HasLpxUnitStyle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ResetMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateLpxUnitFlag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/GetScrollController",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ScrollToVisible",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ClearAISpanRects",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/RemoveOverlayModifier",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateRichTextRectOffsetWithPadding",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/IsMouseOverScrollBar",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/IsFreeScrollEnabled",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ScheduleDisappearDelayTask",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/CalculateSelectedRect",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/StopScrolling",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/OnAttachToMainTreeMultiThreadExtension",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ClearParagraphCache",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleHorizontalScroll",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleSurfaceChanged",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ReportSelectionChangeEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/GetInnerPadding",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleScrollStart",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HasLpxUnitStyle",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ResetMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateLpxUnitFlag",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/GetScrollController",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ScrollToVisible",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ClearAISpanRects",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/RemoveOverlayModifier",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateMagnifierTouchInfo",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/UpdateRichTextRectOffsetWithPadding",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/IsMouseOverScrollBar",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/IsFreeScrollEnabled",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ScheduleDisappearDelayTask",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/CalculateSelectedRect",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/StopScrolling",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/OnAttachToMainTreeMultiThreadExtension",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ClearParagraphCache",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleHorizontalScroll",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/HandleSurfaceChanged",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ReportSelectionChangeEvent",
+            "rationale": "AST oracle: body modified",
+            "evidence_files": []
+          }
+        ],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_node",
-          "ace_ets_module_rich_editor"
+          "^arkui/ace_ets_module_node(?:_|$)",
+          "^arkui/ace_ets_module_(rich_editor|richEditor)(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -429,9 +3106,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=8, med=174, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 84069,
@@ -440,7 +3117,8 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [],
@@ -450,22 +3128,64 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 84097,
       "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84097",
       "expected_apis": {
-        "high_confidence": [],
+        "high_confidence": [
+          {
+            "canonical_id": "rich_editor/ScrollToVisible",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/GetHorizontalScrolling",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetHorizontalScrolling",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ResetHorizontalScrolling",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ScrollToVisible",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/GetHorizontalScrolling",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/SetHorizontalScrolling",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          },
+          {
+            "canonical_id": "rich_editor/ResetHorizontalScrolling",
+            "rationale": "AST oracle: signature/added/removed",
+            "evidence_files": []
+          }
+        ],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_rich_editor"
+          "^arkui/ace_ets_module_(rich_editor|richEditor)(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -473,9 +3193,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=8, med=0, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 84113,
@@ -484,12 +3204,13 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_implementation",
-          "ace_ets_module_search"
+          "^arkui/ace_ets_module_implementation(?:_|$)",
+          "^arkui/ace_ets_module_search(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -497,9 +3218,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 84156,
@@ -508,7 +3229,8 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [],
@@ -518,9 +3240,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 84168,
@@ -529,7 +3251,8 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [],
@@ -539,53 +3262,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
-    },
-    {
-      "pr_number": 84214,
-      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84214",
-      "expected_apis": {
-        "high_confidence": [],
-        "medium_confidence": [],
-        "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
-      },
-      "expected_targets": {
-        "must_run_patterns": [],
-        "must_run_count_min": 0,
-        "recommended_patterns": [],
-        "recommended_count_max": 50,
-        "explicitly_not_targets": []
-      },
-      "labeling_method": "auto_only",
-      "labeler": "auto-script",
-      "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
-    },
-    {
-      "pr_number": 84246,
-      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84246",
-      "expected_apis": {
-        "high_confidence": [],
-        "medium_confidence": [],
-        "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
-      },
-      "expected_targets": {
-        "must_run_patterns": [
-          "ace_ets_module_time_picker"
-        ],
-        "must_run_count_min": 1,
-        "recommended_patterns": [],
-        "recommended_count_max": 50,
-        "explicitly_not_targets": []
-      },
-      "labeling_method": "auto_only",
-      "labeler": "auto-script",
-      "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 84255,
@@ -594,7 +3273,8 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [],
@@ -604,9 +3284,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 84268,
@@ -615,11 +3295,12 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [
-          "ace_ets_module_node"
+          "^arkui/ace_ets_module_node(?:_|$)"
         ],
         "must_run_count_min": 1,
         "recommended_patterns": [],
@@ -627,9 +3308,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     },
     {
       "pr_number": 84301,
@@ -638,7 +3319,8 @@
         "high_confidence": [],
         "medium_confidence": [],
         "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
+        "explicitly_not_changed": [],
+        "oracle_unmapped_methods": []
       },
       "expected_targets": {
         "must_run_patterns": [],
@@ -648,51 +3330,9 @@
         "explicitly_not_targets": []
       },
       "labeling_method": "auto_only",
-      "labeler": "auto-script",
+      "labeler": "scripts/aggregate_oracle_to_draft.py",
       "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
-    },
-    {
-      "pr_number": 84306,
-      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84306",
-      "expected_apis": {
-        "high_confidence": [],
-        "medium_confidence": [],
-        "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
-      },
-      "expected_targets": {
-        "must_run_patterns": [],
-        "must_run_count_min": 0,
-        "recommended_patterns": [],
-        "recommended_count_max": 50,
-        "explicitly_not_targets": []
-      },
-      "labeling_method": "auto_only",
-      "labeler": "auto-script",
-      "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
-    },
-    {
-      "pr_number": 84330,
-      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84330",
-      "expected_apis": {
-        "high_confidence": [],
-        "medium_confidence": [],
-        "low_confidence_or_unsure": [],
-        "explicitly_not_changed": []
-      },
-      "expected_targets": {
-        "must_run_patterns": [],
-        "must_run_count_min": 0,
-        "recommended_patterns": [],
-        "recommended_count_max": 50,
-        "explicitly_not_targets": []
-      },
-      "labeling_method": "auto_only",
-      "labeler": "auto-script",
-      "labeling_time_minutes": 0,
-      "notes": "Auto-generated draft. NEEDS REVIEW."
+      "notes": "Auto-extracted from oracle. high=0, med=0, unmapped=0. NEEDS HUMAN REVIEW per protocol Step 4.7."
     }
   ]
 }

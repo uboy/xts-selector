@@ -1,9 +1,21 @@
 #!/usr/bin/env python3
-"""Aggregate per-PR oracle outputs into a draft golden fixture."""
+"""Aggregate per-PR oracle outputs into draft golden fixture."""
 from __future__ import annotations
 
 import json
 from pathlib import Path
+
+
+def _derive_must_run_patterns(families: list[str]) -> list[str]:
+    patterns = []
+    for f in families:
+        camel = "".join(p.capitalize() for p in f.split("_"))
+        camel = camel[0].lower() + camel[1:]
+        if camel == f:
+            patterns.append(f"^arkui/ace_ets_module_{f}(?:_|$)")
+        else:
+            patterns.append(f"^arkui/ace_ets_module_({f}|{camel})(?:_|$)")
+    return patterns
 
 
 def main() -> None:
@@ -16,7 +28,16 @@ def main() -> None:
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
 
-    pr_numbers = json.loads(args.pr_numbers.read_text())
+    raw = json.loads(args.pr_numbers.read_text())
+    if isinstance(raw, list) and raw and isinstance(raw[0], int):
+        pr_numbers = raw
+    elif isinstance(raw, dict) and "items" in raw:
+        pr_numbers = [i["pr_number"] for i in raw["items"]]
+    elif isinstance(raw, list) and raw and isinstance(raw[0], dict):
+        pr_numbers = [i["pr_number"] for i in raw]
+    else:
+        pr_numbers = raw
+
     batch = {p["pr_number"]: p for p in json.loads(args.batch_results.read_text())}
 
     items = []
@@ -29,50 +50,69 @@ def main() -> None:
             except json.JSONDecodeError:
                 pass
 
-        pr_data = batch.get(pr_num, {})
-        changed_files = pr_data.get("graph_selection", {}).get("entries", [])
+        if oracle and oracle.get("total_changes", 0) == 0:
+            continue  # skip PRs with no extractable changes
 
-        families = sorted({ic.get("family") for e in changed_files
-                           for ic in e.get("impact_candidates", [])
-                           if ic.get("family")})
+        pr_data = batch.get(pr_num, {})
+        gs = pr_data.get("graph_selection", {})
+        entries = gs.get("entries", [])
+
+        # Families from oracle high+medium
+        families = set()
+        for item in (oracle or {}).get("high_confidence", []):
+            if "/" in item:
+                families.add(item.split("/", 1)[0])
+        for item in (oracle or {}).get("medium_confidence", []):
+            if "/" in item:
+                families.add(item.split("/", 1)[0])
+        # Also from impact_candidates
+        for e in entries:
+            for ic in e.get("impact_candidates", []):
+                if ic.get("family"):
+                    families.add(ic["family"])
 
         item: dict = {
             "pr_number": pr_num,
             "url": f"https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/{pr_num}",
             "expected_apis": {
                 "high_confidence": [
-                    {"canonical_id": item, "rationale": "AST oracle high",
+                    {"canonical_id": item, "rationale": "AST oracle: signature/added/removed",
                      "evidence_files": []}
                     for item in (oracle or {}).get("high_confidence", [])
                 ],
                 "medium_confidence": [
-                    {"canonical_id": item, "rationale": "AST oracle medium",
+                    {"canonical_id": item, "rationale": "AST oracle: body modified",
                      "evidence_files": []}
                     for item in (oracle or {}).get("medium_confidence", [])
                 ],
                 "low_confidence_or_unsure": [],
                 "explicitly_not_changed": [],
+                "oracle_unmapped_methods": list((oracle or {}).get("unmapped", [])),
             },
             "expected_targets": {
-                "must_run_patterns": [
-                    f"ace_ets_module_{f}" for f in families
-                ],
+                "must_run_patterns": _derive_must_run_patterns(sorted(families)),
                 "must_run_count_min": 1 if families else 0,
                 "recommended_patterns": [],
                 "recommended_count_max": 50,
                 "explicitly_not_targets": [],
             },
             "labeling_method": "auto_only",
-            "labeler": "auto-script",
+            "labeler": "scripts/aggregate_oracle_to_draft.py",
             "labeling_time_minutes": 0,
-            "notes": "Auto-generated draft. NEEDS REVIEW.",
+            "notes": (
+                f"Auto-extracted from oracle. "
+                f"high={len((oracle or {}).get('high_confidence', []))}, "
+                f"med={len((oracle or {}).get('medium_confidence', []))}, "
+                f"unmapped={len((oracle or {}).get('unmapped', []))}. "
+                f"NEEDS HUMAN REVIEW per protocol Step 4.7."
+            ),
         }
         items.append(item)
 
     output = {
         "schema_version": "v1",
-        "source_run": "post_wiring_300pr",
-        "labeled_at": "2026-05-07",
+        "source_run": "post_session4_300pr",
+        "labeled_at": "2026-05-08",
         "items": items,
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
