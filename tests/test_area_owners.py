@@ -12,7 +12,7 @@ from arkui_xts_selector.indexing.area_owners import (
 )
 
 # Add scripts to path for cluster script testing
-SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
+SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from cluster_unresolved_paths import cluster_unresolved_paths
