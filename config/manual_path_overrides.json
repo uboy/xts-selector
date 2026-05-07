@@ -1,4 +1,69 @@
 {
   "schema_version": "v1",
-  "rules": []
+  "rules": [
+    {
+      "path_regex": "frameworks/core/components_ng/pattern/[^/]+/bridge/.*\\.cpp$",
+      "must_run_targets": ["ace_ets_module_noui/ace_ets_module_StateMangagement", "ace_ets_component_seven"],
+      "expires_at": "2027-12-31",
+      "owner": "arkui-bridge-ets",
+      "ticket": "OHOS-BRIDGE-001",
+      "rationale": "Bridge files affect JS-ETS interop and require both state management and component tests"
+    },
+    {
+      "path_regex": "frameworks/core/pipeline_ng/.*\\.cpp$",
+      "must_run_targets": ["ace_ets_component_seven/ace_ets_component_common_seven_attrs_opacity"],
+      "expires_at": "2027-12-31",
+      "owner": "arkui-render",
+      "ticket": "OHOS-RENDER-001",
+      "rationale": "Pipeline changes affect rendering behavior, test opacity and visual attributes"
+    },
+    {
+      "path_regex": "frameworks/core/components_ng/render/canvas.*\\.cpp$",
+      "must_run_targets": ["ace_ets_module_ui/ace_ets_module_commonAttrsOther"],
+      "expires_at": "2027-12-31",
+      "owner": "arkui-render",
+      "ticket": "OHOS-CANVAS-001",
+      "rationale": "Canvas rendering changes require attribute testing"
+    },
+    {
+      "path_regex": "frameworks/bridge/declarative_frontend/js_.*\\.cpp$",
+      "must_run_targets": ["ace_ets_module_noui/ace_ets_module_StateMangagement"],
+      "expires_at": "2027-12-31",
+      "owner": "arkui-bridge-js",
+      "ticket": "OHOS-JS-BRIDGE-001",
+      "rationale": "JS bridge files affect state management integration"
+    },
+    {
+      "path_regex": "frameworks/core/animation/.*\\.cpp$",
+      "must_run_targets": ["ace_ets_module_noui/ace_ets_module_StateMangagement"],
+      "expires_at": "2027-12-31",
+      "owner": "arkui-animation",
+      "ticket": "OHOS-ANIM-001",
+      "rationale": "Animation changes affect state management and transitions"
+    },
+    {
+      "path_regex": "frameworks/core/accessibility/.*\\.cpp$",
+      "must_run_targets": ["ace_ets_component_seven/ace_ets_component_common_seven_attrs_accessibilityLevel"],
+      "expires_at": "2027-12-31",
+      "owner": "arkui-accessibility",
+      "ticket": "OHOS-A11Y-001",
+      "rationale": "Accessibility changes require comprehensive accessibility attribute testing"
+    },
+    {
+      "path_regex": "frameworks/core/gestures/.*\\.cpp$",
+      "must_run_targets": ["ace_ets_module_ui/ace_ets_module_commonEvents"],
+      "expires_at": "2027-12-31",
+      "owner": "arkui-gesture",
+      "ticket": "OHOS-GESTURE-001",
+      "rationale": "Gesture system changes affect event handling"
+    },
+    {
+      "path_regex": "frameworks/core/components_ng/manager/.*\\.cpp$",
+      "must_run_targets": ["ace_ets_module_ui/ace_ets_module_layout"],
+      "expires_at": "2027-12-31",
+      "owner": "arkui-components",
+      "ticket": "OHOS-MANAGER-001",
+      "rationale": "Component manager changes affect layout behavior"
+    }
+  ]
 }

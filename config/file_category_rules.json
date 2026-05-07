@@ -1,0 +1,61 @@
+{
+  "categories": {
+    "test_only": {
+      "extensions": [
+        "_test.cpp",
+        "_test.h",
+        "_test.ts",
+        "_test.js",
+        "_test.ets",
+        "_unittest.cpp",
+        "_unittest.h"
+      ],
+      "paths": [
+        "test/",
+        "unittest/",
+        "xts/"
+      ]
+    },
+    "build_config": {
+      "extensions": [
+        ".gn",
+        ".gni",
+        ".cmake"
+      ],
+      "filenames": [
+        "CMakeLists.txt",
+        "BUILD.gn",
+        "Makefile"
+      ]
+    },
+    "documentation": {
+      "extensions": [
+        ".md",
+        ".rst"
+      ],
+      "paths": [
+        "docs/"
+      ]
+    },
+    "native_interface": {
+      "paths": [
+        "frameworks/core/interfaces/native/"
+      ]
+    },
+    "bridge_authored": {
+      "paths": [
+        "frameworks/bridge/"
+      ]
+    },
+    "generated": {
+      "patterns": [
+        "generated",
+        ".pb.h",
+        ".pb.cc",
+        ".pb.go",
+        ".pb.java",
+        "autogen"
+      ]
+    }
+  }
+}
