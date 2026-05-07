@@ -200,6 +200,12 @@ def _parse_cpp_methods(content: bytes, file_path: str) -> list[MethodSnapshot]:
     methods: list[MethodSnapshot] = []
     current_class: str | None = None
 
+    # Real C++ files (especially generated bridges) can have AST depth > 1000.
+    # Bump recursion limit just for this visit; restore after.
+    import sys as _sys
+    _prev_limit = _sys.getrecursionlimit()
+    _sys.setrecursionlimit(max(_prev_limit, 10000))
+
     def visit(node, class_stack: list[str]):
         nonlocal current_class
 
@@ -300,7 +306,10 @@ def _parse_cpp_methods(content: bytes, file_path: str) -> list[MethodSnapshot]:
                 class_stack.pop()
             current_class = class_stack[-1] if class_stack else None
 
-    visit(tree.root_node, [])
+    try:
+        visit(tree.root_node, [])
+    finally:
+        _sys.setrecursionlimit(_prev_limit)
     return methods
 
 
