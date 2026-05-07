@@ -1,0 +1,43 @@
+{
+  "schema_version": "v1",
+  "method_to_member": {
+    "fontVariations": "fontVariations",
+    "onWillCopy": "onWillCopy",
+    "styledString": "styledString",
+    "maxLines": "maxLines",
+    "titleHeight": "titleHeight",
+    "scrollToVisible": "scrollToVisible",
+    "fontVariationsImpl": "fontVariations",
+    "onWillCopyImpl": "onWillCopy",
+    "scrollToIndex": "scrollToIndex",
+    "placeholder": "placeholder",
+    "caretOffset": "caretOffset",
+    "copyOption": "copyOption",
+    "editing": "editing",
+    "inputFilter": "inputFilter",
+    "textContentType": "textContentType",
+    "showCounter": "showCounter",
+    "barOverlap": "barOverlap"
+  },
+  "family_member_to_parent": {
+    "text+scrollToVisible": "RichEditorBaseController",
+    "text+caretOffset": "RichEditorBaseController",
+    "text+copyOption": "RichEditorBaseController",
+    "text+editing": "RichEditorBaseController",
+    "text+inputFilter": "RichEditorBaseController",
+    "rich_editor+scrollToIndex": "RichEditorBaseController"
+  },
+  "method_to_member_with_prefix_strip": {
+    "JsInspectorLabel": "inspectorLabel",
+    "JsSetInspectorLabel": "inspectorLabel"
+  },
+  "blacklist": {
+    "patterns": [
+      "^Create(Simple|Js)?[A-Z]\\w+Obj$",
+      "^Parse(Js)?[A-Z]\\w+(Info|Resource)$",
+      "^Register\\w+Resource$",
+      "^Check\\w+ResObj$",
+      "^Update\\w+(Multi|Thread)Extension$"
+    ]
+  }
+}
