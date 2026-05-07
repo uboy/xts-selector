@@ -1704,16 +1704,22 @@ def _cmd_oracle_extract(args: argparse.Namespace) -> int:
     pr_number = args.pr_number
     repo_root = Path(args.repo_root)
 
-    pr_url_pattern = f"https://gitcode.com/openharmony/ace_engine/pull/{pr_number}"
-    try:
-        entry = cache.get(pr_url_pattern)
-    except Exception:
-        pr_url_pattern = f"https://gitcode.com/openharmony/ace_engine/merge_requests/{pr_number}"
+    # Auto-discover cache entry: scan cache dir for PR_<pr_number>.json
+    entry = None
+    pr_url_pattern = ""
+    for pr_json in cache_dir.rglob(f"PR_{pr_number}.json"):
         try:
-            entry = cache.get(pr_url_pattern)
+            raw = json.loads(pr_json.read_text(encoding="utf-8"))
+            from .pr_cache import PrCacheEntry
+            entry = PrCacheEntry.from_dict(raw)
+            pr_url_pattern = raw.get("pr_url", str(pr_json))
+            break
         except Exception:
-            print(f"PR #{pr_number} not found in cache", file=sys.stderr)
-            return 1
+            continue
+
+    if entry is None:
+        print(f"PR #{pr_number} not found in cache", file=sys.stderr)
+        return 1
 
     if entry is None:
         print(f"PR #{pr_number} not found in cache", file=sys.stderr)

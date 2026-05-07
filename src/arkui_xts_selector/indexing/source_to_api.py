@@ -110,6 +110,7 @@ def build_source_to_api_mapping(
                         api_id=mapping.api_id,
                         api_member_of=mapping.api_member_of,
                         ambiguity_state=mapping.ambiguity_state,
+                        sdk_confirmed=mapping.sdk_confirmed,
                     )
                     # Filter weak mappings against SDK registry
                     if sdk_index is not None and mapping.confidence == "weak":
@@ -128,6 +129,7 @@ def build_source_to_api_mapping(
                             api_id=mapping.api_id,
                             api_member_of=mapping.api_member_of,
                             ambiguity_state=mapping.ambiguity_state,
+                            sdk_confirmed=True,
                         )
                     mappings.append(mapping)
 
@@ -152,6 +154,7 @@ def build_source_to_api_mapping(
                         api_id=mapping.api_id,
                         api_member_of=mapping.api_member_of,
                         ambiguity_state=mapping.ambiguity_state,
+                        sdk_confirmed=True,
                     )
                 mappings.append(mapping)
 
@@ -234,8 +237,16 @@ def _resolve_canonical_id(
 
     # Try to resolve via SDK index for proper canonical format
     if sdk_index is not None:
-        # Look up the API in SDK
-        sdk_entry = sdk_index.find(api_name)
+        # Family-aware lookup: try <Family>Attribute.<member>, then <Family>Interface.<member>
+        sdk_entry = None
+        if family:
+            sdk_entry = sdk_index.find_attribute_member(api_name, family)
+        if sdk_entry is None:
+            # Try common parents (CommonMethod, CommonAttribute, etc.)
+            sdk_entry = sdk_index.find_common_member(api_name)
+        if sdk_entry is None:
+            # Last resort: bare name lookup (existing behavior)
+            sdk_entry = sdk_index.find(api_name)
         if sdk_entry is not None:
             # Use SDK's ApiEntityId for canonical format
             canonical = sdk_entry.api_id.canonical()

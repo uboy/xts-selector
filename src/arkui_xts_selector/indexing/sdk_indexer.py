@@ -71,6 +71,36 @@ class SdkIndexResult:
     extends_graph: dict[str, list[str]] = field(default_factory=dict, repr=False, compare=False)
     alias_graph: dict[str, list[str]] = field(default_factory=dict, repr=False, compare=False)
 
+    def __post_init__(self) -> None:
+        # Build O(1) lookup indexes (frozen=True requires object.__setattr__)
+        by_public: dict[str, SdkIndexEntry] = {}
+        by_parent_member: dict[tuple[str, str], SdkIndexEntry] = {}
+        by_member_only: dict[str, list[SdkIndexEntry]] = {}
+        for entry in self.entries:
+            pn = entry.api_id.public_name
+            if pn and pn not in by_public:
+                by_public[pn] = entry
+            mn = entry.member_name or entry.api_id.member_name
+            if mn:
+                # Parent key: prefer parent_api_id.public_name, then api_id.public_name
+                # (when public_name is the class and member_name is the member)
+                parent_name = None
+                if entry.parent_api_id and entry.parent_api_id.public_name:
+                    parent_name = entry.parent_api_id.public_name
+                elif entry.api_id.member_of:
+                    parent_name = entry.api_id.member_of
+                elif entry.api_id.member_name and pn:
+                    # public_name is the class, member_name is the member
+                    parent_name = pn
+                if parent_name:
+                    pk = (parent_name, mn)
+                    if pk not in by_parent_member:
+                        by_parent_member[pk] = entry
+                by_member_only.setdefault(mn, []).append(entry)
+        object.__setattr__(self, "_by_public", by_public)
+        object.__setattr__(self, "_by_parent_member", by_parent_member)
+        object.__setattr__(self, "_by_member_only", by_member_only)
+
     def find(self, name: str) -> SdkIndexEntry | None:
         """Find an entry by its public name (or member name).
 
@@ -84,40 +114,31 @@ class SdkIndexResult:
             multiple entries with *different* parents, returns None to
             signal ambiguity instead of silently returning the first match.
         """
-        # First, try exact match on public_name
-        for entry in self.entries:
-            if entry.api_id.public_name == name:
-                return entry
+        # O(1) public name lookup
+        hit = self._by_public.get(name)
+        if hit is not None:
+            return hit
 
-        # If not found, try member names
-        for entry in self.entries:
-            if entry.member_name and entry.api_id.member_of:
-                full_member = f"{entry.api_id.member_of}.{entry.member_name}"
-                if full_member == name:
-                    return entry
+        # O(1) full member lookup (e.g. "ButtonAttribute.role")
+        if "." in name:
+            parent, member = name.split(".", 1)
+            hit = self._by_parent_member.get((parent, member))
+            if hit is not None:
+                return hit
 
-        # Also try matching by member_name alone (for pattern role mappings)
-        # But check for ambiguity first — bare member names like "role" can
-        # belong to ButtonAttribute, CheckboxAttribute, etc.
-        candidates: list[SdkIndexEntry] = []
-        for entry in self.entries:
-            if entry.api_id.member_name == name:
-                candidates.append(entry)
-            elif entry.member_name == name:
-                candidates.append(entry)
-
-        if len(candidates) == 1:
-            return candidates[0]
-        if len(candidates) > 1:
-            # Ambiguous — return None so callers know the name is not unique
-            return None
+        # Bare member name — check ambiguity
+        cands = self._by_member_only.get(name)
+        if cands is not None:
+            if len(cands) == 1:
+                return cands[0]
+            return None  # ambiguous
 
         # Last resort: check alias graph
         if self.alias_graph and name in self.alias_graph:
             for alias_target in self.alias_graph[name]:
-                for entry in self.entries:
-                    if entry.api_id.public_name == alias_target:
-                        return entry
+                hit = self._by_public.get(alias_target)
+                if hit is not None:
+                    return hit
 
         return None
 
@@ -129,17 +150,10 @@ class SdkIndexResult:
         the parent context is unknown.
         """
         results: list[SdkIndexEntry] = []
-        for entry in self.entries:
-            if entry.api_id.public_name == name:
-                results.append(entry)
-                continue
-            if entry.member_name and entry.api_id.member_of:
-                full_member = f"{entry.api_id.member_of}.{entry.member_name}"
-                if full_member == name:
-                    results.append(entry)
-                    continue
-            if entry.api_id.member_name == name or entry.member_name == name:
-                results.append(entry)
+        hit = self._by_public.get(name)
+        if hit is not None:
+            results.append(hit)
+        results.extend(self._by_member_only.get(name, []))
         return results
 
     def find_descendants(self, parent_name: str, max_depth: int = 3) -> list[str]:
@@ -175,32 +189,51 @@ class SdkIndexResult:
 
     def find_member(self, member_name: str, parent_name: str | None = None) -> SdkIndexEntry | None:
         """Find a member by name, optionally disambiguated by parent."""
-        candidates: list[SdkIndexEntry] = []
-        for entry in self.entries:
-            if entry.member_name != member_name and entry.api_id.member_name != member_name:
-                continue
-            if parent_name:
-                member_of = entry.api_id.member_of or ""
-                parent_pub = entry.parent_api_id.public_name if entry.parent_api_id else ""
-                if parent_name.lower() not in member_of.lower() and parent_name.lower() not in parent_pub.lower():
-                    continue
-            candidates.append(entry)
+        if parent_name:
+            # O(1) lookup: (parent, member)
+            hit = self._by_parent_member.get((parent_name, member_name))
+            if hit is not None:
+                return hit
+            # Case-insensitive fallback for parent_name
+            p_lower = parent_name.lower()
+            for (pk, mk), entry in self._by_parent_member.items():
+                if mk == member_name and p_lower in pk.lower():
+                    return entry
 
-        if len(candidates) == 1:
-            return candidates[0]
-        if len(candidates) > 1:
-            return None
+        # Bare member name lookup
+        cands = self._by_member_only.get(member_name)
+        if cands is not None:
+            if len(cands) == 1:
+                return cands[0]
+            return None  # ambiguous
         return None
 
+    _COMMON_PARENTS = ("CommonMethod", "CommonAttribute", "CommonShapeMethod",
+                       "CommonTransition", "ContainerCommonMethod")
+
     def find_attribute_member(self, member_name: str, family: str) -> SdkIndexEntry | None:
-        """Find a member in <Family>Attribute or <Family>CommonMethod."""
-        family_cap = family.capitalize()
-        for parent_suffix in ("Attribute", "CommonMethod", "Interface"):
-            parent = f"{family_cap}{parent_suffix}"
+        """Find a member in <Family>Attribute or <Family>Interface."""
+        from .family_alias import normalize_family
+        family_norm = normalize_family(family)
+        for parent_suffix in ("Attribute", "Interface"):
+            parent = f"{family_norm}{parent_suffix}"
             result = self.find_member(member_name, parent)
             if result:
                 return result
-        return self.find_member(member_name, family)
+        return self.find_member(member_name, family_norm)
+
+    def find_common_member(self, member_name: str) -> SdkIndexEntry | None:
+        """Find a member in common parent types (CommonMethod, etc.)."""
+        for parent in self._COMMON_PARENTS:
+            entry = self.find_member(member_name, parent)
+            if entry:
+                return entry
+        return None
+
+    def find_all_member(self, member_name: str) -> list[SdkIndexEntry]:
+        """Find all entries matching a bare member name across all parents."""
+        return [e for e in self.entries
+                if e.member_name == member_name or e.api_id.member_name == member_name]
 
     @classmethod
     def from_dict(cls, data: dict) -> SdkIndexResult:

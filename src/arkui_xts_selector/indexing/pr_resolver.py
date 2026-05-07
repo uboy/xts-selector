@@ -18,6 +18,29 @@ from .inverted_index import InvertedIndex
 from .sdk_indexer import SdkIndexResult
 from .source_to_api import build_source_to_api_mapping, SourceApiMapping
 
+# Lazy imports for optional resolvers
+try:
+    from ..path_utils import normalize_path as _normalize_path
+except ImportError:
+    _normalize_path = None  # type: ignore[assignment]
+
+try:
+    from .file_category import classify_file as _classify_file
+except ImportError:
+    _classify_file = None  # type: ignore[assignment]
+
+try:
+    from .native_interface_resolver import resolve_native_interface as _resolve_native_interface
+    from .native_interface_resolver import resolve_native_interface_targets as _resolve_native_targets
+except ImportError:
+    _resolve_native_interface = None  # type: ignore[assignment]
+    _resolve_native_targets = None  # type: ignore[assignment]
+
+try:
+    from .generated_files_resolver import should_skip_generated as _should_skip_generated
+except ImportError:
+    _should_skip_generated = None  # type: ignore[assignment]
+
 # Lazy import to avoid circular dependency on xts_root at module level
 try:
     from .idl_parser import parse_idl_file, resolve_idl_to_family, map_idl_methods_to_api as _map_idl_methods_to_api
@@ -309,6 +332,57 @@ def apply_fallback(
     )
 
 
+def apply_target_ranking(result: PrResolveResult) -> PrResolveResult:
+    """Apply bucket model ranking to consumer projects.
+
+    Returns a new PrResolveResult with target_ranking in provenance and
+    consumer_projects capped per bucket. Entries' consumer_projects are
+    replaced with the ranked set.
+
+    The must_run bucket has no cap, recommended max 40, fallback max 30.
+    """
+    from ..target_ranking import rank_targets
+
+    # Convert entries to dicts for rank_targets
+    entry_dicts = []
+    for entry in result.entries:
+        entry_dicts.append({
+            "changed_file": entry.changed_file,
+            "consumer_projects": list(entry.consumer_projects),
+            "affected_apis": list(entry.affected_apis),
+            "canonical_affected_apis": list(entry.canonical_affected_apis),
+            "selection_reasons": [r.to_dict() for r in entry.selection_reasons],
+            "impact_candidates": list(entry.impact_candidates),
+        })
+
+    ranking = rank_targets(entry_dicts)
+    ranked_ids = set(t.project_id for t in ranking.all_targets)
+
+    # Filter consumer_projects to only ranked targets
+    from dataclasses import replace as _dc_replace
+    filtered: list[PrResolveEntry] = []
+    for entry in result.entries:
+        kept = tuple(p for p in entry.consumer_projects if p in ranked_ids)
+        filtered.append(_dc_replace(entry, consumer_projects=kept))
+
+    return PrResolveResult(
+        entries=tuple(filtered),
+        overall_false_negative_risk=result.overall_false_negative_risk,
+        coverage_gap=result.coverage_gap,
+        fallback_applied=result.fallback_applied,
+        fallback_reason=result.fallback_reason,
+        fallback_level=result.fallback_level,
+        fallback_extra_targets=result.fallback_extra_targets,
+        ci_policy_recommendation=result.ci_policy_recommendation,
+        ci_policy_reason=result.ci_policy_reason,
+        unresolved_files=result.unresolved_files,
+        low_confidence_resolved_files=result.low_confidence_resolved_files,
+        semantic_source=result.semantic_source,
+        dropped_count=ranking.dropped_count,
+        provenance=result.provenance + ({"action": "target_ranking", "ranking": ranking.to_dict()},),
+    )
+
+
 def resolve_pr(
     changed_files: list[str],
     ace_index: AceIndexResult,
@@ -448,6 +522,117 @@ def _resolve_pr_core(
 
     for cf in changed_files:
         cf_normalized = cf.replace("\\", "/")
+
+        # Path normalization: strip repo root and ACE engine prefixes
+        if _normalize_path is not None and repo_root:
+            cf_relative = _normalize_path(cf, str(repo_root))
+        else:
+            cf_relative = cf_normalized
+
+        # File category classification: skip non-source files early
+        if _classify_file is not None:
+            cat = _classify_file(cf_relative)
+            if cat == "build_config":
+                entries.append(PrResolveEntry(
+                    changed_file=cf,
+                    affected_apis=(),
+                    consumer_projects=(),
+                    selection_reasons=(),
+                    broad_infra_match=None,
+                    false_negative_risk="low",
+                    parser_level=0,
+                    impact_candidates=(),
+                    unresolved_reason="build_config_no_test_impact",
+                ))
+                continue
+            if cat == "test_only":
+                # Only skip test files that are actual test implementations,
+                # not source files that happen to be in test fixture paths.
+                # Real ACE test paths have deep nesting: test/unittest/, test/xts/
+                _is_real_test = (
+                    "/unittest/" in cf_relative
+                    or "/xts/" in cf_relative
+                    or cf_relative.startswith("unittest/")
+                    or cf_relative.startswith("xts/")
+                )
+                if _is_real_test:
+                    entries.append(PrResolveEntry(
+                        changed_file=cf,
+                        affected_apis=(),
+                        consumer_projects=(),
+                        selection_reasons=(),
+                        broad_infra_match=None,
+                        false_negative_risk="low",
+                        parser_level=0,
+                        impact_candidates=(),
+                        unresolved_reason="test_file_no_cross_impact",
+                    ))
+                    continue
+            if cat == "documentation":
+                entries.append(PrResolveEntry(
+                    changed_file=cf,
+                    affected_apis=(),
+                    consumer_projects=(),
+                    selection_reasons=(),
+                    broad_infra_match=None,
+                    false_negative_risk="low",
+                    parser_level=0,
+                    impact_candidates=(),
+                    unresolved_reason="documentation_no_test_impact",
+                ))
+                continue
+
+        # Generated file skip
+        if _should_skip_generated is not None and _should_skip_generated(cf_relative):
+            entries.append(PrResolveEntry(
+                changed_file=cf,
+                affected_apis=(),
+                consumer_projects=(),
+                selection_reasons=(),
+                broad_infra_match=None,
+                false_negative_risk="low",
+                parser_level=0,
+                impact_candidates=(),
+                unresolved_reason="generated_file_skipped",
+            ))
+            continue
+
+        # Native interface resolution (before broad infra / source-to-api)
+        if _resolve_native_interface is not None:
+            native_result = _resolve_native_interface(cf_relative)
+            if native_result is not None:
+                family, impact_kind = native_result
+                has_family = True
+                # Try to find XTS targets via inverted index for the family
+                native_projects: list[str] = []
+                if _resolve_native_targets is not None:
+                    native_projects = _resolve_native_targets(cf_relative)
+                entries.append(PrResolveEntry(
+                    changed_file=cf,
+                    affected_apis=(),
+                    consumer_projects=tuple(native_projects),
+                    selection_reasons=tuple(
+                        SelectionReason(
+                            project_path=p,
+                            matched_apis=(),
+                            usage_kinds=("native_interface",),
+                            confidence="medium",
+                        ) for p in native_projects
+                    ),
+                    broad_infra_match=None,
+                    false_negative_risk="medium",
+                    parser_level=1,
+                    impact_candidates=({
+                        "changed_file": cf,
+                        "impact_kind": impact_kind,
+                        "family": family,
+                        "source_confidence": "medium",
+                        "provenance": "native_interface_resolver",
+                    },),
+                ))
+                if risk_order.get("medium", 0) > risk_order.get(overall_risk, 0):
+                    overall_risk = "medium"
+                continue
 
         # Track whether this file has been handled by a specific rule
         file_handled = False
@@ -972,11 +1157,22 @@ def _find_mappings_for_file(
 ) -> list[SourceApiMapping]:
     """Find mappings for a changed file path.
 
-    Tries exact match first, then basename match, then suffix match.
+    Tries exact match first, then normalized path, then basename match, then suffix match.
     """
     # Exact match
     if changed_file in by_file:
         return by_file[changed_file]
+
+    # Try with path normalization
+    if _normalize_path is not None:
+        cf_norm = _normalize_path(changed_file)
+        if cf_norm in by_file:
+            return by_file[cf_norm]
+        # Also try stripping ACE engine prefix for each indexed key
+        for file_path, mappings in by_file.items():
+            fp_norm = _normalize_path(file_path)
+            if fp_norm == cf_norm:
+                return mappings
 
     # Try matching by basename or suffix
     import os
