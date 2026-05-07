@@ -298,6 +298,31 @@ def fetch_git_host_api_json(api_kind: str, api_url: str, token: str, api_path: s
     raise RuntimeError(last_error)
 
 
+def extract_pr_shas_from_api_response(api_kind: str, response: dict) -> tuple[str | None, str | None, str | None, str | None]:
+    """Extract SHA and reference information from PR API response.
+
+    Returns (base_sha, head_sha, base_ref, head_ref) or (None, None, None, None)
+    if not available.
+    """
+    if not isinstance(response, dict):
+        return None, None, None, None
+
+    if api_kind == "codehub":
+        base_sha = response.get("diff_refs", {}).get("base_sha") or response.get("target_branch_sha")
+        head_sha = response.get("diff_refs", {}).get("head_sha") or response.get("source_branch_sha")
+        base_ref = response.get("target_branch") or response.get("target_branch_ref")
+        head_ref = response.get("source_branch") or response.get("source_branch_ref")
+    else:
+        base = response.get("base", {})
+        head = response.get("head", {})
+        base_sha = base.get("sha") or response.get("merge_commit_sha")
+        head_sha = head.get("sha")
+        base_ref = base.get("ref") or base.get("label")
+        head_ref = head.get("ref") or head.get("label")
+
+    return base_sha, head_sha, base_ref, head_ref
+
+
 def fetch_pr_metadata_via_api(api_kind: str, api_url: str, token: str, owner: str, repo: str, pr_ref: str) -> dict:
     """Fetch PR metadata from git host API."""
     pr_number = parse_pr_number(pr_ref)

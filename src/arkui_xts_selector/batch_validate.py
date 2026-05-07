@@ -79,22 +79,25 @@ def _fetch_pr_changed_files(
     pr_url: str,
     git_host_config: Path | None = None,
     git_repo_root: Path | None = None,
-) -> tuple[list[str], dict[str, list[tuple[int, int]]], dict[str, str]]:
+) -> tuple[list[str], dict[str, list[tuple[int, int]]], dict[str, str], dict[str, str | None]]:
     """Fetch changed files for a PR via GitCode API.
 
-    Returns (changed_files, changed_ranges, raw_patch_hunks) where
-    raw_patch_hunks maps filename to raw diff text for offline replay.
+    Returns (changed_files, changed_ranges, raw_patch_hunks, sha_info) where
+    raw_patch_hunks maps filename to raw diff text for offline replay, and
+    sha_info contains {base_sha, head_sha, base_ref, head_ref}.
     """
-    from .git_host import fetch_pr_changed_files_and_ranges_via_api, load_ini_git_host_config
+    from .git_host import (
+        extract_pr_shas_from_api_response,
+        fetch_pr_changed_files_and_ranges_via_api,
+        fetch_pr_metadata_via_api,
+        load_ini_git_host_config,
+    )
 
-    # Parse owner/repo from URL
     pr_ref = pr_url.rstrip("/").split("/")[-1]
 
-    # Determine API credentials from config
     api_url = "https://gitcode.com"
     token = ""
 
-    # Auto-detect config if not provided
     if git_host_config is None:
         default_config = Path.home() / ".config" / "gitee_util" / "config.ini"
         if default_config.exists():
@@ -108,7 +111,6 @@ def _fetch_pr_changed_files(
         if ini_token:
             token = ini_token
 
-    # Extract owner/repo from URL
     m = re.match(r"https?://[^/]+/([^/]+)/([^/]+)/pull/(\d+)", pr_url)
     if not m:
         m = re.match(r"https?://[^/]+/([^/]+)/([^/]+)/merge_requests/(\d+)", pr_url)
@@ -128,11 +130,18 @@ def _fetch_pr_changed_files(
         repo_root=git_repo_root or Path("."),
     )
 
-    # Convert to strings
+    sha_info: dict[str, str | None] = {"base_sha": None, "head_sha": None, "base_ref": None, "head_ref": None}
+    try:
+        meta = fetch_pr_metadata_via_api("gitcode", api_url, token, owner, repo, pr_ref)
+        b, h, br, hr = extract_pr_shas_from_api_response("gitcode", meta)
+        sha_info = {"base_sha": b, "head_sha": h, "base_ref": br, "head_ref": hr}
+    except Exception:
+        pass
+
     changed_files = [str(p) for p in changed_paths]
     changed_ranges = {str(k): v for k, v in ranges.items()}
 
-    return changed_files, changed_ranges, raw_hunks
+    return changed_files, changed_ranges, raw_hunks, sha_info
 
 
 def _load_cached_result(pr_number: int, cache_dir: Path) -> dict | None:
@@ -429,10 +438,9 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                 changed_ranges = cached_pr.normalized_ranges
                 raw_patch_hunks = cached_pr.raw_patch_hunks
             else:
-                changed_files, changed_ranges, raw_patch_hunks = _fetch_pr_changed_files(
+                changed_files, changed_ranges, raw_patch_hunks, sha_info = _fetch_pr_changed_files(
                     pr_url, git_host_config=git_host_config, git_repo_root=git_repo_root)
 
-                # Cache the raw API response
                 from datetime import datetime, timezone
                 import re as _re
                 _m = _re.match(r"https?://[^/]+/([^/]+)/([^/]+)/", pr_url)
@@ -453,6 +461,10 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                     normalized_ranges=changed_ranges,
                     fetch_status="ok",
                     fetched_at=datetime.now(timezone.utc).isoformat(),
+                    base_sha=sha_info.get("base_sha"),
+                    head_sha=sha_info.get("head_sha"),
+                    base_ref=sha_info.get("base_ref"),
+                    head_ref=sha_info.get("head_ref"),
                 )
                 pr_api_cache.put(cache_entry)
 

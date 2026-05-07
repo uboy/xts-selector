@@ -44,6 +44,10 @@ class PrCacheEntry:
     api_error: str = ""
     fetched_at: str = ""
     schema_version: str = SCHEMA_VERSION
+    base_sha: str | None = None
+    head_sha: str | None = None
+    base_ref: str | None = None
+    head_ref: str | None = None
 
     def to_dict(self) -> dict:
         d = asdict(self)

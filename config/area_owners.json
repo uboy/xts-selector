@@ -2,20 +2,99 @@
   "schema_version": "v1",
   "areas": [
     {
-      "path_pattern": "frameworks/core/components_ng/pattern/button/",
-      "owner_team": "arkui-button",
-      "default_targets": [
-        "ace_ets_module_button_static",
-        "ace_ets_module_button_common"
-      ]
+      "path_pattern": "frameworks/core/components_ng/pattern/",
+      "owner_team": "arkui-components",
+      "default_targets": []
     },
     {
-      "path_pattern": "frameworks/core/components_ng/pattern/slider/",
-      "owner_team": "arkui-slider",
-      "default_targets": [
-        "ace_ets_module_slider_static",
-        "ace_ets_module_slider_common"
-      ]
+      "path_pattern": "frameworks/core/components_ng/manager/drag_drop/",
+      "owner_team": "arkui-gesture",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "frameworks/core/components_ng/event/",
+      "owner_team": "arkui-event",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "frameworks/core/pipeline/",
+      "owner_team": "arkui-render",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "frameworks/core/components_ng/render/",
+      "owner_team": "arkui-render",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "frameworks/bridge/declarative_frontend/",
+      "owner_team": "arkui-bridge-js",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "frameworks/bridge/arkts_frontend/",
+      "owner_team": "arkui-bridge-ets",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "frameworks/core/interfaces/native/",
+      "owner_team": "arkui-native-api",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "frameworks/core/common/",
+      "owner_team": "arkui-common",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "frameworks/core/animation/",
+      "owner_team": "arkui-animation",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "frameworks/core/components_ng/base/",
+      "owner_team": "arkui-infrastructure",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "frameworks/core/components_ng/property/",
+      "owner_team": "arkui-property",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "frameworks/core/accessibility/",
+      "owner_team": "arkui-accessibility",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "frameworks/core/gestures/",
+      "owner_team": "arkui-gesture",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "adapter/ohos/",
+      "owner_team": "arkui-platform-ohos",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "adapter/preview/",
+      "owner_team": "arkui-platform-preview",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "interfaces/native/node/",
+      "owner_team": "arkui-native-node",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "interfaces/ets/ani/",
+      "owner_team": "arkui-ets-animation",
+      "default_targets": []
+    },
+    {
+      "path_pattern": "test/unittest/core/",
+      "owner_team": "arkui-test-unittest",
+      "default_targets": []
     }
   ]
 }
