@@ -45,6 +45,7 @@ class RankingResult:
     must_run: list[RankedTarget] = field(default_factory=list)
     recommended: list[RankedTarget] = field(default_factory=list)
     fallback: list[RankedTarget] = field(default_factory=list)
+    dropped: list[RankedTarget] = field(default_factory=list)
     dropped_count: int = 0
 
     @property
@@ -56,6 +57,11 @@ class RankingResult:
             "must_run": [t.project_id for t in self.must_run],
             "recommended": [t.project_id for t in self.recommended],
             "fallback": [t.project_id for t in self.fallback],
+            "dropped": [
+                {"project_id": t.project_id, "bucket": t.bucket,
+                 "score": t.score, "reasons": list(t.reasons)}
+                for t in self.dropped
+            ],
             "dropped_count": self.dropped_count,
             "total": len(self.all_targets),
         }
@@ -145,20 +151,23 @@ def rank_targets(
     for lst in (raw_must, raw_rec, raw_fall):
         lst.sort(key=lambda t: (-t.score, t.project_id))
 
-    dropped = 0
+    dropped_targets: list[RankedTarget] = []
+    dropped_count = 0
 
     def _apply_cap(items: list[RankedTarget], cap: int | None) -> list[RankedTarget]:
-        nonlocal dropped
+        nonlocal dropped_count
         if cap is None or len(items) <= cap:
             return items
-        dropped += len(items) - cap
+        dropped_count += len(items) - cap
+        dropped_targets.extend(items[cap:])
         return items[:cap]
 
     return RankingResult(
         must_run=_apply_cap(raw_must, BUCKET_CAPS["must_run"]),
         recommended=_apply_cap(raw_rec, BUCKET_CAPS["recommended"]),
         fallback=_apply_cap(raw_fall, BUCKET_CAPS["fallback"]),
-        dropped_count=dropped,
+        dropped=dropped_targets,
+        dropped_count=dropped_count,
     )
 
 

@@ -85,14 +85,18 @@ class SelectionReason:
     matched_apis: tuple[str, ...]  # API names that linked this project
     usage_kinds: tuple[str, ...]  # e.g. ("component_construction", "attribute_method")
     confidence: str  # "strong" | "medium" | "weak"
+    provenance: str = ""  # resolver branch that produced this reason
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "project_path": self.project_path,
             "matched_apis": list(self.matched_apis),
             "usage_kinds": list(self.usage_kinds),
             "confidence": self.confidence,
         }
+        if self.provenance:
+            d["provenance"] = self.provenance
+        return d
 
 
 @dataclass(frozen=True)
@@ -617,6 +621,7 @@ def _resolve_pr_core(
                             matched_apis=(),
                             usage_kinds=("native_interface",),
                             confidence="medium",
+                            provenance="native_typed",
                         ) for p in native_projects
                     ),
                     broad_infra_match=None,
@@ -652,6 +657,7 @@ def _resolve_pr_core(
                             matched_apis=(),
                             usage_kinds=("manual_override",),
                             confidence="strong",
+                            provenance="manual_override",
                         ) for t in override.must_run_targets
                     ),
                     broad_infra_match=None,
@@ -705,6 +711,7 @@ def _resolve_pr_core(
                                 matched_apis=tuple(sorted(info["apis"])),
                                 usage_kinds=tuple(sorted(info["kinds"])),
                                 confidence=info["confidence"],
+                                provenance="bridge_specific",
                             )
                             for proj, info in sorted(project_reasons.items())
                         )
@@ -807,6 +814,7 @@ def _resolve_pr_core(
                             matched_apis=(),
                             usage_kinds=("cpp_naming_convention",),
                             confidence="medium",
+                            provenance="cpp_naming",
                         )
                         for d in naming_dirs
                     ) if naming_dirs else (),
@@ -857,6 +865,7 @@ def _resolve_pr_core(
                             matched_apis=(),
                             usage_kinds=("cpp_naming_convention",),
                             confidence="medium",
+                            provenance="cpp_naming",
                         )
                         for d in naming_dirs
                     ),
@@ -983,6 +992,7 @@ def _resolve_pr_core(
                 matched_apis=tuple(sorted(info["apis"])),
                 usage_kinds=tuple(sorted(info["kinds"])),
                 confidence=info["confidence"],
+                provenance="member_index",
             )
             for proj, info in sorted(project_reasons.items())
         )
@@ -1012,6 +1022,7 @@ def _resolve_pr_core(
                                 matched_apis=(),
                                 usage_kinds=("area_fallback",),
                                 confidence="weak",
+                                provenance="area_fallback",
                             ) for t in capped_targets
                         ),
                         broad_infra_match=None,
@@ -1038,6 +1049,7 @@ def _resolve_pr_core(
                                 matched_apis=(),
                                 usage_kinds=("last_resort_token_match",),
                                 confidence="weak",
+                                provenance="last_resort_token_match",
                             ) for m in resort_matches
                         ),
                         broad_infra_match=None,
@@ -1096,6 +1108,7 @@ def _resolve_pr_core(
                             matched_apis=(),
                             usage_kinds=("coverage_replay",),
                             confidence="medium" if ce.coverage_ratio >= 0.3 else "weak",
+                            provenance="coverage_replay",
                         ))
 
             if coupling_index is not None:
@@ -1107,6 +1120,7 @@ def _resolve_pr_core(
                             matched_apis=(),
                             usage_kinds=("git_coupling",),
                             confidence="medium" if c.confidence >= 0.5 else "weak",
+                            provenance="git_coupling",
                         ))
 
             if new_consumers != set(entry.consumer_projects):

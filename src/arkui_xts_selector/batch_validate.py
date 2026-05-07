@@ -222,6 +222,19 @@ def _summarize_result(result: dict) -> dict:
             if p not in all_projects:
                 all_projects[p] = {"project": p, "bucket": "required", "score": 0, "variant": ""}
 
+        # Extract bucket counts from target_ranking action in provenance
+        buckets = {"must_run": 0, "recommended": 0, "fallback": 0, "dropped": 0}
+        for action in gs.get("provenance", []):
+            if action.get("action") == "target_ranking":
+                ranking = action.get("ranking", {})
+                buckets = {
+                    "must_run": len(ranking.get("must_run", [])),
+                    "recommended": len(ranking.get("recommended", [])),
+                    "fallback": len(ranking.get("fallback", [])),
+                    "dropped": ranking.get("dropped_count", 0),
+                }
+                break
+
         return {
             "pr_number": result["pr_number"],
             "status": "ok",
@@ -233,7 +246,7 @@ def _summarize_result(result: dict) -> dict:
             "aae_actionable_rate": round(files_with_coverage / actionable_files, 4),
             "target_count": len(all_projects),
             "top_targets": list(all_projects.values())[:5],
-            "buckets": {},
+            "buckets": buckets,
             "graph_files_resolved": files_with_apis,
             "graph_naming_resolved": naming_resolved,
             "graph_overall_risk": gs.get("overall_false_negative_risk", "n/a"),
@@ -247,7 +260,6 @@ def _summarize_result(result: dict) -> dict:
             "semantic_source": gs.get("semantic_source", "unknown"),
             "unresolved_count": unresolved_count,
             "impact_families": sorted(impact_families),
-            # Granular resolution metrics
             "canonical_api_resolution_rate": round(canonical_api_files / max(1, len(graph_entries)), 4),
             "exact_consumer_hit_rate": round(exact_consumer_files / max(1, len(graph_entries)), 4),
             "family_resolution_rate": round(family_files / max(1, len(graph_entries)), 4),
@@ -505,9 +517,7 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                 "dropped_count": pr_resolve_result.dropped_count,
             }
             if pr_resolve_result.provenance:
-                graph_selection["provenance"] = [
-                    {k: v for k, v in p.items() if k != "ranking"} for p in pr_resolve_result.provenance
-                ]
+                graph_selection["provenance"] = list(pr_resolve_result.provenance)
             if pr_resolve_result.fallback_extra_targets:
                 graph_selection["fallback_extra_targets"] = list(pr_resolve_result.fallback_extra_targets)
             if pr_resolve_result.unresolved_files:

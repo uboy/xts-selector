@@ -126,3 +126,42 @@ class TestRankTargets:
         ]
         result = rank_targets(entries)
         assert len(result.all_targets) == 2
+
+
+class TestDroppedTargets:
+    def test_dropped_targets_populated(self):
+        entries = [{
+            "changed_file": "x.cpp",
+            "consumer_projects": [f"target_{i}" for i in range(50)],
+            "affected_apis": ["api"],
+            "canonical_affected_apis": [],
+            "selection_reasons": [],
+            "impact_candidates": [],
+        }]
+        result = rank_targets(entries)
+        # 50 targets, all fallback (no canonical) → fallback cap=30, so 20 dropped
+        assert result.dropped_count == 20
+        assert len(result.dropped) == 20
+
+    def test_dropped_to_dict_includes_metadata(self):
+        entries = [{
+            "changed_file": "x.cpp",
+            "consumer_projects": [f"t{i}" for i in range(45)],
+            "affected_apis": [], "canonical_affected_apis": [],
+            "selection_reasons": [], "impact_candidates": [],
+        }]
+        d = rank_targets(entries).to_dict()
+        assert "dropped" in d
+        assert isinstance(d["dropped"], list)
+        assert all("project_id" in item for item in d["dropped"])
+
+    def test_no_drops_under_cap(self):
+        entries = [{
+            "changed_file": "x.cpp",
+            "consumer_projects": ["t1", "t2"],
+            "affected_apis": [], "canonical_affected_apis": [],
+            "selection_reasons": [], "impact_candidates": [],
+        }]
+        result = rank_targets(entries)
+        assert result.dropped_count == 0
+        assert len(result.dropped) == 0
