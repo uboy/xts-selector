@@ -62,8 +62,6 @@ def extract_method_changes(
     changes: list[MethodChange] = []
 
     for file_path in changed_files:
-        full_path = repo_root / file_path
-
         try:
             pre_content = _git_show(repo_root, base_sha, file_path)
         except subprocess.CalledProcessError:
@@ -74,8 +72,14 @@ def extract_method_changes(
         except subprocess.CalledProcessError:
             post_content = None
 
-        if not full_path.suffix.lower() in (".cpp", ".cc", ".cxx", ".h", ".hpp", ".hh"):
-            continue
+        if file_path.endswith((".cpp", ".cc", ".cxx", ".h", ".hpp", ".hh")):
+            changes.extend(_diff_cpp(file_path, pre_content, post_content))
+        elif file_path.endswith(".d.ts"):
+            changes.extend(_diff_dts(file_path, pre_content, post_content))
+        elif file_path.endswith(".idl"):
+            changes.extend(_diff_idl(file_path, pre_content, post_content))
+        elif file_path.endswith((".ets", ".ts")):
+            changes.extend(_diff_ets(file_path, pre_content, post_content))
 
         file_changes = _diff_cpp(file_path, pre_content, post_content)
         changes.extend(file_changes)
@@ -367,3 +371,105 @@ def _extract_cpp_name(declarator_node, current_class: str | None, content: bytes
                     qualified_name = raw
 
     return method_name, qualified_name, parent_class
+
+
+def _parse_text_signatures(content: bytes) -> dict[str, str]:
+    """Extract interface/class method signatures from .d.ts/.ts text.
+
+    Returns dict of qualified_name → signature for diffing.
+    """
+    import re
+
+    text = content.decode("utf-8", errors="replace")
+
+    # Normalize: flatten braces so each { and } is on its own logical boundary
+    text = re.sub(r"\{", " {\n", text)
+    text = re.sub(r"\}", "\n}\n", text)
+    text = re.sub(r";", ";\n", text)
+
+    sigs: dict[str, str] = {}
+    current_iface: str | None = None
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("//") or stripped.startswith("/*"):
+            continue
+
+        m = re.match(r"(?:export\s+)?(?:declare\s+)?(?:interface|class)\s+(\w+)", stripped)
+        if m:
+            current_iface = m.group(1)
+            continue
+
+        if stripped.startswith("}"):
+            current_iface = None
+            continue
+
+        # Method signature: name(...): type;
+        m = re.match(r"(\w+)\s*\(", stripped)
+        if m and current_iface and stripped.endswith(";"):
+            name = m.group(1)
+            sig = re.sub(r"\s+", " ", stripped).strip().rstrip(";")
+            sigs[f"{current_iface}::{name}"] = sig
+            continue
+
+        # Property: name: type;
+        m = re.match(r"(?:readonly\s+)?(\w+)\s*(?:\??)\s*:\s*[^;]+;", stripped)
+        if m and current_iface:
+            name = m.group(1)
+            sigs[f"{current_iface}::{name}"] = f"prop:{name}"
+
+    return sigs
+
+
+def _diff_signatures(
+    file_path: str,
+    pre: bytes | None,
+    post: bytes | None,
+    change_kind_sig: str = "signature_modified",
+    change_kind_added: str = "added_method",
+    change_kind_removed: str = "removed_method",
+) -> list[MethodChange]:
+    """Generic signature-based diff for .d.ts/.idl/.ts files."""
+    pre_sigs = _parse_text_signatures(pre) if pre else {}
+    post_sigs = _parse_text_signatures(post) if post else {}
+
+    changes: list[MethodChange] = []
+
+    for qname in set(post_sigs) - set(pre_sigs):
+        parent, method = qname.split("::", 1) if "::" in qname else (None, qname)
+        changes.append(MethodChange(
+            file_path=file_path, parent_class=parent, method_name=method,
+            qualified_name=qname, change_kind=change_kind_added,
+            pre=None, post=None,
+        ))
+
+    for qname in set(pre_sigs) - set(post_sigs):
+        parent, method = qname.split("::", 1) if "::" in qname else (None, qname)
+        changes.append(MethodChange(
+            file_path=file_path, parent_class=parent, method_name=method,
+            qualified_name=qname, change_kind=change_kind_removed,
+            pre=None, post=None,
+        ))
+
+    for qname in set(pre_sigs) & set(post_sigs):
+        if pre_sigs[qname] != post_sigs[qname]:
+            parent, method = qname.split("::", 1) if "::" in qname else (None, qname)
+            changes.append(MethodChange(
+                file_path=file_path, parent_class=parent, method_name=method,
+                qualified_name=qname, change_kind=change_kind_sig,
+                pre=None, post=None,
+            ))
+
+    return changes
+
+
+def _diff_dts(file_path: str, pre: bytes | None, post: bytes | None) -> list[MethodChange]:
+    return _diff_signatures(file_path, pre, post)
+
+
+def _diff_idl(file_path: str, pre: bytes | None, post: bytes | None) -> list[MethodChange]:
+    return _diff_signatures(file_path, pre, post)
+
+
+def _diff_ets(file_path: str, pre: bytes | None, post: bytes | None) -> list[MethodChange]:
+    return _diff_signatures(file_path, pre, post)
