@@ -104,6 +104,8 @@ class PrResolveResult:
     unresolved_files: tuple[str, ...] = ()  # files with no mapping at all
     low_confidence_resolved_files: tuple[str, ...] = ()  # files resolved only via weak signals (last_resort, area_fallback)
     semantic_source: str = "unknown"  # "api" | "family" | "broad" | "unknown"
+    dropped_count: int = 0  # targets dropped due to caps
+    provenance: tuple[dict, ...] = ()  # per-file resolution trace for debugging
 
 
 @dataclass(frozen=True)
@@ -302,6 +304,8 @@ def apply_fallback(
         unresolved_files=result.unresolved_files,
         low_confidence_resolved_files=result.low_confidence_resolved_files,
         semantic_source=result.semantic_source,
+        dropped_count=result.dropped_count,
+        provenance=result.provenance,
     )
 
 

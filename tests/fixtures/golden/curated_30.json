@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "description": "Stratified golden fixture for 30 curated PRs. Auto-generated draft — needs manual review.",
+  "_note": "Populate with real PR numbers from select_curated_prs.py output, then manually label expected APIs."
+}

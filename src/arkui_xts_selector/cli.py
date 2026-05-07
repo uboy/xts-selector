@@ -1504,6 +1504,22 @@ def parse_args() -> argparse.Namespace:
     record_parser.add_argument("--selector-report", default=None, help="Path to selector report JSON")
     record_parser.add_argument("--audit-dir", default=None, help="Audit log directory")
 
+    # Oracle extract subcommand (Wave 4, W1.5)
+    oracle_parser = subparsers.add_parser("oracle-extract", help="Extract ground-truth API changes from PR diff")
+    oracle_parser.add_argument("--pr-number", type=int, required=True, help="PR number")
+    oracle_parser.add_argument("--repo-root", required=True, help="OHOS workspace root")
+    oracle_parser.add_argument("--cache-dir", default="local/pr_api_cache", help="PR API cache directory")
+    oracle_parser.add_argument("--git-host-config", default=None, help="Git host config file")
+    oracle_parser.add_argument("--output", default=None, help="Output JSON path (default: stdout)")
+
+    # Coverage eval subcommand (Wave 4, W2.6)
+    cov_parser = subparsers.add_parser("coverage-eval", help="Evaluate selector coverage against golden fixtures")
+    cov_parser.add_argument("--batch-results", required=True, help="Path to batch_results.json")
+    cov_parser.add_argument("--golden", required=True, help="Path to golden fixtures JSON")
+    cov_parser.add_argument("--baseline", default=None, help="Path to baseline metrics JSON (for regression gate)")
+    cov_parser.add_argument("--output", default=None, help="Output JSON path")
+    cov_parser.add_argument("--report-md", default=None, help="Output markdown report path")
+
     return parser.parse_args()
 
 
@@ -1677,6 +1693,106 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
     )
 
 
+def _cmd_oracle_extract(args: argparse.Namespace) -> int:
+    from .validation.ast_oracle import extract_method_changes
+    from .validation.api_mapper import map_method_changes, group_by_confidence
+    from .pr_cache import PrApiCache
+
+    cache_dir = Path(args.cache_dir)
+    cache = PrApiCache(cache_dir, mode="read-only")
+
+    pr_number = args.pr_number
+    repo_root = Path(args.repo_root)
+
+    pr_url_pattern = f"https://gitcode.com/openharmony/ace_engine/pull/{pr_number}"
+    try:
+        entry = cache.get(pr_url_pattern)
+    except Exception:
+        pr_url_pattern = f"https://gitcode.com/openharmony/ace_engine/merge_requests/{pr_number}"
+        try:
+            entry = cache.get(pr_url_pattern)
+        except Exception:
+            print(f"PR #{pr_number} not found in cache", file=sys.stderr)
+            return 1
+
+    if entry is None:
+        print(f"PR #{pr_number} not found in cache", file=sys.stderr)
+        return 1
+
+    if not entry.base_sha or not entry.head_sha:
+        print(f"PR #{pr_number} has no SHA data — run refresh_pr_metadata first", file=sys.stderr)
+        return 1
+
+    changes = extract_method_changes(
+        repo_root=repo_root,
+        base_sha=entry.base_sha,
+        head_sha=entry.head_sha,
+        changed_files=entry.changed_files,
+    )
+
+    from dataclasses import asdict
+    mappings = map_method_changes([asdict(c) for c in changes])
+    grouped = group_by_confidence(mappings)
+
+    result = {
+        "pr_number": pr_number,
+        "total_changes": len(changes),
+        "high_confidence": grouped["high"],
+        "medium_confidence": grouped["medium"],
+        "unmapped": grouped["unmapped"],
+    }
+
+    output = json.dumps(result, indent=2, ensure_ascii=False)
+    if args.output:
+        Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.output).write_text(output, encoding="utf-8")
+        print(f"Wrote oracle output to {args.output}")
+    else:
+        print(output)
+
+    return 0
+
+
+def _cmd_coverage_eval(args: argparse.Namespace) -> int:
+    from .coverage_eval import (
+        CoverageEvaluator,
+        load_golden_fixtures,
+        load_baseline_metrics,
+    )
+
+    batch_results = json.loads(Path(args.batch_results).read_text(encoding="utf-8"))
+    golden = load_golden_fixtures(Path(args.golden))
+
+    baseline = None
+    if args.baseline:
+        baseline = load_baseline_metrics(Path(args.baseline))
+
+    evaluator = CoverageEvaluator(
+        batch_results=batch_results,
+        golden_fixtures=golden,
+        baseline_metrics=baseline,
+    )
+
+    report = evaluator.evaluate()
+
+    if args.output:
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(
+            json.dumps(report.to_dict(), indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        print(f"Wrote coverage eval to {output_path}")
+
+    if args.report_md:
+        report_path = Path(args.report_md)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(report.format_report_md(), encoding="utf-8")
+        print(f"Wrote report to {report_path}")
+
+    return evaluator.check_regression_gate()
+
+
 def validate_inputs(args: argparse.Namespace, app_config: AppConfig) -> list[str]:
     """Return early syntax-level input errors only."""
     del app_config
@@ -1737,6 +1853,12 @@ def main() -> int:
             return 0
         print("Usage: arkui-xts-selector audit <fn-rate|record> [options]", file=sys.stderr)
         return 1
+
+    if args.command == "oracle-extract":
+        return _cmd_oracle_extract(args)
+
+    if args.command == "coverage-eval":
+        return _cmd_coverage_eval(args)
 
     progress_enabled = not args.no_progress
     json_to_stdout = bool(args.json)
