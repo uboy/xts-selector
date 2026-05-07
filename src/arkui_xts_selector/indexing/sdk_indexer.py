@@ -173,6 +173,35 @@ class SdkIndexResult:
             "source": self.source,
         }
 
+    def find_member(self, member_name: str, parent_name: str | None = None) -> SdkIndexEntry | None:
+        """Find a member by name, optionally disambiguated by parent."""
+        candidates: list[SdkIndexEntry] = []
+        for entry in self.entries:
+            if entry.member_name != member_name and entry.api_id.member_name != member_name:
+                continue
+            if parent_name:
+                member_of = entry.api_id.member_of or ""
+                parent_pub = entry.parent_api_id.public_name if entry.parent_api_id else ""
+                if parent_name.lower() not in member_of.lower() and parent_name.lower() not in parent_pub.lower():
+                    continue
+            candidates.append(entry)
+
+        if len(candidates) == 1:
+            return candidates[0]
+        if len(candidates) > 1:
+            return None
+        return None
+
+    def find_attribute_member(self, member_name: str, family: str) -> SdkIndexEntry | None:
+        """Find a member in <Family>Attribute or <Family>CommonMethod."""
+        family_cap = family.capitalize()
+        for parent_suffix in ("Attribute", "CommonMethod", "Interface"):
+            parent = f"{family_cap}{parent_suffix}"
+            result = self.find_member(member_name, parent)
+            if result:
+                return result
+        return self.find_member(member_name, family)
+
     @classmethod
     def from_dict(cls, data: dict) -> SdkIndexResult:
         """Reconstruct from a dict produced by :meth:`to_dict`."""
