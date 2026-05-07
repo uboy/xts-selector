@@ -1,37 +1,698 @@
 {
-  "version": 1,
-  "description": "Stratified golden fixture for 30 curated PRs from 300-PR cache",
-  "source": "auto-selected from local/pr_api_cache with category diversity",
+  "schema_version": "v1",
+  "source_run": "post_wiring_300pr",
+  "labeled_at": "2026-05-07",
   "items": [
-    {"pr_number": 81536, "expected_category": "bridge"},
-    {"pr_number": 81882, "expected_category": "pattern"},
-    {"pr_number": 82131, "expected_category": "pattern"},
-    {"pr_number": 82604, "expected_category": "bridge"},
-    {"pr_number": 82620, "expected_category": "model_static"},
-    {"pr_number": 82928, "expected_category": "other"},
-    {"pr_number": 83100, "expected_category": "other"},
-    {"pr_number": 83256, "expected_category": "build_config"},
-    {"pr_number": 83403, "expected_category": "native_interface"},
-    {"pr_number": 83580, "expected_category": "native_interface"},
-    {"pr_number": 83761, "expected_category": "build_config"},
-    {"pr_number": 83822, "expected_category": "other"},
-    {"pr_number": 83851, "expected_category": "other"},
-    {"pr_number": 83878, "expected_category": "model_ng"},
-    {"pr_number": 83913, "expected_category": "other"},
-    {"pr_number": 83970, "expected_category": "other"},
-    {"pr_number": 83998, "expected_category": "other"},
-    {"pr_number": 84055, "expected_category": "other"},
-    {"pr_number": 84069, "expected_category": "other"},
-    {"pr_number": 84097, "expected_category": "model_ng"},
-    {"pr_number": 84113, "expected_category": "other"},
-    {"pr_number": 84156, "expected_category": "other"},
-    {"pr_number": 84168, "expected_category": "other"},
-    {"pr_number": 84214, "expected_category": "other"},
-    {"pr_number": 84246, "expected_category": "other"},
-    {"pr_number": 84255, "expected_category": "other"},
-    {"pr_number": 84268, "expected_category": "other"},
-    {"pr_number": 84301, "expected_category": "other"},
-    {"pr_number": 84306, "expected_category": "other"},
-    {"pr_number": 84330, "expected_category": "other"}
+    {
+      "pr_number": 81536,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/81536",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_interop"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 81882,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/81882",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_implementation",
+          "ace_ets_module_rich_editor",
+          "ace_ets_module_text"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 82131,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/82131",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_implementation",
+          "ace_ets_module_select"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 82604,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/82604",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_implementation",
+          "ace_ets_module_rich_editor",
+          "ace_ets_module_select_content_overlay",
+          "ace_ets_module_text",
+          "ace_ets_module_text_field"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 82620,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/82620",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_button"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 82928,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/82928",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_navigation",
+          "ace_ets_module_navrouter"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 83100,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/83100",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_navigation",
+          "ace_ets_module_navrouter"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 83256,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/83256",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_overlay"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 83403,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/83403",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_node"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 83580,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/83580",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_node"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 83761,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/83761",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_ability_component",
+          "ace_ets_module_security_component",
+          "ace_ets_module_window_scene"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 83822,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/83822",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_node"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 83851,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/83851",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_gesture",
+          "ace_ets_module_implementation",
+          "ace_ets_module_node",
+          "ace_ets_module_view_abstract"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 83878,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/83878",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_video"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 83913,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/83913",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_ani",
+          "ace_ets_module_drag_drop",
+          "ace_ets_module_gesture"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 83970,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/83970",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_implementation",
+          "ace_ets_module_node"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 83998,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/83998",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [],
+        "must_run_count_min": 0,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 84055,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84055",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_node",
+          "ace_ets_module_rich_editor"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 84069,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84069",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [],
+        "must_run_count_min": 0,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 84097,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84097",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_rich_editor"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 84113,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84113",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_implementation",
+          "ace_ets_module_search"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 84156,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84156",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [],
+        "must_run_count_min": 0,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 84168,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84168",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [],
+        "must_run_count_min": 0,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 84214,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84214",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [],
+        "must_run_count_min": 0,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 84246,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84246",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_time_picker"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 84255,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84255",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [],
+        "must_run_count_min": 0,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 84268,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84268",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [
+          "ace_ets_module_node"
+        ],
+        "must_run_count_min": 1,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 84301,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84301",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [],
+        "must_run_count_min": 0,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 84306,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84306",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [],
+        "must_run_count_min": 0,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    },
+    {
+      "pr_number": 84330,
+      "url": "https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/84330",
+      "expected_apis": {
+        "high_confidence": [],
+        "medium_confidence": [],
+        "low_confidence_or_unsure": [],
+        "explicitly_not_changed": []
+      },
+      "expected_targets": {
+        "must_run_patterns": [],
+        "must_run_count_min": 0,
+        "recommended_patterns": [],
+        "recommended_count_max": 50,
+        "explicitly_not_targets": []
+      },
+      "labeling_method": "auto_only",
+      "labeler": "auto-script",
+      "labeling_time_minutes": 0,
+      "notes": "Auto-generated draft. NEEDS REVIEW."
+    }
   ]
 }

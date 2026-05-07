@@ -163,6 +163,18 @@ def _save_cache_result(pr_number: int, result: dict, cache_dir: Path) -> None:
     cache_file.write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
 
 
+_NON_PRODUCT_REASONS = frozenset({
+    "build_config_no_test_impact",
+    "generated_file_skipped",
+    "documentation_no_test_impact",
+    "test_file_no_cross_impact",
+})
+
+
+def _is_non_product(entry: dict) -> bool:
+    return entry.get("unresolved_reason", "") in _NON_PRODUCT_REASONS
+
+
 def _summarize_result(result: dict) -> dict:
     """Extract summary metrics from a PR result."""
     if result.get("status") != "ok":
@@ -260,6 +272,15 @@ def _summarize_result(result: dict) -> dict:
             "semantic_source": gs.get("semantic_source", "unknown"),
             "unresolved_count": unresolved_count,
             "impact_families": sorted(impact_families),
+            # Product-only metrics (exclude test_only, build_config, generated, docs)
+            "product_files_count": sum(1 for e in graph_entries
+                                        if not _is_non_product(e)),
+            "product_canonical_count": sum(1 for e in graph_entries
+                                            if not _is_non_product(e)
+                                            and e.get("canonical_affected_apis")),
+            "product_unresolved_count": sum(1 for e in graph_entries
+                                             if not _is_non_product(e)
+                                             and e.get("unresolved_reason")),
             "canonical_api_resolution_rate": round(canonical_api_files / max(1, len(graph_entries)), 4),
             "exact_consumer_hit_rate": round(exact_consumer_files / max(1, len(graph_entries)), 4),
             "family_resolution_rate": round(family_files / max(1, len(graph_entries)), 4),
@@ -644,7 +665,17 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         avg_consumer = sum(consumer_rates) / len(consumer_rates) if consumer_rates else 0
         avg_family = sum(family_rates) / len(family_rates) if family_rates else 0
         avg_broad = sum(broad_rates) / len(broad_rates) if broad_rates else 0
+
+        # PR-level canonical coverage: how many PRs have at least 1 canonical API
+        prs_with_canonical = sum(1 for s in summaries
+                                  if s.get("status") == "ok"
+                                  and s.get("canonical_api_resolution_rate", 0) > 0)
+        pr_canonical_coverage = prs_with_canonical / max(1, ok)
+        file_canonical_coverage = avg_canonical
+
         print(f"Canonical API resolution rate (avg): {avg_canonical:.2%}")
+        print(f"PR canonical coverage: {pr_canonical_coverage:.2%} ({prs_with_canonical}/{ok} PRs)")
+        print(f"File canonical coverage: {file_canonical_coverage:.4f} (avg per-file rate)")
         print(f"Exact consumer hit rate (avg): {avg_consumer:.2%}")
         print(f"Family resolution rate (avg): {avg_family:.2%}")
         print(f"Broad infra rate (avg): {avg_broad:.2%}")
@@ -654,10 +685,27 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         low_conf_rate = total_low_conf / max(1, total_files)
         print(f"Low-confidence resolutions: {total_low_conf} files ({low_conf_rate:.2%})")
 
+        # Product-only metrics (exclude test_only, build_config, generated, docs)
+        product_canon_rates = [s["product_canonical_count"] / max(1, s["product_files_count"])
+                               for s in summaries
+                               if s.get("status") == "ok" and s.get("product_files_count", 0) > 0]
+        avg_canonical_product = sum(product_canon_rates) / len(product_canon_rates) if product_canon_rates else 0
+        product_unres_rates = [s["product_unresolved_count"] / max(1, s["product_files_count"])
+                               for s in summaries
+                               if s.get("status") == "ok" and s.get("product_files_count", 0) > 0]
+        avg_unresolved_product = sum(product_unres_rates) / len(product_unres_rates) if product_unres_rates else 0
+        print(f"Canonical (product-only): {avg_canonical_product:.2%}")
+        print(f"Unresolved (product-only): {avg_unresolved_product:.2%}")
+
         # Write quality metrics to summary
         quality_metrics = {
             "api_resolution_rate": avg_aae,
             "canonical_api_resolution_rate": avg_canonical,
+            "pr_canonical_coverage": pr_canonical_coverage,
+            "file_canonical_coverage": file_canonical_coverage,
+            "prs_with_canonical": prs_with_canonical,
+            "canonical_api_resolution_rate_product": avg_canonical_product,
+            "unresolved_rate_product": avg_unresolved_product,
             "exact_consumer_hit_rate": avg_consumer,
             "family_resolution_rate": avg_family,
             "broad_infra_rate": avg_broad,
