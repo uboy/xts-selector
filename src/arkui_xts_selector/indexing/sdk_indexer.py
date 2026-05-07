@@ -75,6 +75,7 @@ class SdkIndexResult:
         # Build O(1) lookup indexes (frozen=True requires object.__setattr__)
         by_public: dict[str, SdkIndexEntry] = {}
         by_parent_member: dict[tuple[str, str], SdkIndexEntry] = {}
+        by_parent_lower_member: dict[tuple[str, str], list[tuple[str, SdkIndexEntry]]] = {}
         by_member_only: dict[str, list[SdkIndexEntry]] = {}
         for entry in self.entries:
             pn = entry.api_id.public_name
@@ -82,23 +83,24 @@ class SdkIndexResult:
                 by_public[pn] = entry
             mn = entry.member_name or entry.api_id.member_name
             if mn:
-                # Parent key: prefer parent_api_id.public_name, then api_id.public_name
-                # (when public_name is the class and member_name is the member)
                 parent_name = None
                 if entry.parent_api_id and entry.parent_api_id.public_name:
                     parent_name = entry.parent_api_id.public_name
                 elif entry.api_id.member_of:
                     parent_name = entry.api_id.member_of
                 elif entry.api_id.member_name and pn:
-                    # public_name is the class, member_name is the member
                     parent_name = pn
                 if parent_name:
                     pk = (parent_name, mn)
                     if pk not in by_parent_member:
                         by_parent_member[pk] = entry
+                    # Case-insensitive index: group by (parent.lower(), member)
+                    lk = (parent_name.lower(), mn)
+                    by_parent_lower_member.setdefault(lk, []).append((parent_name, entry))
                 by_member_only.setdefault(mn, []).append(entry)
         object.__setattr__(self, "_by_public", by_public)
         object.__setattr__(self, "_by_parent_member", by_parent_member)
+        object.__setattr__(self, "_by_parent_lower_member", by_parent_lower_member)
         object.__setattr__(self, "_by_member_only", by_member_only)
 
     def find(self, name: str) -> SdkIndexEntry | None:
@@ -194,11 +196,14 @@ class SdkIndexResult:
             hit = self._by_parent_member.get((parent_name, member_name))
             if hit is not None:
                 return hit
-            # Case-insensitive fallback for parent_name
-            p_lower = parent_name.lower()
-            for (pk, mk), entry in self._by_parent_member.items():
-                if mk == member_name and p_lower in pk.lower():
-                    return entry
+            # O(1) case-insensitive lookup via lowercase index
+            lk = (parent_name.lower(), member_name)
+            cands = self._by_parent_lower_member.get(lk)
+            if cands:
+                if len(cands) == 1:
+                    return cands[0][1]
+                # Multiple parents match case-insensitively — ambiguous
+                return None
 
         # Bare member name lookup
         cands = self._by_member_only.get(member_name)
