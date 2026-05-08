@@ -670,7 +670,7 @@ def _resolve_pr_core(
                         consumers = inverted.consumers_for_api_id(m.api_id)
                         provenance = "exact_canonical"
                     if not consumers:
-                        consumers = inverted.consumers_for_canonical(m.api_public_name)
+                        consumers = inverted.consumers_for_member_name(m.api_public_name, parent_filter=m.api_member_of)
                         provenance = "member_index"
                     if not consumers:
                         consumers = inverted.consumers_for_name(m.api_public_name)
@@ -909,7 +909,7 @@ def _resolve_pr_core(
                     if m.api_id:
                         consumers = inverted.consumers_for_api_id(m.api_id)
                     if not consumers:
-                        consumers = inverted.consumers_for_canonical(m.api_public_name)
+                        consumers = inverted.consumers_for_member_name(m.api_public_name, parent_filter=m.api_member_of)
                     if not consumers:
                         consumers = inverted.consumers_for_name(m.api_public_name)
                     for c in consumers:
@@ -1076,7 +1076,7 @@ def _resolve_pr_core(
             if mapping.api_id:
                 consumers = inverted.consumers_for_api_id(mapping.api_id)
             if not consumers:
-                consumers = inverted.consumers_for_canonical(api_name)
+                consumers = inverted.consumers_for_member_name(api_name)
             if not consumers:
                 consumers = inverted.consumers_for_name(api_name)
 

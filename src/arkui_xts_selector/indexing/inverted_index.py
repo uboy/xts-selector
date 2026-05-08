@@ -43,6 +43,37 @@ class ConsumerEntry:
 class InvertedIndex:
     """API entity -> list of consumer entries."""
     by_api: dict[str, list[ConsumerEntry]] = field(default_factory=dict)
+    # R6 fix: dedicated member_name index for precise lookup, populated lazily.
+    # Maps bare member name (e.g. "role") → list of consumer entries from any parent.
+    _by_member_name: dict[str, list[ConsumerEntry]] | None = field(
+        default=None, repr=False, compare=False
+    )
+
+    def _build_member_index(self) -> None:
+        """Build dict[member_name -> consumers] from by_api keys.
+
+        Called lazily on first member-name lookup. Parses keys of form
+        "X.member" or "api:v1:...%23member" to extract member component.
+        """
+        idx: dict[str, list[ConsumerEntry]] = {}
+        for key, consumers in self.by_api.items():
+            member = None
+            if "%23" in key:
+                # Canonical form: api:v1:...#Parent%23member
+                member = key.rsplit("%23", 1)[-1]
+                # Strip trailing modifiers like ":get"/":set"
+                if ":" in member:
+                    member = member.split(":", 1)[0]
+            elif "." in key:
+                # Legacy form: Parent.member
+                member = key.rsplit(".", 1)[-1]
+                if ":" in member:
+                    member = member.split(":", 1)[0]
+            else:
+                member = key
+            if member:
+                idx.setdefault(member, []).extend(consumers)
+        self._by_member_name = idx
 
     def consumers_for(self, api_id: ApiEntityId) -> list[ConsumerEntry]:
         """Look up consumers by exact ApiEntityId."""
@@ -57,36 +88,47 @@ class InvertedIndex:
         return self.by_api.get(api_id_str, [])
 
     def consumers_for_canonical(self, canonical_id: str) -> list[ConsumerEntry]:
-        """Look up consumers by canonical ID string.
+        """Look up consumers by canonical ID string — STRICT exact match only.
 
-        Tries exact match first, then member_name suffix match.
-
-        TODO(api-xts-quality): R6 from REVIEW_FIX_COMMIT_1a33a0d — Phase 0.3 prerequisite.
-        Substring fallback (lines 74-77) inflates exact_consumer_hit_rate.
-        Replace with dedicated member_name index for precise lookup.
+        R6 fix (Phase 0.3): no longer does substring fallback.
+        For member-name lookup with parent disambiguation, use
+        consumers_for_member_name() with explicit parent filter.
         """
-        # Exact match
-        entries = self.by_api.get(canonical_id, [])
-        if entries:
-            return entries
+        return self.by_api.get(canonical_id, [])
 
-        # Try matching by the member portion (e.g. "role" from "ButtonAttribute.role")
-        if "." in canonical_id:
-            member = canonical_id.rsplit(".", 1)[-1]
-            # Find entries where the canonical contains this member in context
-            results = []
-            for key, consumers in self.by_api.items():
-                if key.endswith(f".{member}") or f".{member}:" in key:
-                    results.extend(consumers)
-            return results
+    def consumers_for_member_name(
+        self, member_name: str, parent_filter: str | None = None,
+    ) -> list[ConsumerEntry]:
+        """Look up consumers by bare member name with optional parent disambiguation.
 
-        return []
+        Provenance for callers: this is `member_index` lookup, NOT exact_canonical.
+        Should NOT count toward exact_consumer_hit_rate metric.
+
+        Args:
+            member_name: bare member name (e.g. "role").
+            parent_filter: optional parent class name. If given, only return
+                consumers whose key contains "<parent>%23<member>" or
+                "<parent>.<member>".
+        """
+        if self._by_member_name is None:
+            self._build_member_index()
+        candidates = self._by_member_name.get(member_name, [])  # type: ignore[union-attr]
+        if not parent_filter:
+            return candidates
+        # Filter by parent context
+        # Walk by_api once to find parent-matching keys
+        results: list[ConsumerEntry] = []
+        for key, consumers in self.by_api.items():
+            if (f"{parent_filter}%23{member_name}" in key
+                    or f"{parent_filter}.{member_name}" in key):
+                results.extend(consumers)
+        return results
 
     def consumers_for_name(self, public_name: str) -> list[ConsumerEntry]:
         """Look up consumers by public name (fuzzy substring).
 
         This is the fallback path with provenance=fuzzy_name_fallback.
-        Prefer consumers_for_api_id() or consumers_for_canonical() for
+        Prefer consumers_for_api_id() or consumers_for_member_name() for
         production paths.
         """
         results = []

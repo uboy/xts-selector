@@ -261,6 +261,23 @@ def _summarize_result(result: dict) -> dict:
                 }
                 break
 
+        # Track 8: Strong-role coverage (file_role.classify-based denominator).
+        # Files that legitimately could yield canonical API IDs through SDK lookup:
+        # model_ng/model_static/native_modifier/native_node_accessor/jsview_dynamic.
+        # This metric excludes pattern/infrastructure/test/build/docs which never
+        # produce SDK-confirmed canonical IDs by design.
+        STRONG_ROLES = {"model_ng", "model_static", "native_modifier",
+                        "native_node_accessor", "jsview_dynamic"}
+        from .indexing.file_role import classify as _file_role_classify
+        strong_role_files = 0
+        strong_role_canonical = 0
+        for e in graph_entries:
+            role, _ = _file_role_classify(e.get("changed_file", ""))
+            if role in STRONG_ROLES:
+                strong_role_files += 1
+                if e.get("canonical_affected_apis"):
+                    strong_role_canonical += 1
+
         return {
             "pr_number": result["pr_number"],
             "status": "ok",
