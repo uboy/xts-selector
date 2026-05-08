@@ -14,7 +14,7 @@ def test_resolve_canonical_id_returns_none_for_fallback():
     from arkui_xts_selector.indexing.source_to_api import _resolve_canonical_id
 
     # Without SDK index, the fallback path returns None for api_id
-    api_id, member_of, ambiguity, descendants, sdk_confirmed = _resolve_canonical_id(
+    api_id, member_of, ambiguity, descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id(
         "unknownApi", "button", None
     )
     assert api_id is None
@@ -40,7 +40,7 @@ def test_resolve_canonical_id_with_sdk_hit():
     )
     sdk_index = SdkIndexResult(entries=(entry,))
 
-    api_id, member_of, ambiguity, descendants, sdk_confirmed = _resolve_canonical_id(
+    api_id, member_of, ambiguity, descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id(
         "role", "button", sdk_index
     )
     assert api_id is not None
