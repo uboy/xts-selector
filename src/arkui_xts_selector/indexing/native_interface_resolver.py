@@ -20,7 +20,7 @@ _NATIVE_NODE_API_RE = re.compile(
 )
 
 _NATIVE_IMPL_RE = re.compile(
-    r"frameworks/core/interfaces/native/implementation/([^_]+)_modifier\."
+    r"frameworks/core/interfaces/native/implementation/(.+?)_(?:modifier|accessor|extender|peer|dialog|context|modifiers)\.(?:cpp|h)$"
 )
 
 
