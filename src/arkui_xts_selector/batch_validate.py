@@ -217,6 +217,20 @@ def _summarize_result(result: dict) -> dict:
 
         # Unresolved files count
         unresolved_count = sum(1 for e in graph_entries if e.get("unresolved_reason"))
+
+        # Strong-role coverage (file_role.classify-based denominator)
+        STRONG_ROLES = {"model_ng", "model_static", "native_modifier",
+                         "native_node_accessor", "jsview_dynamic"}
+        from .indexing.file_role import classify
+        strong_role_files = 0
+        strong_role_canonical = 0
+        for e in graph_entries:
+            role, _ = classify(e.get("changed_file", ""))
+            if role in STRONG_ROLES:
+                strong_role_files += 1
+                if e.get("canonical_affected_apis"):
+                    strong_role_canonical += 1
+
         impact_families = set()
         for e in graph_entries:
             for ic in e.get("impact_candidates", []):
@@ -288,6 +302,10 @@ def _summarize_result(result: dict) -> dict:
             "fallback_rescue_rate": round(len(gs.get("fallback_extra_targets", [])) / max(1, len(all_projects)), 4) if all_projects else 0,
             "manual_review_rate": round((1 if gs.get("ci_policy_recommendation") == "manual_review" else 0), 4),
             "low_confidence_count": len(gs.get("low_confidence_resolved_files", [])),
+            "strong_role_files_count": strong_role_files,
+            "strong_role_canonical_count": strong_role_canonical,
+            "strong_role_canonical_rate": round(
+                strong_role_canonical / max(1, strong_role_files), 4),
         }
 
     # Legacy subprocess format
@@ -719,6 +737,15 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
             "low_confidence_resolution_rate": low_conf_rate,
             "total_low_confidence": total_low_conf,
         }
+
+        total_strong = sum(s.get("strong_role_files_count", 0) for s in summaries if s["status"] == "ok")
+        total_strong_canonical = sum(s.get("strong_role_canonical_count", 0) for s in summaries if s["status"] == "ok")
+        strong_canonical_coverage = total_strong_canonical / max(1, total_strong)
+        quality_metrics["strong_role_files_total"] = total_strong
+        quality_metrics["strong_role_canonical_total"] = total_strong_canonical
+        quality_metrics["strong_role_canonical_coverage"] = strong_canonical_coverage
+        print(f"Strong-role canonical coverage: {strong_canonical_coverage:.2%} "
+              f"({total_strong_canonical}/{total_strong} strong-role files)")
 
         # Fallback statistics
         fb_applied = sum(1 for s in summaries if s["status"] == "ok" and s.get("fallback_applied"))

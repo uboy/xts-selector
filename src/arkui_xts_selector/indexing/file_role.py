@@ -120,6 +120,8 @@ def classify(rel_path: str) -> tuple[FileRole, str | None]:
         # Strip _node suffix if present (e.g., slider_node -> slider)
         if family.endswith("_node"):
             family = family[:-5]
+        if family.startswith("node_"):
+            family = family[5:]
         return "native_node_accessor", family
 
     # Check JS view dynamic
@@ -131,6 +133,8 @@ def classify(rel_path: str) -> tuple[FileRole, str | None]:
     match = _PATTERN_DIR_PATTERN.search(rel_path)
     if match:
         family = match.group(1)
+        if family.startswith("node_"):
+            family = family[5:]
         return _classify_pattern_file(rel_path, family)
 
     # Unknown pattern

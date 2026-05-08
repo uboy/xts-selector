@@ -27,6 +27,7 @@ class CppMethod:
     line: int | None = None
     end_line: int | None = None
     body_span: tuple[int, int] | None = None  # (start_byte, end_byte) of method body
+    is_declaration_only: bool = False  # True for header-declared methods without body
     confidence: str = "strong"  # Confidence level: "strong", "medium", "weak"
 
     def to_dict(self) -> dict:
@@ -154,6 +155,7 @@ def _build_class(class_specifier, code_bytes: bytes) -> CppClass:
                                 parent_class=class_name,
                                 qualified=f"{class_name}::{method_name}",
                                 line=child.start_point[0] + 1,
+                                is_declaration_only=True,
                             ))
                             break
 

@@ -9,6 +9,7 @@
     "checkbox": "Checkbox",
     "data_panel": "DataPanel",
     "divider": "Divider",
+    "embedded_component": "EmbeddedComponent",
     "flex": "Flex",
     "flow_item": "FlowItem",
     "gauge": "Gauge",
@@ -20,6 +21,7 @@
     "image_animator": "ImageAnimator",
     "list_item": "ListItem",
     "list": "List",
+    "loading_progress": "LoadingProgress",
     "marquee": "Marquee",
     "navigation": "Navigation",
     "nav_router": "NavRouter",
@@ -30,6 +32,7 @@
     "radio": "Radio",
     "rating": "Rating",
     "refresh": "Refresh",
+    "rich_editor": "RichEditor",
     "row_split": "RowSplit",
     "scroll": "Scroll",
     "search": "Search",
@@ -48,6 +51,7 @@
     "toggle": "Toggle",
     "video": "Video",
     "water_flow": "WaterFlow",
+    "with_theme": "WithTheme",
     "xcomponent": "XComponent"
   }
 }

@@ -55,3 +55,12 @@ class TestNormalizeFamily:
 
     def test_xcomponent_alias(self):
         assert normalize_family("xcomponent") == "XComponent"
+
+    def test_embedded_component_alias(self):
+        assert normalize_family("embedded_component") == "EmbeddedComponent"
+
+    def test_loading_progress_alias(self):
+        assert normalize_family("loading_progress") == "LoadingProgress"
+
+    def test_with_theme_alias(self):
+        assert normalize_family("with_theme") == "WithTheme"

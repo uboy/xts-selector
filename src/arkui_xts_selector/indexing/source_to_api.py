@@ -98,6 +98,19 @@ def build_source_to_api_mapping(
             for method in cls.methods:
                 mapping = _map_method_by_role(method, role, family, file_path, sdk_index)
                 if mapping:
+                    # Downgrade confidence for declaration-only (header) methods
+                    if method.is_declaration_only and mapping.confidence == "strong":
+                        mapping = SourceApiMapping(
+                            source_qualified=mapping.source_qualified,
+                            api_public_name=mapping.api_public_name,
+                            confidence="medium",
+                            file_role=mapping.file_role,
+                            source_file_path=mapping.source_file_path,
+                            api_id=mapping.api_id,
+                            api_member_of=mapping.api_member_of,
+                            ambiguity_state=mapping.ambiguity_state,
+                            sdk_confirmed=mapping.sdk_confirmed,
+                        )
                     # Attach method line range for hunk-level filtering
                     mapping = SourceApiMapping(
                         source_qualified=mapping.source_qualified,
@@ -214,6 +227,33 @@ def _make_canonical_suffix(method_name: str, prefix: str) -> str | None:
     return name[0].lower() + name[1:]
 
 
+def _strip_impl_suffix(member_name: str) -> str | None:
+    """Strip trailing `Impl`: imageOptionsImpl → imageOptions.
+
+    Returns None if doesn't end with Impl, or strip yields empty/Capital-start.
+    """
+    if not member_name.endswith("Impl"):
+        return None
+    stripped = member_name[:-4]
+    if not stripped or not stripped[0].islower():
+        return None
+    return stripped
+
+
+def _strip_family_prefix_from_member(member: str, family: str) -> str | None:
+    """Strip camelCase family prefix: textInputCaretColor + text_input → caretColor."""
+    if not family or not member:
+        return None
+    parts = family.split("_")
+    family_camel_lower = parts[0] + "".join(p.capitalize() for p in parts[1:])
+    if not member.startswith(family_camel_lower):
+        return None
+    rest = member[len(family_camel_lower):]
+    if not rest or not rest[0].isupper():
+        return None
+    return rest[0].lower() + rest[1:]
+
+
 def _resolve_canonical_id(
     api_name: str,
     family: str | None,
@@ -263,6 +303,28 @@ def _resolve_canonical_id(
             sdk_entry = sdk_index.find_common_member(member_lookup)
         if sdk_entry is None:
             sdk_entry = sdk_index.find(member_lookup)
+
+        # Track 1: strip *Impl suffix and retry
+        if sdk_entry is None:
+            stripped = _strip_impl_suffix(api_name)
+            if stripped:
+                if family:
+                    sdk_entry = sdk_index.find_attribute_member(stripped, family)
+                if sdk_entry is None:
+                    sdk_entry = sdk_index.find_common_member(stripped)
+                if sdk_entry is None:
+                    sdk_entry = sdk_index.find(stripped)
+
+        # Track 2: try stripping family prefix from member name
+        if sdk_entry is None and family:
+            stripped_fp = _strip_family_prefix_from_member(api_name, family)
+            if stripped_fp:
+                sdk_entry = sdk_index.find_attribute_member(stripped_fp, family)
+                if sdk_entry is None:
+                    sdk_entry = sdk_index.find_common_member(stripped_fp)
+                if sdk_entry is None:
+                    sdk_entry = sdk_index.find(stripped_fp)
+
         if sdk_entry is not None:
             canonical = sdk_entry.api_id.canonical()
             if sdk_entry.api_id.member_of:
@@ -403,6 +465,24 @@ def _map_jsview_dynamic(method_name: str, qualified: str, role: str, file_path: 
             sdk_confirmed=sdk_confirmed,
         )
 
+    # Track 5: fallback for non-Js methods (Set*/Get*/JS* prefix)
+    for prefix, conf in [("Set", "medium"), ("Get", "medium"), ("JS", "medium")]:
+        api_name = _make_canonical_suffix(method_name, prefix)
+        if api_name is not None:
+            api_id, member_of, ambiguity, _descendants, sdk_confirmed = _resolve_canonical_id(
+                api_name, family, sdk_index, method_name=method_name
+            )
+            return SourceApiMapping(
+                source_qualified=qualified,
+                api_public_name=api_name,
+                confidence=conf,
+                file_role=role,
+                source_file_path=file_path,
+                api_id=api_id,
+                api_member_of=member_of,
+                ambiguity_state=ambiguity,
+                sdk_confirmed=sdk_confirmed,
+            )
     return None
 
 
