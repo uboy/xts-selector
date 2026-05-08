@@ -200,6 +200,20 @@ def _summarize_result(result: dict) -> dict:
                           and not e.get("broad_infra_match"))
         exact_consumer_files = sum(1 for e in graph_entries if e.get("consumer_projects") and not e.get("broad_infra_match"))
 
+        # PX-05: Provenance-based strict canonical metric
+        strict_canonical_files = 0
+        provenance_counts: dict[str, int] = {}
+        for e in graph_entries:
+            reasons = e.get("selection_reasons", [])
+            entry_provenances = set()
+            for r in reasons:
+                prov = r.get("provenance", "")
+                if prov:
+                    entry_provenances.add(prov)
+                    provenance_counts[prov] = provenance_counts.get(prov, 0) + 1
+            if entry_provenances & {"strict_canonical", "exact_canonical"}:
+                strict_canonical_files += 1
+
         # Excludable files
         _SKIP_PATTERNS = (
             "/examples/", "/test/unittest/", "/test/mock/",
@@ -314,6 +328,8 @@ def _summarize_result(result: dict) -> dict:
                                              and e.get("unresolved_reason")),
             "canonical_api_resolution_rate": round(canonical_api_files / max(1, len(graph_entries)), 4),
             "exact_consumer_hit_rate": round(exact_consumer_files / max(1, len(graph_entries)), 4),
+            "strict_canonical_consumer_hit_rate": round(strict_canonical_files / max(1, len(graph_entries)), 4),
+            "provenance_distribution": provenance_counts,
             "family_resolution_rate": round(family_files / max(1, len(graph_entries)), 4),
             "broad_infra_rate": round(broad_infra_files / max(1, len(graph_entries)), 4),
             "fallback_rescue_rate": round(len(gs.get("fallback_extra_targets", [])) / max(1, len(all_projects)), 4) if all_projects else 0,
@@ -694,10 +710,12 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         # Granular resolution metrics (Task 14)
         canon_rates = [s["canonical_api_resolution_rate"] for s in summaries if s["status"] == "ok" and "canonical_api_resolution_rate" in s]
         consumer_rates = [s["exact_consumer_hit_rate"] for s in summaries if s["status"] == "ok" and "exact_consumer_hit_rate" in s]
+        strict_canonical_rates = [s["strict_canonical_consumer_hit_rate"] for s in summaries if s["status"] == "ok" and "strict_canonical_consumer_hit_rate" in s]
         family_rates = [s["family_resolution_rate"] for s in summaries if s["status"] == "ok" and "family_resolution_rate" in s]
         broad_rates = [s["broad_infra_rate"] for s in summaries if s["status"] == "ok" and "broad_infra_rate" in s]
         avg_canonical = sum(canon_rates) / len(canon_rates) if canon_rates else 0
         avg_consumer = sum(consumer_rates) / len(consumer_rates) if consumer_rates else 0
+        avg_strict_canonical = sum(strict_canonical_rates) / len(strict_canonical_rates) if strict_canonical_rates else 0
         avg_family = sum(family_rates) / len(family_rates) if family_rates else 0
         avg_broad = sum(broad_rates) / len(broad_rates) if broad_rates else 0
 
@@ -712,6 +730,7 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         print(f"PR canonical coverage: {pr_canonical_coverage:.2%} ({prs_with_canonical}/{ok} PRs)")
         print(f"File canonical coverage: {file_canonical_coverage:.4f} (avg per-file rate)")
         print(f"Exact consumer hit rate (avg): {avg_consumer:.2%}")
+        print(f"Strict canonical consumer hit rate (avg): {avg_strict_canonical:.2%}")
         print(f"Family resolution rate (avg): {avg_family:.2%}")
         print(f"Broad infra rate (avg): {avg_broad:.2%}")
 
@@ -742,6 +761,8 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
             "canonical_api_resolution_rate_product": avg_canonical_product,
             "unresolved_rate_product": avg_unresolved_product,
             "exact_consumer_hit_rate": avg_consumer,
+            "strict_canonical_consumer_hit_rate": avg_strict_canonical,
+            "provenance_distribution": {},
             "family_resolution_rate": avg_family,
             "broad_infra_rate": avg_broad,
             "target_resolution_rate": target_resolution_rate,
@@ -763,6 +784,14 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         quality_metrics["strong_role_canonical_coverage"] = strong_canonical_coverage
         print(f"Strong-role canonical coverage: {strong_canonical_coverage:.2%} "
               f"({total_strong_canonical}/{total_strong} strong-role files)")
+
+        # Aggregate provenance distribution across all PRs
+        total_provenance: dict[str, int] = {}
+        for s in summaries:
+            if s["status"] == "ok":
+                for prov, count in s.get("provenance_distribution", {}).items():
+                    total_provenance[prov] = total_provenance.get(prov, 0) + count
+        quality_metrics["provenance_distribution"] = total_provenance
 
         # Fallback statistics
         fb_applied = sum(1 for s in summaries if s["status"] == "ok" and s.get("fallback_applied"))

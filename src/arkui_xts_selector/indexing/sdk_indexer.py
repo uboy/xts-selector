@@ -19,6 +19,14 @@ from ..model.api import ApiEntityId, ApiDeclarationRef
 
 
 # ---------------------------------------------------------------------------
+# Module constants
+# ---------------------------------------------------------------------------
+
+_COMMON_PARENTS = ("CommonMethod", "CommonAttribute", "CommonShapeMethod",
+                   "CommonTransition", "ContainerCommonMethod")
+
+
+# ---------------------------------------------------------------------------
 # SdkIndexEntry – a single SDK declaration entry
 # ---------------------------------------------------------------------------
 
@@ -30,6 +38,9 @@ class SdkIndexEntry:
     declaration: ApiDeclarationRef
     parent_api_id: ApiEntityId | None = None
     member_name: str | None = None
+    api_version: str | None = None        # from ApiDeclarationRef.since_api
+    declaration_kind: str | None = None   # "component", "attribute", "method", "event", "enum", "interface", "namespace", "function"
+    dispatch_kind: str | None = None      # "static", "instance", "dynamic", "generated_bridge", "common_inherited", "direct"
 
     def to_dict(self) -> dict:
         """Return a JSON-compatible dict."""
@@ -41,6 +52,12 @@ class SdkIndexEntry:
             d["parent_api_id"] = self.parent_api_id.to_dict()
         if self.member_name is not None:
             d["member_name"] = self.member_name
+        if self.api_version is not None:
+            d["api_version"] = self.api_version
+        if self.declaration_kind is not None:
+            d["declaration_kind"] = self.declaration_kind
+        if self.dispatch_kind is not None:
+            d["dispatch_kind"] = self.dispatch_kind
         return d
 
     @classmethod
@@ -52,6 +69,9 @@ class SdkIndexEntry:
             declaration=ApiDeclarationRef.from_dict(data["declaration"]) if "declaration" in data else ApiDeclarationRef(),
             parent_api_id=ApiEntityId.from_dict(parent_id_data) if parent_id_data else None,
             member_name=data.get("member_name"),
+            api_version=data.get("api_version"),
+            declaration_kind=data.get("declaration_kind"),
+            dispatch_kind=data.get("dispatch_kind"),
         )
 
 
@@ -213,9 +233,6 @@ class SdkIndexResult:
             return None  # ambiguous
         return None
 
-    _COMMON_PARENTS = ("CommonMethod", "CommonAttribute", "CommonShapeMethod",
-                       "CommonTransition", "ContainerCommonMethod")
-
     def find_attribute_member(self, member_name: str, family: str) -> SdkIndexEntry | None:
         """Find a member in <Family>Attribute or <Family>Interface."""
         from .family_alias import normalize_family
@@ -229,7 +246,7 @@ class SdkIndexResult:
 
     def find_common_member(self, member_name: str) -> SdkIndexEntry | None:
         """Find a member in common parent types (CommonMethod, etc.)."""
-        for parent in self._COMMON_PARENTS:
+        for parent in _COMMON_PARENTS:
             entry = self.find_member(member_name, parent)
             if entry:
                 return entry
@@ -239,6 +256,24 @@ class SdkIndexResult:
         """Find all entries matching a bare member name across all parents."""
         return [e for e in self.entries
                 if e.member_name == member_name or e.api_id.member_name == member_name]
+
+    def find_by_dispatch_kind(self, kind: str) -> list[SdkIndexEntry]:
+        """Filter entries by dispatch_kind."""
+        return [e for e in self.entries if e.dispatch_kind == kind]
+
+    def find_by_version(self, min_version: str) -> list[SdkIndexEntry]:
+        """Filter entries by api_version >= min_version."""
+        def _version_key(v: str) -> tuple:
+            parts = []
+            for p in v.split("."):
+                try:
+                    parts.append(int(p))
+                except ValueError:
+                    parts.append(0)
+            return tuple(parts)
+        min_key = _version_key(min_version)
+        return [e for e in self.entries
+                if e.api_version and _version_key(e.api_version) >= min_key]
 
     @classmethod
     def from_dict(cls, data: dict) -> SdkIndexResult:
@@ -251,6 +286,21 @@ class SdkIndexResult:
             index_time_ms=data.get("index_time_ms", 0.0),
             source=data.get("source", "tree-sitter-typescript"),
         )
+
+
+# ---------------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------------
+
+def _infer_dispatch_kind(symbol_kind: str, parent_name: str | None) -> str | None:
+    """Infer dispatch kind from symbol kind and parent name."""
+    if parent_name is None:
+        return "static"
+    if parent_name in _COMMON_PARENTS:
+        return "common_inherited"
+    if any(parent_name.endswith(s) for s in ("Attribute", "Interface")):
+        return "instance"
+    return "direct"
 
 
 # ---------------------------------------------------------------------------
@@ -390,10 +440,18 @@ def _symbol_to_entry(
         parser_level=3,  # AST-level
     )
 
+    # Populate new metadata fields
+    api_version = declaration.since_api  # from ApiDeclarationRef
+    declaration_kind = symbol.kind  # "interface", "class", "method", "property", "enum"
+    dispatch_kind = _infer_dispatch_kind(symbol.kind, parent_name)
+
     return SdkIndexEntry(
         api_id=api_id,
         declaration=declaration,
         member_name=member_name,
+        api_version=api_version,
+        declaration_kind=declaration_kind,
+        dispatch_kind=dispatch_kind,
     )
 
 

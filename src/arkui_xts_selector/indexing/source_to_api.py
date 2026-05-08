@@ -336,9 +336,8 @@ def _resolve_canonical_id(
                 descendants = sdk_index.find_descendants(member_of)
             return canonical, member_of, "unique", descendants, True
 
-    # Fallback: simple <Family>Attribute.<member> format (not SDK-confirmed)
-    canonical = f"{parent}.{member_lookup}"
-    return canonical, parent, "unresolved_sdk", [], False
+    # Fallback: not SDK-confirmed — api_id stays None
+    return None, parent, "unresolved_sdk", [], False
 
 
 def _map_model_static(method_name: str, qualified: str, role: str, file_path: str, family: str | None = None, sdk_index: SdkIndexResult | None = None) -> SourceApiMapping | None:

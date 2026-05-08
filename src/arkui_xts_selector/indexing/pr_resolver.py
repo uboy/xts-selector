@@ -664,22 +664,26 @@ def _resolve_pr_core(
                         "confidence": "medium", "provenance": "native_typed",
                     }
                 for m in native_mappings:
+                    consumer_provenance = ""
                     consumers = []
                     if (m.sdk_confirmed and m.api_id
                             and m.api_id.startswith("api:v1:")):
                         consumers = inverted.consumers_for_api_id(m.api_id)
-                        provenance = "exact_canonical"
+                        if consumers:
+                            consumer_provenance = "strict_canonical"
                     if not consumers:
                         consumers = inverted.consumers_for_member_name(m.api_public_name, parent_filter=m.api_member_of)
-                        provenance = "member_index"
+                        if consumers:
+                            consumer_provenance = "member_parent"
                     if not consumers:
                         consumers = inverted.consumers_for_name(m.api_public_name)
-                        provenance = "fuzzy_name_fallback"
+                        if consumers:
+                            consumer_provenance = "safety_fallback"
                     for c in consumers:
                         proj = c.project_path
                         info = project_reasons_native.setdefault(proj, {
                             "apis": set(), "kinds": set(),
-                            "confidence": "weak", "provenance": provenance,
+                            "confidence": "weak", "provenance": consumer_provenance,
                         })
                         info["apis"].add(m.api_public_name)
                         info["kinds"].add(c.usage_kind)
@@ -905,17 +909,24 @@ def _resolve_pr_core(
                     cpp_naming_projects[d] = {"apis": set(), "kinds": {"cpp_naming_convention"},
                                               "confidence": "medium", "provenance": "cpp_naming"}
                 for m in cpp_naming_mappings:
+                    consumer_provenance = ""
                     consumers = []
                     if m.api_id:
                         consumers = inverted.consumers_for_api_id(m.api_id)
+                        if consumers:
+                            consumer_provenance = "strict_canonical"
                     if not consumers:
                         consumers = inverted.consumers_for_member_name(m.api_public_name, parent_filter=m.api_member_of)
+                        if consumers:
+                            consumer_provenance = "member_parent"
                     if not consumers:
                         consumers = inverted.consumers_for_name(m.api_public_name)
+                        if consumers:
+                            consumer_provenance = "safety_fallback"
                     for c in consumers:
                         info = cpp_naming_projects.setdefault(c.project_path, {
                             "apis": set(), "kinds": set(),
-                            "confidence": "weak", "provenance": "member_index",
+                            "confidence": "weak", "provenance": consumer_provenance,
                         })
                         info["apis"].add(m.api_public_name)
                         info["kinds"].add(c.usage_kind)
@@ -1072,24 +1083,34 @@ def _resolve_pr_core(
                                    2 if mapping.confidence == "medium" else 1)
 
             # Look up consumers: prefer exact canonical, fallback to fuzzy
+            consumer_provenance = ""
             consumers = []
             if mapping.api_id:
                 consumers = inverted.consumers_for_api_id(mapping.api_id)
+                if consumers:
+                    consumer_provenance = "strict_canonical"
             if not consumers:
                 consumers = inverted.consumers_for_member_name(api_name)
+                if consumers:
+                    consumer_provenance = "member_parent"
             if not consumers:
                 consumers = inverted.consumers_for_name(api_name)
+                if consumers:
+                    consumer_provenance = "safety_fallback"
 
             for consumer in consumers:
                 proj = consumer.project_path
                 if proj not in project_reasons:
-                    project_reasons[proj] = {"apis": set(), "kinds": set(), "confidence": "weak"}
+                    project_reasons[proj] = {"apis": set(), "kinds": set(), "confidence": "weak", "provenance": consumer_provenance}
                 project_reasons[proj]["apis"].add(api_name)
                 project_reasons[proj]["kinds"].add(consumer.usage_kind)
                 # Upgrade confidence if higher
                 conf_order = {"weak": 0, "medium": 1, "strong": 2}
                 if conf_order.get(consumer.confidence, 0) > conf_order.get(project_reasons[proj]["confidence"], 0):
                     project_reasons[proj]["confidence"] = consumer.confidence
+                # Set provenance if not already set (prioritize higher-confidence provenance)
+                if consumer_provenance and not project_reasons[proj].get("provenance"):
+                    project_reasons[proj]["provenance"] = consumer_provenance
 
                 all_covered_apis.add(api_name)
 
