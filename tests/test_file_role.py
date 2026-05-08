@@ -87,6 +87,86 @@ class TestClassifyNativeModifier:
         assert role == "native_modifier"
         assert family == "text"
 
+    def test_classify_native_accessor_cpp(self):
+        """Native accessor implementation returns (native_modifier, grid)."""
+        path = "frameworks/core/interfaces/native/implementation/grid_accessor.cpp"
+        role, family = classify(path)
+        assert role == "native_modifier"
+        assert family == "grid"
+
+    def test_classify_native_accessor_h(self):
+        """Native accessor header returns (native_modifier, navigation)."""
+        path = "frameworks/core/interfaces/native/implementation/navigation_accessor.h"
+        role, family = classify(path)
+        assert role == "native_modifier"
+        assert family == "navigation"
+
+    def test_classify_native_extender_cpp(self):
+        """Native extender implementation returns (native_modifier, date_picker)."""
+        path = "frameworks/core/interfaces/native/implementation/date_picker_extender.cpp"
+        role, family = classify(path)
+        assert role == "native_modifier"
+        assert family == "date_picker"
+
+    def test_classify_native_extender_h(self):
+        """Native extender header returns (native_modifier, calendar_picker)."""
+        path = "frameworks/core/interfaces/native/implementation/calendar_picker_extender.h"
+        role, family = classify(path)
+        assert role == "native_modifier"
+        assert family == "calendar_picker"
+
+    def test_classify_native_peer_cpp(self):
+        """Native peer implementation returns (native_modifier, search)."""
+        path = "frameworks/core/interfaces/native/implementation/search_peer.cpp"
+        role, family = classify(path)
+        assert role == "native_modifier"
+        assert family == "search"
+
+    def test_classify_native_dialog_cpp(self):
+        """Native dialog implementation returns (native_modifier, alert)."""
+        path = "frameworks/core/interfaces/native/implementation/alert_dialog.cpp"
+        role, family = classify(path)
+        assert role == "native_modifier"
+        assert family == "alert"
+
+    def test_classify_native_context_h(self):
+        """Native context header returns (native_modifier, canvas)."""
+        path = "frameworks/core/interfaces/native/implementation/canvas_context.h"
+        role, family = classify(path)
+        assert role == "native_modifier"
+        assert family == "canvas"
+
+    def test_classify_single_word_component(self):
+        """Single-word component family extraction works correctly."""
+        path = "frameworks/core/interfaces/native/implementation/grid_modifier.cpp"
+        role, family = classify(path)
+        assert role == "native_modifier"
+        assert family == "grid"
+
+    def test_classify_compound_component_two_parts(self):
+        """Two-word component family extraction works correctly."""
+        path = "frameworks/core/interfaces/native/implementation/date_picker_extender.cpp"
+        role, family = classify(path)
+        assert role == "native_modifier"
+        assert family == "date_picker"
+
+    def test_classify_compound_component_three_parts(self):
+        """Three-word component family extraction works correctly."""
+        path = "frameworks/core/interfaces/native/implementation/rich_text_accessor.cpp"
+        role, family = classify(path)
+        assert role == "native_modifier"
+        assert family == "rich_text"
+
+    def test_classify_all_suffixes_same_family(self):
+        """All suffix types extract the same family correctly."""
+        base_path = "frameworks/core/interfaces/native/implementation/sample_component"
+        for suffix in ["modifier", "accessor", "extender", "peer", "dialog", "context"]:
+            for ext in [".cpp", ".h"]:
+                path = f"{base_path}_{suffix}{ext}"
+                role, family = classify(path)
+                assert role == "native_modifier"
+                assert family == "sample_component"
+
 
 class TestClassifyNativeNodeAccessor:
     """Test native node accessor classification."""

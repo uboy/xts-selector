@@ -883,23 +883,65 @@ def _resolve_pr_core(
                 naming_dirs: list[str] = []
                 if xts_root and _resolve_cpp_naming is not None:
                     naming_dirs = _resolve_cpp_naming(cf, xts_root)
+
+                # Source-to-API mapping: harvest affected_apis and canonical IDs
+                cpp_naming_mappings = _find_mappings_for_file(cf, by_file)
+                cpp_naming_affected: list[str] = []
+                cpp_naming_canonical: list[str] = []
+                cpp_naming_level = 2
+                for m in cpp_naming_mappings:
+                    cpp_naming_affected.append(m.api_public_name)
+                    all_affected_apis.add(m.api_public_name)
+                    if (m.sdk_confirmed and m.api_id
+                            and m.api_id.startswith("api:v1:")):
+                        cpp_naming_canonical.append(m.api_id)
+                    cpp_naming_level = max(cpp_naming_level,
+                                           3 if m.confidence == "strong" else
+                                           2 if m.confidence == "medium" else 1)
+
+                # Also resolve consumers from inverted index for mapped APIs
+                cpp_naming_projects: dict[str, dict] = {}
+                for d in naming_dirs:
+                    cpp_naming_projects[d] = {"apis": set(), "kinds": {"cpp_naming_convention"},
+                                              "confidence": "medium", "provenance": "cpp_naming"}
+                for m in cpp_naming_mappings:
+                    consumers = []
+                    if m.api_id:
+                        consumers = inverted.consumers_for_api_id(m.api_id)
+                    if not consumers:
+                        consumers = inverted.consumers_for_canonical(m.api_public_name)
+                    if not consumers:
+                        consumers = inverted.consumers_for_name(m.api_public_name)
+                    for c in consumers:
+                        info = cpp_naming_projects.setdefault(c.project_path, {
+                            "apis": set(), "kinds": set(),
+                            "confidence": "weak", "provenance": "member_index",
+                        })
+                        info["apis"].add(m.api_public_name)
+                        info["kinds"].add(c.usage_kind)
+                        all_covered_apis.add(m.api_public_name)
+
+                cpp_naming_all_consumers = sorted(cpp_naming_projects.keys())
+                cpp_naming_reasons = tuple(
+                    SelectionReason(
+                        project_path=proj,
+                        matched_apis=tuple(sorted(info["apis"])),
+                        usage_kinds=tuple(sorted(info["kinds"])),
+                        confidence=info["confidence"],
+                        provenance=info.get("provenance", "cpp_naming"),
+                    )
+                    for proj, info in sorted(cpp_naming_projects.items())
+                )
+
                 entries.append(PrResolveEntry(
                     changed_file=cf,
-                    affected_apis=(),
-                    consumer_projects=tuple(naming_dirs),
-                    selection_reasons=tuple(
-                        SelectionReason(
-                            project_path=d,
-                            matched_apis=(),
-                            usage_kinds=("cpp_naming_convention",),
-                            confidence="medium",
-                            provenance="cpp_naming",
-                        )
-                        for d in naming_dirs
-                    ) if naming_dirs else (),
+                    affected_apis=tuple(cpp_naming_affected),
+                    consumer_projects=tuple(cpp_naming_all_consumers),
+                    selection_reasons=cpp_naming_reasons,
                     broad_infra_match=None,
                     false_negative_risk=naming_risk,
-                    parser_level=2,
+                    parser_level=cpp_naming_level if cpp_naming_canonical else 2,
+                    canonical_affected_apis=tuple(cpp_naming_canonical),
                     impact_candidates=(candidate.to_dict(),),
                 ))
                 if risk_order.get(naming_risk, 0) > risk_order.get(overall_risk, 0):

@@ -48,8 +48,10 @@ _PATTERN_DIR_PATTERN = re.compile(
 )
 
 # Native modifier implementation pattern
+# Matches all API surface files in native/implementation:
+# *_modifier.cpp/h, *_accessor.cpp/h, *_extender.cpp/h, *_peer.cpp/h, *_dialog.cpp/h, *_context.cpp/h
 _NATIVE_MODIFIER_PATTERN = re.compile(
-    r"frameworks/core/interfaces/native/implementation/([^_]+)_modifier\.(cpp|h)$"
+    r"frameworks/core/interfaces/native/implementation/(.+?)_(?:modifier|accessor|extender|peer|dialog|context)\.(cpp|h)$"
 )
 
 # Native node accessor pattern
