@@ -42,6 +42,7 @@ class SourceApiMapping:
     ambiguity_state: str | None = None  # "unique" | "ambiguous" | "unresolved_parent"
     body_changed: bool = True  # Whether function body was modified (vs comments/whitespace)
     sdk_confirmed: bool = False  # True only when SDK index verified this mapping
+    dispatch_kind: str = ""  # "direct", "common_inherited", "family_specific", ""
 
     def overlaps_range(self, start: int, end: int) -> bool:
         """Check if this mapping's method overlaps with a line range."""
@@ -68,6 +69,8 @@ class SourceApiMapping:
             d["api_member_of"] = self.api_member_of
         if self.ambiguity_state is not None:
             d["ambiguity_state"] = self.ambiguity_state
+        if self.dispatch_kind:
+            d["dispatch_kind"] = self.dispatch_kind
         return d
 
 
@@ -110,6 +113,7 @@ def build_source_to_api_mapping(
                             api_member_of=mapping.api_member_of,
                             ambiguity_state=mapping.ambiguity_state,
                             sdk_confirmed=mapping.sdk_confirmed,
+                            dispatch_kind=mapping.dispatch_kind,
                         )
                     # Attach method line range for hunk-level filtering
                     mapping = SourceApiMapping(
@@ -124,6 +128,7 @@ def build_source_to_api_mapping(
                         api_member_of=mapping.api_member_of,
                         ambiguity_state=mapping.ambiguity_state,
                         sdk_confirmed=mapping.sdk_confirmed,
+                        dispatch_kind=mapping.dispatch_kind,
                     )
                     # Filter weak mappings against SDK registry
                     if sdk_index is not None and mapping.confidence == "weak":
@@ -143,6 +148,7 @@ def build_source_to_api_mapping(
                             api_member_of=mapping.api_member_of,
                             ambiguity_state=mapping.ambiguity_state,
                             sdk_confirmed=True,
+                            dispatch_kind=mapping.dispatch_kind,
                         )
                     mappings.append(mapping)
 
@@ -168,6 +174,7 @@ def build_source_to_api_mapping(
                         api_member_of=mapping.api_member_of,
                         ambiguity_state=mapping.ambiguity_state,
                         sdk_confirmed=True,
+                        dispatch_kind=mapping.dispatch_kind,
                     )
                 mappings.append(mapping)
 
@@ -259,10 +266,16 @@ def _resolve_canonical_id(
     family: str | None,
     sdk_index: SdkIndexResult | None = None,
     method_name: str = "",
-) -> tuple[str | None, str | None, str, list[str], bool]:
+) -> tuple[str | None, str | None, str, list[str], bool, str]:
     """Try to resolve bare api_name to canonical <Family>Attribute.<member>.
 
-    Returns (api_id, api_member_of, ambiguity_state, descendant_ids, sdk_confirmed).
+    Returns (api_id, api_member_of, ambiguity_state, descendant_ids, sdk_confirmed, dispatch_kind).
+
+    dispatch_kind indicates how the API was found:
+      - "direct": direct SDK lookup found the entry
+      - "common_inherited": found via find_common_member()
+      - "family_specific": found via find_attribute_member()
+      - "": fallback (no SDK confirmation)
 
     Uses SDK index when available to get proper ApiEntityId.canonical() format.
     Falls back to simple <Family>Attribute.<member> format for unknown APIs.
@@ -270,13 +283,13 @@ def _resolve_canonical_id(
     sdk_confirmed is True only when SDK index verified this mapping.
     """
     if not family:
-        return None, None, "unresolved_parent", [], False
+        return None, None, "unresolved_parent", [], False, ""
 
     # Blacklist check for internal/non-public methods
     if method_name:
         from .sdk_member_alias import is_blacklisted
         if is_blacklisted(method_name):
-            return None, None, "blacklisted", [], False
+            return None, None, "blacklisted", [], False, ""
 
     # Capitalize family: button -> Button, slider -> Slider
     family_cap = family[0].upper() + family[1:] if family else ""
@@ -295,6 +308,7 @@ def _resolve_canonical_id(
     # Try to resolve via SDK index for proper canonical format
     if sdk_index is not None:
         sdk_entry = None
+        dispatch_kind = ""
         if parent_override:
             sdk_entry = sdk_index.find_member(member_lookup, parent_override)
         if sdk_entry is None and family:
@@ -334,10 +348,17 @@ def _resolve_canonical_id(
             descendants = []
             if member_of and hasattr(sdk_index, 'extends_graph'):
                 descendants = sdk_index.find_descendants(member_of)
-            return canonical, member_of, "unique", descendants, True
+            # Determine dispatch_kind from the entry's member_of
+            common_parents = ("CommonMethod", "CommonAttribute", "CommonShapeMethod",
+                            "CommonTransition", "ContainerCommonMethod")
+            if member_of in common_parents:
+                dispatch_kind = "common_inherited"
+            else:
+                dispatch_kind = "direct"
+            return canonical, member_of, "unique", descendants, True, dispatch_kind
 
     # Fallback: not SDK-confirmed — api_id stays None
-    return None, parent, "unresolved_sdk", [], False
+    return None, parent, "unresolved_sdk", [], False, ""
 
 
 def _map_model_static(method_name: str, qualified: str, role: str, file_path: str, family: str | None = None, sdk_index: SdkIndexResult | None = None) -> SourceApiMapping | None:
@@ -350,7 +371,7 @@ def _map_model_static(method_name: str, qualified: str, role: str, file_path: st
     if api_name is None:
         return None
 
-    api_id, member_of, ambiguity, _descendants, sdk_confirmed = _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
+    api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
     return SourceApiMapping(
         source_qualified=qualified,
         api_public_name=api_name,
@@ -361,6 +382,7 @@ def _map_model_static(method_name: str, qualified: str, role: str, file_path: st
         api_member_of=member_of,
         ambiguity_state=ambiguity,
         sdk_confirmed=sdk_confirmed,
+        dispatch_kind=dispatch_kind,
     )
 
 
@@ -370,7 +392,7 @@ def _map_model_ng(method_name: str, qualified: str, role: str, file_path: str, f
     if api_name is None:
         return None
 
-    api_id, member_of, ambiguity, _descendants, sdk_confirmed = _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
+    api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
     return SourceApiMapping(
         source_qualified=qualified,
         api_public_name=api_name,
@@ -381,6 +403,7 @@ def _map_model_ng(method_name: str, qualified: str, role: str, file_path: str, f
         api_member_of=member_of,
         ambiguity_state=ambiguity,
         sdk_confirmed=sdk_confirmed,
+        dispatch_kind=dispatch_kind,
     )
 
 
@@ -392,7 +415,7 @@ def _map_native_modifier(method_name: str, qualified: str, role: str, file_path:
     for prefix, conf in [("Set", "strong"), ("Reset", "medium")]:
         api_name = _make_canonical_suffix(method_name, prefix)
         if api_name is not None:
-            api_id, member_of, ambiguity, _descendants, sdk_confirmed = _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
+            api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
             return SourceApiMapping(
                 source_qualified=qualified,
                 api_public_name=api_name,
@@ -403,6 +426,7 @@ def _map_native_modifier(method_name: str, qualified: str, role: str, file_path:
                 api_member_of=member_of,
                 ambiguity_state=ambiguity,
                 sdk_confirmed=sdk_confirmed,
+                dispatch_kind=dispatch_kind,
             )
     return None
 
@@ -415,7 +439,7 @@ def _map_native_node_accessor(method_name: str, qualified: str, role: str, file_
     for prefix, conf in [("Get", "strong"), ("Set", "medium")]:
         api_name = _make_canonical_suffix(method_name, prefix)
         if api_name is not None:
-            api_id, member_of, ambiguity, _descendants, sdk_confirmed = _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
+            api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
             return SourceApiMapping(
                 source_qualified=qualified,
                 api_public_name=api_name,
@@ -426,6 +450,7 @@ def _map_native_node_accessor(method_name: str, qualified: str, role: str, file_
                 api_member_of=member_of,
                 ambiguity_state=ambiguity,
                 sdk_confirmed=sdk_confirmed,
+                dispatch_kind=dispatch_kind,
             )
     return None
 
@@ -436,7 +461,7 @@ def _map_jsview_dynamic(method_name: str, qualified: str, role: str, file_path: 
     JsXxx() → Xxx, Create() → create
     """
     if method_name == "Create":
-        api_id, member_of, ambiguity, _descendants, sdk_confirmed = _resolve_canonical_id("create", family, sdk_index)
+        api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id("create", family, sdk_index)
         return SourceApiMapping(
             source_qualified=qualified,
             api_public_name="create",
@@ -447,11 +472,12 @@ def _map_jsview_dynamic(method_name: str, qualified: str, role: str, file_path: 
             api_member_of=member_of,
             ambiguity_state=ambiguity,
             sdk_confirmed=sdk_confirmed,
+            dispatch_kind=dispatch_kind,
         )
 
     api_name = _make_canonical_suffix(method_name, "Js")
     if api_name is not None:
-        api_id, member_of, ambiguity, _descendants, sdk_confirmed = _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
+        api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
         return SourceApiMapping(
             source_qualified=qualified,
             api_public_name=api_name,
@@ -462,13 +488,14 @@ def _map_jsview_dynamic(method_name: str, qualified: str, role: str, file_path: 
             api_member_of=member_of,
             ambiguity_state=ambiguity,
             sdk_confirmed=sdk_confirmed,
+            dispatch_kind=dispatch_kind,
         )
 
     # Track 5: fallback for non-Js methods (Set*/Get*/JS* prefix)
     for prefix, conf in [("Set", "medium"), ("Get", "medium"), ("JS", "medium")]:
         api_name = _make_canonical_suffix(method_name, prefix)
         if api_name is not None:
-            api_id, member_of, ambiguity, _descendants, sdk_confirmed = _resolve_canonical_id(
+            api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id(
                 api_name, family, sdk_index, method_name=method_name
             )
             return SourceApiMapping(
@@ -481,6 +508,7 @@ def _map_jsview_dynamic(method_name: str, qualified: str, role: str, file_path: 
                 api_member_of=member_of,
                 ambiguity_state=ambiguity,
                 sdk_confirmed=sdk_confirmed,
+                dispatch_kind=dispatch_kind,
             )
     return None
 

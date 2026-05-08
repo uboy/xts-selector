@@ -78,6 +78,20 @@ except ImportError:
 FalseNegativeRisk = str  # Literal["low", "medium", "high", "critical"]
 
 
+def _extract_family_from_path(file_path: str) -> str | None:
+    """Extract component family from a C++ source path."""
+    import re
+    # pattern/<family>/ pattern
+    m = re.search(r'pattern/(\w+?)(?:_model|_pattern|_modifier|_node)?/', file_path)
+    if m:
+        return m.group(1)
+    # native/implementation/<family>_modifier
+    m = re.search(r'implementation/(\w+?)_(?:modifier|accessor|extender|peer)', file_path)
+    if m:
+        return m.group(1)
+    return None
+
+
 @dataclass(frozen=True)
 class SelectionReason:
     """Why a consumer project was selected."""
@@ -639,7 +653,19 @@ def _resolve_pr_core(
                 has_family = True
                 native_projects_list: list[str] = []
                 if _resolve_native_targets is not None:
-                    native_projects_list = list(_resolve_native_targets(cf_relative))
+                    # PX-07: Build target_families from inverted index
+                    target_families_dict: dict[str, list[str]] = {}
+                    if family_native:
+                        family_lower = family_native.lower()
+                        seen: set[str] = set()
+                        for api_id_str, consumers in inverted.by_api.items():
+                            if family_lower in api_id_str.lower():
+                                for c in consumers:
+                                    if c.project_path not in seen:
+                                        seen.add(c.project_path)
+                                        target_families_dict.setdefault(family_native, []).append(c.project_path)
+                    native_projects_list = list(_resolve_native_targets(
+                        cf_relative, target_families=target_families_dict or None))
 
                 # Inline source_to_api: look up mappings for this file and harvest
                 # affected_apis / canonical_affected_apis.
@@ -1056,6 +1082,7 @@ def _resolve_pr_core(
                                 api_member_of=m.api_member_of,
                                 ambiguity_state=m.ambiguity_state,
                                 body_changed=False,
+                                dispatch_kind=m.dispatch_kind,
                             )
                             for m in file_mappings
                         ]
@@ -1090,13 +1117,23 @@ def _resolve_pr_core(
                 if consumers:
                     consumer_provenance = "strict_canonical"
             if not consumers:
-                consumers = inverted.consumers_for_member_name(api_name)
+                consumers = inverted.consumers_for_member_name(api_name, parent_filter=mapping.api_member_of)
                 if consumers:
                     consumer_provenance = "member_parent"
             if not consumers:
                 consumers = inverted.consumers_for_name(api_name)
                 if consumers:
                     consumer_provenance = "safety_fallback"
+
+            # PX-06: Scope common inherited API consumers to family
+            if mapping.dispatch_kind == "common_inherited" and len(consumers) > 20:
+                # Try to narrow to family-specific consumers
+                family_from_path = _extract_family_from_path(cf)
+                if family_from_path:
+                    family_consumers = [c for c in consumers if family_from_path in c.project_path.lower()]
+                    if family_consumers:
+                        consumers = family_consumers
+                        consumer_provenance = "common_inherited"
 
             for consumer in consumers:
                 proj = consumer.project_path
