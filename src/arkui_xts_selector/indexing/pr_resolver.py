@@ -858,43 +858,81 @@ def _resolve_pr_core(
         if _resolve_arkts_bridge is not None:
             bridge_candidate = _resolve_arkts_bridge(cf)
             if bridge_candidate is not None:
-                has_family = bridge_candidate.impact_kind in ("generated_bridge", "authored_bridge")
+                has_family = bridge_candidate.impact_kind in ("generated_bridge", "authored_bridge",
+                                                               "koala_component_bridge",
+                                                               "koala_generated_bridge",
+                                                               "koala_interface_bridge")
                 bridge_risk: FalseNegativeRisk = bridge_candidate.false_negative_risk
+                bridge_family = getattr(bridge_candidate, 'family', None)
+
+                # PX-08: Resolve bounded targets for family-bearing bridge candidates
+                bridge_consumers: list[str] = []
+                bridge_reasons: list = []
+                bridge_unresolved = bridge_candidate.unresolved_reason
+
+                if bridge_family and has_family and inverted:
+                    # Build target_families from inverted index
+                    family_lower = bridge_family.lower()
+                    seen: set[str] = set()
+                    for api_id_str, consumers in inverted.by_api.items():
+                        if family_lower in api_id_str.lower():
+                            for c in consumers:
+                                if c.project_path not in seen:
+                                    seen.add(c.project_path)
+                                    bridge_consumers.append(c.project_path)
+
+                    if bridge_consumers:
+                        bridge_reasons = [SelectionReason(
+                            project_path=p,
+                            matched_apis=(),
+                            usage_kinds=("bridge_component",),
+                            confidence="medium",
+                            provenance="bridge_specific",
+                        ) for p in bridge_consumers]
+                        bridge_unresolved = None  # Resolved!
+
                 entries.append(PrResolveEntry(
                     changed_file=cf,
                     affected_apis=(),
-                    consumer_projects=(),
-                    selection_reasons=(),
+                    consumer_projects=tuple(bridge_consumers),
+                    selection_reasons=tuple(bridge_reasons),
                     broad_infra_match=None,
                     false_negative_risk=bridge_risk,
                     parser_level=1,
                     impact_candidates=(bridge_candidate.to_dict(),),
-                    unresolved_reason=bridge_candidate.unresolved_reason,
+                    unresolved_reason=bridge_unresolved,
                 ))
                 if risk_order.get(bridge_risk, 0) > risk_order.get(overall_risk, 0):
                     overall_risk = bridge_risk
                 file_handled = True
                 continue
 
-        # 2. Broad infra check (known infrastructure files — highest priority truth)
+        # 2. Broad infra check (deferred — applied after specific resolution)
+        deferred_infra = None
         if rules:
             infra = match_changed_file(cf, rules)
             if infra is not None:
-                has_broad = True
-                entries.append(PrResolveEntry(
-                    changed_file=cf,
-                    affected_apis=(),
-                    consumer_projects=(),
-                    selection_reasons=(),
-                    broad_infra_match=infra,
-                    false_negative_risk=infra.false_negative_risk,
-                    parser_level=1,
-                    impact_candidates=(),
-                ))
-                if risk_order.get(infra.false_negative_risk, 0) > risk_order.get(overall_risk, 0):
-                    overall_risk = infra.false_negative_risk
-                file_handled = True
-                continue
+                # Defer broad infra: let C++ naming and source-to-API try first
+                allow_overtake = getattr(infra, 'allow_overtake', False)
+                if allow_overtake:
+                    # Overtake enabled: apply immediately (high-priority infra)
+                    has_broad = True
+                    entries.append(PrResolveEntry(
+                        changed_file=cf,
+                        affected_apis=(),
+                        consumer_projects=(),
+                        selection_reasons=(),
+                        broad_infra_match=infra,
+                        false_negative_risk=infra.false_negative_risk,
+                        parser_level=1,
+                        impact_candidates=(),
+                    ))
+                    if risk_order.get(infra.false_negative_risk, 0) > risk_order.get(overall_risk, 0):
+                        overall_risk = infra.false_negative_risk
+                    file_handled = True
+                    continue
+                else:
+                    deferred_infra = infra
 
         # 3. C++ naming convention resolution (typed ImpactCandidate path)
         # Only use typed candidate for files that look like ACE engine paths.
@@ -983,6 +1021,7 @@ def _resolve_pr_core(
                 ))
                 if risk_order.get(naming_risk, 0) > risk_order.get(overall_risk, 0):
                     overall_risk = naming_risk
+                file_handled = True
                 continue
 
         # 3b. Legacy C++ naming resolution for bare filenames (no ACE engine path)
@@ -1034,9 +1073,12 @@ def _resolve_pr_core(
                 ))
                 if risk_order.get("medium", 0) > risk_order.get(overall_risk, 0):
                     overall_risk = "medium"
+                file_handled = True
                 continue
 
-        # 4. Source-to-API mapping
+        # 4. Source-to-API mapping (only if not already handled)
+        if file_handled:
+            continue
         file_mappings = _find_mappings_for_file(cf, by_file)
 
         # 2b. Hunk-level filtering: only keep mappings overlapping changed ranges
@@ -1252,6 +1294,25 @@ def _resolve_pr_core(
                 cf, target_index, coupling_index, rules,
             )
 
+        # PX-09: Check if we should apply deferred broad infra instead of unresolved entry
+        if unresolved_reason is not None and deferred_infra is not None:
+            # Apply deferred broad infra instead of creating unresolved entry
+            has_broad = True
+            entries.append(PrResolveEntry(
+                changed_file=cf,
+                affected_apis=(),
+                consumer_projects=(),
+                selection_reasons=(),
+                broad_infra_match=deferred_infra,
+                false_negative_risk=deferred_infra.false_negative_risk,
+                parser_level=1,
+                impact_candidates=(),
+            ))
+            if risk_order.get(deferred_infra.false_negative_risk, 0) > risk_order.get(overall_risk, 0):
+                overall_risk = deferred_infra.false_negative_risk
+            continue
+
+        # Otherwise, create the source-to-API entry (resolved or unresolved)
         entries.append(PrResolveEntry(
             changed_file=cf,
             affected_apis=tuple(affected_apis),

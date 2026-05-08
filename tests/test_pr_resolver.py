@@ -144,9 +144,14 @@ class TestBroadInfraNewRules:
         )
 
     def test_manager_focus_matches(self):
-        """Manager/focus file → element_proxy_manager rule."""
+        """Element proxy file → element_proxy_manager rule.
+
+        Note: PX-09 precision guard means files with specific resolution (e.g., C++ naming)
+        are NOT matched by broad infra. focus_manager.cpp has C++ naming match (family: focus),
+        so we test element_proxy.cpp instead which has no specific resolution.
+        """
         result = self._resolve(
-            "foundation/arkui/ace_engine/frameworks/core/components_ng/manager/focus/focus_manager.cpp"
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/base/element_proxy.cpp"
         )
         assert len(result.entries) == 1
         assert result.entries[0].broad_infra_match.rule_id == "element_proxy_manager"

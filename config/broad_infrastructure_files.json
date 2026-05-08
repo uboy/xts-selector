@@ -9,7 +9,8 @@
       ],
       "fan_out_target": "all_pattern_components",
       "false_negative_risk": "critical",
-      "rationale": "FrameNode is the base class for every UI element."
+      "rationale": "FrameNode is the base class for every UI element.",
+      "allow_overtake": false
     },
     {
       "id": "pipeline_context",
@@ -18,7 +19,8 @@
         "foundation/arkui/ace_engine/frameworks/core/pipeline/pipeline_base.cpp"
       ],
       "fan_out_target": "all_components",
-      "false_negative_risk": "high"
+      "false_negative_risk": "high",
+      "allow_overtake": false
     },
     {
       "id": "idlize_generator",
@@ -28,7 +30,8 @@
       "match_kind": "regex",
       "fan_out_target": "all_arkts_generated_bridges",
       "false_negative_risk": "critical",
-      "rationale": "Generator package change re-generates all ArkTS bridge files."
+      "rationale": "Generator package change re-generates all ArkTS bridge files.",
+      "allow_overtake": false
     },
     {
       "id": "koala_wrapper",
@@ -37,7 +40,8 @@
       ],
       "match_kind": "regex",
       "fan_out_target": "all_arkts_runtime_consumers",
-      "false_negative_risk": "high"
+      "false_negative_risk": "high",
+      "allow_overtake": false
     },
     {
       "id": "element_proxy_manager",
@@ -49,7 +53,8 @@
       "match_kind": "regex",
       "fan_out_target": "all_managed_components",
       "false_negative_risk": "high",
-      "rationale": "Manager subsystem orchestrates lifecycle, focus, drag for all components."
+      "rationale": "Manager subsystem orchestrates lifecycle, focus, drag for all components.",
+      "allow_overtake": false
     },
     {
       "id": "event_hub",
@@ -59,7 +64,8 @@
       "match_kind": "regex",
       "fan_out_target": "all_event_consuming_components",
       "false_negative_risk": "high",
-      "rationale": "Event hub and event dispatch affect all components that handle gestures, key events, mouse."
+      "rationale": "Event hub and event dispatch affect all components that handle gestures, key events, mouse.",
+      "allow_overtake": false
     },
     {
       "id": "accessibility_property",
@@ -71,7 +77,8 @@
       "match_kind": "regex",
       "fan_out_target": "all_accessible_components",
       "false_negative_risk": "medium",
-      "rationale": "Accessibility property is inherited by all components with accessibility support."
+      "rationale": "Accessibility property is inherited by all components with accessibility support.",
+      "allow_overtake": false
     },
     {
       "id": "render_paint",
@@ -82,7 +89,8 @@
       "match_kind": "regex",
       "fan_out_target": "all_components",
       "false_negative_risk": "medium",
-      "rationale": "Render layer paint/draw methods affect visible component rendering"
+      "rationale": "Render layer paint/draw methods affect visible component rendering",
+      "allow_overtake": false
     },
     {
       "id": "render_node_adapter",
@@ -92,7 +100,8 @@
       "match_kind": "regex",
       "fan_out_target": "all_components",
       "false_negative_risk": "medium",
-      "rationale": "Render adapter layer between components and platform render"
+      "rationale": "Render adapter layer between components and platform render",
+      "allow_overtake": false
     },
     {
       "id": "render_node",
@@ -103,7 +112,8 @@
       "match_kind": "regex",
       "fan_out_target": "all_rendered_components",
       "false_negative_risk": "high",
-      "rationale": "Render node base class affects drawing pipeline for every visible component."
+      "rationale": "Render node base class affects drawing pipeline for every visible component.",
+      "allow_overtake": false
     },
     {
       "id": "layout_core",
@@ -113,7 +123,8 @@
       "match_kind": "regex",
       "fan_out_target": "all_layout_components",
       "false_negative_risk": "high",
-      "rationale": "Core layout algorithms affect how every component is positioned and sized."
+      "rationale": "Core layout algorithms affect how every component is positioned and sized.",
+      "allow_overtake": false
     },
     {
       "id": "declarative_frontend_bridge",
@@ -124,7 +135,8 @@
       "match_kind": "regex",
       "fan_out_target": "all_js_bridge_components",
       "false_negative_risk": "high",
-      "rationale": "JS bridge view files connect declarative API to native implementation."
+      "rationale": "JS bridge view files connect declarative API to native implementation.",
+      "allow_overtake": false
     },
     {
       "id": "declarative_engine",
@@ -134,17 +146,19 @@
       "match_kind": "regex",
       "fan_out_target": "all_components",
       "false_negative_risk": "high",
-      "rationale": "Declarative frontend engine bridge — affects all JS-bound components"
+      "rationale": "Declarative frontend engine bridge — affects all JS-bound components",
+      "allow_overtake": false
     },
     {
       "id": "native_module_bridge",
       "match_paths": [
-        "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/.*\\.cpp"
+        "foundation/arkui/ace_engine/frameworks/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/.*\\.cpp"
       ],
       "match_kind": "regex",
       "fan_out_target": "all_native_module_components",
       "false_negative_risk": "high",
-      "rationale": "Native module bridge files affect all components exposed to ArkTS runtime."
+      "rationale": "Native module bridge files affect all components exposed to ArkTS runtime.",
+      "allow_overtake": false
     },
     {
       "id": "adapter_platform",
@@ -155,7 +169,8 @@
       "match_kind": "regex",
       "fan_out_target": "all_platform_components",
       "false_negative_risk": "medium",
-      "rationale": "Platform adapter affects rendering and OS integration for all components."
+      "rationale": "Platform adapter affects rendering and OS integration for all components.",
+      "allow_overtake": false
     },
     {
       "id": "core_common_utilities",
@@ -166,7 +181,8 @@
       "match_kind": "regex",
       "fan_out_target": "all_common_utilities",
       "false_negative_risk": "medium",
-      "rationale": "Core common utilities (container scope, memory, etc.) affect all components."
+      "rationale": "Core common utilities (container scope, memory, etc.) affect all components.",
+      "allow_overtake": false
     },
     {
       "id": "core_image_pipeline",
@@ -177,7 +193,8 @@
       "match_kind": "regex",
       "fan_out_target": "image_related_components",
       "false_negative_risk": "medium",
-      "rationale": "Core image pipeline affects image, svg, symbol glyph components."
+      "rationale": "Core image pipeline affects image, svg, symbol glyph components.",
+      "allow_overtake": false
     },
     {
       "id": "arkts_koala_generated",
@@ -188,7 +205,8 @@
       "match_kind": "regex",
       "fan_out_target": "all_arkts_koala_consumers",
       "false_negative_risk": "critical",
-      "rationale": "Generated Arkoala/ArkTS bridge files — all XTS component tests affected."
+      "rationale": "Generated Arkoala/ArkTS bridge files — all XTS component tests affected.",
+      "allow_overtake": false
     },
     {
       "id": "arkts_koala_native",
@@ -198,7 +216,8 @@
       "match_kind": "regex",
       "fan_out_target": "all_arkts_native_consumers",
       "false_negative_risk": "high",
-      "rationale": "Arkoala native module changes affect all component bridges."
+      "rationale": "Arkoala native module changes affect all component bridges.",
+      "allow_overtake": false
     }
   ]
 }

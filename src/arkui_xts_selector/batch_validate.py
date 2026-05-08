@@ -292,6 +292,15 @@ def _summarize_result(result: dict) -> dict:
                 if e.get("canonical_affected_apis"):
                     strong_role_canonical += 1
 
+        # Product-only metrics (exclude test_only, build_config, generated, docs)
+        product_files = sum(1 for e in graph_entries if not _is_non_product(e))
+        product_canonical_count = sum(1 for e in graph_entries
+                                        if not _is_non_product(e)
+                                        and e.get("canonical_affected_apis"))
+        product_unresolved_count = sum(1 for e in graph_entries
+                                         if not _is_non_product(e)
+                                         and e.get("unresolved_reason"))
+
         return {
             "pr_number": result["pr_number"],
             "status": "ok",
@@ -318,14 +327,10 @@ def _summarize_result(result: dict) -> dict:
             "unresolved_count": unresolved_count,
             "impact_families": sorted(impact_families),
             # Product-only metrics (exclude test_only, build_config, generated, docs)
-            "product_files_count": sum(1 for e in graph_entries
-                                        if not _is_non_product(e)),
-            "product_canonical_count": sum(1 for e in graph_entries
-                                            if not _is_non_product(e)
-                                            and e.get("canonical_affected_apis")),
-            "product_unresolved_count": sum(1 for e in graph_entries
-                                             if not _is_non_product(e)
-                                             and e.get("unresolved_reason")),
+            "product_files_count": product_files,
+            "product_canonical_count": product_canonical_count,
+            "product_unresolved_count": product_unresolved_count,
+            "product_unresolved_rate": round(product_unresolved_count / max(1, product_files), 4),
             "canonical_api_resolution_rate": round(canonical_api_files / max(1, len(graph_entries)), 4),
             "exact_consumer_hit_rate": round(exact_consumer_files / max(1, len(graph_entries)), 4),
             "strict_canonical_consumer_hit_rate": round(strict_canonical_files / max(1, len(graph_entries)), 4),
@@ -683,6 +688,31 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
     print(f"PR cache mode: {pr_cache_mode}, dir: {pr_api_cache_dir}")
 
     if ok > 0:
+        # PX-10: Split into clean gate and diagnostic-adjusted sets
+        ok_summaries = [s for s in summaries if s["status"] == "ok"]
+        clean_gate_summaries = ok_summaries  # All OK PRs (clean gate)
+        diagnostic_adjusted_summaries = [s for s in ok_summaries
+                                          if s.get("ci_policy") not in ("manual_review", "require_broader_suite")]
+
+        # Track excluded PRs with reasons
+        excluded_prs = []
+        for s in summaries:
+            if s["status"] != "ok":
+                excluded_prs.append({
+                    "pr_number": s.get("pr_number", 0),
+                    "reason": f"error: {s.get('error', 'unknown')[:100]}",
+                })
+            elif s.get("ci_policy") == "manual_review":
+                excluded_prs.append({
+                    "pr_number": s.get("pr_number", 0),
+                    "reason": "ci_policy: manual_review",
+                })
+            elif s.get("ci_policy") == "require_broader_suite":
+                excluded_prs.append({
+                    "pr_number": s.get("pr_number", 0),
+                    "reason": "ci_policy: require_broader_suite",
+                })
+
         aae_rates = [s["aae_population_rate"] for s in summaries if s["status"] == "ok" and "aae_population_rate" in s]
         aae_actionable = [s["aae_actionable_rate"] for s in summaries if s["status"] == "ok" and "aae_actionable_rate" in s]
         avg_aae = sum(aae_rates) / len(aae_rates) if aae_rates else 0
@@ -751,6 +781,11 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         print(f"Canonical (product-only): {avg_canonical_product:.2%}")
         print(f"Unresolved (product-only): {avg_unresolved_product:.2%}")
 
+        # Helper to compute average from a list of summary values
+        def _avg_metrics(summs, key):
+            vals = [s[key] for s in summs if key in s]
+            return round(sum(vals) / max(1, len(vals)), 4) if vals else 0
+
         # Write quality metrics to summary
         quality_metrics = {
             "api_resolution_rate": avg_aae,
@@ -792,6 +827,26 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                 for prov, count in s.get("provenance_distribution", {}).items():
                     total_provenance[prov] = total_provenance.get(prov, 0) + count
         quality_metrics["provenance_distribution"] = total_provenance
+
+        # PX-10: Clean gate metrics (all OK PRs)
+        quality_metrics["clean_gate"] = {
+            "pr_count": len(clean_gate_summaries),
+            "canonical_api_resolution_rate": _avg_metrics(clean_gate_summaries, "canonical_api_resolution_rate"),
+            "exact_consumer_hit_rate": _avg_metrics(clean_gate_summaries, "exact_consumer_hit_rate"),
+            "strict_canonical_consumer_hit_rate": _avg_metrics(clean_gate_summaries, "strict_canonical_consumer_hit_rate"),
+            "product_unresolved_rate": _avg_metrics(clean_gate_summaries, "product_unresolved_rate") if clean_gate_summaries and "product_unresolved_rate" in clean_gate_summaries[0] else 0,
+        }
+
+        # PX-10: Diagnostic adjusted metrics (OK PRs excluding manual_review)
+        quality_metrics["diagnostic_adjusted"] = {
+            "pr_count": len(diagnostic_adjusted_summaries),
+            "canonical_api_resolution_rate": _avg_metrics(diagnostic_adjusted_summaries, "canonical_api_resolution_rate"),
+            "exact_consumer_hit_rate": _avg_metrics(diagnostic_adjusted_summaries, "exact_consumer_hit_rate"),
+            "strict_canonical_consumer_hit_rate": _avg_metrics(diagnostic_adjusted_summaries, "strict_canonical_consumer_hit_rate"),
+            "product_unresolved_rate": _avg_metrics(diagnostic_adjusted_summaries, "product_unresolved_rate") if diagnostic_adjusted_summaries and "product_unresolved_rate" in diagnostic_adjusted_summaries[0] else 0,
+        }
+
+        quality_metrics["excluded_prs"] = excluded_prs
 
         # Fallback statistics
         fb_applied = sum(1 for s in summaries if s["status"] == "ok" and s.get("fallback_applied"))
