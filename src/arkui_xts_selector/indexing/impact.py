@@ -19,6 +19,9 @@ ImpactKind = Literal[
     "authored_bridge",
     "advanced_component",
     "broad_infrastructure",
+    "koala_component_bridge",
+    "koala_generated_bridge",
+    "koala_interface_bridge",
     "unknown",
 ]
 

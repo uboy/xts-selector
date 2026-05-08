@@ -74,6 +74,27 @@
       "rationale": "Accessibility property is inherited by all components with accessibility support."
     },
     {
+      "id": "render_paint",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/render/.*paint.*\\.(cpp|h)",
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/render/.*draw.*\\.(cpp|h)"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_components",
+      "false_negative_risk": "medium",
+      "rationale": "Render layer paint/draw methods affect visible component rendering"
+    },
+    {
+      "id": "render_node_adapter",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/core/components_ng/render/adapter/.*\\.(cpp|h)"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_components",
+      "false_negative_risk": "medium",
+      "rationale": "Render adapter layer between components and platform render"
+    },
+    {
       "id": "render_node",
       "match_paths": [
         "foundation/arkui/ace_engine/frameworks/core/components_ng/render/.*\\.cpp",
@@ -104,6 +125,16 @@
       "fan_out_target": "all_js_bridge_components",
       "false_negative_risk": "high",
       "rationale": "JS bridge view files connect declarative API to native implementation."
+    },
+    {
+      "id": "declarative_engine",
+      "match_paths": [
+        "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/.*\\.(cpp|h)"
+      ],
+      "match_kind": "regex",
+      "fan_out_target": "all_components",
+      "false_negative_risk": "high",
+      "rationale": "Declarative frontend engine bridge — affects all JS-bound components"
     },
     {
       "id": "native_module_bridge",

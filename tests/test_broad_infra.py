@@ -5,6 +5,9 @@ Tests verify:
 - Pipeline context files are identified as high risk
 - IDLize generator files (tgz) are identified as critical risk via regex
 - Koala wrapper files are identified as high risk via regex
+- Render paint/draw files are identified as medium risk via regex
+- Render adapter files are identified as medium risk via regex
+- Declarative engine files are identified as high risk via regex
 - Non-infrastructure files return no match
 - Risk level correctly merges when multiple files match
 - JSON config validates correctly
@@ -68,6 +71,37 @@ def rules_path(tmp_path: Path) -> Path:
                 "match_kind": "regex",
                 "fan_out_target": "all_arkts_runtime_consumers",
                 "false_negative_risk": "high",
+            },
+            {
+                "id": "render_paint",
+                "match_paths": [
+                    "foundation/arkui/ace_engine/frameworks/core/components_ng/render/.*paint.*\\.(cpp|h)",
+                    "foundation/arkui/ace_engine/frameworks/core/components_ng/render/.*draw.*\\.(cpp|h)"
+                ],
+                "match_kind": "regex",
+                "fan_out_target": "all_components",
+                "false_negative_risk": "medium",
+                "rationale": "Render layer paint/draw methods affect visible component rendering"
+            },
+            {
+                "id": "render_node_adapter",
+                "match_paths": [
+                    "foundation/arkui/ace_engine/frameworks/core/components_ng/render/adapter/.*\\.(cpp|h)"
+                ],
+                "match_kind": "regex",
+                "fan_out_target": "all_components",
+                "false_negative_risk": "medium",
+                "rationale": "Render adapter layer between components and platform render"
+            },
+            {
+                "id": "declarative_engine",
+                "match_paths": [
+                    "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/.*\\.(cpp|h)"
+                ],
+                "match_kind": "regex",
+                "fan_out_target": "all_components",
+                "false_negative_risk": "high",
+                "rationale": "Declarative frontend engine bridge — affects all JS-bound components"
             },
         ],
     }
@@ -177,6 +211,119 @@ class TestKoalaWrapperHigh:
         assert match.false_negative_risk == "high"
 
 
+class TestRenderPaintMedium:
+    """Test render paint/draw file identification via regex."""
+
+    def test_render_paint_cpp_is_medium(self, rules_path: Path):
+        rules = load_rules(rules_path)
+        match = match_changed_file(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/render/paint_property.cpp",
+            rules,
+        )
+        assert match is not None
+        assert match.rule_id == "render_paint"
+        assert match.false_negative_risk == "medium"
+        assert match.fan_out_target == "all_components"
+
+    def test_render_paint_h_is_medium(self, rules_path: Path):
+        rules = load_rules(rules_path)
+        match = match_changed_file(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/render/paint_wrapper.h",
+            rules,
+        )
+        assert match is not None
+        assert match.rule_id == "render_paint"
+        assert match.false_negative_risk == "medium"
+
+    def test_render_draw_cpp_is_medium(self, rules_path: Path):
+        rules = load_rules(rules_path)
+        match = match_changed_file(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/render/draw_command.cpp",
+            rules,
+        )
+        assert match is not None
+        assert match.rule_id == "render_paint"
+        assert match.false_negative_risk == "medium"
+
+    def test_render_draw_h_is_medium(self, rules_path: Path):
+        rules = load_rules(rules_path)
+        match = match_changed_file(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/render/draw_context.h",
+            rules,
+        )
+        assert match is not None
+        assert match.rule_id == "render_paint"
+        assert match.false_negative_risk == "medium"
+
+    def test_render_paint_with_subpath(self, rules_path: Path):
+        rules = load_rules(rules_path)
+        match = match_changed_file(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/render/subdir/paint_method.cpp",
+            rules,
+        )
+        assert match is not None
+        assert match.rule_id == "render_paint"
+
+
+class TestRenderAdapterMedium:
+    """Test render adapter file identification via regex."""
+
+    def test_render_adapter_cpp_is_medium(self, rules_path: Path):
+        rules = load_rules(rules_path)
+        match = match_changed_file(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/render/adapter/rosen_adapter.cpp",
+            rules,
+        )
+        assert match is not None
+        assert match.rule_id == "render_node_adapter"
+        assert match.false_negative_risk == "medium"
+        assert match.fan_out_target == "all_components"
+
+    def test_render_adapter_h_is_medium(self, rules_path: Path):
+        rules = load_rules(rules_path)
+        match = match_changed_file(
+            "foundation/arkui/ace_engine/frameworks/core/components_ng/render/adapter/render_adapter.h",
+            rules,
+        )
+        assert match is not None
+        assert match.rule_id == "render_node_adapter"
+        assert match.false_negative_risk == "medium"
+
+
+class TestDeclarativeEngineHigh:
+    """Test declarative engine file identification via regex."""
+
+    def test_declarative_engine_cpp_is_high(self, rules_path: Path):
+        rules = load_rules(rules_path)
+        match = match_changed_file(
+            "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/js_engine.cpp",
+            rules,
+        )
+        assert match is not None
+        assert match.rule_id == "declarative_engine"
+        assert match.false_negative_risk == "high"
+        assert match.fan_out_target == "all_components"
+
+    def test_declarative_engine_h_is_high(self, rules_path: Path):
+        rules = load_rules(rules_path)
+        match = match_changed_file(
+            "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/js_engine.h",
+            rules,
+        )
+        assert match is not None
+        assert match.rule_id == "declarative_engine"
+        assert match.false_negative_risk == "high"
+
+    def test_declarative_engine_nested_path(self, rules_path: Path):
+        rules = load_rules(rules_path)
+        match = match_changed_file(
+            "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/vm_adapter.cpp",
+            rules,
+        )
+        assert match is not None
+        assert match.rule_id == "declarative_engine"
+
+
 class TestNonInfrastructureFiles:
     """Test non-infrastructure files return no match."""
 
@@ -235,7 +382,7 @@ class TestConfigValidation:
     def test_json_config_validates(self, rules_path: Path):
         rules = load_rules(rules_path)
         assert isinstance(rules, list)
-        assert len(rules) == 4
+        assert len(rules) == 7
 
         frame_rule = next(r for r in rules if r["id"] == "frame_node_core")
         assert frame_rule["false_negative_risk"] == "critical"
@@ -245,6 +392,15 @@ class TestConfigValidation:
         idlize_rule = next(r for r in rules if r["id"] == "idlize_generator")
         assert idlize_rule["match_kind"] == "regex"
         assert len(idlize_rule["match_paths"]) == 1
+
+        render_paint_rule = next(r for r in rules if r["id"] == "render_paint")
+        assert render_paint_rule["match_kind"] == "regex"
+        assert render_paint_rule["false_negative_risk"] == "medium"
+        assert len(render_paint_rule["match_paths"]) == 2
+
+        declarative_engine_rule = next(r for r in rules if r["id"] == "declarative_engine")
+        assert declarative_engine_rule["match_kind"] == "regex"
+        assert declarative_engine_rule["false_negative_risk"] == "high"
 
     def test_all_rules_have_required_fields(self, rules_path: Path):
         rules = load_rules(rules_path)

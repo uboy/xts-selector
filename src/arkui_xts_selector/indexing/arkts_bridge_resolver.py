@@ -21,6 +21,17 @@ _AUTHORED_COMPONENT_RE = re.compile(
     r"arkts_frontend/koala_projects/[^/]+/[^/]+/src/component/([\w]+)\.ets$"
 )
 
+# Koala projects expansion patterns (Sprint D.1)
+_KOALA_ARKUI_COMPONENT_RE = re.compile(
+    r"frameworks/bridge/arkts_frontend/koala_projects/[^/]+/arkui-component/.*?/component/(\w+)\.ets$"
+)
+_KOALA_GENERATED_MODIFIER_RE = re.compile(
+    r"frameworks/bridge/arkts_frontend/koala_projects/[^/]+/arkui-(?:component|ohos)/generated/.*?(\w+)Modifier\.ets$"
+)
+_KOALA_INTERFACE_RE = re.compile(
+    r"frameworks/bridge/arkts_frontend/koala_projects/[^/]+/arkui-(?:component|ohos|common)/.*?/interface/(\w+)\.(?:ets|d\.ets)$"
+)
+
 # Generic files that affect all components, not a single one
 _GENERIC_BRIDGE_FILES = frozenset({
     "common.ets", "Common.ets",
@@ -61,6 +72,12 @@ def _normalize_family(name: str) -> str:
     return result.lower()
 
 
+def _camel_to_snake(name: str) -> str:
+    """RichEditor → rich_editor; ButtonAttribute → button_attribute."""
+    s = re.sub(r'(?<!^)(?=[A-Z])', '_', name).lower()
+    return s
+
+
 def resolve_arkts_bridge_candidate(file_path: str) -> Optional["ImpactCandidate"]:
     """Resolve an ArkTS bridge file to a typed impact candidate.
 
@@ -72,6 +89,55 @@ def resolve_arkts_bridge_candidate(file_path: str) -> Optional["ImpactCandidate"
         or None if the file is not a recognized bridge file.
     """
     from arkui_xts_selector.indexing.impact import ImpactCandidate
+
+    # Koala expansion patterns (Sprint D.1) - check first as they are more specific
+    # Koala component .ets files
+    m = _KOALA_ARKUI_COMPONENT_RE.search(file_path)
+    if m:
+        family_camel = m.group(1)
+        family = _camel_to_snake(family_camel)
+        return ImpactCandidate(
+            changed_file=file_path,
+            impact_kind="koala_component_bridge",
+            family=family,
+            source_confidence="weak",
+            provenance="path_rule",
+            parser_level=1,
+            relation_scope="family",
+            false_negative_risk="high",
+        )
+
+    # Koala generated modifier .ets files
+    m = _KOALA_GENERATED_MODIFIER_RE.search(file_path)
+    if m:
+        family_camel = m.group(1)
+        family = _camel_to_snake(family_camel)
+        return ImpactCandidate(
+            changed_file=file_path,
+            impact_kind="koala_generated_bridge",
+            family=family,
+            source_confidence="weak",
+            provenance="path_rule",
+            parser_level=1,
+            relation_scope="family",
+            false_negative_risk="high",
+        )
+
+    # Koala interface .ets/.d.ets files
+    m = _KOALA_INTERFACE_RE.search(file_path)
+    if m:
+        family_camel = m.group(1)
+        family = _camel_to_snake(family_camel)
+        return ImpactCandidate(
+            changed_file=file_path,
+            impact_kind="koala_interface_bridge",
+            family=family,
+            source_confidence="weak",
+            provenance="path_rule",
+            parser_level=1,
+            relation_scope="family",
+            false_negative_risk="high",
+        )
 
     # Check generated component bridge
     m = _GENERATED_COMPONENT_RE.search(file_path)
