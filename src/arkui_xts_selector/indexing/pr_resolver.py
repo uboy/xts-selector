@@ -432,12 +432,39 @@ def _build_file_mapping_index(
     ace_index: AceIndexResult,
     sdk_index: SdkIndexResult,
 ) -> dict[str, list[SourceApiMapping]]:
-    """Build source-to-API mapping indexed by file path (expensive, cache this)."""
+    """Build source-to-API mapping indexed by file path (expensive, cache this).
+
+    Keys are stored in three forms to maximize lookup hit rate against changed_file
+    inputs that may be absolute, repo-relative or ace-engine-relative:
+      1. Original source_file_path (as in ace_index — usually absolute).
+      2. Repo-relative form via path_utils.normalize_path with auto-detected repo
+         prefix (handles `/data/.../foundation/arkui/ace_engine/...` → `frameworks/...`).
+      3. After stripping known ACE engine prefixes (`foundation/arkui/ace_engine/`).
+    """
     all_mappings = build_source_to_api_mapping(ace_index, sdk_index=sdk_index)
     by_file: dict[str, list[SourceApiMapping]] = {}
+
+    # Auto-detect repo root from the first absolute path containing the ACE marker.
+    detected_repo_root: str | None = None
+    if _normalize_path is not None and all_mappings:
+        for m in all_mappings:
+            p = m.source_file_path.replace("\\", "/")
+            if p.startswith("/") and "/foundation/arkui/ace_engine/" in p:
+                idx = p.index("/foundation/arkui/ace_engine/")
+                detected_repo_root = p[:idx]
+                break
+
     for m in all_mappings:
         key = m.source_file_path
         by_file.setdefault(key, []).append(m)
+        if _normalize_path is not None:
+            # Repo-relative key (strip absolute repo prefix + foundation/arkui/ace_engine/).
+            if detected_repo_root:
+                rel = _normalize_path(key, detected_repo_root)
+            else:
+                rel = _normalize_path(key)
+            if rel != key:
+                by_file.setdefault(rel, []).append(m)
     return by_file
 
 
@@ -601,36 +628,88 @@ def _resolve_pr_core(
             ))
             continue
 
-        # Native interface resolution (before broad infra / source-to-api)
+        # Native interface resolution (before broad infra / source-to-api).
+        # Creates entry with consumer_projects from native resolver AND populates
+        # affected_apis / canonical_affected_apis by inlining source_to_api lookup
+        # for the same file (so native files get full SDK matching, not just family).
         if _resolve_native_interface is not None:
             native_result = _resolve_native_interface(cf_relative)
             if native_result is not None:
-                family, impact_kind = native_result
+                family_native, impact_kind = native_result
                 has_family = True
-                # Try to find XTS targets via inverted index for the family
-                native_projects: list[str] = []
+                native_projects_list: list[str] = []
                 if _resolve_native_targets is not None:
-                    native_projects = _resolve_native_targets(cf_relative)
+                    native_projects_list = list(_resolve_native_targets(cf_relative))
+
+                # Inline source_to_api: look up mappings for this file and harvest
+                # affected_apis / canonical_affected_apis.
+                native_mappings = _find_mappings_for_file(cf, by_file)
+                native_affected_apis: list[str] = []
+                native_canonical: list[str] = []
+                for m in native_mappings:
+                    native_affected_apis.append(m.api_public_name)
+                    all_affected_apis.add(m.api_public_name)
+                    if (m.sdk_confirmed and m.api_id
+                            and m.api_id.startswith("api:v1:")):
+                        native_canonical.append(m.api_id)
+                if native_affected_apis:
+                    has_api = True
+
+                # Build selection reasons combining native projects + any consumers
+                # from the inverted index for the matched APIs.
+                project_reasons_native: dict[str, dict] = {}
+                for p in native_projects_list:
+                    project_reasons_native[p] = {
+                        "apis": set(), "kinds": {"native_interface"},
+                        "confidence": "medium", "provenance": "native_typed",
+                    }
+                for m in native_mappings:
+                    consumers = []
+                    if (m.sdk_confirmed and m.api_id
+                            and m.api_id.startswith("api:v1:")):
+                        consumers = inverted.consumers_for_api_id(m.api_id)
+                        provenance = "exact_canonical"
+                    if not consumers:
+                        consumers = inverted.consumers_for_canonical(m.api_public_name)
+                        provenance = "member_index"
+                    if not consumers:
+                        consumers = inverted.consumers_for_name(m.api_public_name)
+                        provenance = "fuzzy_name_fallback"
+                    for c in consumers:
+                        proj = c.project_path
+                        info = project_reasons_native.setdefault(proj, {
+                            "apis": set(), "kinds": set(),
+                            "confidence": "weak", "provenance": provenance,
+                        })
+                        info["apis"].add(m.api_public_name)
+                        info["kinds"].add(c.usage_kind)
+                        all_covered_apis.add(m.api_public_name)
+
+                consumer_list = sorted(project_reasons_native.keys())
+                selection_reasons_native = tuple(
+                    SelectionReason(
+                        project_path=proj,
+                        matched_apis=tuple(sorted(info["apis"])),
+                        usage_kinds=tuple(sorted(info["kinds"])),
+                        confidence=info["confidence"],
+                        provenance=info.get("provenance", "native_typed"),
+                    )
+                    for proj, info in sorted(project_reasons_native.items())
+                )
+
                 entries.append(PrResolveEntry(
                     changed_file=cf,
-                    affected_apis=(),
-                    consumer_projects=tuple(native_projects),
-                    selection_reasons=tuple(
-                        SelectionReason(
-                            project_path=p,
-                            matched_apis=(),
-                            usage_kinds=("native_interface",),
-                            confidence="medium",
-                            provenance="native_typed",
-                        ) for p in native_projects
-                    ),
+                    affected_apis=tuple(native_affected_apis),
+                    consumer_projects=tuple(consumer_list),
+                    selection_reasons=selection_reasons_native,
                     broad_infra_match=None,
                     false_negative_risk="medium",
-                    parser_level=1,
+                    parser_level=2 if native_canonical else 1,
+                    canonical_affected_apis=tuple(native_canonical),
                     impact_candidates=({
                         "changed_file": cf,
                         "impact_kind": impact_kind,
-                        "family": family,
+                        "family": family_native,
                         "source_confidence": "medium",
                         "provenance": "native_interface_resolver",
                     },),
@@ -1182,11 +1261,20 @@ def _find_mappings_for_file(
         cf_norm = _normalize_path(changed_file)
         if cf_norm in by_file:
             return by_file[cf_norm]
-        # Also try stripping ACE engine prefix for each indexed key
+        # Also try stripping common ACE-engine repo absolute prefixes from indexed keys.
+        # _normalize_path() without repo_root only strips relative prefixes, so we
+        # auto-detect a repo root from the indexed entries themselves.
         for file_path, mappings in by_file.items():
             fp_norm = _normalize_path(file_path)
             if fp_norm == cf_norm:
                 return mappings
+            # Auto-strip absolute prefix if path contains the marker
+            if file_path.replace("\\", "/").startswith("/") and "/foundation/arkui/ace_engine/" in file_path:
+                idx = file_path.replace("\\", "/").index("/foundation/arkui/ace_engine/")
+                detected_root = file_path.replace("\\", "/")[:idx]
+                rel = _normalize_path(file_path, detected_root)
+                if rel == cf_norm:
+                    return mappings
 
     # Try matching by basename or suffix
     import os
