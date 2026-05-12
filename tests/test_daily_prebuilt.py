@@ -617,7 +617,7 @@ class DailyPrebuiltCliTests(unittest.TestCase):
             "--json",
         ]
         with mock.patch.object(sys, "argv", argv):
-            with mock.patch("arkui_xts_selector.cli.prepare_daily_sdk_from_config", return_value=prepared_sdk), \
+            with mock.patch("arkui_xts_selector.progress.prepare_daily_sdk_from_config", return_value=prepared_sdk), \
                  mock.patch("arkui_xts_selector.cli.load_or_build_projects") as mocked_projects, \
                  redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()):
                 code = main()

@@ -1,0 +1,34 @@
+{
+  "date": "2026-05-12",
+  "description": "Baseline snapshot before remediation. All 100 PRs are approved+auto_verified = tautological.",
+  "total_prs": 100,
+  "annotation_status": {"approved": 100},
+  "label_source": {"auto_verified": 100},
+  "expected_selection": {
+    "none_required": 51,
+    "broad_suite_required": 21,
+    "required_targets": 18,
+    "manual_review_only": 10
+  },
+  "category": {
+    "component_api": 20,
+    "native_interface": 15,
+    "bridge": 16,
+    "broad_infra": 10,
+    "test_only": 12,
+    "common_api": 9,
+    "mixed": 7,
+    "unknown": 6,
+    "generated": 5
+  },
+  "prs_with_must_not_run": 6,
+  "required_broad_with_empty_must_run": 12,
+  "total_must_run_entries": 428,
+  "total_must_not_run_entries": 52,
+  "blockers": [
+    "all 100 approved+auto_verified = self-derived ground truth",
+    "51 none_required out of 100 = weak coverage",
+    "only 6 PRs have must_not_run = no precision measurement",
+    "broad_suite_required with potentially empty contracts"
+  ]
+}

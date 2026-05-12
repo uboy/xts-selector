@@ -1,0 +1,625 @@
+{
+  "schema_version": "golden-candidates-v1",
+  "total_selected": 86,
+  "by_category": {
+    "component_api": [
+      {
+        "pr_number": 84063,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 4,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84298,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 2
+      },
+      {
+        "pr_number": 84235,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84289,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84129,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84117,
+        "size": "large",
+        "selector_status": "error",
+        "num_files": 16,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 83920,
+        "size": "small",
+        "selector_status": "manual_review",
+        "num_files": 1,
+        "num_targets": 5
+      },
+      {
+        "pr_number": 84338,
+        "size": "small",
+        "selector_status": "manual_review",
+        "num_files": 1,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84262,
+        "size": "small",
+        "selector_status": "manual_review",
+        "num_files": 1,
+        "num_targets": 30
+      },
+      {
+        "pr_number": 83673,
+        "size": "small",
+        "selector_status": "manual_review",
+        "num_files": 2,
+        "num_targets": 1
+      },
+      {
+        "pr_number": 83423,
+        "size": "medium",
+        "selector_status": "broad_infra",
+        "num_files": 6,
+        "num_targets": 70
+      },
+      {
+        "pr_number": 84333,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 83676,
+        "size": "medium",
+        "selector_status": "error",
+        "num_files": 8,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84107,
+        "size": "large",
+        "selector_status": "error",
+        "num_files": 17,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 83808,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 3,
+        "num_targets": 11
+      },
+      {
+        "pr_number": 84157,
+        "size": "small",
+        "selector_status": "manual_review",
+        "num_files": 1,
+        "num_targets": 3
+      },
+      {
+        "pr_number": 83563,
+        "size": "small",
+        "selector_status": "manual_review",
+        "num_files": 1,
+        "num_targets": 2
+      },
+      {
+        "pr_number": 84243,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 4,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84401,
+        "size": "small",
+        "selector_status": "manual_review",
+        "num_files": 1,
+        "num_targets": 2
+      },
+      {
+        "pr_number": 84416,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 5
+      }
+    ],
+    "common_api": [
+      {
+        "pr_number": 83986,
+        "size": "medium",
+        "selector_status": "error",
+        "num_files": 8,
+        "num_targets": 40
+      },
+      {
+        "pr_number": 84062,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 1,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84331,
+        "size": "large",
+        "selector_status": "error",
+        "num_files": 47,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84072,
+        "size": "large",
+        "selector_status": "error",
+        "num_files": 15,
+        "num_targets": 1
+      },
+      {
+        "pr_number": 84071,
+        "size": "small",
+        "selector_status": "manual_review",
+        "num_files": 1,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84116,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 83487,
+        "size": "medium",
+        "selector_status": "broad_infra",
+        "num_files": 8,
+        "num_targets": 1
+      },
+      {
+        "pr_number": 84156,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 0
+      }
+    ],
+    "native_interface": [
+      {
+        "pr_number": 83953,
+        "size": "medium",
+        "selector_status": "error",
+        "num_files": 10,
+        "num_targets": 30
+      },
+      {
+        "pr_number": 84260,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 4,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84277,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 3,
+        "num_targets": 30
+      },
+      {
+        "pr_number": 84268,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 30
+      },
+      {
+        "pr_number": 84447,
+        "size": "small",
+        "selector_status": "manual_review",
+        "num_files": 1,
+        "num_targets": 40
+      },
+      {
+        "pr_number": 84335,
+        "size": "small",
+        "selector_status": "manual_review",
+        "num_files": 1,
+        "num_targets": 30
+      },
+      {
+        "pr_number": 83931,
+        "size": "small",
+        "selector_status": "manual_review",
+        "num_files": 4,
+        "num_targets": 30
+      },
+      {
+        "pr_number": 84459,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 4,
+        "num_targets": 70
+      },
+      {
+        "pr_number": 84093,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 30
+      },
+      {
+        "pr_number": 84096,
+        "size": "medium",
+        "selector_status": "manual_review",
+        "num_files": 10,
+        "num_targets": 30
+      },
+      {
+        "pr_number": 83403,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 30
+      },
+      {
+        "pr_number": 83995,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 3,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 83580,
+        "size": "small",
+        "selector_status": "manual_review",
+        "num_files": 1,
+        "num_targets": 30
+      }
+    ],
+    "bridge": [
+      {
+        "pr_number": 84279,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84147,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 4,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84396,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84342,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 3,
+        "num_targets": 1
+      },
+      {
+        "pr_number": 83496,
+        "size": "small",
+        "selector_status": "resolved",
+        "num_files": 1,
+        "num_targets": 212
+      },
+      {
+        "pr_number": 84257,
+        "size": "small",
+        "selector_status": "broad_infra",
+        "num_files": 1,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84451,
+        "size": "medium",
+        "selector_status": "broad_infra",
+        "num_files": 5,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84245,
+        "size": "large",
+        "selector_status": "broad_infra",
+        "num_files": 19,
+        "num_targets": 9
+      },
+      {
+        "pr_number": 84301,
+        "size": "small",
+        "selector_status": "broad_infra",
+        "num_files": 1,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84466,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84344,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 1,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84332,
+        "size": "small",
+        "selector_status": "broad_infra",
+        "num_files": 1,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84383,
+        "size": "small",
+        "selector_status": "broad_infra",
+        "num_files": 3,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84442,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 3,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84393,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 0
+      }
+    ],
+    "broad_infra": [
+      {
+        "pr_number": 84377,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 1,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84419,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 1,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84020,
+        "size": "medium",
+        "selector_status": "error",
+        "num_files": 7,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84276,
+        "size": "small",
+        "selector_status": "broad_infra",
+        "num_files": 3,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84126,
+        "size": "medium",
+        "selector_status": "error",
+        "num_files": 5,
+        "num_targets": 1
+      },
+      {
+        "pr_number": 84255,
+        "size": "small",
+        "selector_status": "broad_infra",
+        "num_files": 3,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84430,
+        "size": "small",
+        "selector_status": "broad_infra",
+        "num_files": 3,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84204,
+        "size": "small",
+        "selector_status": "broad_infra",
+        "num_files": 2,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84069,
+        "size": "small",
+        "selector_status": "broad_infra",
+        "num_files": 2,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 83256,
+        "size": "medium",
+        "selector_status": "broad_infra",
+        "num_files": 5,
+        "num_targets": 2
+      }
+    ],
+    "generated": [
+      {
+        "pr_number": 84154,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 1,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84172,
+        "size": "medium",
+        "selector_status": "error",
+        "num_files": 9,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84337,
+        "size": "medium",
+        "selector_status": "error",
+        "num_files": 5,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84228,
+        "size": "medium",
+        "selector_status": "error",
+        "num_files": 8,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84234,
+        "size": "medium",
+        "selector_status": "broad_infra",
+        "num_files": 12,
+        "num_targets": 0
+      }
+    ],
+    "test_only": [
+      {
+        "pr_number": 84287,
+        "size": "medium",
+        "selector_status": "error",
+        "num_files": 8,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84138,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 3,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 83246,
+        "size": "medium",
+        "selector_status": "error",
+        "num_files": 8,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84269,
+        "size": "small",
+        "selector_status": "resolved",
+        "num_files": 1,
+        "num_targets": 1
+      },
+      {
+        "pr_number": 84278,
+        "size": "medium",
+        "selector_status": "error",
+        "num_files": 13,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84330,
+        "size": "large",
+        "selector_status": "error",
+        "num_files": 29,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 83999,
+        "size": "small",
+        "selector_status": "broad_infra",
+        "num_files": 3,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84414,
+        "size": "small",
+        "selector_status": "broad_infra",
+        "num_files": 3,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84254,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 1,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84457,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 0
+      }
+    ],
+    "mixed": [
+      {
+        "pr_number": 84386,
+        "size": "medium",
+        "selector_status": "error",
+        "num_files": 6,
+        "num_targets": 30
+      },
+      {
+        "pr_number": 84265,
+        "size": "small",
+        "selector_status": "manual_review",
+        "num_files": 3,
+        "num_targets": 5
+      },
+      {
+        "pr_number": 84087,
+        "size": "large",
+        "selector_status": "error",
+        "num_files": 65,
+        "num_targets": 70
+      },
+      {
+        "pr_number": 84407,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 3,
+        "num_targets": 0
+      },
+      {
+        "pr_number": 84218,
+        "size": "small",
+        "selector_status": "error",
+        "num_files": 2,
+        "num_targets": 2
+      }
+    ]
+  },
+  "selection_notes": "Category common_api: Selected 8/15 (shortfall: 7); Category native_interface: Selected 13/15 (shortfall: 2); Category generated: Selected 5/10 (shortfall: 5)"
+}
