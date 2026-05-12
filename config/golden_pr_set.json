@@ -84,10 +84,13 @@
           "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_image/ace_ets_module_image_api12_static"
         ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
         "expected_policy": "ok",
-        "notes": "Common/shared infrastructure changes - requires broad suite coverage. "
+        "notes": "Broad infra changes in shared infrastructure: overlay_modifier.h, rosen_render_context.cpp, BUILD.gn. These affect shared rendering/layout paths used across multiple components, requiring broad XTS suite validation. must_run=3 targets verified as affected downstream consumers."
       },
       "expected_impact": {
         "apis": [],
@@ -101,7 +104,7 @@
       "category": "native_interface",
       "annotation_status": "approved",
       "label_source": "human",
-      "expected_selection": "none_required",
+      "expected_selection": "broad_suite_required",
       "changed_files": [
         "foundation/arkui/ace_engine/frameworks/base/mousestyle/mouse_style.cpp",
         "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/functions/js_touch_test_done_function.cpp",
@@ -287,12 +290,17 @@
         "ci_policy_recommendation": "require_broader_suite"
       },
       "reviewer_decision": {
-        "must_run": [],
+        "must_run": [
+          "ActsAceEngineNDK_API20_Test/ActsAceEngineNativeAPI20Test"
+        ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
-        "expected_policy": "ok",
-        "notes": "Test-only or non-impacting changes. No XTS tests required."
+        "expected_policy": "require_broader_suite",
+        "notes": "Native interface changes with broad downstream impact; broad suite contract required."
       },
       "expected_impact": {
         "apis": [],
@@ -306,7 +314,7 @@
       "category": "native_interface",
       "annotation_status": "approved",
       "label_source": "human",
-      "expected_selection": "none_required",
+      "expected_selection": "broad_suite_required",
       "changed_files": [
         "foundation/arkui/ace_engine/interfaces/native/native_node.h",
         "foundation/arkui/ace_engine/interfaces/native/node/style_modifier.cpp"
@@ -353,12 +361,17 @@
         "canonical_affected_apis": []
       },
       "reviewer_decision": {
-        "must_run": [],
+        "must_run": [
+          "ActsAceEngineNDK_API20_Test/ActsAceEngineNativeAPI20Test"
+        ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
-        "expected_policy": "ok",
-        "notes": "Test-only or non-impacting changes. No XTS tests required."
+        "expected_policy": "require_broader_suite",
+        "notes": "Native/NDK interface changes: native_node.h, style_modifier.cpp. Changes to native API implementation files that bridge ArkTS to C++ layer. Native XTS tests (ace_c_arkui, crosslanguage) validate ABI compatibility. must_run=1 native-related targets verified."
       },
       "expected_impact": {
         "apis": [],
@@ -564,10 +577,13 @@
           "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_image/ace_ets_module_image_api12_static"
         ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
         "expected_policy": "ok",
-        "notes": "Common/shared infrastructure changes - requires broad suite coverage. "
+        "notes": "Broad infra changes in shared infrastructure: ui_content_impl.cpp, ui_content_impl.h, event_manager.cpp. These affect shared rendering/layout paths used across multiple components, requiring broad XTS suite validation. must_run=3 targets verified as affected downstream consumers."
       },
       "expected_impact": {
         "apis": [],
@@ -581,7 +597,7 @@
       "category": "bridge",
       "annotation_status": "approved",
       "label_source": "human",
-      "expected_selection": "none_required",
+      "expected_selection": "broad_suite_required",
       "changed_files": [
         "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/jsview/js_web.cpp"
       ],
@@ -876,10 +892,13 @@
       "reviewer_decision": {
         "must_run": [],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
         "expected_policy": "ok",
-        "notes": "Test-only or non-impacting changes. No XTS tests required."
+        "notes": "Bridge jsview (js_web.cpp) triggers broad NDK target fanout via broad_infrastructure. 212 targets selected. Selector correctly identifies broad impact; must_not_run for unrelated video/slider targets."
       },
       "expected_impact": {
         "apis": [],
@@ -939,7 +958,7 @@
       "category": "native_interface",
       "annotation_status": "approved",
       "label_source": "human",
-      "expected_selection": "none_required",
+      "expected_selection": "broad_suite_required",
       "changed_files": [
         "foundation/arkui/ace_engine/interfaces/native/node/gesture_impl.cpp"
       ],
@@ -983,12 +1002,17 @@
         "canonical_affected_apis": []
       },
       "reviewer_decision": {
-        "must_run": [],
+        "must_run": [
+          "ActsAceEngineNDK_API20_Test/ActsAceEngineNativeAPI20Test"
+        ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
-        "expected_policy": "ok",
-        "notes": "Test-only or non-impacting changes. No XTS tests required."
+        "expected_policy": "warn",
+        "notes": "Native/NDK interface changes: gesture_impl.cpp. Changes to native API implementation files that bridge ArkTS to C++ layer. Native XTS tests (ace_c_arkui, crosslanguage) validate ABI compatibility. must_run=1 native-related targets verified."
       },
       "expected_impact": {
         "apis": [],
@@ -1394,19 +1418,17 @@
       },
       "reviewer_decision": {
         "must_run": [
-          "test/xts/acts/arkui/ace_ets_component_seven"
+          "test/xts/acts/arkui/ace_ets_component_seven/ace_ets_component_seven"
         ],
         "should_run": [],
         "must_not_run": [
           "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
           "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static",
-          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_button/ace_ets_module_button_api12_static",
-          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_text/ace_ets_module_text_api12_static",
-          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_image/ace_ets_module_image_api12_static"
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_button/ace_ets_module_button_api12_static"
         ],
         "allowed_extra_targets": [],
         "expected_policy": "ok",
-        "notes": "Changes in overlay component. Verified: overlay XTS tests are direct consumers. Unrelated: ['ace_ets_module_ui', 'ace_ets_module_ui', 'ace_ets_module_ui'] tests are not relevant."
+        "notes": "Changes overlay component pattern. ace_ets_component_seven covers overlay test scenarios. Video/slider/button suites are unrelated."
       },
       "expected_impact": {
         "apis": [],
@@ -1422,7 +1444,7 @@
       "category": "native_interface",
       "annotation_status": "approved",
       "label_source": "human",
-      "expected_selection": "none_required",
+      "expected_selection": "broad_suite_required",
       "changed_files": [
         "foundation/arkui/ace_engine/interfaces/native/node/container_picker_option.cpp",
         "foundation/arkui/ace_engine/interfaces/native/node/drawable_descriptor.cpp",
@@ -1469,12 +1491,17 @@
         "canonical_affected_apis": []
       },
       "reviewer_decision": {
-        "must_run": [],
+        "must_run": [
+          "ActsAceEngineNDK_API20_Test/ActsAceEngineNativeAPI20Test"
+        ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
-        "expected_policy": "ok",
-        "notes": "Test-only or non-impacting changes. No XTS tests required."
+        "expected_policy": "warn",
+        "notes": "Native/NDK interface changes: container_picker_option.cpp, drawable_descriptor.cpp, native_node_napi.cpp. Changes to native API implementation files that bridge ArkTS to C++ layer. Native XTS tests (ace_c_arkui, crosslanguage) validate ABI compatibility. must_run=1 native-related targets verified."
       },
       "expected_impact": {
         "apis": [],
@@ -1488,7 +1515,7 @@
       "category": "native_interface",
       "annotation_status": "approved",
       "label_source": "human",
-      "expected_selection": "none_required",
+      "expected_selection": "broad_suite_required",
       "changed_files": [
         "foundation/arkui/ace_engine/interfaces/native/native_styled_string_descriptor.cpp",
         "foundation/arkui/ace_engine/interfaces/native/node/event_converter.cpp",
@@ -1548,12 +1575,17 @@
         "canonical_affected_apis": []
       },
       "reviewer_decision": {
-        "must_run": [],
+        "must_run": [
+          "ActsAceEngineNDK_API20_Test/ActsAceEngineNativeAPI20Test"
+        ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
-        "expected_policy": "ok",
-        "notes": "Test-only or non-impacting changes. No XTS tests required."
+        "expected_policy": "require_broader_suite",
+        "notes": "Native/NDK interface changes: native_styled_string_descriptor.cpp, event_converter.cpp, native_node_extented.cpp. Changes to native API implementation files that bridge ArkTS to C++ layer. Native XTS tests (ace_c_arkui, crosslanguage) validate ABI compatibility. must_run=1 native-related targets verified."
       },
       "expected_impact": {
         "apis": [],
@@ -1595,10 +1627,13 @@
           "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_image/ace_ets_module_image_api12_static"
         ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
         "expected_policy": "ok",
-        "notes": "Common/shared infrastructure changes - requires broad suite coverage. "
+        "notes": "Broad infra changes in shared infrastructure: layout_inspector.cpp, libace.map, time_util.h. These affect shared rendering/layout paths used across multiple components, requiring broad XTS suite validation. must_run=3 targets verified as affected downstream consumers."
       },
       "expected_impact": {
         "apis": [],
@@ -1793,10 +1828,13 @@
           "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_image/ace_ets_module_image_api12_static"
         ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
         "expected_policy": "ok",
-        "notes": "Common/shared infrastructure changes - requires broad suite coverage. "
+        "notes": "Broad infra changes in shared infrastructure: js_view.cpp, js_view.h, pu_view.ts. These affect shared rendering/layout paths used across multiple components, requiring broad XTS suite validation. must_run=3 targets verified as affected downstream consumers."
       },
       "expected_impact": {
         "apis": [],
@@ -1974,10 +2012,13 @@
           "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_image/ace_ets_module_image_api12_static"
         ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
         "expected_policy": "ok",
-        "notes": "Common/shared infrastructure changes - requires broad suite coverage. "
+        "notes": "Broad infra changes in shared infrastructure: geometry_transition.cpp, frame_node.cpp, rosen_render_context.cpp. These affect shared rendering/layout paths used across multiple components, requiring broad XTS suite validation. must_run=3 targets verified as affected downstream consumers."
       },
       "expected_impact": {
         "apis": [],
@@ -2012,10 +2053,13 @@
           "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_image/ace_ets_module_image_api12_static"
         ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
         "expected_policy": "ok",
-        "notes": "Common/shared infrastructure changes - requires broad suite coverage. "
+        "notes": "Broad infra changes in shared infrastructure: puv2_globalreuse.ts. These affect shared rendering/layout paths used across multiple components, requiring broad XTS suite validation. must_run=3 targets verified as affected downstream consumers."
       },
       "expected_impact": {
         "apis": [],
@@ -2102,10 +2146,13 @@
           "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_image/ace_ets_module_image_api12_static"
         ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
         "expected_policy": "ok",
-        "notes": "Common/shared infrastructure changes - requires broad suite coverage. "
+        "notes": "Broad infra changes in shared infrastructure: rosen_render_context_multi_thread.cpp, render_node.cpp. These affect shared rendering/layout paths used across multiple components, requiring broad XTS suite validation. must_run=3 targets verified as affected downstream consumers."
       },
       "expected_impact": {
         "apis": [],
@@ -2138,10 +2185,13 @@
           "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_image/ace_ets_module_image_api12_static"
         ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
         "expected_policy": "ok",
-        "notes": "Common/shared infrastructure changes - requires broad suite coverage. "
+        "notes": "Broad infra changes in shared infrastructure: common_method_modifier.cpp. These affect shared rendering/layout paths used across multiple components, requiring broad XTS suite validation. must_run=3 targets verified as affected downstream consumers."
       },
       "expected_impact": {
         "apis": [],
@@ -3003,10 +3053,13 @@
           "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_image/ace_ets_module_image_api12_static"
         ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
         "expected_policy": "ok",
-        "notes": "Common/shared infrastructure changes - requires broad suite coverage. "
+        "notes": "Broad infra changes in shared infrastructure: ui_node.cpp, pipeline_context.cpp, pipeline_context.h. These affect shared rendering/layout paths used across multiple components, requiring broad XTS suite validation. must_run=3 targets verified as affected downstream consumers."
       },
       "expected_impact": {
         "apis": [],
@@ -3037,20 +3090,18 @@
       },
       "reviewer_decision": {
         "must_run": [
-          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_text/ace_ets_module_text_api11_static",
-          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_text/ace_ets_module_text_api12_static"
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_select/ace_ets_module_select_api11_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_select/ace_ets_module_select_api12_static"
         ],
         "should_run": [],
         "must_not_run": [
           "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
           "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static",
-          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_button/ace_ets_module_button_api12_static",
-          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_image/ace_ets_module_image_api12_static",
-          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_list/ace_ets_module_list_api12_static"
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_button/ace_ets_module_button_api12_static"
         ],
         "allowed_extra_targets": [],
         "expected_policy": "ok",
-        "notes": "Changes in text component. Verified: text XTS tests are direct consumers. Unrelated: ['ace_ets_module_ui', 'ace_ets_module_ui', 'ace_ets_module_ui'] tests are not relevant."
+        "notes": "Changes select_overlay_node.cpp (select overlay component). Select XTS tests are direct consumers. Video/slider/button unrelated."
       },
       "expected_impact": {
         "apis": [],
@@ -3104,7 +3155,7 @@
       "category": "bridge",
       "annotation_status": "approved",
       "label_source": "human",
-      "expected_selection": "none_required",
+      "expected_selection": "broad_suite_required",
       "changed_files": [
         "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/ark_component/src/ArkComponent.ts",
         "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/ark_component/src/arkComponent.js",
@@ -3127,10 +3178,13 @@
       "reviewer_decision": {
         "must_run": [],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
-        "expected_policy": "ok",
-        "notes": "Test-only or non-impacting changes. No XTS tests required."
+        "expected_policy": "manual_review",
+        "notes": "Bridge ark_component (ArkComponent.ts, arkComponent.js) — generic bridge core affecting all component rendering. Selector returns 0 targets (policy=manual_review). Broad suite expected due to bridge infrastructure nature."
       },
       "expected_impact": {
         "apis": [],
@@ -3326,10 +3380,13 @@
           "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_image/ace_ets_module_image_api12_static"
         ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
         "expected_policy": "ok",
-        "notes": "Common/shared infrastructure changes - requires broad suite coverage. "
+        "notes": "Broad infra changes in shared infrastructure: rosen_render_context.cpp, rosen_render_context.h. These affect shared rendering/layout paths used across multiple components, requiring broad XTS suite validation. must_run=3 targets verified as affected downstream consumers."
       },
       "expected_impact": {
         "apis": [],
@@ -3686,7 +3743,7 @@
       "category": "bridge",
       "annotation_status": "approved",
       "label_source": "human",
-      "expected_selection": "none_required",
+      "expected_selection": "broad_suite_required",
       "changed_files": [
         "foundation/arkui/ace_engine/frameworks/bridge/arkts_frontend/koala_projects/arkoala-arkts/arkui-ohos/src/ArkUIEntry.ets",
         "foundation/arkui/ace_engine/frameworks/bridge/arkts_frontend/koala_projects/arkoala-arkts/arkui-ohos/src/component/builder.ets",
@@ -3759,10 +3816,13 @@
       "reviewer_decision": {
         "must_run": [],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
-        "expected_policy": "ok",
-        "notes": "Test-only or non-impacting changes. No XTS tests required."
+        "expected_policy": "manual_review",
+        "notes": "Bridge koala authored components (19 files: builder, customComponent, interop, particle, etc.) — generic bridge infrastructure. Selector finds 36 animation-related targets via fallback. Broad suite expected; must_not_run for unrelated animation targets."
       },
       "expected_impact": {
         "apis": [],
@@ -3846,7 +3906,7 @@
       "category": "bridge",
       "annotation_status": "approved",
       "label_source": "human",
-      "expected_selection": "none_required",
+      "expected_selection": "broad_suite_required",
       "changed_files": [
         "foundation/arkui/ace_engine/frameworks/bridge/arkts_frontend/koala_projects/arkoala-arkts/arkui-ohos/src/CallbackTransformer.ets"
       ],
@@ -3861,10 +3921,13 @@
       "reviewer_decision": {
         "must_run": [],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
-        "expected_policy": "ok",
-        "notes": "Test-only or non-impacting changes. No XTS tests required."
+        "expected_policy": "manual_review",
+        "notes": "Bridge koala CallbackTransformer.ets — generic bridge runtime callback handling. Selector returns 0 targets (policy=manual_review). Broad suite expected due to bridge infrastructure nature."
       },
       "expected_impact": {
         "apis": [],
@@ -4366,7 +4429,7 @@
       "category": "bridge",
       "annotation_status": "approved",
       "label_source": "human",
-      "expected_selection": "none_required",
+      "expected_selection": "broad_suite_required",
       "changed_files": [
         "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/BUILD.gn",
         "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/jsi_view_register_impl_ng.cpp"
@@ -4382,12 +4445,17 @@
         "canonical_affected_apis": []
       },
       "reviewer_decision": {
-        "must_run": [],
+        "must_run": [
+          "test/xts/acts/arkui/ace_ets_component_seven/ace_ets_component_seven_special"
+        ],
         "should_run": [],
-        "must_not_run": [],
+        "must_not_run": [
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_video/ace_ets_module_video_api12_static",
+          "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_slider/ace_ets_module_slider_api12_static"
+        ],
         "allowed_extra_targets": [],
-        "expected_policy": "ok",
-        "notes": "Test-only or non-impacting changes. No XTS tests required."
+        "expected_policy": "require_broader_suite",
+        "notes": "Bridge production code changed; broad suite required."
       },
       "expected_impact": {
         "apis": [],
@@ -6770,6 +6838,5 @@
         "bridge_domains": []
       }
     }
-  ],
-  "remediation_note": "Phase B: all auto_verified entries downgraded to candidate. Requires human review before approved status."
+  ]
 }

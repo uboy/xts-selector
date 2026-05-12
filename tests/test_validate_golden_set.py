@@ -150,6 +150,24 @@ class TestNoneRequiredRationale:
         res = _run_validator(golden)
         assert res["exit_code"] == 0
 
+    def test_none_required_with_production_file_fails(self):
+        pr = _make_pr(100, expected_selection="none_required", must_run=[], notes="No test impact")
+        pr["changed_files"] = ["foundation/arkui/ace_engine/interfaces/native/native_node.h"]
+        golden = _make_golden_set([pr])
+        res = _run_validator(golden)
+        assert res["exit_code"] != 0
+        assert "none_required requires test/build-only changed_files" in res["stdout"]
+
+    def test_none_required_with_test_build_files_passes(self):
+        pr = _make_pr(100, expected_selection="none_required", must_run=[], notes="Test/build only")
+        pr["changed_files"] = [
+            "foundation/arkui/ace_engine/test/unittest/interfaces/event_converter_error_test.cpp",
+            "foundation/arkui/ace_engine/test/unittest/interfaces/BUILD.gn",
+        ]
+        golden = _make_golden_set([pr])
+        res = _run_validator(golden)
+        assert res["exit_code"] == 0
+
 
 class TestLabelSourceApproved:
     def test_approved_auto_verified_fails(self):

@@ -109,7 +109,7 @@ def evaluate_pr(golden: dict, result: dict, *, strict: bool = True) -> dict:
     if strict and not is_approved:
         return {
             "pr_number": pr_num,
-            "passed": False,
+            "passed": None,
             "skipped_reason": f"annotation_status={annotation_status}, strict mode requires approved",
             "annotation_status": annotation_status,
             "expected_selection": expected_selection,
@@ -350,7 +350,7 @@ def main():
     errored = sum(1 for e in evaluations if "error" in e)
     evaluated = total - skipped - errored
     passed = sum(1 for e in evaluations if e.get("passed") is True)
-    failed = sum(1 for e in evaluations if e.get("passed") is False)
+    failed = sum(1 for e in evaluations if e.get("passed") is False and "skipped_reason" not in e)
     manual_review = sum(1 for e in evaluations if e.get("passed") is None)
 
     print(f"=== Golden PR Evaluation ({mode_name} mode) ===")
@@ -366,7 +366,10 @@ def main():
     print()
 
     for e in evaluations:
-        status = "PASS" if e.get("passed") is True else ("MANUAL_REVIEW" if e.get("passed") is None else "FAIL")
+        if "skipped_reason" in e:
+            status = "SKIP"
+        else:
+            status = "PASS" if e.get("passed") is True else ("MANUAL_REVIEW" if e.get("passed") is None else "FAIL")
         ann = e.get("annotation_status", "?")
         sel = e.get("expected_selection", "?")
         print(f"  PR {e['pr_number']}: {status} [{ann}/{sel}]")

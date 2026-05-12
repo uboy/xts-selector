@@ -46,6 +46,25 @@ ABSOLUTE_PATH_PREFIXES = [
 ]
 
 
+def _is_test_or_build_file(path: str) -> bool:
+    """Return True when file path belongs to test/build-only scope."""
+    normalized = path.replace("\\", "/").lower()
+    build_filenames = {"build.gn", ".gn", ".gni", "cmakelists.txt"}
+    basename = normalized.rsplit("/", 1)[-1]
+    if basename in build_filenames:
+        return True
+    test_markers = [
+        "/test/",
+        "/tests/",
+        "/unittest/",
+        "/testing/",
+        "/testdata/",
+        "/build/",
+        "/cmake/",
+    ]
+    return any(marker in normalized for marker in test_markers)
+
+
 def _has_absolute_path(value: str) -> bool:
     """Check if a string contains an absolute path."""
     for prefix in ABSOLUTE_PATH_PREFIXES:
@@ -125,6 +144,13 @@ def validate_approved_pr(pr: dict) -> list[str]:
     if expected_selection == "none_required":
         if not reviewer.get("notes") and not pr.get("notes"):
             errors.append(f"PR #{pr['pr_number']}: none_required without rationale in notes")
+        changed_files = pr.get("changed_files", [])
+        non_test_build = [f for f in changed_files if not _is_test_or_build_file(f)]
+        if non_test_build:
+            errors.append(
+                f"PR #{pr['pr_number']}: none_required requires test/build-only changed_files; "
+                f"found non-test/build files (examples: {', '.join(non_test_build[:3])})"
+            )
 
     return errors
 

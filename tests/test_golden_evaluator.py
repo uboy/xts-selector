@@ -292,6 +292,7 @@ class TestAggregateMetrics:
             _make_result(102),
         ]
         res = _run_evaluator(golden, results)
+        assert res["exit_code"] == 0
         agg = res["output"]["aggregate"]
         assert agg["approved_pr_count"] == 2
         assert agg["unapproved_pr_count"] == 1
@@ -348,3 +349,47 @@ class TestAggregateMetrics:
         res = _run_evaluator(golden, results)
         # No approved PRs -> exit 2
         assert res["exit_code"] == 2
+
+    def test_candidate_not_counted_as_fail(self):
+        """Candidate PRs are skipped, not failed, in strict mode."""
+        golden = [
+            _make_golden(100, must_run=["t1"]),
+            _make_golden(101, annotation_status="candidate", must_run=["t2"]),
+        ]
+        results = [
+            _make_result(100, targets=["t1"]),
+            _make_result(101, targets=["t2"]),
+        ]
+        res = _run_evaluator(golden, results)
+        assert res["exit_code"] == 0
+        assert res["output"]["passed"] == 1
+        assert res["output"]["skipped"] == 1
+        # Candidate's skipped_reason should be in evaluations
+        for e in res["output"]["evaluations"]:
+            if e["pr_number"] == 101:
+                assert "skipped_reason" in e
+
+    def test_mixed_label_source_with_notes_passes(self):
+        """Approved PR with mixed label_source and notes evaluates normally."""
+        golden = [_make_golden(100, must_run=["t1"], notes="Verified selector targets manually")]
+        golden[0]["label_source"] = "mixed"
+        results = [_make_result(100, targets=["t1"])]
+        res = _run_evaluator(golden, results)
+        assert res["exit_code"] == 0
+        assert res["output"]["passed"] == 1
+
+    def test_candidate_does_not_inflate_metrics(self):
+        """Skipped candidate PRs don't affect recall or precision metrics."""
+        golden = [
+            _make_golden(100, must_run=["t1"]),
+            _make_golden(101, annotation_status="candidate", must_run=["t2"]),
+        ]
+        results = [
+            _make_result(100, targets=["t1"]),
+            _make_result(101, targets=["t2"]),
+        ]
+        res = _run_evaluator(golden, results)
+        agg = res["output"]["aggregate"]
+        assert agg["approved_pr_count"] == 1
+        assert agg["unapproved_pr_count"] == 1
+        assert agg["approved_must_run_recall"] == 1.0
