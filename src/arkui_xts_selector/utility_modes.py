@@ -105,10 +105,13 @@ def write_and_render_utility_report(
         print(f"{name}: {status}")
         if payload.get("error"):
             print(f"  error: {payload['error']}")
-        for key in ("tag", "component", "role", "package_kind", "cache_root", "archive_path", "extracted_root", "primary_root"):
+        for key in ("tag", "component", "role", "package_kind", "cache_root", "archive_path", "extracted_root", "manifest_path"):
             value = payload.get(key)
             if value:
                 print(f"  {key}: {value}")
+        manifest_hint = payload.get("manifest_path")
+        if manifest_hint:
+            print(f"  hint: ohos init -m {manifest_hint} sync build rk3568")
         if payload.get("note"):
             print(f"  note: {payload['note']}")
         if payload.get("output_tail"):

@@ -83,7 +83,12 @@ class PreparedDailyArtifact:
     primary_root: Path | None
     candidate_roots: list[Path] = field(default_factory=list)
 
+    def _manifest_path(self) -> Path | None:
+        candidate = self.extracted_root / "manifest_tag.xml"
+        return candidate if candidate.is_file() else None
+
     def to_dict(self) -> dict[str, Any]:
+        manifest = self._manifest_path()
         return {
             **self.build.to_dict(),
             "role": self.role,
@@ -92,7 +97,7 @@ class PreparedDailyArtifact:
             "cache_root": str(self.cache_root),
             "archive_path": str(self.archive_path),
             "extracted_root": str(self.extracted_root),
-            "primary_root": str(self.primary_root) if self.primary_root else "",
+            "manifest_path": str(manifest) if manifest else "",
             "candidate_roots": [str(path) for path in self.candidate_roots],
         }
 
