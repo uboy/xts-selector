@@ -12,12 +12,11 @@ import arkui_xts_selector.cli as cli
 from arkui_xts_selector.cli import (
     ContentModifierIndex,
     SdkIndex,
-    TestFileIndex,
-    TestProjectIndex,
     infer_signals,
     load_mapping_config,
     score_project,
 )
+from arkui_xts_selector.models import TestFileIndex, TestProjectIndex
 
 
 class WebSignalHardeningTests(unittest.TestCase):

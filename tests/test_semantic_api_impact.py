@@ -8,7 +8,8 @@ from tempfile import TemporaryDirectory
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from arkui_xts_selector.cli import build_function_coverage_rows, parse_test_file
+from arkui_xts_selector.cli import build_function_coverage_rows
+from arkui_xts_selector.file_indexing import parse_test_file
 from arkui_xts_selector.consumer_semantics import extract_consumer_semantics
 
 

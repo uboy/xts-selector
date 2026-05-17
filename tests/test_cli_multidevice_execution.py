@@ -19,12 +19,11 @@ from arkui_xts_selector.cli import (
     ContentModifierIndex,
     MappingConfig,
     SdkIndex,
-    TestFileIndex,
-    TestProjectIndex,
     format_report,
     main,
     print_human,
 )
+from arkui_xts_selector.models import TestFileIndex, TestProjectIndex
 from arkui_xts_selector.execution import (
     attach_execution_plan,
     build_run_target_entry,

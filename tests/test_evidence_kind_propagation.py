@@ -12,11 +12,8 @@ from __future__ import annotations
 
 import unittest
 
-from arkui_xts_selector.cli import (
-    TestFileIndex,
-    TestProjectIndex,
-    ensure_project_search_summary,
-)
+from arkui_xts_selector.models import TestFileIndex, TestProjectIndex
+from arkui_xts_selector.project_index import ensure_project_search_summary
 from arkui_xts_selector.consumer_semantics import extract_consumer_semantics
 
 

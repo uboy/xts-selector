@@ -14,10 +14,9 @@ from arkui_xts_selector.cli import (
     ContentModifierIndex,
     MappingConfig,
     SdkIndex,
-    TestFileIndex,
-    TestProjectIndex,
     format_report,
 )
+from arkui_xts_selector.models import TestFileIndex, TestProjectIndex
 
 
 class ApiLineageTests(unittest.TestCase):

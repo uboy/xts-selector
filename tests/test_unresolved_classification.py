@@ -10,7 +10,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from arkui_xts_selector.cli import _classify_unresolved
+from arkui_xts_selector.coverage_planner import _classify_unresolved
 
 
 class ClassifyUnresolvedTests(unittest.TestCase):

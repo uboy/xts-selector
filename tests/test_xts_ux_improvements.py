@@ -14,11 +14,11 @@ sys.path.insert(0, str(ROOT / "src"))
 from arkui_xts_selector.cli import (
     AppConfig,
     XtsUserError,
-    _ProgressTracker,
     _has_local_acts_artifacts,
     print_executive_summary,
     validate_inputs,
 )
+from arkui_xts_selector.report_human import _ProgressTracker
 
 
 def _make_app_config(tmpdir: str, **kwargs) -> AppConfig:

@@ -6,10 +6,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from arkui_xts_selector.cli import (
-    TestFileIndex,
     coverage_signature,
     deduplicate_by_coverage_signature,
 )
+from arkui_xts_selector.models import TestFileIndex
 
 
 class P4DedupSignatureTests(unittest.TestCase):

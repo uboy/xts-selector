@@ -10,12 +10,12 @@ from arkui_xts_selector.cli import (
     ContentModifierIndex,
     MappingConfig,
     SdkIndex,
-    TestFileIndex,
     infer_signals,
-    parse_test_file,
     project_has_non_lexical_evidence,
-    score_file,
 )
+from arkui_xts_selector.file_indexing import parse_test_file
+from arkui_xts_selector.scoring import score_file
+from arkui_xts_selector.models import TestFileIndex
 
 
 class AccessorSemanticHintsTests(unittest.TestCase):

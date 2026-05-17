@@ -11,11 +11,9 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from arkui_xts_selector.cli import (
-    AppConfig,
-    prepare_daily_firmware_from_config,
-    write_and_render_utility_report,
-)
+from arkui_xts_selector.cli import AppConfig
+from arkui_xts_selector.progress import prepare_daily_firmware_from_config
+from arkui_xts_selector.utility_modes import write_and_render_utility_report
 from arkui_xts_selector.daily_prebuilt import DailyBuildInfo
 
 

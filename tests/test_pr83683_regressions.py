@@ -13,12 +13,12 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from arkui_xts_selector.api_surface import STATIC, classify_ace_engine_surface
 from arkui_xts_selector.cli import (
-    _format_case_summary,
     _sync_prebuilt_acts_to_local_root,
-    parse_test_file,
     resolve_variants_mode,
-    score_file,
 )
+from arkui_xts_selector.file_indexing import parse_test_file
+from arkui_xts_selector.report_human import _format_case_summary
+from arkui_xts_selector.scoring import score_file
 from arkui_xts_selector.daily_prebuilt import DailyBuildInfo, PreparedDailyPrebuilt
 from arkui_xts_selector.execution import (
     attach_execution_plan,

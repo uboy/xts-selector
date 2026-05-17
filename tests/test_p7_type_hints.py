@@ -9,11 +9,11 @@ from arkui_xts_selector.cli import (
     ContentModifierIndex,
     MappingConfig,
     SdkIndex,
-    TestFileIndex,
-    build_query_signals,
     infer_signals,
-    score_file,
 )
+from arkui_xts_selector.models import TestFileIndex
+from arkui_xts_selector.query import build_query_signals
+from arkui_xts_selector.scoring import score_file
 
 
 class P7TypeHintsTests(unittest.TestCase):

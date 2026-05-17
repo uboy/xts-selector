@@ -20,17 +20,11 @@ from arkui_xts_selector.cli import (
     MappingConfig,
     PATTERN_ALIAS,
     SdkIndex,
-    TestFileIndex,
-    TestProjectIndex,
     apply_ranking_rules_config,
     build_coverage_run_commands,
     build_next_steps,
     build_global_coverage_recommendations,
     candidate_bucket,
-    classify_project_variant,
-    coverage_capability_key,
-    coverage_family_key,
-    coverage_rank_weight,
     coverage_signature,
     default_cache_path,
     default_composite_mappings_file,
@@ -40,48 +34,55 @@ from arkui_xts_selector.cli import (
     diversify_symbol_query_projects,
     emit_progress,
     build_source_profile,
-    fetch_pr_changed_files_via_api,
     filter_project_results_by_relevance,
     filter_changed_files_for_xts,
-    infer_git_host_kind,
     load_or_build_projects,
     load_changed_file_exclusion_config,
     load_ini_git_host_config,
-    load_ini_gitcode_config,
     load_mapping_config,
-    match_changed_file_exclusion,
     classify_project_scope,
     load_ranking_rules_config,
-    parse_test_file,
-    parse_pr_number,
-    parse_owner_repo_from_pr,
-    parse_owner_repo_from_remote_url,
     resolve_json_output_path,
     resolve_pr_changed_files,
     restrict_explicit_surface_projects,
-    project_might_match,
     select_candidate_projects,
     write_selected_tests_report,
     write_json_report,
-    family_tokens_from_path,
     format_report,
     infer_signals,
     infer_project_family_profile,
-    build_query_signals,
     normalize_changed_files,
     resolve_variants_mode,
-    score_file,
     score_project,
     sort_project_results,
-    split_scope_groups,
-    suite_source_family_gains,
+    build_unresolved_analysis,
+)
+from arkui_xts_selector.changed_files import match_changed_file_exclusion
+from arkui_xts_selector.coverage_keys import coverage_capability_key, coverage_family_key
+from arkui_xts_selector.coverage_planner import unresolved_reason
+from arkui_xts_selector.file_indexing import parse_test_file
+from arkui_xts_selector.git_host import (
+    fetch_pr_changed_files_via_api,
+    infer_git_host_kind,
+    load_ini_gitcode_config,
+    parse_owner_repo_from_pr,
+    parse_owner_repo_from_remote_url,
+    parse_pr_number,
+)
+from arkui_xts_selector.models import TestFileIndex, TestProjectIndex
+from arkui_xts_selector.project_index import (
+    classify_project_variant,
+    family_tokens_from_path,
+    project_might_match,
+    variant_matches,
+)
+from arkui_xts_selector.query import build_query_signals
+from arkui_xts_selector.scoring import coverage_rank_weight, score_file, split_scope_groups, symbol_score
+from arkui_xts_selector.signal_scoring import (
     suite_source_capability_gains,
     suite_source_capability_representative_scores,
+    suite_source_family_gains,
     suite_source_family_representative_scores,
-    symbol_score,
-    build_unresolved_analysis,
-    unresolved_reason,
-    variant_matches,
 )
 from arkui_xts_selector.daily_prebuilt import DailyBuildInfo
 

@@ -8,11 +8,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from arkui_xts_selector.cli import (
-    TestFileIndex,
-    TestProjectIndex,
     score_project,
     select_candidate_projects,
 )
+from arkui_xts_selector.models import TestFileIndex, TestProjectIndex
 
 
 def _signals(
