@@ -12,6 +12,8 @@
 #   - commonEvents_api18
 #   - KeyboardShortcut_api12
 #   - layout_api12
+# Updated 2026-05-17: removed commonEvents_api12 — no direct ButtonModifier
+# evidence, only weak scaffold association. Selector no longer surfaces it.
 ace_ets_component_seven/ace_ets_component_common_seven_attrs_accessibilityGroup
 ace_ets_component_seven/ace_ets_component_common_seven_attrs_accessibilityLevel
 ace_ets_component_seven/ace_ets_component_common_seven_attrs_accessibilityText
@@ -71,6 +73,6 @@ ace_ets_component_seven/ace_ets_component_common_seven_attrs_useEffect
 ace_ets_component_seven/ace_ets_component_common_seven_attrs_width
 ace_ets_component_seven/ace_ets_component_common_seven_attrs_zIndex
 ace_ets_module_ui/ace_ets_module_commonAttrsOther/ace_ets_module_commonAttrsOther_api11
-ace_ets_module_ui/ace_ets_module_commonEvents/ace_ets_module_commonEvents_api12
+# ace_ets_module_ui/ace_ets_module_commonEvents/ace_ets_module_commonEvents_api12
 ace_ets_module_ui/ace_ets_module_dialog/ace_ets_module_dialog_button
 ace_ets_module_ui/ace_ets_module_modifier

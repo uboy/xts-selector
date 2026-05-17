@@ -4999,7 +4999,7 @@ class CacheIsolationTests(unittest.TestCase):
             )
 
             with mock.patch(
-                "arkui_xts_selector.cli._build_project_hash",
+                "arkui_xts_selector.project_index._build_project_hash",
                 side_effect=AssertionError("project hash walk should be skipped"),
             ):
                 projects_second, cache_used_second = load_or_build_projects(

@@ -107,6 +107,15 @@ def apply_must_run_gate(
     if bucket.lower() not in ("must-run", "must_run"):
         return bucket, []
 
+    # Legacy path cannot compute coverage_equivalence. When strong direct
+    # evidence exists (type+member), the gate cannot make a meaningful
+    # determination — skip it to avoid universal false-positive blocks.
+    direct_type = evidence_profile.get("direct_type_hint_keys", [])
+    direct_member = evidence_profile.get("direct_member_hint_keys", [])
+    has_direct = bool(direct_type) or bool(direct_member)
+    if non_lexical_evidence and has_direct:
+        return bucket, []
+
     gate_inputs = legacy_to_gate_inputs(
         score=score,
         non_lexical_evidence=non_lexical_evidence,
@@ -117,9 +126,9 @@ def apply_must_run_gate(
     blockers = violates_must_run_gate(gate_inputs)
 
     if blockers:
-        # Downgrade: if non_lexical_evidence → recommended, else possible
+        # Downgrade using legacy bucket vocabulary (not canonical model names)
         if non_lexical_evidence:
-            return "recommended", list(blockers)
-        return "possible", list(blockers)
+            return "high-confidence related", list(blockers)
+        return "possible related", list(blockers)
 
     return bucket, []

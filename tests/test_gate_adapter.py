@@ -157,8 +157,38 @@ class TestViolatesMustRunGate(unittest.TestCase):
 class TestApplyMustRunGate(unittest.TestCase):
     """Integration tests: legacy candidate → gate → downgrade or keep."""
 
+    def test_strong_direct_evidence_skips_gate(self):
+        """non_lexical + direct type evidence → gate skipped, must-run kept."""
+        bucket, blockers = apply_must_run_gate(
+            bucket="must-run",
+            score=25,
+            non_lexical_evidence=True,
+            evidence_profile={
+                "direct_type_hint_keys": ["Button"],
+                "direct_member_hint_keys": [],
+            },
+            project_reasons=["constructs hinted type Button"],
+        )
+        self.assertEqual(bucket, "must-run")
+        self.assertEqual(blockers, [])
+
+    def test_strong_direct_member_skips_gate(self):
+        """non_lexical + direct member evidence → gate skipped, must-run kept."""
+        bucket, blockers = apply_must_run_gate(
+            bucket="must-run",
+            score=25,
+            non_lexical_evidence=True,
+            evidence_profile={
+                "direct_type_hint_keys": [],
+                "direct_member_hint_keys": ["border"],
+            },
+            project_reasons=["member call .border()"],
+        )
+        self.assertEqual(bucket, "must-run")
+        self.assertEqual(blockers, [])
+
     def test_import_only_candidate_downgraded(self):
-        """import-only reasons → must_run gate fails → downgrade to possible."""
+        """import-only reasons → must_run gate fails → downgrade to possible related."""
         bucket, blockers = apply_must_run_gate(
             bucket="must-run",
             score=25,
@@ -170,7 +200,7 @@ class TestApplyMustRunGate(unittest.TestCase):
             project_reasons=["imports ButtonModifier"],
         )
         self.assertNotEqual(bucket, "must-run")
-        self.assertIn(bucket, ("possible", "recommended"))
+        self.assertEqual(bucket, "possible related")
         self.assertGreater(len(blockers), 0)
 
     def test_score_only_candidate_downgraded(self):
@@ -233,8 +263,8 @@ class TestApplyMustRunGate(unittest.TestCase):
         self.assertEqual(bucket, "high-confidence related")
         self.assertEqual(blockers, [])
 
-    def test_weak_non_lexical_downgraded_to_possible(self):
-        """weak source + no direct → downgrade to possible."""
+    def test_weak_non_lexical_downgraded_to_possible_related(self):
+        """weak source + no direct → downgrade to possible related."""
         bucket, blockers = apply_must_run_gate(
             bucket="must-run",
             score=15,
@@ -246,8 +276,23 @@ class TestApplyMustRunGate(unittest.TestCase):
             project_reasons=["imports Button", "calls Button()"],
         )
         self.assertNotEqual(bucket, "must-run")
-        self.assertEqual(bucket, "possible")
+        self.assertEqual(bucket, "possible related")
         self.assertGreater(len(blockers), 0)
+
+    def test_downgrade_uses_legacy_vocabulary(self):
+        """Gate downgrades must produce legacy bucket names, not canonical ones."""
+        bucket, _ = apply_must_run_gate(
+            bucket="must-run",
+            score=25,
+            non_lexical_evidence=True,
+            evidence_profile={
+                "direct_type_hint_keys": [],
+                "direct_member_hint_keys": [],
+            },
+            project_reasons=["imports Button"],
+        )
+        # Must be a recognized legacy bucket name
+        self.assertIn(bucket, {"must-run", "high-confidence related", "possible related"})
 
 
 if __name__ == "__main__":

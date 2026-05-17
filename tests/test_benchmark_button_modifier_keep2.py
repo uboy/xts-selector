@@ -23,9 +23,7 @@ class ButtonModifierKeep2RegressionTests(WorkspaceAwareTestCase):
     FIXTURE_DIR = FIXTURES / "button_modifier_static"
     TOP_N = 1000
 
-    EXPECTED_KEEP2 = [
-        "ace_ets_module_commonevents",
-    ]
+    EXPECTED_KEEP2: list[str] = []
 
     def _get_report(self) -> dict:
         return _run_selector(

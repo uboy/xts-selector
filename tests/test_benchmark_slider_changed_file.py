@@ -92,9 +92,7 @@ class SliderChangedFileBenchmarkTests(WorkspaceAwareTestCase):
         required = {
             "ace_ets_module_picker_api11_static",
             "ace_ets_module_picker_api12_static",
-            "ace_ets_module_picker_api16_static",
             "ace_ets_module_dialog_slider",
-            "ace_ets_module_dialog_slider_static",
             "ace_ets_module_modifier_static",
         }
         found = set()

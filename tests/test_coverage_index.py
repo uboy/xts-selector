@@ -90,7 +90,10 @@ class TestCoverageIndex:
         assert not idx.is_stale()
 
     def test_is_stale_custom_threshold(self) -> None:
-        idx = CoverageIndex(imported_at="2026-05-01T00:00:00+00:00")
+        from datetime import datetime, timedelta, timezone
+
+        fresh_ts = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
+        idx = CoverageIndex(imported_at=fresh_ts)
         assert not idx.is_stale(max_age_days=10)
         assert idx.is_stale(max_age_days=1)
 
