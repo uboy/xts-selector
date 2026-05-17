@@ -24,6 +24,7 @@ from urllib.parse import urlparse
 
 
 from .api_lineage import ApiLineageMap, build_api_lineage_map
+from .api_entity_details import build_affected_api_entity_details
 from .constants import COMMON_PROJECT_HINTS
 from .api_surface import (
     parse_query_surface_intent,
@@ -1043,6 +1044,9 @@ def format_report(
             "derived_source_symbols": derived_source_symbols,
             "touched_source_functions": derived_source_symbols,
             "affected_api_entities": affected_api_entities,
+            "affected_api_entity_details": build_affected_api_entity_details(
+                affected_api_entities, sdk_index, api_lineage_map,
+            ),
             "file_level_affected_api_entities": file_level_affected_api_entities,
             "api_coverage": api_coverage,
             "direct_covering_suites": api_coverage["direct_covering_suites"],
@@ -1123,6 +1127,9 @@ def format_report(
         report["source_only_consumers"].extend(source_only_consumers)
         report["coverage_gap"].extend(api_coverage["not_covered"])
         report["results"].append(result_item)
+    report["affected_api_entity_details"] = build_affected_api_entity_details(
+        report["affected_api_entities"], sdk_index, api_lineage_map,
+    )
     report["timings_ms"]["changed_file_analysis"] = round(
         (time.perf_counter() - changed_started) * 1000, 3
     )

@@ -1,0 +1,5070 @@
+{
+  "summary": {
+    "manual_verified_cases": 40,
+    "reports_checked": 38,
+    "details_present": 76,
+    "details_missing": 0,
+    "sdk_known_details": 64,
+    "suffix_only_details": 0,
+    "suffix_only_strong_confidence": 0,
+    "suffix_only_no_limitation": 0,
+    "false_public_modifier_promotions": 0,
+    "old_field_missing": 0
+  },
+  "violations": {
+    "suffix_strong": [],
+    "suffix_no_limitation": [],
+    "false_public_promotions": []
+  },
+  "suffix_audit": [
+    {
+      "case_id": "tabs_pattern_file_005",
+      "api_name": "Tabs",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "tabs_pattern_file_005",
+      "api_name": "TabsAttribute.barOverlap",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_pattern_file_005",
+      "api_name": "TabsAttribute.divider",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_pattern_file_005",
+      "api_name": "TabsAttribute.onContentDidScroll",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_pattern_file_005",
+      "api_name": "TabsModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "Swiper",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.autoPlay",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.cachedCount",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.curve",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.disableSwipe",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.displayArrow",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.displayCount",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.duration",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.index",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.indicatorInteractive",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.interval",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.itemSpace",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.loop",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.maintainVisibleContentPosition",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.nestedScroll",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.nextMargin",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.pageFlipMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperAttribute.prevMargin",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "api_name": "SwiperModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "api_name": "Image",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "api_name": "ImageAttribute.alt",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "api_name": "ImageAttribute.autoResize",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "api_name": "ImageAttribute.colorFilter",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "api_name": "ImageAttribute.contentTransition",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "api_name": "ImageAttribute.copyOption",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "api_name": "ImageAttribute.fillColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "api_name": "ImageAttribute.fitOriginalSize",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "api_name": "ImageAttribute.hdrBrightness",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "api_name": "ImageAttribute.matchTextDirection",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "api_name": "ImageAttribute.orientation",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "api_name": "ImageAttribute.sourceSize",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "api_name": "ImageAttribute.supportSvg2",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "api_name": "ImageAttribute.syncLoad",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "api_name": "ImageModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "Text",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.baselineOffset",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.caretColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.copyOption",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.draggable",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.ellipsisMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.enableHapticFeedback",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.fallbackLineSpacing",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.fontColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.fontFamily",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.fontFeature",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.fontSize",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.fontStyle",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.fontVariations",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.fontWeight",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.halfLeading",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.heightAdaptivePolicy",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.includeFontPadding",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.letterSpacing",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.lineBreakStrategy",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.lineHeight",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.lineSpacing",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.maxFontScale",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.maxLines",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.minFontScale",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.selectedBackgroundColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.selection",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.shaderStyle",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.textAlign",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.textCase",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.textContentAlign",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.textIndent",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.textOverflow",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.textShadow",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.textVerticalAlign",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextAttribute.wordBreak",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "api_name": "TextModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "List",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListAttribute.chainAnimation",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListAttribute.chainAnimationOptions",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListAttribute.contentEndOffset",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListAttribute.contentStartOffset",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListAttribute.divider",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListAttribute.enableEditMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListAttribute.focusWrapMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListAttribute.lanes",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListAttribute.listDirection",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListAttribute.onDidScroll",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListAttribute.onItemDragStart",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListAttribute.onScrollIndex",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListAttribute.onScrollVisibleContentChange",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListAttribute.scrollSnapAlign",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListAttribute.stackFromEnd",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "api_name": "ListModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "Grid",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridAttribute.alignItems",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridAttribute.cachedCount",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridAttribute.cellLength",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridAttribute.columnsGap",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridAttribute.columnsTemplate",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridAttribute.edgeEffect",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridAttribute.enableEditMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridAttribute.maxCount",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridAttribute.minCount",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridAttribute.onDidScroll",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridAttribute.onItemDragStart",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridAttribute.onScrollIndex",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridAttribute.rowsGap",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridAttribute.rowsTemplate",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridAttribute.scrollBar",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "api_name": "GridModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "checkbox_pattern_file_028",
+      "api_name": "Checkbox",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "checkbox_pattern_file_028",
+      "api_name": "CheckboxModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "radio_pattern_file_029",
+      "api_name": "Radio",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "radio_pattern_file_029",
+      "api_name": "RadioModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "select_pattern_file_030",
+      "api_name": "Select",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "select_pattern_file_030",
+      "api_name": "SelectModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "progress_pattern_file_031",
+      "api_name": "Progress",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "progress_pattern_file_031",
+      "api_name": "ProgressModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "Search",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.cancelButton",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.compressLeadingPunctuation",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.dividerColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.enableAutoSpacing",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.enableHapticFeedback",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.fallbackLineSpacing",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.fontColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.halfLeading",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.includeFontPadding",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.inputFilter",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.keyboardAppearance",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.letterSpacing",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.lineHeight",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.maxFontScale",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.maxLength",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.minFontScale",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.onChange",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.placeholderColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.placeholderFont",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.searchButton",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.selectedBackgroundColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.selectionMenuHidden",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.strokeColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.textAlign",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.textDirection",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchAttribute.textIndent",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "api_name": "SearchModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "scroll_pattern_file_033",
+      "api_name": "Scroll",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "scroll_pattern_file_033",
+      "api_name": "ScrollAttribute.edgeEffect",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_pattern_file_033",
+      "api_name": "ScrollAttribute.enableBouncesZoom",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_pattern_file_033",
+      "api_name": "ScrollAttribute.initialOffset",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_pattern_file_033",
+      "api_name": "ScrollAttribute.maxZoomScale",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_pattern_file_033",
+      "api_name": "ScrollAttribute.minZoomScale",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_pattern_file_033",
+      "api_name": "ScrollAttribute.onScrollStop",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_pattern_file_033",
+      "api_name": "ScrollAttribute.scrollBar",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_pattern_file_033",
+      "api_name": "ScrollAttribute.scrollable",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_pattern_file_033",
+      "api_name": "ScrollAttribute.zoomScale",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_pattern_file_033",
+      "api_name": "ScrollModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "toggle_pattern_file_034",
+      "api_name": "Toggle",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "toggle_pattern_file_034",
+      "api_name": "ToggleModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "menu_pattern_file_035",
+      "api_name": "Menu",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "menu_pattern_file_035",
+      "api_name": "MenuAttribute.fontColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "menu_pattern_file_035",
+      "api_name": "MenuAttribute.menuItemDivider",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "menu_pattern_file_035",
+      "api_name": "MenuAttribute.radius",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "menu_pattern_file_035",
+      "api_name": "MenuModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "button_model_file_036",
+      "api_name": "Button",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "button_model_file_036",
+      "api_name": "ButtonAttribute.buttonStyle",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "button_model_file_036",
+      "api_name": "ButtonAttribute.controlSize",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "button_model_file_036",
+      "api_name": "ButtonAttribute.padding",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "button_model_file_036",
+      "api_name": "ButtonAttribute.role",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "button_model_file_036",
+      "api_name": "ButtonModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "slider_model_file_037",
+      "api_name": "Slider",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "slider_model_file_037",
+      "api_name": "SliderModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "Swiper",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.autoPlay",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.cachedCount",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.curve",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.customContentTransition",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.disableSwipe",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.displayArrow",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.displayCount",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.displayMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.duration",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.effectMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.index",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.indicatorInteractive",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.itemSpace",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.loop",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.maintainVisibleContentPosition",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.nestedScroll",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.nextMargin",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.onAnimationEnd",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.onAnimationStart",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.onChange",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.onContentDidScroll",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.onContentWillScroll",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.onGestureSwipe",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.onScrollStateChanged",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.onSelected",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.onUnselected",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.pageFlipMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperAttribute.prevMargin",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "api_name": "SwiperModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "Image",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.alt",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.autoResize",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.colorFilter",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.contentTransition",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.copyOption",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.draggable",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.dynamicRangeMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.enableAnalyzer",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.enhancedImageQuality",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.fillColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.fitOriginalSize",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.hdrBrightness",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.imageMatrix",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.interpolation",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.matchTextDirection",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.objectFit",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.objectRepeat",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.onComplete",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.onError",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.onFinish",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.orientation",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.sourceSize",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.supportSvg2",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageAttribute.syncLoad",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "image_model_file_039",
+      "api_name": "ImageModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "Text",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.baselineOffset",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.bindSelectionMenu",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.caretColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.compressLeadingPunctuation",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.contentTransition",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.copyOption",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.decoration",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.draggable",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.ellipsisMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.enableAutoSpacing",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.enableHapticFeedback",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.fallbackLineSpacing",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.font",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.fontColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.fontFamily",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.fontFeature",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.fontSize",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.fontVariations",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.fontWeight",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.halfLeading",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.heightAdaptivePolicy",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.includeFontPadding",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.letterSpacing",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.lineBreakStrategy",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.lineHeight",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.lineSpacing",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.marqueeOptions",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.maxFontScale",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.maxLines",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.minFontScale",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.minLines",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.onCopy",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.onMarqueeStateChange",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.onTextSelectionChange",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.onWillCopy",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.optimizeTrailingSpace",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.orphanCharOptimization",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.selectedBackgroundColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.selectedDragPreviewStyle",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.textAlign",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.textCase",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.textContentAlign",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.textDirection",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.textIndent",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.textOverflow",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.textShadow",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.textVerticalAlign",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextAttribute.wordBreak",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "text_model_file_040",
+      "api_name": "TextModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "List",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.cachedCount",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.chainAnimation",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.chainAnimationOptions",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.contentEndOffset",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.contentStartOffset",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.divider",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.editModeOptions",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.enableEditMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.focusWrapMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.lanes",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.listDirection",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.maintainVisibleContentPosition",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.multiSelectable",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.onDidScroll",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.onItemDragEnter",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.onItemDragLeave",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.onItemDragMove",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.onItemDragStart",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.onItemDrop",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.onItemMove",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.onScrollFrameBegin",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.onScrollIndex",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.onScrollVisibleContentChange",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.scrollSnapAlign",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.scrollSnapAnimationSpeed",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.stackFromEnd",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.sticky",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.supportEmptyBranchInLazyLoading",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListAttribute.syncLoad",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "list_model_file_041",
+      "api_name": "ListModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "Grid",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.alignItems",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.cachedCount",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.cellLength",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.columnsGap",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.columnsTemplate",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.edgeEffect",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.editModeOptions",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.enableEditMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.focusWrapMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.friction",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.layoutDirection",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.maxCount",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.minCount",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.multiSelectable",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.nestedScroll",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.onItemDragEnter",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.onItemDragLeave",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.onItemDragMove",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.onItemDragStart",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.onItemDrop",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.onScrollBarUpdate",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.onScrollFrameBegin",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.onScrollIndex",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.rowsGap",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.rowsTemplate",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.scrollBarColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.scrollBarWidth",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.supportAnimation",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridAttribute.syncLoad",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "api_name": "GridModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "checkbox_model_file_043",
+      "api_name": "Checkbox",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "checkbox_model_file_043",
+      "api_name": "CheckboxModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "button_pattern_symbol_019",
+      "api_name": "Button",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "button_pattern_symbol_019",
+      "api_name": "ButtonAttribute.buttonStyle",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "button_pattern_symbol_019",
+      "api_name": "ButtonAttribute.controlSize",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "button_pattern_symbol_019",
+      "api_name": "ButtonModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "radio_model_file_044",
+      "api_name": "Radio",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "radio_model_file_044",
+      "api_name": "RadioModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "select_model_file_045",
+      "api_name": "Select",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "select_model_file_045",
+      "api_name": "SelectModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "progress_model_file_046",
+      "api_name": "Progress",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "progress_model_file_046",
+      "api_name": "ProgressModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "Search",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.autoCapitalizationMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.compressLeadingPunctuation",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.copyOption",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.customKeyboard",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.dividerColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.enableAutoSpacing",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.enableHapticFeedback",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.enablePreviewText",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.fallbackLineSpacing",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.fontColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.fontFeature",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.halfLeading",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.includeFontPadding",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.inputFilter",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.keyboardAppearance",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.letterSpacing",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.lineHeight",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.maxFontScale",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.maxLength",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.minFontScale",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.onChange",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.onContentScroll",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.onCopy",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.onCut",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.onEditChange",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.onPaste",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.onSubmit",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.onTextSelectionChange",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.onWillAttachIME",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.onWillCopy",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.onWillCut",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.placeholderColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.placeholderFont",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.searchButton",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.selectedBackgroundColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.selectedDragPreviewStyle",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.selectionMenuHidden",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.stopBackPress",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.strokeColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.strokeJoinStyle",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.strokeWidth",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.textAlign",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.textDirection",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.textFont",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.textIndent",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchAttribute.type",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "search_model_file_047",
+      "api_name": "SearchModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "Scroll",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.edgeEffect",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.enableBouncesZoom",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.enablePaging",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.friction",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.initialOffset",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.maxZoomScale",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.minZoomScale",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.nestedScroll",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.onDidScroll",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.onDidZoom",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.onScrollEdge",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.onScrollFrameBegin",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.onScrollStart",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.onScrollStop",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.onWillScroll",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.onZoomStart",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.onZoomStop",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.scrollBar",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.scrollBarColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.scrollBarWidth",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.scrollSnap",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollAttribute.zoomScale",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "api_name": "ScrollModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "toggle_model_file_049",
+      "api_name": "Toggle",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "toggle_model_file_049",
+      "api_name": "ToggleModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "menu_model_file_050",
+      "api_name": "Menu",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "menu_model_file_050",
+      "api_name": "MenuAttribute.fontColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "menu_model_file_050",
+      "api_name": "MenuModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "slider_model_ng_file_051",
+      "api_name": "Slider",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "slider_model_ng_file_051",
+      "api_name": "SliderModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "Tabs",
+      "source": "sdk",
+      "kind": "component",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.animationCurve",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.animationDuration",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.barBackgroundBlurStyle",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.barBackgroundColor",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.barBackgroundEffect",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.barGridAlign",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.barHeight",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.barOverlap",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.barWidth",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.cachedMaxCount",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.divider",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.edgeEffect",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.fadingEdge",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.nestedScroll",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.onAnimationEnd",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.onAnimationStart",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.onChange",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.onContentDidScroll",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.onContentWillChange",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.onGestureSwipe",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.onSelected",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.onTabBarClick",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.onUnselected",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.pageFlipMode",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.scrollable",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsAttribute.vertical",
+      "source": "sdk",
+      "kind": "unknown",
+      "confidence": "medium",
+      "limitation": null,
+      "evidence_types": [
+        "source_symbol"
+      ]
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "api_name": "TabsModifier",
+      "source": "sdk",
+      "kind": "modifier",
+      "confidence": "strong",
+      "limitation": null,
+      "evidence_types": [
+        "sdk_declaration"
+      ]
+    }
+  ]
+}
