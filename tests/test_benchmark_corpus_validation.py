@@ -7,6 +7,7 @@ that the JSON fixtures are structurally correct and internally consistent.
 Run:
     python3 -m unittest tests.test_benchmark_corpus_validation -v
 """
+
 from __future__ import annotations
 
 import json
@@ -170,7 +171,8 @@ class CorpusFixtureValidationTests(unittest.TestCase):
     def test_must_have_sources_exist(self) -> None:
         """must_have_source references must point to existing files."""
         positive_fixtures = [
-            name for name, data in self._load_all()
+            name
+            for name, data in self._load_all()
             if data.get("expected_abstention") is not True
         ]
         for stem in positive_fixtures:
@@ -189,7 +191,9 @@ class LineageNotesValidationTests(unittest.TestCase):
     """Validate docs/canonical_lineage_notes.md if it exists."""
 
     def test_lineage_notes_file_exists(self) -> None:
-        notes_path = Path(__file__).resolve().parents[1] / "docs" / "canonical_lineage_notes.md"
+        notes_path = (
+            Path(__file__).resolve().parents[1] / "docs" / "canonical_lineage_notes.md"
+        )
         if not notes_path.exists():
             self.skipTest("canonical_lineage_notes.md does not exist yet")
         content = notes_path.read_text(encoding="utf-8")

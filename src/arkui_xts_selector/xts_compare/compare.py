@@ -136,6 +136,7 @@ def _make_transition(
 # Two-run comparison
 # ---------------------------------------------------------------------------
 
+
 def compare_runs(
     base_meta: RunMetadata,
     base_results: dict[TestIdentity, TestResult],
@@ -336,6 +337,7 @@ def compute_module_health(mc: ModuleComparison) -> float:
 # Timeline (N-run)
 # ---------------------------------------------------------------------------
 
+
 def build_timeline(
     runs: list[tuple[RunMetadata, dict[TestIdentity, TestResult]]],
 ) -> TimelineReport:
@@ -385,8 +387,7 @@ def build_timeline(
 
     # Interesting rows: not stable-pass across all runs.
     interesting = [
-        r for r in rows
-        if not all(e.outcome == TestOutcome.PASS for e in r.entries)
+        r for r in rows if not all(e.outcome == TestOutcome.PASS for e in r.entries)
     ]
 
     return TimelineReport(
@@ -411,8 +412,7 @@ def _compute_trend(entries: list[TimelineEntry]) -> str:
     pf_outcomes = [o for o in outcomes if o in passable]
     if len(pf_outcomes) >= 2:
         alternates = all(
-            pf_outcomes[i] != pf_outcomes[i + 1]
-            for i in range(len(pf_outcomes) - 1)
+            pf_outcomes[i] != pf_outcomes[i + 1] for i in range(len(pf_outcomes) - 1)
         )
         if alternates and len(pf_outcomes) >= 3:
             return "flaky"

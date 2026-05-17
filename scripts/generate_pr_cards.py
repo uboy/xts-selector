@@ -12,6 +12,7 @@ Usage:
         --output-dir local/golden_cards \
         --golden config/golden_pr_set.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -35,7 +36,7 @@ def _shorten(path: str) -> str:
         "/data/shared/common/proj/ohos_master/",
     ]:
         if path.startswith(prefix):
-            return path[len(prefix):]
+            return path[len(prefix) :]
     return path
 
 
@@ -51,12 +52,16 @@ def load_candidates(candidates_path: Path) -> dict[int, PrCandidate]:
         for item in data:
             pr_num = item.get("pr_number")
             if pr_num is not None:
-                candidates[pr_num] = PrCandidate(pr_number=pr_num, category=item.get("category", "unknown"))
+                candidates[pr_num] = PrCandidate(
+                    pr_number=pr_num, category=item.get("category", "unknown")
+                )
     elif isinstance(data, dict) and "golden_prs" in data:
         for item in data["golden_prs"]:
             pr_num = item.get("pr_number")
             if pr_num is not None:
-                candidates[pr_num] = PrCandidate(pr_number=pr_num, category=item.get("category", "unknown"))
+                candidates[pr_num] = PrCandidate(
+                    pr_number=pr_num, category=item.get("category", "unknown")
+                )
     elif isinstance(data, dict) and "by_category" in data:
         for category, items in data["by_category"].items():
             for item in items:
@@ -75,7 +80,13 @@ def load_batch_results(batch_results_path: Path) -> dict[int, dict]:
 
 
 def load_pr_cache(pr_api_cache_dir: Path, pr_number: int) -> dict | None:
-    cache_path = pr_api_cache_dir / "gitcode_com" / "openharmony" / "arkui_ace_engine" / f"PR_{pr_number}.json"
+    cache_path = (
+        pr_api_cache_dir
+        / "gitcode_com"
+        / "openharmony"
+        / "arkui_ace_engine"
+        / f"PR_{pr_number}.json"
+    )
     if not cache_path.exists():
         return None
     try:
@@ -102,7 +113,9 @@ def truncate_diff(diff_text: str, max_lines: int = 50) -> str:
 
 
 def format_pr_url(pr_number: int) -> str:
-    return f"https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/{pr_number}"
+    return (
+        f"https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/{pr_number}"
+    )
 
 
 def _extract_gs_data(batch_result: dict) -> dict:
@@ -165,13 +178,12 @@ def generate_card(
     if gs["has_explosion"]:
         alerts.append(f"**ALERT: Target explosion ({len(gs['all_targets'])} targets)**")
     if gs["has_fallback"]:
-        alerts.append(f"**ALERT: Fallback targets present ({len(gs['fallback_targets'])})**")
+        alerts.append(
+            f"**ALERT: Fallback targets present ({len(gs['fallback_targets'])})**"
+        )
     if candidate.category == "test_only":
         # Check if production files exist
-        has_prod = any(
-            not _is_test_file(e.get("changed_file", ""))
-            for e in entries
-        )
+        has_prod = any(not _is_test_file(e.get("changed_file", "")) for e in entries)
         if has_prod:
             alerts.append("**ALERT: Classified test_only but has production files**")
 
@@ -188,7 +200,9 @@ def generate_card(
         if len(affected_apis) > 5:
             apis_str += f" (+{len(affected_apis) - 5})"
         unresolved_reason = entry.get("unresolved_reason", "")
-        changed_files_rows.append(f"| {idx} | {file_path} | {apis_str} | {unresolved_reason or '—'} |")
+        changed_files_rows.append(
+            f"| {idx} | {file_path} | {apis_str} | {unresolved_reason or '—'} |"
+        )
 
     # --- Patch hunks ---
     patch_sections = []
@@ -198,9 +212,13 @@ def generate_card(
             display_path = _shorten(file_path)
             diff = hunks.get(file_path, "") or hunks.get(display_path, "")
             if not diff and display_path.startswith("foundation/arkui/ace_engine/"):
-                diff = hunks.get(display_path.replace("foundation/arkui/ace_engine/", ""), "")
+                diff = hunks.get(
+                    display_path.replace("foundation/arkui/ace_engine/", ""), ""
+                )
             if diff:
-                patch_sections.append(f"\n#### {display_path}\n\n```\n{truncate_diff(diff)}\n```")
+                patch_sections.append(
+                    f"\n#### {display_path}\n\n```\n{truncate_diff(diff)}\n```"
+                )
     if not patch_sections:
         patch_sections.append("\n[patch data not cached]")
 
@@ -216,7 +234,9 @@ def generate_card(
                     confidence = sr.get("confidence", "")
                     break
             apis_str = ", ".join(entry.get("affected_apis", [])[:3])
-            target_rows.append(f"| {project} | {apis_str} | {provenance} | {confidence} |")
+            target_rows.append(
+                f"| {project} | {apis_str} | {provenance} | {confidence} |"
+            )
 
     # --- Canonical/Affected APIs ---
     canonical_apis = set()
@@ -233,7 +253,9 @@ def generate_card(
     for entry in entries:
         reason = entry.get("unresolved_reason", "")
         if reason:
-            unresolved_list.append(f"- {_shorten(entry.get('changed_file', ''))} (reason: {reason})")
+            unresolved_list.append(
+                f"- {_shorten(entry.get('changed_file', ''))} (reason: {reason})"
+            )
 
     # --- Fallback targets ---
     fallback_section = ""
@@ -271,12 +293,12 @@ def generate_card(
         if reviewer:
             reviewer_section = f"""
 ## Current Reviewer Decision
-- **must_run**: {reviewer.get('must_run', [])}
-- **should_run**: {reviewer.get('should_run', [])}
-- **must_not_run**: {reviewer.get('must_not_run', [])}
-- **allowed_extra_targets**: {reviewer.get('allowed_extra_targets', [])}
-- **expected_policy**: {reviewer.get('expected_policy', '')}
-- **notes**: {reviewer.get('notes', '')}
+- **must_run**: {reviewer.get("must_run", [])}
+- **should_run**: {reviewer.get("should_run", [])}
+- **must_not_run**: {reviewer.get("must_not_run", [])}
+- **allowed_extra_targets**: {reviewer.get("allowed_extra_targets", [])}
+- **expected_policy**: {reviewer.get("expected_policy", "")}
+- **notes**: {reviewer.get("notes", "")}
 """
 
     # --- Build card ---
@@ -285,11 +307,11 @@ def generate_card(
 ## Meta
 - **URL**: {format_pr_url(pr_number)}
 - **Category**: {candidate.category}
-- **Selector status**: {gs['selector_status']}
-- **CI policy**: {gs['ci_policy']}
-- **Risk**: {gs['risk']}
+- **Selector status**: {gs["selector_status"]}
+- **CI policy**: {gs["ci_policy"]}
+- **Risk**: {gs["risk"]}
 - **Files changed**: {len(entries)}
-- **Targets selected**: {len(gs['all_targets'])}
+- **Targets selected**: {len(gs["all_targets"])}
 {alerts_section}
 {selector_suggestions_section}
 ## Changed Files
@@ -367,7 +389,9 @@ def _is_test_file(path: str) -> bool:
     )
 
 
-def generate_index(candidates: dict[int, PrCandidate], batch_results: dict[int, dict]) -> str:
+def generate_index(
+    candidates: dict[int, PrCandidate], batch_results: dict[int, dict]
+) -> str:
     header = """# Golden PR Cards Index
 
 | # | PR | Category | Files | Targets | Policy | Status |
@@ -404,7 +428,11 @@ def main() -> int:
     parser.add_argument("--batch-results", type=Path, required=True)
     parser.add_argument("--pr-api-cache-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--golden", type=Path, help="Path to golden_pr_set.json (v2 schema, for context)")
+    parser.add_argument(
+        "--golden",
+        type=Path,
+        help="Path to golden_pr_set.json (v2 schema, for context)",
+    )
     args = parser.parse_args()
 
     print("Loading candidates...", flush=True)
@@ -436,7 +464,7 @@ def main() -> int:
         card_path.write_text(card, encoding="utf-8")
         generated += 1
 
-    print(f"Generating index...", flush=True)
+    print("Generating index...", flush=True)
     index = generate_index(candidates, batch_results)
     (args.output_dir / "golden_cards_index.md").write_text(index, encoding="utf-8")
 

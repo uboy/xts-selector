@@ -1,4 +1,5 @@
 """TextInputModifier symbol-query benchmark coverage for arkui-xts-selector."""
+
 from __future__ import annotations
 
 from test_benchmark_contract import (
@@ -25,18 +26,23 @@ class TextInputModifierBenchmarkTests(WorkspaceAwareTestCase):
     TOP_N = 300
 
     def _get_report(self) -> dict:
-        return _run_selector(self.ws, [
-            "--symbol-query", self.QUERY,
-            "--variants", "static",
-            "--top-projects", str(self.TOP_N),
-        ])
+        return _run_selector(
+            self.ws,
+            [
+                "--symbol-query",
+                self.QUERY,
+                "--variants",
+                "static",
+                "--top-projects",
+                str(self.TOP_N),
+            ],
+        )
 
     def test_does_not_crash(self) -> None:
         report = self._get_report()
         symbol_queries = report.get("symbol_queries", [])
         self.assertIsInstance(symbol_queries, list)
         self.assertTrue(symbol_queries, "Expected at least one symbol query result")
-
 
     def test_recall_must_have(self) -> None:
         must_have = _load_fixture_lines(self.FIXTURE_DIR, "must_have.txt")
@@ -102,4 +108,6 @@ class TextInputModifierBenchmarkTests(WorkspaceAwareTestCase):
                 )
         missing = (must_run | strong_related) - found
         if missing:
-            self.fail(f"TextInput-focused suites missing from prioritized output: {sorted(missing)}")
+            self.fail(
+                f"TextInput-focused suites missing from prioritized output: {sorted(missing)}"
+            )

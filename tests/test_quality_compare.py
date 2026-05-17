@@ -1,4 +1,5 @@
 """Tests for quality_compare.py."""
+
 from __future__ import annotations
 
 import json
@@ -8,9 +9,15 @@ from pathlib import Path
 from arkui_xts_selector.quality_compare import compare_batch_results
 
 
-def _make_pr_result(pr_number: int, targets: int = 3, apis: int = 2,
-                    unresolved: int = 0, ci: str = "ok", fallback: bool = False,
-                    status: str = "ok") -> dict:
+def _make_pr_result(
+    pr_number: int,
+    targets: int = 3,
+    apis: int = 2,
+    unresolved: int = 0,
+    ci: str = "ok",
+    fallback: bool = False,
+    status: str = "ok",
+) -> dict:
     entries = []
     for i in range(targets):
         e: dict = {
@@ -40,6 +47,7 @@ class TestCompareBatchResults(unittest.TestCase):
 
     def tearDown(self) -> None:
         import shutil
+
         if self.tmp.exists():
             shutil.rmtree(self.tmp)
 

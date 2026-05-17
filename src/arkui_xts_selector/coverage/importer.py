@@ -1,4 +1,5 @@
 """Import coverage data from various formats."""
+
 from __future__ import annotations
 import json
 from pathlib import Path
@@ -21,7 +22,9 @@ def import_gcov_json(path: Path) -> CoverageIndex:
             forward.setdefault(source, []).append(
                 CoverageEntry(source, "gcov", covered, total, ratio)
             )
-    return CoverageIndex(_forward=forward, imported_at=datetime.now(timezone.utc).isoformat())
+    return CoverageIndex(
+        _forward=forward, imported_at=datetime.now(timezone.utc).isoformat()
+    )
 
 
 def import_coverage_json(path: Path) -> CoverageIndex:
@@ -38,4 +41,6 @@ def import_coverage_json(path: Path) -> CoverageIndex:
             forward.setdefault(name, []).append(
                 CoverageEntry(name, "coverage_json", covered, total, ratio)
             )
-    return CoverageIndex(_forward=forward, imported_at=datetime.now(timezone.utc).isoformat())
+    return CoverageIndex(
+        _forward=forward, imported_at=datetime.now(timezone.utc).isoformat()
+    )

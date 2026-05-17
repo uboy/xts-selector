@@ -3,6 +3,7 @@
 Bridges validation/ast_oracle output to the selector's API namespace
 using file role classification and SDK index lookup.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -60,17 +61,19 @@ def map_method_changes(
         if family_lookup and file_path in family_lookup:
             family_name = family_lookup[file_path]
 
-        results.append(MappedApi(
-            change_kind=change_kind,
-            qualified_name=qualified_name,
-            parent_class=parent_class,
-            method_name=method_name,
-            file_path=file_path,
-            file_role=role,
-            canonical_id=canonical_id,
-            sdk_family=family_name,
-            confidence=confidence,
-        ))
+        results.append(
+            MappedApi(
+                change_kind=change_kind,
+                qualified_name=qualified_name,
+                parent_class=parent_class,
+                method_name=method_name,
+                file_path=file_path,
+                file_role=role,
+                canonical_id=canonical_id,
+                sdk_family=family_name,
+                confidence=confidence,
+            )
+        )
 
     return results
 

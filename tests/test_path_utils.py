@@ -9,9 +9,9 @@ Tests verify:
 - Generated file identification
 - Build config file identification
 """
+
 from __future__ import annotations
 
-import pytest
 
 from arkui_xts_selector.path_utils import (
     is_build_config_path,
@@ -30,14 +30,18 @@ class TestNormalizePathAbsoluteWithRepoRoot:
         path = "/home/user/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp"
         repo_root = "/home/user/ace_engine"
         result = normalize_path(path, repo_root)
-        assert result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        assert (
+            result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
 
     def test_absolute_path_windows(self):
         """Windows absolute path with repo_root becomes relative."""
         path = "C:\\ace_engine\\frameworks\\core\\components_ng\\pattern\\button\\button_pattern.cpp"
         repo_root = "C:\\ace_engine"
         result = normalize_path(path, repo_root)
-        assert result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        assert (
+            result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
 
     def test_absolute_path_not_under_repo(self):
         """Absolute path not under repo_root returns path normalized."""
@@ -60,25 +64,33 @@ class TestNormalizePathRelative:
         """Relative path with forward slashes unchanged except lowercase."""
         path = "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
         result = normalize_path(path)
-        assert result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        assert (
+            result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
 
     def test_relative_path_with_dot_slash(self):
         """Relative path with leading ./ strips prefix."""
         path = "./frameworks/core/components_ng/pattern/button/button_pattern.cpp"
         result = normalize_path(path)
-        assert result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        assert (
+            result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
 
     def test_relative_path_with_backslashes(self):
         """Relative path with backslashes converted to forward slashes."""
         path = "frameworks\\core\\components_ng\\pattern\\button\\button_pattern.cpp"
         result = normalize_path(path)
-        assert result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        assert (
+            result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
 
     def test_relative_path_mixed_separators(self):
         """Relative path with mixed separators normalized."""
         path = "frameworks/core\\components_ng/pattern\\button/button_pattern.cpp"
         result = normalize_path(path)
-        assert result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        assert (
+            result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
 
 
 class TestStripAceEnginePrefix:
@@ -88,25 +100,35 @@ class TestStripAceEnginePrefix:
         """Strip foundation/arkui/ace_engine/ prefix."""
         path = "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp"
         result = strip_ace_engine_prefix(path)
-        assert result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        assert (
+            result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
 
     def test_strip_ace_engine_prefix(self):
         """Strip ace_engine/ prefix."""
-        path = "ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        path = (
+            "ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
         result = strip_ace_engine_prefix(path)
-        assert result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        assert (
+            result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
 
     def test_strip_no_prefix(self):
         """Path without prefix unchanged."""
         path = "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
         result = strip_ace_engine_prefix(path)
-        assert result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        assert (
+            result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
 
     def test_strip_case_insensitive(self):
         """Prefix stripping is case-insensitive."""
         path = "Foundation/Arkui/Ace_Engine/Frameworks/core/components_ng/pattern/button/button_pattern.cpp"
         result = strip_ace_engine_prefix(path)
-        assert result == "Frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        assert (
+            result == "Frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
 
 
 class TestIsTestPath:
@@ -119,7 +141,9 @@ class TestIsTestPath:
 
     def test_unittest_directory(self):
         """Files under unittest/ directory are test files."""
-        path = "frameworks/core/components_ng/pattern/button/unittest/button_unittest.cpp"
+        path = (
+            "frameworks/core/components_ng/pattern/button/unittest/button_unittest.cpp"
+        )
         assert is_test_path(path) is True
 
     def test_xts_directory(self):
@@ -234,16 +258,22 @@ class TestNormalizePathIntegration:
         path = "/home/user/ace_engine/foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp"
         repo_root = "/home/user/ace_engine"
         result = normalize_path(path, repo_root)
-        assert result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        assert (
+            result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
 
     def test_full_normalization_relative_with_prefix_and_backslashes(self):
         """Full normalization from relative path with backslashes and ACE prefix."""
         path = "ace_engine\\frameworks\\core\\components_ng\\pattern\\button\\button_pattern.cpp"
         result = normalize_path(path)
-        assert result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        assert (
+            result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
 
     def test_full_normalization_with_dot_slash(self):
         """Full normalization with leading ./."""
         path = "./frameworks/core/components_ng/pattern/button/button_pattern.cpp"
         result = normalize_path(path)
-        assert result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        assert (
+            result == "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )

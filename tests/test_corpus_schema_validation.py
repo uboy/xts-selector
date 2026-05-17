@@ -112,6 +112,7 @@ CORPUS_ENTRIES = [
 # Helper functions
 # ---------------------------------------------------------------------------
 
+
 def _build_api_id(api_dict: dict) -> ApiEntityId:
     """Build ApiEntityId from corpus entry dict."""
     return ApiEntityId.from_parts(
@@ -126,7 +127,9 @@ def _build_api_id(api_dict: dict) -> ApiEntityId:
 def _get_valid_literals() -> dict:
     """Return valid literal values for enum-like types."""
     return {
-        "coverage_equivalence": CoverageEquivalenceClass.__args__ if hasattr(CoverageEquivalenceClass, "__args__") else (
+        "coverage_equivalence": CoverageEquivalenceClass.__args__
+        if hasattr(CoverageEquivalenceClass, "__args__")
+        else (
             "exact_api_same_usage_shape",
             "exact_api_different_arguments",
             "exact_api_different_call_style",
@@ -138,18 +141,24 @@ def _get_valid_literals() -> dict:
             "broad_fallback",
             "unresolved_coverage",
         ),
-        "false_negative_risk": FalseNegativeRisk.__args__ if hasattr(FalseNegativeRisk, "__args__") else (
+        "false_negative_risk": FalseNegativeRisk.__args__
+        if hasattr(FalseNegativeRisk, "__args__")
+        else (
             "low",
             "medium",
             "high",
             "critical",
         ),
-        "runnability_state": RunnabilityState.__args__ if hasattr(RunnabilityState, "__args__") else (
+        "runnability_state": RunnabilityState.__args__
+        if hasattr(RunnabilityState, "__args__")
+        else (
             "confirmed",
             "unknown",
             "blocked",
         ),
-        "semantic_bucket": SemanticBucket.__args__ if hasattr(SemanticBucket, "__args__") else (
+        "semantic_bucket": SemanticBucket.__args__
+        if hasattr(SemanticBucket, "__args__")
+        else (
             "must_run",
             "recommended",
             "possible",
@@ -161,6 +170,7 @@ def _get_valid_literals() -> dict:
 # ---------------------------------------------------------------------------
 # Test classes
 # ---------------------------------------------------------------------------
+
 
 class ButtonFixtureValidationTests(unittest.TestCase):
     """Validate Button fixture has expected API entities."""
@@ -339,22 +349,42 @@ class CanonicalIdFormatTests(unittest.TestCase):
 
                 # Basic format validation
                 parts = canonical.split(":")
-                self.assertEqual(len(parts), 5, f"Canonical ID {canonical} should have 5 colon-separated parts")
+                self.assertEqual(
+                    len(parts),
+                    5,
+                    f"Canonical ID {canonical} should have 5 colon-separated parts",
+                )
 
                 # First part should be "api"
-                self.assertEqual(parts[0], "api", f"First part of {canonical} should be 'api'")
+                self.assertEqual(
+                    parts[0], "api", f"First part of {canonical} should be 'api'"
+                )
 
                 # Second part should be "v1"
-                self.assertEqual(parts[1], "v1", f"Second part of {canonical} should be 'v1'")
+                self.assertEqual(
+                    parts[1], "v1", f"Second part of {canonical} should be 'v1'"
+                )
 
                 # Third part should contain namespace and surface
-                self.assertIn(".", parts[2], f"Third part {parts[2]} should contain '.' for namespace.surface")
+                self.assertIn(
+                    ".",
+                    parts[2],
+                    f"Third part {parts[2]} should contain '.' for namespace.surface",
+                )
 
                 # Fourth part should be the kind
-                self.assertEqual(parts[3], api_dict["kind"], f"Fourth part should be kind {api_dict['kind']}")
+                self.assertEqual(
+                    parts[3],
+                    api_dict["kind"],
+                    f"Fourth part should be kind {api_dict['kind']}",
+                )
 
                 # Fifth part should be module#name
-                self.assertIn("#", parts[4], f"Fifth part {parts[4]} should contain '#' for module#name")
+                self.assertIn(
+                    "#",
+                    parts[4],
+                    f"Fifth part {parts[4]} should contain '#' for module#name",
+                )
 
 
 class ApiEntityKindTests(unittest.TestCase):

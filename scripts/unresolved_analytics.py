@@ -7,6 +7,7 @@ and generate statistics for negative-evidence caching.
 Usage:
     python scripts/unresolved_analytics.py <batch_results.json>
 """
+
 from __future__ import annotations
 
 import json
@@ -55,9 +56,7 @@ def analyze_unresolved(results_path: Path) -> dict:
         "unresolved_files": unresolved_files,
         "resolution_rate": resolved_files / total_files if total_files > 0 else 0,
         "unique_unresolved_paths": len(unresolved_counter),
-        "top_unresolved_paths": [
-            {"path": p, "count": c} for p, c in top_unresolved
-        ],
+        "top_unresolved_paths": [{"path": p, "count": c} for p, c in top_unresolved],
         "top_unresolved_directories": [
             {"directory": d, "count": c} for d, c in dir_counter.most_common(20)
         ],

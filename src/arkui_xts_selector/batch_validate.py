@@ -4,6 +4,7 @@ This module provides the `validate-batch` CLI subcommand that avoids the
 per-PR subprocess overhead by loading SDK/ACE/ETS/inverted indices once
 and reusing them across all PRs in the batch.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,18 +17,20 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from .indexing.ace_indexer import AceIndexResult, build_ace_index
+from .indexing.ace_indexer import AceIndexResult
 from .indexing.cache import cached_ace_index, cached_inverted_index, cached_sdk_index
 from .indexing.inverted_index import InvertedIndex
 from .indexing.pr_resolver import (
-    PrResolveEntry, SelectionReason,
-    _build_file_mapping_index, resolve_pr_with_context, apply_fallback,
+    PrResolveEntry,
+    _build_file_mapping_index,
+    resolve_pr_with_context,
+    apply_fallback,
     apply_target_ranking,
 )
 from .indexing.target_index import build_target_index, TargetIndexResult
 from .indexing.broad_infra import load_rules
 from .indexing.sdk_indexer import SdkIndexResult
-from .pr_cache import PrApiCache, PrCacheEntry, MissingPrCacheError
+from .pr_cache import PrApiCache, PrCacheEntry
 
 
 def _entry_to_dict(e: PrResolveEntry) -> dict:
@@ -58,7 +61,9 @@ def _entry_to_dict(e: PrResolveEntry) -> dict:
     return d
 
 
-def _load_pr_list(pr_list_file: Path, sample_size: int | None = None) -> list[tuple[str, int]]:
+def _load_pr_list(
+    pr_list_file: Path, sample_size: int | None = None
+) -> list[tuple[str, int]]:
     """Load PR URLs from file, return (url, pr_number) tuples."""
     urls = []
     for line in pr_list_file.read_text(encoding="utf-8").splitlines():
@@ -80,7 +85,9 @@ def _fetch_pr_changed_files(
     pr_url: str,
     git_host_config: Path | None = None,
     git_repo_root: Path | None = None,
-) -> tuple[list[str], dict[str, list[tuple[int, int]]], dict[str, str], dict[str, str | None]]:
+) -> tuple[
+    list[str], dict[str, list[tuple[int, int]]], dict[str, str], dict[str, str | None]
+]:
     """Fetch changed files for a PR via GitCode API.
 
     Returns (changed_files, changed_ranges, raw_patch_hunks, sha_info) where
@@ -106,7 +113,8 @@ def _fetch_pr_changed_files(
 
     if git_host_config and git_host_config.exists():
         ini_url, ini_token = load_ini_git_host_config(
-            str(git_host_config), git_repo_root or Path("."), "gitcode")
+            str(git_host_config), git_repo_root or Path("."), "gitcode"
+        )
         if ini_url:
             api_url = ini_url
         if ini_token:
@@ -131,7 +139,12 @@ def _fetch_pr_changed_files(
         repo_root=git_repo_root or Path("."),
     )
 
-    sha_info: dict[str, str | None] = {"base_sha": None, "head_sha": None, "base_ref": None, "head_ref": None}
+    sha_info: dict[str, str | None] = {
+        "base_sha": None,
+        "head_sha": None,
+        "base_ref": None,
+        "head_ref": None,
+    }
     try:
         meta = fetch_pr_metadata_via_api("gitcode", api_url, token, owner, repo, pr_ref)
         b, h, br, hr = extract_pr_shas_from_api_response("gitcode", meta)
@@ -163,12 +176,14 @@ def _save_cache_result(pr_number: int, result: dict, cache_dir: Path) -> None:
     cache_file.write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
 
 
-_NON_PRODUCT_REASONS = frozenset({
-    "build_config_no_test_impact",
-    "generated_file_skipped",
-    "documentation_no_test_impact",
-    "test_file_no_cross_impact",
-})
+_NON_PRODUCT_REASONS = frozenset(
+    {
+        "build_config_no_test_impact",
+        "generated_file_skipped",
+        "documentation_no_test_impact",
+        "test_file_no_cross_impact",
+    }
+)
 
 
 def _is_non_product(entry: dict) -> bool:
@@ -178,8 +193,11 @@ def _is_non_product(entry: dict) -> bool:
 def _summarize_result(result: dict) -> dict:
     """Extract summary metrics from a PR result."""
     if result.get("status") != "ok":
-        return {"pr_number": result.get("pr_number", 0), "status": result.get("status", "error"),
-                "error": result.get("error", "")[:200]}
+        return {
+            "pr_number": result.get("pr_number", 0),
+            "status": result.get("status", "error"),
+            "error": result.get("error", "")[:200],
+        }
 
     gs = result.get("graph_selection")
     if isinstance(gs, dict) and "entries" in gs:
@@ -187,18 +205,34 @@ def _summarize_result(result: dict) -> dict:
         changed_files = [e.get("changed_file", "") for e in graph_entries]
         files_with_apis = sum(1 for e in graph_entries if e.get("affected_apis"))
         naming_resolved = sum(1 for e in graph_entries if e.get("parser_level") == 2)
-        files_with_coverage = sum(1 for e in graph_entries
-                                  if e.get("affected_apis") or e.get("consumer_projects")
-                                  or e.get("broad_infra_match"))
+        files_with_coverage = sum(
+            1
+            for e in graph_entries
+            if e.get("affected_apis")
+            or e.get("consumer_projects")
+            or e.get("broad_infra_match")
+        )
 
         # Separate resolution sources
-        canonical_api_files = sum(1 for e in graph_entries if e.get("canonical_affected_apis"))
+        canonical_api_files = sum(
+            1 for e in graph_entries if e.get("canonical_affected_apis")
+        )
         broad_infra_files = sum(1 for e in graph_entries if e.get("broad_infra_match"))
-        family_files = sum(1 for e in graph_entries
-                          if e.get("impact_candidates")
-                          and any(c.get("relation_scope") == "family" for c in e.get("impact_candidates", []))
-                          and not e.get("broad_infra_match"))
-        exact_consumer_files = sum(1 for e in graph_entries if e.get("consumer_projects") and not e.get("broad_infra_match"))
+        family_files = sum(
+            1
+            for e in graph_entries
+            if e.get("impact_candidates")
+            and any(
+                c.get("relation_scope") == "family"
+                for c in e.get("impact_candidates", [])
+            )
+            and not e.get("broad_infra_match")
+        )
+        exact_consumer_files = sum(
+            1
+            for e in graph_entries
+            if e.get("consumer_projects") and not e.get("broad_infra_match")
+        )
 
         # PX-05: Provenance-based strict canonical metric
         strict_canonical_files = 0
@@ -216,8 +250,16 @@ def _summarize_result(result: dict) -> dict:
 
         # Excludable files
         _SKIP_PATTERNS = (
-            "/examples/", "/test/unittest/", "/test/mock/",
-            ".gn", ".gni", ".json", ".json5", ".png", ".map", ".gitignore",
+            "/examples/",
+            "/test/unittest/",
+            "/test/mock/",
+            ".gn",
+            ".gni",
+            ".json",
+            ".json5",
+            ".png",
+            ".map",
+            ".gitignore",
             "koala_projects/arkoala-arkts/arkui-ohos/generated/",
             "koala_projects/arkoala-arkts/arkui-ohos/build/",
             "arkui_idlize/",
@@ -233,9 +275,15 @@ def _summarize_result(result: dict) -> dict:
         unresolved_count = sum(1 for e in graph_entries if e.get("unresolved_reason"))
 
         # Strong-role coverage (file_role.classify-based denominator)
-        STRONG_ROLES = {"model_ng", "model_static", "native_modifier",
-                         "native_node_accessor", "jsview_dynamic"}
+        STRONG_ROLES = {
+            "model_ng",
+            "model_static",
+            "native_modifier",
+            "native_node_accessor",
+            "jsview_dynamic",
+        }
         from .indexing.file_role import classify
+
         strong_role_files = 0
         strong_role_canonical = 0
         for e in graph_entries:
@@ -257,10 +305,20 @@ def _summarize_result(result: dict) -> dict:
         for e in graph_entries:
             for p in e.get("consumer_projects", []):
                 if p not in all_projects:
-                    all_projects[p] = {"project": p, "bucket": "required", "score": 0, "variant": ""}
+                    all_projects[p] = {
+                        "project": p,
+                        "bucket": "required",
+                        "score": 0,
+                        "variant": "",
+                    }
         for p in gs.get("fallback_extra_targets", []):
             if p not in all_projects:
-                all_projects[p] = {"project": p, "bucket": "required", "score": 0, "variant": ""}
+                all_projects[p] = {
+                    "project": p,
+                    "bucket": "required",
+                    "score": 0,
+                    "variant": "",
+                }
 
         # Extract bucket counts from target_ranking action in provenance
         buckets = {"must_run": 0, "recommended": 0, "fallback": 0, "dropped": 0}
@@ -280,9 +338,15 @@ def _summarize_result(result: dict) -> dict:
         # model_ng/model_static/native_modifier/native_node_accessor/jsview_dynamic.
         # This metric excludes pattern/infrastructure/test/build/docs which never
         # produce SDK-confirmed canonical IDs by design.
-        STRONG_ROLES = {"model_ng", "model_static", "native_modifier",
-                        "native_node_accessor", "jsview_dynamic"}
+        STRONG_ROLES = {
+            "model_ng",
+            "model_static",
+            "native_modifier",
+            "native_node_accessor",
+            "jsview_dynamic",
+        }
         from .indexing.file_role import classify as _file_role_classify
+
         strong_role_files = 0
         strong_role_canonical = 0
         for e in graph_entries:
@@ -294,12 +358,16 @@ def _summarize_result(result: dict) -> dict:
 
         # Product-only metrics (exclude test_only, build_config, generated, docs)
         product_files = sum(1 for e in graph_entries if not _is_non_product(e))
-        product_canonical_count = sum(1 for e in graph_entries
-                                        if not _is_non_product(e)
-                                        and e.get("canonical_affected_apis"))
-        product_unresolved_count = sum(1 for e in graph_entries
-                                         if not _is_non_product(e)
-                                         and e.get("unresolved_reason"))
+        product_canonical_count = sum(
+            1
+            for e in graph_entries
+            if not _is_non_product(e) and e.get("canonical_affected_apis")
+        )
+        product_unresolved_count = sum(
+            1
+            for e in graph_entries
+            if not _is_non_product(e) and e.get("unresolved_reason")
+        )
 
         return {
             "pr_number": result["pr_number"],
@@ -308,7 +376,9 @@ def _summarize_result(result: dict) -> dict:
             "changed_files_count": len(graph_entries),
             "actionable_files": actionable_files,
             "files_with_aae": files_with_coverage,
-            "aae_population_rate": round(files_with_coverage / max(1, len(graph_entries)), 4),
+            "aae_population_rate": round(
+                files_with_coverage / max(1, len(graph_entries)), 4
+            ),
             "aae_actionable_rate": round(files_with_coverage / actionable_files, 4),
             "target_count": len(all_projects),
             "top_targets": list(all_projects.values())[:5],
@@ -330,26 +400,49 @@ def _summarize_result(result: dict) -> dict:
             "product_files_count": product_files,
             "product_canonical_count": product_canonical_count,
             "product_unresolved_count": product_unresolved_count,
-            "product_unresolved_rate": round(product_unresolved_count / max(1, product_files), 4),
-            "canonical_api_resolution_rate": round(canonical_api_files / max(1, len(graph_entries)), 4),
-            "exact_consumer_hit_rate": round(exact_consumer_files / max(1, len(graph_entries)), 4),
-            "strict_canonical_consumer_hit_rate": round(strict_canonical_files / max(1, len(graph_entries)), 4),
+            "product_unresolved_rate": round(
+                product_unresolved_count / max(1, product_files), 4
+            ),
+            "canonical_api_resolution_rate": round(
+                canonical_api_files / max(1, len(graph_entries)), 4
+            ),
+            "exact_consumer_hit_rate": round(
+                exact_consumer_files / max(1, len(graph_entries)), 4
+            ),
+            "strict_canonical_consumer_hit_rate": round(
+                strict_canonical_files / max(1, len(graph_entries)), 4
+            ),
             "provenance_distribution": provenance_counts,
-            "family_resolution_rate": round(family_files / max(1, len(graph_entries)), 4),
-            "broad_infra_rate": round(broad_infra_files / max(1, len(graph_entries)), 4),
-            "fallback_rescue_rate": round(len(gs.get("fallback_extra_targets", [])) / max(1, len(all_projects)), 4) if all_projects else 0,
-            "manual_review_rate": round((1 if gs.get("ci_policy_recommendation") == "manual_review" else 0), 4),
+            "family_resolution_rate": round(
+                family_files / max(1, len(graph_entries)), 4
+            ),
+            "broad_infra_rate": round(
+                broad_infra_files / max(1, len(graph_entries)), 4
+            ),
+            "fallback_rescue_rate": round(
+                len(gs.get("fallback_extra_targets", [])) / max(1, len(all_projects)), 4
+            )
+            if all_projects
+            else 0,
+            "manual_review_rate": round(
+                (1 if gs.get("ci_policy_recommendation") == "manual_review" else 0), 4
+            ),
             "low_confidence_count": len(gs.get("low_confidence_resolved_files", [])),
             "strong_role_files_count": strong_role_files,
             "strong_role_canonical_count": strong_role_canonical,
             "strong_role_canonical_rate": round(
-                strong_role_canonical / max(1, strong_role_files), 4),
+                strong_role_canonical / max(1, strong_role_files), 4
+            ),
         }
 
     # Legacy subprocess format
     report = result.get("report", {})
     if isinstance(report, str):
-        return {"pr_number": result["pr_number"], "status": "ok", "error": "report is string"}
+        return {
+            "pr_number": result["pr_number"],
+            "status": "ok",
+            "error": "report is string",
+        }
 
     results_list = report.get("results", [])
     changed_files = [r.get("changed_file", "") for r in results_list]
@@ -357,8 +450,12 @@ def _summarize_result(result: dict) -> dict:
     coverage = report.get("coverage_recommendations", {})
     ordered_targets = coverage.get("ordered_targets", [])
     targets = [
-        {"project": t.get("project", ""), "bucket": t.get("bucket", ""),
-         "score": t.get("score", 0), "variant": t.get("variant", "")}
+        {
+            "project": t.get("project", ""),
+            "bucket": t.get("bucket", ""),
+            "score": t.get("score", 0),
+            "variant": t.get("variant", ""),
+        }
         for t in ordered_targets
     ]
 
@@ -377,11 +474,17 @@ def _summarize_result(result: dict) -> dict:
         "aae_population_rate": round(aae_population_rate, 4),
         "target_count": len(targets),
         "top_targets": targets[:5],
-        "buckets": {b: sum(1 for t in targets if t["bucket"] == b)
-                    for b in set(t["bucket"] for t in targets)},
+        "buckets": {
+            b: sum(1 for t in targets if t["bucket"] == b)
+            for b in set(t["bucket"] for t in targets)
+        },
         "graph_files_resolved": sum(1 for e in graph_entries if e.get("affected_apis")),
-        "graph_naming_resolved": sum(1 for e in graph_entries if e.get("parser_level") == 2),
-        "graph_overall_risk": graph_sel.get("overall_false_negative_risk", "n/a") if isinstance(graph_sel, dict) else "n/a",
+        "graph_naming_resolved": sum(
+            1 for e in graph_entries if e.get("parser_level") == 2
+        ),
+        "graph_overall_risk": graph_sel.get("overall_false_negative_risk", "n/a")
+        if isinstance(graph_sel, dict)
+        else "n/a",
         "graph_error": graph_sel.get("error") if isinstance(graph_sel, dict) else None,
     }
 
@@ -390,27 +493,51 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
     """Execute the validate-batch subcommand."""
     # Clear proxy env vars to avoid API timeouts
     _PROXY_VARS = (
-        "http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY",
-        "all_proxy", "ALL_PROXY", "no_proxy", "NO_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "all_proxy",
+        "ALL_PROXY",
+        "no_proxy",
+        "NO_PROXY",
     )
     cleared_proxy_vars = [v for v in _PROXY_VARS if os.environ.pop(v, None) is not None]
 
     # Install urllib opener without proxy to prevent cached proxy settings
     import urllib.request
-    urllib.request.install_opener(urllib.request.build_opener(urllib.request.ProxyHandler({})))
+
+    urllib.request.install_opener(
+        urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    )
 
     # Resolve paths
-    repo_root = Path(args.repo_root) if args.repo_root else Path(
-        os.environ.get("OHOS_REPO_ROOT", str(Path.home() / "proj/ohos_master")))
-    xts_root = Path(args.xts_root) if args.xts_root else repo_root / "test/xts/acts/arkui"
-    sdk_root = Path(args.sdk_api_root) if args.sdk_api_root else repo_root / "interface/sdk-js/api"
+    repo_root = (
+        Path(args.repo_root)
+        if args.repo_root
+        else Path(
+            os.environ.get("OHOS_REPO_ROOT", str(Path.home() / "proj/ohos_master"))
+        )
+    )
+    xts_root = (
+        Path(args.xts_root) if args.xts_root else repo_root / "test/xts/acts/arkui"
+    )
+    sdk_root = (
+        Path(args.sdk_api_root)
+        if args.sdk_api_root
+        else repo_root / "interface/sdk-js/api"
+    )
     ace_root = repo_root / "foundation/arkui/ace_engine"
     git_host_config = Path(args.git_host_config) if args.git_host_config else None
     git_repo_root = ace_root
 
     output_path = Path(args.output) if args.output else Path("local/batch_results.json")
     cache_dir = Path(args.cache_dir) if args.cache_dir else Path("local/pr_cache")
-    pr_api_cache_dir = Path(args.pr_api_cache_dir) if hasattr(args, "pr_api_cache_dir") and args.pr_api_cache_dir else Path("local/pr_api_cache")
+    pr_api_cache_dir = (
+        Path(args.pr_api_cache_dir)
+        if hasattr(args, "pr_api_cache_dir") and args.pr_api_cache_dir
+        else Path("local/pr_api_cache")
+    )
     pr_cache_mode = getattr(args, "pr_cache_mode", "read-write")
     timeout = args.timeout
 
@@ -432,36 +559,64 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
 
     sdk = cached_sdk_index(sdk_root) if sdk_root.is_dir() else SdkIndexResult()
     ace = cached_ace_index(ace_root) if ace_root.is_dir() else AceIndexResult()
-    inverted = cached_inverted_index(xts_root, sdk_index=sdk, sdk_api_root=sdk_root) if xts_root.is_dir() else InvertedIndex()
-    target_index = build_target_index(xts_root) if xts_root and xts_root.is_dir() else TargetIndexResult()
+    inverted = (
+        cached_inverted_index(xts_root, sdk_index=sdk, sdk_api_root=sdk_root)
+        if xts_root.is_dir()
+        else InvertedIndex()
+    )
+    target_index = (
+        build_target_index(xts_root)
+        if xts_root and xts_root.is_dir()
+        else TargetIndexResult()
+    )
 
     idx_time = time.perf_counter() - t0
-    print(f"done ({idx_time:.1f}s: sdk={len(sdk.entries)}, ace={len(ace.entries)}, inv={len(inverted.all_api_names())}, tgt={len(target_index.entries)})", flush=True)
+    print(
+        f"done ({idx_time:.1f}s: sdk={len(sdk.entries)}, ace={len(ace.entries)}, inv={len(inverted.all_api_names())}, tgt={len(target_index.entries)})",
+        flush=True,
+    )
 
-    broad_rules_path = Path(__file__).resolve().parents[2] / "config" / "broad_infrastructure_files.json"
+    broad_rules_path = (
+        Path(__file__).resolve().parents[2]
+        / "config"
+        / "broad_infrastructure_files.json"
+    )
     rules = load_rules(broad_rules_path) if broad_rules_path.exists() else []
 
     # Load manual overrides
     from .indexing.manual_overrides import load_overrides, check_expired_overrides
-    override_rules_path = Path(__file__).resolve().parents[2] / "config" / "manual_path_overrides.json"
+
+    override_rules_path = (
+        Path(__file__).resolve().parents[2] / "config" / "manual_path_overrides.json"
+    )
     override_rules = load_overrides(override_rules_path)
 
     # CI gate: fail if expired overrides exist unless --allow-expired-overrides
     expired = check_expired_overrides(override_rules_path)
     if expired and not getattr(args, "allow_expired_overrides", False):
-        print(f"ERROR: {len(expired)} expired manual override(s) found:", file=sys.stderr)
+        print(
+            f"ERROR: {len(expired)} expired manual override(s) found:", file=sys.stderr
+        )
         for ex in expired:
-            print(f"  pattern='{ex['path_regex']}' expired={ex['expires_at']} "
-                  f"owner={ex['owner']} ticket={ex['ticket']}", file=sys.stderr)
-        print("Update expires_at or remove the rule, or pass --allow-expired-overrides.", file=sys.stderr)
+            print(
+                f"  pattern='{ex['path_regex']}' expired={ex['expires_at']} "
+                f"owner={ex['owner']} ticket={ex['ticket']}",
+                file=sys.stderr,
+            )
+        print(
+            "Update expires_at or remove the rule, or pass --allow-expired-overrides.",
+            file=sys.stderr,
+        )
         return 2
 
     # Load coupling index if available
     from .indexing.coupling_index import load_coupling_index
+
     coupling_index = load_coupling_index(Path("local/coupling_index.json"))
 
     # Load coverage index if available
     from .coverage.coverage_index import load_coverage_index
+
     coverage_index = load_coverage_index()
 
     # Build ETS index with import graph (lightweight, from parsed files)
@@ -469,6 +624,7 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
 
     # Load area ownership rules for fallback
     from .indexing.area_owners import load_area_owners
+
     area_rules = load_area_owners()
     if area_rules:
         print(f"Loaded {len(area_rules)} area ownership rules", flush=True)
@@ -495,9 +651,14 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         try:
             existing = json.loads(output_path.read_text(encoding="utf-8"))
             if isinstance(existing, list):
-                already_done = {r["pr_number"] for r in existing if r.get("status") == "ok"}
+                already_done = {
+                    r["pr_number"] for r in existing if r.get("status") == "ok"
+                }
                 if already_done:
-                    print(f"Resuming: {len(already_done)} PRs already in {output_path}", flush=True)
+                    print(
+                        f"Resuming: {len(already_done)} PRs already in {output_path}",
+                        flush=True,
+                    )
                     results = existing
                     summaries = [_summarize_result(r) for r in existing]
         except (json.JSONDecodeError, OSError):
@@ -507,7 +668,11 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
 
     # Filter to only pending PRs
     pending = [(url, num) for url, num in pr_urls if num not in done_pr_numbers]
-    print(f"Cached: {done_pr_numbers & {num for _, num in pr_urls}}", len(done_pr_numbers & {num for _, num in pr_urls}), "PRs")
+    print(
+        f"Cached: {done_pr_numbers & {num for _, num in pr_urls}}",
+        len(done_pr_numbers & {num for _, num in pr_urls}),
+        "PRs",
+    )
     print(f"Pending: {len(pending)} PRs to process", flush=True)
 
     def _process_one(pr_url: str, pr_number: int) -> dict:
@@ -528,11 +693,17 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                 changed_ranges = cached_pr.normalized_ranges
                 raw_patch_hunks = cached_pr.raw_patch_hunks
             else:
-                changed_files, changed_ranges, raw_patch_hunks, sha_info = _fetch_pr_changed_files(
-                    pr_url, git_host_config=git_host_config, git_repo_root=git_repo_root)
+                changed_files, changed_ranges, raw_patch_hunks, sha_info = (
+                    _fetch_pr_changed_files(
+                        pr_url,
+                        git_host_config=git_host_config,
+                        git_repo_root=git_repo_root,
+                    )
+                )
 
                 from datetime import datetime, timezone
                 import re as _re
+
                 _m = _re.match(r"https?://[^/]+/([^/]+)/([^/]+)/", pr_url)
                 _owner = _m.group(1) if _m else "unknown"
                 _repo = _m.group(2) if _m else "unknown"
@@ -567,8 +738,12 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                 xts_root=xts_root if xts_root else None,
                 target_index=target_index,
                 override_rules=override_rules if override_rules else None,
-                coupling_index=coupling_index if not coupling_index.is_empty() else None,
-                coverage_index=coverage_index if not coverage_index.is_stale() else None,
+                coupling_index=coupling_index
+                if not coupling_index.is_empty()
+                else None,
+                coverage_index=coverage_index
+                if not coverage_index.is_stale()
+                else None,
                 ets_index=ets_import_index,
                 area_rules=area_rules if area_rules else None,
                 repo_root=repo_root,
@@ -576,7 +751,10 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
             )
 
             pr_resolve_result = apply_fallback(
-                pr_resolve_result, xts_root=xts_root if xts_root else None, target_index=target_index)
+                pr_resolve_result,
+                xts_root=xts_root if xts_root else None,
+                target_index=target_index,
+            )
 
             pr_resolve_result = apply_target_ranking(pr_resolve_result)
 
@@ -596,11 +774,17 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
             if pr_resolve_result.provenance:
                 graph_selection["provenance"] = list(pr_resolve_result.provenance)
             if pr_resolve_result.fallback_extra_targets:
-                graph_selection["fallback_extra_targets"] = list(pr_resolve_result.fallback_extra_targets)
+                graph_selection["fallback_extra_targets"] = list(
+                    pr_resolve_result.fallback_extra_targets
+                )
             if pr_resolve_result.unresolved_files:
-                graph_selection["unresolved_files"] = list(pr_resolve_result.unresolved_files)
+                graph_selection["unresolved_files"] = list(
+                    pr_resolve_result.unresolved_files
+                )
             if pr_resolve_result.low_confidence_resolved_files:
-                graph_selection["low_confidence_resolved_files"] = list(pr_resolve_result.low_confidence_resolved_files)
+                graph_selection["low_confidence_resolved_files"] = list(
+                    pr_resolve_result.low_confidence_resolved_files
+                )
 
             pr_result = {
                 "pr_number": pr_number,
@@ -622,7 +806,10 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         max_workers = max(1, len(pending))
 
     if pending:
-        print(f"Processing {len(pending)} PRs with {max_workers} parallel workers...", flush=True)
+        print(
+            f"Processing {len(pending)} PRs with {max_workers} parallel workers...",
+            flush=True,
+        )
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {}
@@ -635,7 +822,11 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                 try:
                     pr_result = future.result()
                 except Exception as exc:
-                    pr_result = {"pr_number": pr_number, "status": "error", "error": str(exc)[:500]}
+                    pr_result = {
+                        "pr_number": pr_number,
+                        "status": "error",
+                        "error": str(exc)[:500],
+                    }
 
                 summary = _summarize_result(pr_result)
 
@@ -652,37 +843,48 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
                     if status == "ok" and "graph_selection" in pr_result:
                         gs = pr_result["graph_selection"]
                         entries = gs.get("entries", [])
-                        naming_count = sum(1 for e in entries if e.get("parser_level") == 2)
+                        naming_count = sum(
+                            1 for e in entries if e.get("parser_level") == 2
+                        )
                         api_count = sum(1 for e in entries if e.get("affected_apis"))
                         unresolved_count = len(gs.get("unresolved_files", []))
                         ci = gs.get("ci_policy_recommendation", "")
                         extra = f" naming={naming_count} api={api_count} unresolved={unresolved_count} ci={ci}"
-                    print(f"  [{completed}/{len(pending)}] PR #{pr_number}: {status}{extra}  ({rate:.1f}/s, ETA {eta/60:.0f}m)", flush=True)
+                    print(
+                        f"  [{completed}/{len(pending)}] PR #{pr_number}: {status}{extra}  ({rate:.1f}/s, ETA {eta / 60:.0f}m)",
+                        flush=True,
+                    )
 
                     # Incremental save every 10 PRs
                     if completed % 10 == 0:
                         output_path.parent.mkdir(parents=True, exist_ok=True)
                         output_path.write_text(
-                            json.dumps(results, ensure_ascii=False, indent=None), encoding="utf-8")
+                            json.dumps(results, ensure_ascii=False, indent=None),
+                            encoding="utf-8",
+                        )
 
     # Final save
     total_time = time.perf_counter() - start_time
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
-        json.dumps(results, ensure_ascii=False, indent=None), encoding="utf-8")
+        json.dumps(results, ensure_ascii=False, indent=None), encoding="utf-8"
+    )
 
     # Save summaries
     summary_path = output_path.with_name(output_path.stem + "_summary.json")
     summary_path.write_text(
-        json.dumps(summaries, ensure_ascii=False, indent=2), encoding="utf-8")
+        json.dumps(summaries, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
     # Print summary
     ok = sum(1 for s in summaries if s["status"] == "ok")
     errors = sum(1 for s in summaries if s["status"] == "error")
-    print(f"\n{'='*60}")
-    print(f"=== Batch Summary ===")
+    print(f"\n{'=' * 60}")
+    print("=== Batch Summary ===")
     print(f"Total: {len(pr_urls)}, OK: {ok}, Errors: {errors}")
-    print(f"Index load: {idx_time:.1f}s, Total: {total_time:.1f}s ({total_time/60:.1f}m)")
+    print(
+        f"Index load: {idx_time:.1f}s, Total: {total_time:.1f}s ({total_time / 60:.1f}m)"
+    )
     print(f"Workers: requested={workers_requested}, effective={max_workers}")
     print(f"Proxy: disabled, cleared vars: {cleared_proxy_vars or 'none'}")
     print(f"PR cache mode: {pr_cache_mode}, dir: {pr_api_cache_dir}")
@@ -691,93 +893,180 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         # PX-10: Split into clean gate and diagnostic-adjusted sets
         ok_summaries = [s for s in summaries if s["status"] == "ok"]
         clean_gate_summaries = ok_summaries  # All OK PRs (clean gate)
-        diagnostic_adjusted_summaries = [s for s in ok_summaries
-                                          if s.get("ci_policy") not in ("manual_review", "require_broader_suite")]
+        diagnostic_adjusted_summaries = [
+            s
+            for s in ok_summaries
+            if s.get("ci_policy") not in ("manual_review", "require_broader_suite")
+        ]
 
         # Track excluded PRs with reasons
         excluded_prs = []
         for s in summaries:
             if s["status"] != "ok":
-                excluded_prs.append({
-                    "pr_number": s.get("pr_number", 0),
-                    "reason": f"error: {s.get('error', 'unknown')[:100]}",
-                })
+                excluded_prs.append(
+                    {
+                        "pr_number": s.get("pr_number", 0),
+                        "reason": f"error: {s.get('error', 'unknown')[:100]}",
+                    }
+                )
             elif s.get("ci_policy") == "manual_review":
-                excluded_prs.append({
-                    "pr_number": s.get("pr_number", 0),
-                    "reason": "ci_policy: manual_review",
-                })
+                excluded_prs.append(
+                    {
+                        "pr_number": s.get("pr_number", 0),
+                        "reason": "ci_policy: manual_review",
+                    }
+                )
             elif s.get("ci_policy") == "require_broader_suite":
-                excluded_prs.append({
-                    "pr_number": s.get("pr_number", 0),
-                    "reason": "ci_policy: require_broader_suite",
-                })
+                excluded_prs.append(
+                    {
+                        "pr_number": s.get("pr_number", 0),
+                        "reason": "ci_policy: require_broader_suite",
+                    }
+                )
 
-        aae_rates = [s["aae_population_rate"] for s in summaries if s["status"] == "ok" and "aae_population_rate" in s]
-        aae_actionable = [s["aae_actionable_rate"] for s in summaries if s["status"] == "ok" and "aae_actionable_rate" in s]
+        aae_rates = [
+            s["aae_population_rate"]
+            for s in summaries
+            if s["status"] == "ok" and "aae_population_rate" in s
+        ]
+        aae_actionable = [
+            s["aae_actionable_rate"]
+            for s in summaries
+            if s["status"] == "ok" and "aae_actionable_rate" in s
+        ]
         avg_aae = sum(aae_rates) / len(aae_rates) if aae_rates else 0
-        avg_aae_actionable = sum(aae_actionable) / len(aae_actionable) if aae_actionable else 0
-        naming_resolved = sum(s.get("graph_naming_resolved", 0) for s in summaries if s["status"] == "ok")
-        total_files = sum(s.get("changed_files_count", 0) for s in summaries if s["status"] == "ok")
-        total_covered = sum(s.get("files_with_aae", 0) for s in summaries if s["status"] == "ok")
-        total_unresolved = sum(s.get("unresolved_count", 0) for s in summaries if s["status"] == "ok")
+        avg_aae_actionable = (
+            sum(aae_actionable) / len(aae_actionable) if aae_actionable else 0
+        )
+        naming_resolved = sum(
+            s.get("graph_naming_resolved", 0) for s in summaries if s["status"] == "ok"
+        )
+        total_files = sum(
+            s.get("changed_files_count", 0) for s in summaries if s["status"] == "ok"
+        )
+        total_covered = sum(
+            s.get("files_with_aae", 0) for s in summaries if s["status"] == "ok"
+        )
+        total_unresolved = sum(
+            s.get("unresolved_count", 0) for s in summaries if s["status"] == "ok"
+        )
         print(f"AAE population rate (avg per PR): {avg_aae:.2%}")
-        print(f"AAE actionable rate (excl. examples/tests/config, avg): {avg_aae_actionable:.2%}")
+        print(
+            f"AAE actionable rate (excl. examples/tests/config, avg): {avg_aae_actionable:.2%}"
+        )
         print(f"Total coverage: {total_covered}/{total_files} files")
         print(f"Naming-resolved files: {naming_resolved}")
         print(f"Unresolved files: {total_unresolved}")
 
         # Quality metrics (Task 9)
         unresolved_rate = total_unresolved / max(1, total_files)
-        target_resolved = sum(1 for s in summaries if s["status"] == "ok" and s.get("target_count", 0) > 0)
+        target_resolved = sum(
+            1 for s in summaries if s["status"] == "ok" and s.get("target_count", 0) > 0
+        )
         target_resolution_rate = target_resolved / ok if ok else 0
-        manual_review = sum(1 for s in summaries if s["status"] == "ok" and s.get("ci_policy") == "manual_review")
+        manual_review = sum(
+            1
+            for s in summaries
+            if s["status"] == "ok" and s.get("ci_policy") == "manual_review"
+        )
         manual_review_rate = manual_review / ok if ok else 0
-        print(f"Target resolution rate: {target_resolution_rate:.2%} ({target_resolved}/{ok} PRs)")
+        print(
+            f"Target resolution rate: {target_resolution_rate:.2%} ({target_resolved}/{ok} PRs)"
+        )
         print(f"Unresolved file rate: {unresolved_rate:.2%}")
-        print(f"Manual review rate: {manual_review_rate:.2%} ({manual_review}/{ok} PRs)")
+        print(
+            f"Manual review rate: {manual_review_rate:.2%} ({manual_review}/{ok} PRs)"
+        )
 
         # Granular resolution metrics (Task 14)
-        canon_rates = [s["canonical_api_resolution_rate"] for s in summaries if s["status"] == "ok" and "canonical_api_resolution_rate" in s]
-        consumer_rates = [s["exact_consumer_hit_rate"] for s in summaries if s["status"] == "ok" and "exact_consumer_hit_rate" in s]
-        strict_canonical_rates = [s["strict_canonical_consumer_hit_rate"] for s in summaries if s["status"] == "ok" and "strict_canonical_consumer_hit_rate" in s]
-        family_rates = [s["family_resolution_rate"] for s in summaries if s["status"] == "ok" and "family_resolution_rate" in s]
-        broad_rates = [s["broad_infra_rate"] for s in summaries if s["status"] == "ok" and "broad_infra_rate" in s]
+        canon_rates = [
+            s["canonical_api_resolution_rate"]
+            for s in summaries
+            if s["status"] == "ok" and "canonical_api_resolution_rate" in s
+        ]
+        consumer_rates = [
+            s["exact_consumer_hit_rate"]
+            for s in summaries
+            if s["status"] == "ok" and "exact_consumer_hit_rate" in s
+        ]
+        strict_canonical_rates = [
+            s["strict_canonical_consumer_hit_rate"]
+            for s in summaries
+            if s["status"] == "ok" and "strict_canonical_consumer_hit_rate" in s
+        ]
+        family_rates = [
+            s["family_resolution_rate"]
+            for s in summaries
+            if s["status"] == "ok" and "family_resolution_rate" in s
+        ]
+        broad_rates = [
+            s["broad_infra_rate"]
+            for s in summaries
+            if s["status"] == "ok" and "broad_infra_rate" in s
+        ]
         avg_canonical = sum(canon_rates) / len(canon_rates) if canon_rates else 0
-        avg_consumer = sum(consumer_rates) / len(consumer_rates) if consumer_rates else 0
-        avg_strict_canonical = sum(strict_canonical_rates) / len(strict_canonical_rates) if strict_canonical_rates else 0
+        avg_consumer = (
+            sum(consumer_rates) / len(consumer_rates) if consumer_rates else 0
+        )
+        avg_strict_canonical = (
+            sum(strict_canonical_rates) / len(strict_canonical_rates)
+            if strict_canonical_rates
+            else 0
+        )
         avg_family = sum(family_rates) / len(family_rates) if family_rates else 0
         avg_broad = sum(broad_rates) / len(broad_rates) if broad_rates else 0
 
         # PR-level canonical coverage: how many PRs have at least 1 canonical API
-        prs_with_canonical = sum(1 for s in summaries
-                                  if s.get("status") == "ok"
-                                  and s.get("canonical_api_resolution_rate", 0) > 0)
+        prs_with_canonical = sum(
+            1
+            for s in summaries
+            if s.get("status") == "ok" and s.get("canonical_api_resolution_rate", 0) > 0
+        )
         pr_canonical_coverage = prs_with_canonical / max(1, ok)
         file_canonical_coverage = avg_canonical
 
         print(f"Canonical API resolution rate (avg): {avg_canonical:.2%}")
-        print(f"PR canonical coverage: {pr_canonical_coverage:.2%} ({prs_with_canonical}/{ok} PRs)")
-        print(f"File canonical coverage: {file_canonical_coverage:.4f} (avg per-file rate)")
+        print(
+            f"PR canonical coverage: {pr_canonical_coverage:.2%} ({prs_with_canonical}/{ok} PRs)"
+        )
+        print(
+            f"File canonical coverage: {file_canonical_coverage:.4f} (avg per-file rate)"
+        )
         print(f"Exact consumer hit rate (avg): {avg_consumer:.2%}")
         print(f"Strict canonical consumer hit rate (avg): {avg_strict_canonical:.2%}")
         print(f"Family resolution rate (avg): {avg_family:.2%}")
         print(f"Broad infra rate (avg): {avg_broad:.2%}")
 
         # Low-confidence resolution statistics
-        total_low_conf = sum(s.get("low_confidence_count", 0) for s in summaries if s["status"] == "ok")
+        total_low_conf = sum(
+            s.get("low_confidence_count", 0) for s in summaries if s["status"] == "ok"
+        )
         low_conf_rate = total_low_conf / max(1, total_files)
-        print(f"Low-confidence resolutions: {total_low_conf} files ({low_conf_rate:.2%})")
+        print(
+            f"Low-confidence resolutions: {total_low_conf} files ({low_conf_rate:.2%})"
+        )
 
         # Product-only metrics (exclude test_only, build_config, generated, docs)
-        product_canon_rates = [s["product_canonical_count"] / max(1, s["product_files_count"])
-                               for s in summaries
-                               if s.get("status") == "ok" and s.get("product_files_count", 0) > 0]
-        avg_canonical_product = sum(product_canon_rates) / len(product_canon_rates) if product_canon_rates else 0
-        product_unres_rates = [s["product_unresolved_count"] / max(1, s["product_files_count"])
-                               for s in summaries
-                               if s.get("status") == "ok" and s.get("product_files_count", 0) > 0]
-        avg_unresolved_product = sum(product_unres_rates) / len(product_unres_rates) if product_unres_rates else 0
+        product_canon_rates = [
+            s["product_canonical_count"] / max(1, s["product_files_count"])
+            for s in summaries
+            if s.get("status") == "ok" and s.get("product_files_count", 0) > 0
+        ]
+        avg_canonical_product = (
+            sum(product_canon_rates) / len(product_canon_rates)
+            if product_canon_rates
+            else 0
+        )
+        product_unres_rates = [
+            s["product_unresolved_count"] / max(1, s["product_files_count"])
+            for s in summaries
+            if s.get("status") == "ok" and s.get("product_files_count", 0) > 0
+        ]
+        avg_unresolved_product = (
+            sum(product_unres_rates) / len(product_unres_rates)
+            if product_unres_rates
+            else 0
+        )
         print(f"Canonical (product-only): {avg_canonical_product:.2%}")
         print(f"Unresolved (product-only): {avg_unresolved_product:.2%}")
 
@@ -811,14 +1100,24 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
             "total_low_confidence": total_low_conf,
         }
 
-        total_strong = sum(s.get("strong_role_files_count", 0) for s in summaries if s["status"] == "ok")
-        total_strong_canonical = sum(s.get("strong_role_canonical_count", 0) for s in summaries if s["status"] == "ok")
+        total_strong = sum(
+            s.get("strong_role_files_count", 0)
+            for s in summaries
+            if s["status"] == "ok"
+        )
+        total_strong_canonical = sum(
+            s.get("strong_role_canonical_count", 0)
+            for s in summaries
+            if s["status"] == "ok"
+        )
         strong_canonical_coverage = total_strong_canonical / max(1, total_strong)
         quality_metrics["strong_role_files_total"] = total_strong
         quality_metrics["strong_role_canonical_total"] = total_strong_canonical
         quality_metrics["strong_role_canonical_coverage"] = strong_canonical_coverage
-        print(f"Strong-role canonical coverage: {strong_canonical_coverage:.2%} "
-              f"({total_strong_canonical}/{total_strong} strong-role files)")
+        print(
+            f"Strong-role canonical coverage: {strong_canonical_coverage:.2%} "
+            f"({total_strong_canonical}/{total_strong} strong-role files)"
+        )
 
         # Aggregate provenance distribution across all PRs
         total_provenance: dict[str, int] = {}
@@ -831,39 +1130,84 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
         # PX-10: Clean gate metrics (all OK PRs)
         quality_metrics["clean_gate"] = {
             "pr_count": len(clean_gate_summaries),
-            "canonical_api_resolution_rate": _avg_metrics(clean_gate_summaries, "canonical_api_resolution_rate"),
-            "exact_consumer_hit_rate": _avg_metrics(clean_gate_summaries, "exact_consumer_hit_rate"),
-            "strict_canonical_consumer_hit_rate": _avg_metrics(clean_gate_summaries, "strict_canonical_consumer_hit_rate"),
-            "product_unresolved_rate": _avg_metrics(clean_gate_summaries, "product_unresolved_rate") if clean_gate_summaries and "product_unresolved_rate" in clean_gate_summaries[0] else 0,
+            "canonical_api_resolution_rate": _avg_metrics(
+                clean_gate_summaries, "canonical_api_resolution_rate"
+            ),
+            "exact_consumer_hit_rate": _avg_metrics(
+                clean_gate_summaries, "exact_consumer_hit_rate"
+            ),
+            "strict_canonical_consumer_hit_rate": _avg_metrics(
+                clean_gate_summaries, "strict_canonical_consumer_hit_rate"
+            ),
+            "product_unresolved_rate": _avg_metrics(
+                clean_gate_summaries, "product_unresolved_rate"
+            )
+            if clean_gate_summaries
+            and "product_unresolved_rate" in clean_gate_summaries[0]
+            else 0,
         }
 
         # PX-10: Diagnostic adjusted metrics (OK PRs excluding manual_review)
         quality_metrics["diagnostic_adjusted"] = {
             "pr_count": len(diagnostic_adjusted_summaries),
-            "canonical_api_resolution_rate": _avg_metrics(diagnostic_adjusted_summaries, "canonical_api_resolution_rate"),
-            "exact_consumer_hit_rate": _avg_metrics(diagnostic_adjusted_summaries, "exact_consumer_hit_rate"),
-            "strict_canonical_consumer_hit_rate": _avg_metrics(diagnostic_adjusted_summaries, "strict_canonical_consumer_hit_rate"),
-            "product_unresolved_rate": _avg_metrics(diagnostic_adjusted_summaries, "product_unresolved_rate") if diagnostic_adjusted_summaries and "product_unresolved_rate" in diagnostic_adjusted_summaries[0] else 0,
+            "canonical_api_resolution_rate": _avg_metrics(
+                diagnostic_adjusted_summaries, "canonical_api_resolution_rate"
+            ),
+            "exact_consumer_hit_rate": _avg_metrics(
+                diagnostic_adjusted_summaries, "exact_consumer_hit_rate"
+            ),
+            "strict_canonical_consumer_hit_rate": _avg_metrics(
+                diagnostic_adjusted_summaries, "strict_canonical_consumer_hit_rate"
+            ),
+            "product_unresolved_rate": _avg_metrics(
+                diagnostic_adjusted_summaries, "product_unresolved_rate"
+            )
+            if diagnostic_adjusted_summaries
+            and "product_unresolved_rate" in diagnostic_adjusted_summaries[0]
+            else 0,
         }
 
         quality_metrics["excluded_prs"] = excluded_prs
 
         # Fallback statistics
-        fb_applied = sum(1 for s in summaries if s["status"] == "ok" and s.get("fallback_applied"))
-        fb_rescue = sum(1 for s in summaries if s["status"] == "ok" and s.get("fallback_level") == "rescue")
-        fb_safety = sum(1 for s in summaries if s["status"] == "ok" and s.get("fallback_level") == "safety_net")
-        fb_targets = sum(s.get("fallback_extra_targets_count", 0) for s in summaries if s["status"] == "ok")
-        print(f"Fallback applied: {fb_applied}/{ok} (rescue={fb_rescue}, safety_net={fb_safety})")
+        fb_applied = sum(
+            1 for s in summaries if s["status"] == "ok" and s.get("fallback_applied")
+        )
+        fb_rescue = sum(
+            1
+            for s in summaries
+            if s["status"] == "ok" and s.get("fallback_level") == "rescue"
+        )
+        fb_safety = sum(
+            1
+            for s in summaries
+            if s["status"] == "ok" and s.get("fallback_level") == "safety_net"
+        )
+        fb_targets = sum(
+            s.get("fallback_extra_targets_count", 0)
+            for s in summaries
+            if s["status"] == "ok"
+        )
+        print(
+            f"Fallback applied: {fb_applied}/{ok} (rescue={fb_rescue}, safety_net={fb_safety})"
+        )
         print(f"Fallback extra targets total: {fb_targets}")
 
         # CI policy distribution
-        ci_policies = [s.get("ci_policy", "unknown") for s in summaries if s["status"] == "ok"]
+        ci_policies = [
+            s.get("ci_policy", "unknown") for s in summaries if s["status"] == "ok"
+        ]
         from collections import Counter
+
         ci_dist = Counter(ci_policies)
         print(f"CI policy distribution: {dict(ci_dist)}")
 
         # Semantic source distribution
-        sources = [s.get("semantic_source", "unknown") for s in summaries if s["status"] == "ok"]
+        sources = [
+            s.get("semantic_source", "unknown")
+            for s in summaries
+            if s["status"] == "ok"
+        ]
         src_dist = Counter(sources)
         print(f"Semantic source distribution: {dict(src_dist)}")
 
@@ -884,7 +1228,8 @@ def cmd_validate_batch(args: argparse.Namespace) -> int:
     if ok > 0:
         quality_data.update(quality_metrics)
     quality_path.write_text(
-        json.dumps(quality_data, ensure_ascii=False, indent=2), encoding="utf-8")
+        json.dumps(quality_data, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
     print(f"\nResults saved to {output_path}")
     print(f"Summaries saved to {summary_path}")

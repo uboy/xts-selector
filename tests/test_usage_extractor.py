@@ -7,11 +7,12 @@ Tests verify:
 - Confidence levels are appropriate
 - Round-trip serialization
 """
+
 from __future__ import annotations
 
 import pytest
 
-from arkui_xts_selector.indexing import ApiUsage, EtsUsage
+from arkui_xts_selector.indexing import ApiUsage
 
 
 class TestButtonUsageMapsToApi:
@@ -83,7 +84,9 @@ class TestMethodChainMapsToAttribute:
 
         # Find .buttonStyle() usage
         button_style_usages = [u for u in api_usages if u.api_name == "buttonStyle"]
-        assert len(button_style_usages) > 0, "Expected at least one .buttonStyle() usage"
+        assert len(button_style_usages) > 0, (
+            "Expected at least one .buttonStyle() usage"
+        )
 
         # Should be attribute_method type
         button_style_usage = button_style_usages[0]
@@ -176,7 +179,9 @@ class TestSliderUsageMapsToApi:
         slider_methods = {"step", "style", "blockColor"}
         found_methods = {u.api_name for u in api_usages if u.api_name in slider_methods}
 
-        assert found_methods == slider_methods, f"Expected {slider_methods}, got {found_methods}"
+        assert found_methods == slider_methods, (
+            f"Expected {slider_methods}, got {found_methods}"
+        )
 
 
 class TestNavigationUsageMapsToApi:
@@ -275,5 +280,6 @@ def fixtures_dir():
     """Return the fixtures directory path."""
     from pathlib import Path
     import arkui_xts_selector
+
     module_dir = Path(arkui_xts_selector.__file__).parent
     return module_dir.parent.parent / "tests" / "fixtures"

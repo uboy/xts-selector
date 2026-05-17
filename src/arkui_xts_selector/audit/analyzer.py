@@ -3,6 +3,7 @@
 Computes false-negative rate from audit log entries:
   FN rate = (runs with missed failures) / (runs with any failure)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -14,6 +15,7 @@ from .recorder import load_audit_entries
 @dataclass(frozen=True)
 class FnRateReport:
     """FN rate analysis report."""
+
     total_runs: int
     runs_with_failure: int
     runs_with_missed_failure: int
@@ -42,9 +44,14 @@ def compute_fn_rate(
 
     if not entries:
         return FnRateReport(
-            total_runs=0, runs_with_failure=0, runs_with_missed_failure=0,
-            fn_rate=0.0, total_failed_tests=0, total_missed_tests=0,
-            missed_test_categories=[], breakdown_by_risk={},
+            total_runs=0,
+            runs_with_failure=0,
+            runs_with_missed_failure=0,
+            fn_rate=0.0,
+            total_failed_tests=0,
+            total_missed_tests=0,
+            missed_test_categories=[],
+            breakdown_by_risk={},
             breakdown_by_fallback={},
         )
 
@@ -66,7 +73,9 @@ def compute_fn_rate(
             cat = "/".join(parts) if "/" in test else parts[0]
             missed_categories[cat] = missed_categories.get(cat, 0) + 1
 
-    top_categories = sorted(missed_categories, key=missed_categories.get, reverse=True)[:5]
+    top_categories = sorted(missed_categories, key=missed_categories.get, reverse=True)[
+        :5
+    ]
 
     # Breakdown by risk level
     risk_groups: dict[str, list[dict]] = {}
@@ -118,7 +127,7 @@ def compute_fn_rate(
 def format_fn_rate_report(report: FnRateReport) -> str:
     """Format FN rate report as human-readable text."""
     lines = [
-        f"=== XTS Selector FN Rate Report ===",
+        "=== XTS Selector FN Rate Report ===",
         f"Total runs: {report.total_runs}",
         f"Runs with failures: {report.runs_with_failure}",
         f"Runs with missed failures (FN): {report.runs_with_missed_failure}",

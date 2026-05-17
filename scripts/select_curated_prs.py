@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Select stratified sample of PRs for curated golden set."""
+
 from __future__ import annotations
 
 import argparse
@@ -20,11 +21,15 @@ def _pr_bucket(entry: dict) -> str:
     entries = gs.get("entries", [])
 
     has_canonical = any(
-        e.get("canonical_affected_apis") for e in entries if e.get("canonical_affected_apis")
+        e.get("canonical_affected_apis")
+        for e in entries
+        if e.get("canonical_affected_apis")
     )
 
     has_any_resolution = any(
-        e.get("affected_apis") or e.get("consumer_projects") or e.get("broad_infra_match")
+        e.get("affected_apis")
+        or e.get("consumer_projects")
+        or e.get("broad_infra_match")
         for e in entries
     )
 
@@ -53,7 +58,11 @@ def select_curated_prs(
 
     pr_lookup = {r["pr_number"]: r for r in batch_results}
 
-    buckets: dict[str, list[int]] = {"canonical_hit": [], "target_resolved": [], "zero_targets": []}
+    buckets: dict[str, list[int]] = {
+        "canonical_hit": [],
+        "target_resolved": [],
+        "zero_targets": [],
+    }
 
     for pr in pr_numbers:
         if pr not in pr_lookup:
@@ -64,7 +73,9 @@ def select_curated_prs(
 
     total_available = sum(len(v) for v in buckets.values())
     if total_available < total_sample_size:
-        raise ValueError(f"Not enough PRs ({total_available}) for sample size {total_sample_size}")
+        raise ValueError(
+            f"Not enough PRs ({total_available}) for sample size {total_sample_size}"
+        )
 
     selected: list[int] = []
     remaining = total_sample_size
@@ -79,7 +90,9 @@ def select_curated_prs(
         needed = max(min_per_bucket, remaining // (3 - len(bucket_counts)))
 
         take = min(available, needed)
-        selected.extend(random.Random(seed + hash(bucket)).sample(buckets[bucket], take))
+        selected.extend(
+            random.Random(seed + hash(bucket)).sample(buckets[bucket], take)
+        )
         bucket_counts[bucket] = take
         remaining -= take
 
@@ -91,7 +104,9 @@ def select_curated_prs(
             continue
         available = len(buckets[bucket])
         take = min(available, remaining)
-        selected.extend(random.Random(seed + hash(bucket)).sample(buckets[bucket], take))
+        selected.extend(
+            random.Random(seed + hash(bucket)).sample(buckets[bucket], take)
+        )
         bucket_counts[bucket] = take
         remaining -= take
 
@@ -103,13 +118,27 @@ def select_curated_prs(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Select stratified PR sample for curated golden set")
-    parser.add_argument("--pr-list-file", type=Path, required=True, help="File with PR URLs")
-    parser.add_argument("--batch-results", type=Path, required=True, help="Batch results JSON")
-    parser.add_argument("--output", type=Path, help="Output JSON file (default: stdout)")
-    parser.add_argument("--sample-size", type=int, default=30, help="Total sample size (default: 30)")
-    parser.add_argument("--min-per-bucket", type=int, default=5, help="Minimum per bucket (default: 5)")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
+    parser = argparse.ArgumentParser(
+        description="Select stratified PR sample for curated golden set"
+    )
+    parser.add_argument(
+        "--pr-list-file", type=Path, required=True, help="File with PR URLs"
+    )
+    parser.add_argument(
+        "--batch-results", type=Path, required=True, help="Batch results JSON"
+    )
+    parser.add_argument(
+        "--output", type=Path, help="Output JSON file (default: stdout)"
+    )
+    parser.add_argument(
+        "--sample-size", type=int, default=30, help="Total sample size (default: 30)"
+    )
+    parser.add_argument(
+        "--min-per-bucket", type=int, default=5, help="Minimum per bucket (default: 5)"
+    )
+    parser.add_argument(
+        "--seed", type=int, default=42, help="Random seed for reproducibility"
+    )
 
     args = parser.parse_args()
 

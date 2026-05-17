@@ -20,8 +20,10 @@ from arkui_xts_selector.model.evidence import ConfidenceLevel, Evidence
 # Node types
 # ---------------------------------------------------------------------------
 
+
 class NodeType(enum.Enum):
     """Types of nodes in the API lineage graph."""
+
     ENGINE_FILE = "engine_file"
     SDK_DECLARATION = "sdk_declaration"
     API_ENTITY = "api_entity"
@@ -38,8 +40,10 @@ class NodeType(enum.Enum):
 # Edge types
 # ---------------------------------------------------------------------------
 
+
 class EdgeType(enum.Enum):
     """Types of edges in the API lineage graph."""
+
     DECLARES = "declares"
     WRAPS = "wraps"
     IMPLEMENTS = "implements"
@@ -58,6 +62,7 @@ class EdgeType(enum.Enum):
 # Graph node
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class GraphNode:
     """A node in the API lineage graph.
@@ -68,7 +73,7 @@ class GraphNode:
     """
 
     node_id: str
-    node_type: str   # NodeType value
+    node_type: str  # NodeType value
     label: str = ""
     data: dict[str, object] = field(default_factory=dict)
 
@@ -97,6 +102,7 @@ class GraphNode:
 # Graph edge
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class GraphEdge:
     """A directed edge in the API lineage graph.
@@ -106,7 +112,7 @@ class GraphEdge:
     """
 
     edge_id: str
-    edge_type: str   # EdgeType value
+    edge_type: str  # EdgeType value
     from_node: str
     to_node: str
     evidence: Evidence = field(default_factory=Evidence)
@@ -157,6 +163,7 @@ class GraphEdge:
 # Graph container
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Graph:
     """Container for graph nodes and edges with deterministic ordering.
@@ -186,14 +193,8 @@ class Graph:
 
     def to_dict(self) -> dict:
         return {
-            "nodes": [
-                self.nodes[k].to_dict()
-                for k in sorted(self.nodes)
-            ],
-            "edges": [
-                self.edges[k].to_dict()
-                for k in sorted(self.edges)
-            ],
+            "nodes": [self.nodes[k].to_dict() for k in sorted(self.nodes)],
+            "edges": [self.edges[k].to_dict() for k in sorted(self.edges)],
         }
 
     @classmethod

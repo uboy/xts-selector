@@ -55,7 +55,9 @@ class ExecutionProgressAndArtifactsTests(unittest.TestCase):
 
         self.assertEqual(resolved, Path("/tmp/run/selector_report.json"))
 
-    def test_build_execution_progress_callback_renders_started_completed_and_interrupted(self) -> None:
+    def test_build_execution_progress_callback_renders_started_completed_and_interrupted(
+        self,
+    ) -> None:
         callback = build_execution_progress_callback(True)
         buffer = io.StringIO()
         with redirect_stderr(buffer):
@@ -82,17 +84,40 @@ class ExecutionProgressAndArtifactsTests(unittest.TestCase):
                     "status": "passed",
                     "duration_s": 11.2,
                     "remaining_estimated_duration_s": 210.0,
-                    "case_summary": {"total_tests": 7, "pass_count": 6, "fail_count": 1, "blocked_count": 0, "unknown_count": 0},
-                    "summary": {"passed": 1, "failed": 0, "blocked": 0, "timeout": 0, "unavailable": 0, "skipped": 0},
+                    "case_summary": {
+                        "total_tests": 7,
+                        "pass_count": 6,
+                        "fail_count": 1,
+                        "blocked_count": 0,
+                        "unknown_count": 0,
+                    },
+                    "summary": {
+                        "passed": 1,
+                        "failed": 0,
+                        "blocked": 0,
+                        "timeout": 0,
+                        "unavailable": 0,
+                        "skipped": 0,
+                    },
                 }
             )
             callback({"event": "interrupted", "completed": 1, "total": 3})
 
         output = buffer.getvalue()
-        self.assertIn("phase: running 1/3 [xdevice SER1] suite_a est=~1m 30s, batch_eta=~5m 00s", output)
-        self.assertIn("phase: completed 1/3 [xdevice SER1] suite_a -> passed ~11s, batch_eta=~3m 30s", output)
-        self.assertIn("suite_cases=(total=7, passed=6, failed=1, blocked=0, unknown=0)", output)
-        self.assertIn("phase: execution interrupted after 1/3 completed target(s)", output)
+        self.assertIn(
+            "phase: running 1/3 [xdevice SER1] suite_a est=~1m 30s, batch_eta=~5m 00s",
+            output,
+        )
+        self.assertIn(
+            "phase: completed 1/3 [xdevice SER1] suite_a -> passed ~11s, batch_eta=~3m 30s",
+            output,
+        )
+        self.assertIn(
+            "suite_cases=(total=7, passed=6, failed=1, blocked=0, unknown=0)", output
+        )
+        self.assertIn(
+            "phase: execution interrupted after 1/3 completed target(s)", output
+        )
 
     def test_execute_planned_targets_marks_partial_state_when_interrupted(self) -> None:
         repo_root = Path("/tmp/repo")
@@ -108,7 +133,10 @@ class ExecutionProgressAndArtifactsTests(unittest.TestCase):
             "execution_overview": {},
         }
 
-        with mock.patch("arkui_xts_selector.execution._execute_plan_item", side_effect=KeyboardInterrupt):
+        with mock.patch(
+            "arkui_xts_selector.execution._execute_plan_item",
+            side_effect=KeyboardInterrupt,
+        ):
             with self.assertRaises(KeyboardInterrupt):
                 execute_planned_targets(
                     report,
@@ -122,13 +150,17 @@ class ExecutionProgressAndArtifactsTests(unittest.TestCase):
         self.assertFalse(report["execution_overview"]["executed"])
         self.assertTrue(report["execution_overview"]["interrupted"])
 
-    def test_write_execution_artifact_index_includes_result_summary_and_module_log(self) -> None:
+    def test_write_execution_artifact_index_includes_result_summary_and_module_log(
+        self,
+    ) -> None:
         with TemporaryDirectory() as tmpdir:
             run_dir = Path(tmpdir)
             result_root = run_dir / "xdevice_reports" / "default" / "0000_suite"
             log_dir = result_root / "log" / "ActsButtonStaticTest"
             log_dir.mkdir(parents=True, exist_ok=True)
-            (result_root / "summary_report.xml").write_text("<testsuites />\n", encoding="utf-8")
+            (result_root / "summary_report.xml").write_text(
+                "<testsuites />\n", encoding="utf-8"
+            )
             (log_dir / "module_run.log").write_text("module log\n", encoding="utf-8")
             report = {
                 "json_output_path": str(run_dir / "selector_report.json"),
@@ -173,7 +205,16 @@ class ExecutionProgressAndArtifactsTests(unittest.TestCase):
             "execution_xdevice_reports_root": "/tmp/run/xdevice_reports",
             "execution_artifact_index_path": "/tmp/run/execution_artifacts.txt",
             "execution_overview": {"selected_target_keys": []},
-            "execution_summary": {"planned_run_count": 0, "passed": 0, "failed": 0, "blocked": 0, "timeout": 0, "unavailable": 0, "skipped": 0, "interrupted": False},
+            "execution_summary": {
+                "planned_run_count": 0,
+                "passed": 0,
+                "failed": 0,
+                "blocked": 0,
+                "timeout": 0,
+                "unavailable": 0,
+                "skipped": 0,
+                "interrupted": False,
+            },
             "results": [],
             "symbol_queries": [],
         }

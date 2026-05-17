@@ -1,10 +1,10 @@
 """Tests for select_golden_candidates.py — test_only, unknown, shortfall."""
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-import pytest
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 
@@ -12,6 +12,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 def _import_module():
     sys.path.insert(0, str(SCRIPTS_DIR))
     import importlib
+
     mod = importlib.import_module("select_golden_candidates")
     importlib.reload(mod)
     return mod
@@ -63,7 +64,9 @@ class TestClassifyPr:
         entry = {
             "graph_selection": {
                 "entries": [
-                    {"changed_file": "frameworks/core/components_ng/pattern/button/button_model.cpp"},
+                    {
+                        "changed_file": "frameworks/core/components_ng/pattern/button/button_model.cpp"
+                    },
                 ]
             }
         }
@@ -80,9 +83,7 @@ class TestGetSelectorStatus:
 
         unresolved_entry = {
             "status": "ok",
-            "graph_selection": {
-                "entries": [{"unresolved_reason": "no match"}]
-            }
+            "graph_selection": {"entries": [{"unresolved_reason": "no match"}]},
         }
         assert mod.get_selector_status(unresolved_entry) == "unresolved"
 
@@ -93,7 +94,7 @@ class TestGetSelectorStatus:
             "status": "ok",
             "graph_selection": {
                 "entries": [{"broad_infra_match": {"rule_id": "test"}}]
-            }
+            },
         }
         assert mod.get_selector_status(entry) == "broad_infra"
 

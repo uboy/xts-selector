@@ -8,9 +8,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from arkui_xts_selector.graph.adapters import build_button_modifier_import_only_graph, build_button_modifier_static_graph
+from arkui_xts_selector.graph.adapters import (
+    build_button_modifier_import_only_graph,
+    build_button_modifier_static_graph,
+)
 from arkui_xts_selector.graph.export import export_graph_debug
-from arkui_xts_selector.graph.schema import Graph, GraphNode, NodeType
+from arkui_xts_selector.graph.schema import Graph
 
 
 class GraphShadowExportTests(unittest.TestCase):
@@ -47,11 +50,13 @@ class GraphShadowExportTests(unittest.TestCase):
 
         # At least one result should have semantic_bucket="must_run"
         must_run_results = [
-            r for r in selection_results
-            if r["semantic_bucket"] == "must_run"
+            r for r in selection_results if r["semantic_bucket"] == "must_run"
         ]
-        self.assertGreater(len(must_run_results), 0,
-                          "ButtonModifier graph should produce at least one must_run result")
+        self.assertGreater(
+            len(must_run_results),
+            0,
+            "ButtonModifier graph should produce at least one must_run result",
+        )
 
     def test_export_deterministic_ordering(self) -> None:
         """Export twice and compare (skip timestamp) to verify deterministic output."""
@@ -68,8 +73,7 @@ class GraphShadowExportTests(unittest.TestCase):
         json1 = json.dumps(export1_copy, sort_keys=True)
         json2 = json.dumps(export2_copy, sort_keys=True)
 
-        self.assertEqual(json1, json2,
-                         "Export should produce deterministic output")
+        self.assertEqual(json1, json2, "Export should produce deterministic output")
 
     def test_export_serializable_json(self) -> None:
         """Verify export_dict can be serialized to JSON without error."""
@@ -103,8 +107,9 @@ class GraphShadowExportTests(unittest.TestCase):
 
         # Verify that each list is non-empty
         for node_type, nodes in nodes_by_type.items():
-            self.assertGreater(len(nodes), 0,
-                             f"nodes_by_type['{node_type}'] should be non-empty")
+            self.assertGreater(
+                len(nodes), 0, f"nodes_by_type['{node_type}'] should be non-empty"
+            )
 
     def test_export_import_only_graph_no_must_run(self) -> None:
         """Build import-only graph and verify no must_run in selection_results."""
@@ -113,11 +118,13 @@ class GraphShadowExportTests(unittest.TestCase):
 
         selection_results = export["selection_results"]
         must_run_results = [
-            r for r in selection_results
-            if r["semantic_bucket"] == "must_run"
+            r for r in selection_results if r["semantic_bucket"] == "must_run"
         ]
-        self.assertEqual(len(must_run_results), 0,
-                         "Import-only graph should not produce any must_run results")
+        self.assertEqual(
+            len(must_run_results),
+            0,
+            "Import-only graph should not produce any must_run results",
+        )
 
 
 if __name__ == "__main__":

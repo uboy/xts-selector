@@ -8,7 +8,8 @@ from tempfile import TemporaryDirectory
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from arkui_xts_selector.cli import build_function_coverage_rows, parse_test_file
+from arkui_xts_selector.cli import build_function_coverage_rows
+from arkui_xts_selector.file_indexing import parse_test_file
 from arkui_xts_selector.consumer_semantics import extract_consumer_semantics
 
 
@@ -43,7 +44,9 @@ struct Index {
 
     def test_parse_test_file_uses_semantic_parser(self) -> None:
         with TemporaryDirectory() as tmpdir:
-            source = Path(tmpdir) / "entry" / "src" / "main" / "ets" / "pages" / "Index.ets"
+            source = (
+                Path(tmpdir) / "entry" / "src" / "main" / "ets" / "pages" / "Index.ets"
+            )
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(
                 """
@@ -131,4 +134,3 @@ class FunctionCoverageTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

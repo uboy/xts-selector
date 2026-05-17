@@ -1,7 +1,8 @@
 """Oracle self-validation: sanity checks on oracle output quality."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -47,5 +48,7 @@ def validate_oracle_output(mappings: list[dict]) -> OracleValidationResult:
         unmapped_count=unmapped,
         high_precision=high_precision,
         passes=passes,
-        message="OK" if passes else f"high_precision={high_precision:.2f} < {MIN_HIGH_PRECISION}",
+        message="OK"
+        if passes
+        else f"high_precision={high_precision:.2f} < {MIN_HIGH_PRECISION}",
     )

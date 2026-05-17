@@ -38,14 +38,14 @@ def cmd_explain(args: argparse.Namespace) -> int:
                 by_module[entry.test_module] = set()
             by_module[entry.test_module].update(entry.api_references)
 
-        print(f"\n  API coverage by module:")
+        print("\n  API coverage by module:")
         for module, apis in sorted(by_module.items()):
             print(f"    {module}:")
             for api in sorted(apis):
                 print(f"      - {api}")
 
         if ets_index.errors:
-            print(f"\n  Errors:")
+            print("\n  Errors:")
             for error in ets_index.errors:
                 print(f"    {error.file_path}: {error.error}")
 
@@ -54,5 +54,7 @@ def cmd_explain(args: argparse.Namespace) -> int:
     except ImportError:
         pass
 
-    print("  (explain requires ets_indexer and usage_extractor modules — showing basic info)")
+    print(
+        "  (explain requires ets_indexer and usage_extractor modules — showing basic info)"
+    )
     return 0

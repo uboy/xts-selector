@@ -1,5 +1,7 @@
 """Unit tests for indexing/sdk_indexer with a tiny fixture."""
-import sys, unittest
+
+import sys
+import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -8,6 +10,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from arkui_xts_selector.indexing.sdk_indexer import build_sdk_index, SdkIndexEntry
 
 FIXTURE_DIR = ROOT / "tests" / "fixtures" / "sdk_registry"
+
 
 class SdkIndexButtonTests(unittest.TestCase):
     @classmethod
@@ -62,6 +65,7 @@ class SdkIndexSliderTests(unittest.TestCase):
     def test_slider_value_member(self):
         self.assertIsNotNone(self.result.find("SliderAttribute.value"))
 
+
 class SdkIndexNavigationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -72,6 +76,7 @@ class SdkIndexNavigationTests(unittest.TestCase):
 
     def test_navigation_title_member(self):
         self.assertIsNotNone(self.result.find("NavigationAttribute.title"))
+
 
 class SdkIndexMenuItemTests(unittest.TestCase):
     @classmethod
@@ -84,7 +89,10 @@ class SdkIndexMenuItemTests(unittest.TestCase):
     def test_menu_item_content_member(self):
         self.assertIsNotNone(self.result.find("MenuItemAttribute.content"))
 
-import os, pytest
+
+import os
+import pytest
+
 
 @pytest.mark.skipif(
     not os.environ.get("OHOS_SDK_API_ROOT"),
@@ -96,6 +104,7 @@ class SdkIndexRealRootTests(unittest.TestCase):
         result = build_sdk_index(root)
         self.assertIsNotNone(result.find("Button"))
         self.assertGreater(len(result.entries), 100)
+
 
 if __name__ == "__main__":
     unittest.main()
@@ -111,41 +120,65 @@ class SdkIndexAmbiguityTests(unittest.TestCase):
     def test_ambiguous_bare_member_returns_none(self):
         """If a bare member name exists in multiple parents, find() returns None."""
         # Build an index with the same member name in different parents
-        from arkui_xts_selector.indexing.sdk_indexer import SdkIndexEntry
         from arkui_xts_selector.model.api import ApiEntityId, ApiDeclarationRef
 
         entries = (
             SdkIndexEntry(
-                api_id=ApiEntityId.from_parts(namespace="arkui", surface="static",
-                    kind="attribute", module="button", public_name="ButtonAttribute",
-                    member_of="ButtonAttribute", member_name="role"),
-                declaration=ApiDeclarationRef(declaration_id="test1", file_path="a.d.ts"),
+                api_id=ApiEntityId.from_parts(
+                    namespace="arkui",
+                    surface="static",
+                    kind="attribute",
+                    module="button",
+                    public_name="ButtonAttribute",
+                    member_of="ButtonAttribute",
+                    member_name="role",
+                ),
+                declaration=ApiDeclarationRef(
+                    declaration_id="test1", file_path="a.d.ts"
+                ),
                 member_name="role",
             ),
             SdkIndexEntry(
-                api_id=ApiEntityId.from_parts(namespace="arkui", surface="static",
-                    kind="attribute", module="checkbox", public_name="CheckboxAttribute",
-                    member_of="CheckboxAttribute", member_name="role"),
-                declaration=ApiDeclarationRef(declaration_id="test2", file_path="b.d.ts"),
+                api_id=ApiEntityId.from_parts(
+                    namespace="arkui",
+                    surface="static",
+                    kind="attribute",
+                    module="checkbox",
+                    public_name="CheckboxAttribute",
+                    member_of="CheckboxAttribute",
+                    member_name="role",
+                ),
+                declaration=ApiDeclarationRef(
+                    declaration_id="test2", file_path="b.d.ts"
+                ),
                 member_name="role",
             ),
         )
         from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
+
         result = SdkIndexResult(entries=entries)
         # "role" is ambiguous — two different parents
         self.assertIsNone(result.find("role"))
 
     def test_unique_bare_member_returns_entry(self):
         """If a bare member name is unique, find() returns it."""
-        from arkui_xts_selector.indexing.sdk_indexer import SdkIndexEntry, SdkIndexResult
+        from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
         from arkui_xts_selector.model.api import ApiEntityId, ApiDeclarationRef
 
         entries = (
             SdkIndexEntry(
-                api_id=ApiEntityId.from_parts(namespace="arkui", surface="static",
-                    kind="attribute", module="button", public_name="ButtonAttribute",
-                    member_of="ButtonAttribute", member_name="role"),
-                declaration=ApiDeclarationRef(declaration_id="test1", file_path="a.d.ts"),
+                api_id=ApiEntityId.from_parts(
+                    namespace="arkui",
+                    surface="static",
+                    kind="attribute",
+                    module="button",
+                    public_name="ButtonAttribute",
+                    member_of="ButtonAttribute",
+                    member_name="role",
+                ),
+                declaration=ApiDeclarationRef(
+                    declaration_id="test1", file_path="a.d.ts"
+                ),
                 member_name="role",
             ),
         )
@@ -154,22 +187,38 @@ class SdkIndexAmbiguityTests(unittest.TestCase):
 
     def test_find_all_returns_multiple(self):
         """find_all() returns all matches regardless of ambiguity."""
-        from arkui_xts_selector.indexing.sdk_indexer import SdkIndexEntry, SdkIndexResult
+        from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
         from arkui_xts_selector.model.api import ApiEntityId, ApiDeclarationRef
 
         entries = (
             SdkIndexEntry(
-                api_id=ApiEntityId.from_parts(namespace="arkui", surface="static",
-                    kind="attribute", module="button", public_name="ButtonAttribute",
-                    member_of="ButtonAttribute", member_name="role"),
-                declaration=ApiDeclarationRef(declaration_id="test1", file_path="a.d.ts"),
+                api_id=ApiEntityId.from_parts(
+                    namespace="arkui",
+                    surface="static",
+                    kind="attribute",
+                    module="button",
+                    public_name="ButtonAttribute",
+                    member_of="ButtonAttribute",
+                    member_name="role",
+                ),
+                declaration=ApiDeclarationRef(
+                    declaration_id="test1", file_path="a.d.ts"
+                ),
                 member_name="role",
             ),
             SdkIndexEntry(
-                api_id=ApiEntityId.from_parts(namespace="arkui", surface="static",
-                    kind="attribute", module="checkbox", public_name="CheckboxAttribute",
-                    member_of="CheckboxAttribute", member_name="role"),
-                declaration=ApiDeclarationRef(declaration_id="test2", file_path="b.d.ts"),
+                api_id=ApiEntityId.from_parts(
+                    namespace="arkui",
+                    surface="static",
+                    kind="attribute",
+                    module="checkbox",
+                    public_name="CheckboxAttribute",
+                    member_of="CheckboxAttribute",
+                    member_name="role",
+                ),
+                declaration=ApiDeclarationRef(
+                    declaration_id="test2", file_path="b.d.ts"
+                ),
                 member_name="role",
             ),
         )
@@ -183,21 +232,25 @@ class SdkModuleFromPathTests(unittest.TestCase):
 
     def test_ohos_module_under_api(self):
         from arkui_xts_selector.indexing.sdk_indexer import _module_from_path
+
         result = _module_from_path("/sdk/interface/sdk-js/api/ohos.arkui/button.d.ts")
         self.assertEqual(result, "ohos.arkui")
 
     def test_plain_module_under_api(self):
         from arkui_xts_selector.indexing.sdk_indexer import _module_from_path
+
         result = _module_from_path("/sdk/api/arkui/button.d.ts")
         self.assertEqual(result, "arkui")
 
     def test_parent_dir_fallback(self):
         from arkui_xts_selector.indexing.sdk_indexer import _module_from_path
+
         result = _module_from_path("/some/path/button/button.d.ts")
         self.assertEqual(result, "button")
 
     def test_no_api_in_path(self):
         from arkui_xts_selector.indexing.sdk_indexer import _module_from_path
+
         result = _module_from_path("/random/file.d.ts")
         # Falls back to parent directory
         self.assertEqual(result, "random")

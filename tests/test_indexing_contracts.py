@@ -7,12 +7,11 @@ Tests verify:
 - Artifact evidence is runnability-only
 - Import boundaries are respected
 """
+
 from __future__ import annotations
 
 import ast
-import importlib
 
-import pytest
 
 from arkui_xts_selector.indexing import (
     AceIndexEntry,
@@ -292,7 +291,9 @@ class TestImportBoundary:
         # Note: relative imports show up as "model.evidence" not "arkui_xts_selector.model.evidence"
         model_imports = [imp for imp in all_import_names if imp.startswith("model.")]
         # We expect at least evidence model imports
-        assert len(model_imports) > 0, "Expected imports from arkui_xts_selector.model (relative imports)"
+        assert len(model_imports) > 0, (
+            "Expected imports from arkui_xts_selector.model (relative imports)"
+        )
 
 
 class TestLevelToProvenance:
@@ -329,12 +330,18 @@ class TestIndexerResultSerialization:
     def test_sdk_index_result_round_trip(self):
         """SdkIndexResult to_dict/from_dict round-trip."""
         text_id = ApiEntityId.from_parts(
-            namespace="arkui", surface="static",
-            kind="component", module="ohos.arkui", public_name="Text",
+            namespace="arkui",
+            surface="static",
+            kind="component",
+            module="ohos.arkui",
+            public_name="Text",
         )
         button_id = ApiEntityId.from_parts(
-            namespace="arkui", surface="static",
-            kind="component", module="ohos.arkui", public_name="Button",
+            namespace="arkui",
+            surface="static",
+            kind="component",
+            module="ohos.arkui",
+            public_name="Button",
         )
         result = SdkIndexResult(
             entries=(

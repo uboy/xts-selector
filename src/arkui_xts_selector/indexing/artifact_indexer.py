@@ -5,6 +5,7 @@ They do NOT replace existing code.
 
 Import boundary: standard library only.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -15,6 +16,7 @@ from ..model.evidence import Evidence
 @dataclass(frozen=True)
 class ArtifactEntry:
     """A build artifact entry."""
+
     artifact_name: str
     target_id: str
     artifact_type: str = "hap"  # hap, app, bin
@@ -43,6 +45,7 @@ class ArtifactEntry:
 @dataclass(frozen=True)
 class ArtifactIndexResult:
     """Result of indexing build artifacts."""
+
     entries: tuple[ArtifactEntry, ...] = ()
     index_time_ms: float = 0.0
     source: str = "build_manifest"

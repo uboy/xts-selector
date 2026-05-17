@@ -1,4 +1,5 @@
 """Tests for generated_files_resolver."""
+
 from __future__ import annotations
 
 from arkui_xts_selector.indexing.generated_files_resolver import (

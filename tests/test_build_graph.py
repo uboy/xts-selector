@@ -1,10 +1,9 @@
 """Tests for GN (BUILD.gn) dependency graph parser."""
+
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
-import pytest
 
 from arkui_xts_selector.indexing.build_graph import (
     GnDepEntry,
@@ -16,7 +15,7 @@ from arkui_xts_selector.indexing.build_graph import (
 
 def test_parse_gn_test_target_with_deps(tmp_path: Path) -> None:
     """Test parsing a GN test target with dependencies."""
-    gn_content = '''
+    gn_content = """
 ohos_unittest("ModuleTest") {
   module_out_path = [ MODULE_OUT_PATH_UNittest_TEST ]
   sources = [
@@ -28,7 +27,7 @@ ohos_unittest("ModuleTest") {
     "//foundation/arkui/ace_engine:ace_engine",
   ]
 }
-'''
+"""
     gn_file = tmp_path / "BUILD.gn"
     gn_file.write_text(gn_content, encoding="utf-8")
 
@@ -44,7 +43,7 @@ ohos_unittest("ModuleTest") {
 
 def test_parse_gn_moduletest_with_deps(tmp_path: Path) -> None:
     """Test parsing a GN moduletest target with dependencies."""
-    gn_content = '''
+    gn_content = """
 ohos_moduletest("ComponentTest") {
   module_out_path = [ MODULE_OUT_PATH_MODULE_TEST ]
   sources = [
@@ -55,7 +54,7 @@ ohos_moduletest("ComponentTest") {
     "//foundation/arkui/ace_engine:ace_engine",
   ]
 }
-'''
+"""
     gn_file = tmp_path / "BUILD.gn"
     gn_file.write_text(gn_content, encoding="utf-8")
 
@@ -69,14 +68,14 @@ ohos_moduletest("ComponentTest") {
 
 def test_parse_gn_target_without_deps(tmp_path: Path) -> None:
     """Test parsing a GN test target without dependencies."""
-    gn_content = '''
+    gn_content = """
 ohos_unittest("SimpleTest") {
   module_out_path = [ MODULE_OUT_PATH_UNittest_TEST ]
   sources = [
     "simple_test.cpp",
   ]
 }
-'''
+"""
     gn_file = tmp_path / "BUILD.gn"
     gn_file.write_text(gn_content, encoding="utf-8")
 
@@ -89,7 +88,7 @@ ohos_unittest("SimpleTest") {
 
 def test_parse_gn_file_multiple_targets(tmp_path: Path) -> None:
     """Test parsing a GN file with multiple test targets (should parse first)."""
-    gn_content = '''
+    gn_content = """
 ohos_unittest("FirstTest") {
   deps = [
     "//base/utils/utils:utils",
@@ -101,7 +100,7 @@ ohos_moduletest("SecondTest") {
     "//foundation/arkui/ace_engine:ace_engine",
   ]
 }
-'''
+"""
     gn_file = tmp_path / "BUILD.gn"
     gn_file.write_text(gn_content, encoding="utf-8")
 
@@ -115,12 +114,12 @@ ohos_moduletest("SecondTest") {
 
 def test_parse_gn_malformed_file(tmp_path: Path) -> None:
     """Test parsing a malformed GN file (no test targets)."""
-    gn_content = '''
+    gn_content = """
 # This is a regular target, not a test target
 ohos_shared_library("MyLib") {
   sources = ["lib.cpp"]
 }
-'''
+"""
     gn_file = tmp_path / "BUILD.gn"
     gn_file.write_text(gn_content, encoding="utf-8")
 
@@ -141,7 +140,7 @@ def test_parse_gn_empty_file(tmp_path: Path) -> None:
 
 def test_parse_gn_file_with_multiline_deps(tmp_path: Path) -> None:
     """Test parsing a GN file with multi-line deps array."""
-    gn_content = '''
+    gn_content = """
 ohos_unittest("ComplexTest") {
   deps = [
     "//base/utils/utils:utils",
@@ -149,7 +148,7 @@ ohos_unittest("ComplexTest") {
     "//third_party/jsoncpp:jsoncpp",
   ]
 }
-'''
+"""
     gn_file = tmp_path / "BUILD.gn"
     gn_file.write_text(gn_content, encoding="utf-8")
 
@@ -168,35 +167,44 @@ def test_build_gn_graph_multiple_files(tmp_path: Path) -> None:
     # Create first BUILD.gn
     gn_file1 = tmp_path / "foundation" / "arkui" / "ace_engine" / "BUILD.gn"
     gn_file1.parent.mkdir(parents=True, exist_ok=True)
-    gn_file1.write_text('''
+    gn_file1.write_text(
+        """
 ohos_unittest("EngineTest") {
   deps = [
     "//base/utils/utils:utils",
   ]
 }
-''', encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
 
     # Create second BUILD.gn
     gn_file2 = tmp_path / "test" / "unittest" / "BUILD.gn"
     gn_file2.parent.mkdir(parents=True, exist_ok=True)
-    gn_file2.write_text('''
+    gn_file2.write_text(
+        """
 ohos_unittest("UtilTest") {
   deps = [
     "//base/utils/utils:utils",
   ]
 }
-''', encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
 
     # Create third BUILD.gn in tests directory
     gn_file3 = tmp_path / "tests" / "BUILD.gn"
     gn_file3.parent.mkdir(parents=True, exist_ok=True)
-    gn_file3.write_text('''
+    gn_file3.write_text(
+        """
 ohos_moduletest("ModuleTest") {
   deps = [
     "//foundation/arkui/ace_engine:ace_engine",
   ]
 }
-''', encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
 
     graph = build_gn_graph(tmp_path)
 
@@ -212,7 +220,7 @@ def test_find_deps_depth_1(tmp_path: Path) -> None:
     test_dir = tmp_path / "test"
     test_dir.mkdir(parents=True)
 
-    gn_content = '''
+    gn_content = """
 ohos_unittest("TargetA") {
   deps = [
     "//foundation/utils:utils",
@@ -224,7 +232,7 @@ ohos_unittest("utils") {
     "//third_party/jsoncpp:jsoncpp",
   ]
 }
-'''
+"""
     gn_file = test_dir / "BUILD.gn"
     gn_file.write_text(gn_content, encoding="utf-8")
 
@@ -242,33 +250,33 @@ def test_find_deps_depth_2(tmp_path: Path) -> None:
     # Create test directory for TargetA
     test_dir = tmp_path / "test"
     test_dir.mkdir(parents=True)
-    (test_dir / "BUILD.gn").write_text('''
+    (test_dir / "BUILD.gn").write_text("""
 ohos_unittest("TargetA") {
   deps = [
     "//foundation/utils:utils",
   ]
 }
-''')
+""")
 
     # Create foundation/utils directory for TargetB (utils)
     utils_dir = tmp_path / "foundation" / "utils"
     utils_dir.mkdir(parents=True)
-    (utils_dir / "BUILD.gn").write_text('''
+    (utils_dir / "BUILD.gn").write_text("""
 ohos_unittest("utils") {
   deps = [
     "//third_party/jsoncpp:jsoncpp",
   ]
 }
-''')
+""")
 
     # Create third_party/jsoncpp directory for TargetC (jsoncpp)
     json_dir = tmp_path / "third_party" / "jsoncpp"
     json_dir.mkdir(parents=True)
-    (json_dir / "BUILD.gn").write_text('''
+    (json_dir / "BUILD.gn").write_text("""
 ohos_unittest("jsoncpp") {
   deps = []
 }
-''')
+""")
 
     graph = build_gn_graph(tmp_path)
     deps = graph.find_deps("TargetA", max_depth=2)
@@ -282,13 +290,13 @@ ohos_unittest("jsoncpp") {
 
 def test_find_deps_nonexistent_target(tmp_path: Path) -> None:
     """Test finding dependencies for a non-existent target."""
-    gn_content = '''
+    gn_content = """
 ohos_unittest("RealTarget") {
   deps = [
     "//base/utils/utils:utils",
   ]
 }
-'''
+"""
     gn_file = tmp_path / "BUILD.gn"
     gn_file.write_text(gn_content, encoding="utf-8")
 
@@ -315,7 +323,7 @@ def test_cycles_no_infinite_recursion(tmp_path: Path) -> None:
     test_dir = tmp_path / "test"
     test_dir.mkdir(parents=True)
 
-    gn_content = '''
+    gn_content = """
 ohos_unittest("TargetA") {
   deps = [
     "//foundation/utils:TargetB",
@@ -327,7 +335,7 @@ ohos_unittest("TargetB") {
     "//foundation/utils:TargetA",  # Cycle back to A
   ]
 }
-'''
+"""
     gn_file = test_dir / "BUILD.gn"
     gn_file.write_text(gn_content, encoding="utf-8")
 
@@ -392,14 +400,14 @@ def test_target_name_extraction_with_colon(tmp_path: Path) -> None:
     test_dir = tmp_path / "test"
     test_dir.mkdir(parents=True)
 
-    gn_content = '''
+    gn_content = """
 ohos_unittest("MyTest") {
   deps = [
     "//foundation/utils/utils:utils_target",
     "//foundation/arkui/ace_engine:ace_engine",
   ]
 }
-'''
+"""
     gn_file = test_dir / "BUILD.gn"
     gn_file.write_text(gn_content, encoding="utf-8")
 
@@ -413,7 +421,11 @@ ohos_unittest("MyTest") {
 
 def test_regex_patterns_match_expected_targets() -> None:
     """Verify regex patterns match expected GN target formats."""
-    from arkui_xts_selector.indexing.build_graph import _DEPS_RE, _DEP_ENTRY_RE, _TARGET_RE
+    from arkui_xts_selector.indexing.build_graph import (
+        _DEPS_RE,
+        _DEP_ENTRY_RE,
+        _TARGET_RE,
+    )
 
     # Test target patterns
     assert _TARGET_RE.search('ohos_unittest("ModuleTest")')
@@ -426,10 +438,10 @@ def test_regex_patterns_match_expected_targets() -> None:
     assert _DEPS_RE.search(deps_line)
 
     # Test dep entry patterns
-    deps_block = '''
+    deps_block = """
       "//base/utils/utils:utils",
       "//foundation/arkui/ace_engine:ace_engine",
-    '''
+    """
     entries = _DEP_ENTRY_RE.findall(deps_block)
     assert len(entries) == 2
     assert "//base/utils/utils:utils" in entries
@@ -442,7 +454,7 @@ def test_parse_gn_file_with_commented_deps(tmp_path: Path) -> None:
     commented deps if they appear before the actual deps in the search area.
     This is a known limitation of the regex approach.
     """
-    gn_content = '''
+    gn_content = """
 ohos_unittest("TestTarget") {
   deps = [
     "//actual/dep:target",
@@ -452,7 +464,7 @@ ohos_unittest("TestTarget") {
   #   "//commented/out:dep",
   # ]
 }
-'''
+"""
     gn_file = tmp_path / "BUILD.gn"
     gn_file.write_text(gn_content, encoding="utf-8")
 

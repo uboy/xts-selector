@@ -59,7 +59,9 @@ class PerformanceBaselineTests(unittest.TestCase):
     )
 
     # Test file path for resolver pipeline tests
-    TEST_CHANGED_FILE = "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+    TEST_CHANGED_FILE = (
+        "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+    )
 
     def test_graph_construction_under_budget(self) -> None:
         """Building a ButtonModifier graph (12 nodes, 8 edges) should take < 50ms average."""
@@ -139,7 +141,9 @@ class PerformanceBaselineTests(unittest.TestCase):
             build_content_modifier_fanout_graph()
         elapsed = time.monotonic() - start
         avg_ms = (elapsed / iterations) * 1000
-        self.assertLess(avg_ms, 50, f"Average fanout graph construction: {avg_ms:.1f}ms")
+        self.assertLess(
+            avg_ms, 50, f"Average fanout graph construction: {avg_ms:.1f}ms"
+        )
 
     def test_json_serialization_under_budget(self) -> None:
         """Serializing graph to JSON should take < 20ms average."""
@@ -157,7 +161,14 @@ class PerformanceBaselineTests(unittest.TestCase):
         start = time.monotonic()
         # Run the actual import boundary tests
         result = subprocess.run(
-            [sys.executable, "-m", "pytest", "tests/test_import_boundaries.py", "-x", "-q"],
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "tests/test_import_boundaries.py",
+                "-x",
+                "-q",
+            ],
             capture_output=True,
             timeout=10,
             cwd=str(ROOT),
@@ -167,8 +178,9 @@ class PerformanceBaselineTests(unittest.TestCase):
         self.assertLess(elapsed, 5.0, f"Import boundary check: {elapsed:.1f}s")
         # Also assert the tests pass
         self.assertEqual(
-            result.returncode, 0,
-            f"Import boundary tests failed:\nSTDOUT:\n{result.stdout.decode()}\nSTDERR:\n{result.stderr.decode()}"
+            result.returncode,
+            0,
+            f"Import boundary tests failed:\nSTDOUT:\n{result.stdout.decode()}\nSTDERR:\n{result.stderr.decode()}",
         )
 
     def test_changed_file_resolution_under_budget(self) -> None:

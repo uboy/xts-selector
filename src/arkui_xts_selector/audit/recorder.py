@@ -3,10 +3,10 @@
 Records (selected_tests, ran_tests, failed_tests) tuples per PR to a JSONL
 audit log, enabling FN-rate measurement and confidence calibration.
 """
+
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime, date
 from pathlib import Path
 
@@ -62,13 +62,17 @@ def record_run(
         "has_missed": len(missed_failures) > 0,
         "fallback_applied": (selector_report or {}).get("fallback_applied", False),
         "fallback_level": (selector_report or {}).get("fallback_level", "none"),
-        "overall_risk": (selector_report or {}).get("overall_false_negative_risk", "unknown"),
+        "overall_risk": (selector_report or {}).get(
+            "overall_false_negative_risk", "unknown"
+        ),
     }
 
     if selector_report:
         # Include lightweight metadata, not full report
         entry["selector_meta"] = {
-            "overall_false_negative_risk": selector_report.get("overall_false_negative_risk"),
+            "overall_false_negative_risk": selector_report.get(
+                "overall_false_negative_risk"
+            ),
             "fallback_applied": selector_report.get("fallback_applied", False),
             "fallback_level": selector_report.get("fallback_level", "none"),
             "fallback_reason": selector_report.get("fallback_reason", ""),
@@ -108,6 +112,7 @@ def load_audit_entries(
     cutoff = None
     if days is not None:
         from datetime import timedelta
+
         cutoff = date.today() - timedelta(days=days)
 
     for jsonl_file in sorted(audit_dir.glob("*.jsonl")):

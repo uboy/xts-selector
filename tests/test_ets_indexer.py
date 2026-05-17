@@ -8,6 +8,7 @@ Tests verify:
 - Error handling for invalid files
 - Round-trip serialization
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -27,12 +28,16 @@ class TestEtsIndexerFindsEtsFiles:
         ets_tests_dir = fixtures_dir / "ets_tests"
         result: EtsIndexResult = build_ets_index(ets_tests_dir)
 
-        assert len(result.entries) == 3, f"Expected 3 ETS test files, found {len(result.entries)}"
+        assert len(result.entries) == 3, (
+            f"Expected 3 ETS test files, found {len(result.entries)}"
+        )
 
         # Check file names
         file_names = {Path(entry.file_path).name for entry in result.entries}
         expected_files = {"button_test.ets", "slider_test.ets", "navigation_test.ets"}
-        assert file_names == expected_files, f"Expected {expected_files}, got {file_names}"
+        assert file_names == expected_files, (
+            f"Expected {expected_files}, got {file_names}"
+        )
 
     def test_index_empty_directory(self, tmp_path):
         """Indexing an empty directory returns empty result."""
@@ -66,10 +71,10 @@ class TestButtonTestApiReferences:
         # Check API references
         api_refs = set(button_entry.api_references)
         expected_refs = {
-            "Button",           # Component
-            "ButtonType",        # Enum
-            "ButtonStyleMode",   # Enum
-            "ButtonRole",        # Enum
+            "Button",  # Component
+            "ButtonType",  # Enum
+            "ButtonStyleMode",  # Enum
+            "ButtonRole",  # Enum
             "ContentModifier",  # Interface
             "ButtonAttribute",  # Attribute
             "ButtonModifierExample",  # Class
@@ -91,7 +96,9 @@ class TestButtonTestApiReferences:
 
         # Each file should contribute some usages
         for entry in result.entries:
-            assert len(entry.usages) > 0, f"Expected usages in {Path(entry.file_path).name}"
+            assert len(entry.usages) > 0, (
+                f"Expected usages in {Path(entry.file_path).name}"
+            )
 
 
 class TestTestModuleExtraction:
@@ -113,7 +120,9 @@ class TestTestModuleExtraction:
         test_modules = {entry.test_module for entry in result.entries}
         # For files directly in xts_root, test_module will be 'unknown'
         # This is expected behavior for the fixture structure
-        assert len(test_modules) >= 1, f"Expected at least one test module, got {test_modules}"
+        assert len(test_modules) >= 1, (
+            f"Expected at least one test module, got {test_modules}"
+        )
 
 
 class TestEtsIndexerErrorHandling:
@@ -193,8 +202,9 @@ class TestApiReferencesExtraction:
 
         for entry in result.entries:
             # api_references is a tuple, should have no duplicates
-            assert len(entry.api_references) == len(set(entry.api_references)), \
+            assert len(entry.api_references) == len(set(entry.api_references)), (
                 f"Duplicate API references in {entry.file_path}"
+            )
 
     def test_api_references_includes_property_access_types(self, fixtures_dir):
         """Property accesses should include the type part (e.g., ButtonType from ButtonType.Capsule)."""
@@ -222,6 +232,7 @@ def fixtures_dir():
     """Return the fixtures directory path."""
     from pathlib import Path
     import arkui_xts_selector
+
     module_dir = Path(arkui_xts_selector.__file__).parent
     return module_dir.parent.parent / "tests" / "fixtures"
 
@@ -232,12 +243,17 @@ class TestEntryClassification:
     def test_classify_consumer_file(self):
         """XTS test files are classified as 'consumer'."""
         from arkui_xts_selector.indexing.ets_indexer import _classify_entry
+
         assert _classify_entry("test/xts/acts/arkui/ButtonTest.ets") == "consumer"
-        assert _classify_entry("acts/arkui/ace_ets_module_button/ButtonRoleTest.ets") == "consumer"
+        assert (
+            _classify_entry("acts/arkui/ace_ets_module_button/ButtonRoleTest.ets")
+            == "consumer"
+        )
 
     def test_classify_bridge_file(self):
         """Generated/sdk files are classified as 'bridge'."""
         from arkui_xts_selector.indexing.ets_indexer import _classify_entry
+
         assert _classify_entry("generated/src/Button.ets") == "bridge"
         assert _classify_entry("sdk/api/Button.ets") == "bridge"
         assert _classify_entry("arkoala/src/Button.ets") == "bridge"
@@ -263,18 +279,22 @@ class TestEntryClassification:
 
     def test_entry_kind_from_dict(self):
         """entry_kind is deserialized from dict."""
-        entry = EtsTestEntry.from_dict({
-            "file_path": "test.ets",
-            "test_module": "test",
-            "entry_kind": "bridge",
-        })
+        entry = EtsTestEntry.from_dict(
+            {
+                "file_path": "test.ets",
+                "test_module": "test",
+                "entry_kind": "bridge",
+            }
+        )
         assert entry.entry_kind == "bridge"
 
         # Default is consumer
-        default = EtsTestEntry.from_dict({
-            "file_path": "test.ets",
-            "test_module": "test",
-        })
+        default = EtsTestEntry.from_dict(
+            {
+                "file_path": "test.ets",
+                "test_module": "test",
+            }
+        )
         assert default.entry_kind == "consumer"
 
     def test_is_consumer_is_bridge_properties(self):
@@ -289,7 +309,7 @@ class TestEntryClassification:
 
     def test_inverted_index_excludes_bridge_entries(self, fixtures_dir):
         """Inverted index only uses consumer entries, not bridge."""
-        from arkui_xts_selector.indexing.ets_indexer import build_ets_index, _classify_entry
+        from arkui_xts_selector.indexing.ets_indexer import build_ets_index
         from arkui_xts_selector.indexing.inverted_index import build_inverted_index
         from arkui_xts_selector.indexing.sdk_indexer import build_sdk_index
 
@@ -303,4 +323,6 @@ class TestEntryClassification:
         # The fixture files should all be consumers (no bridge files in fixtures)
         ets_result = build_ets_index(ets_root)
         for entry in ets_result.entries:
-            assert entry.entry_kind == "consumer", f"Fixture file should be consumer: {entry.file_path}"
+            assert entry.entry_kind == "consumer", (
+                f"Fixture file should be consumer: {entry.file_path}"
+            )

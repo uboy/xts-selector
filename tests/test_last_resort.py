@@ -1,10 +1,10 @@
 """Tests for last-resort path-token matching."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from arkui_xts_selector.indexing.last_resort import (
-    LastResortMatch,
     _extract_tokens,
     _jaccard,
     last_resort_targets,
@@ -24,7 +24,9 @@ class _FakeIndex:
 
 class TestExtractTokens:
     def test_basic_path(self) -> None:
-        tokens = _extract_tokens("frameworks/core/components_ng/pattern/button/button_pattern.cpp")
+        tokens = _extract_tokens(
+            "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
         assert "button" in tokens
         assert "pattern" not in tokens  # stopword
 
@@ -61,11 +63,13 @@ class TestJaccard:
 
 class TestLastResortTargets:
     def test_finds_matching_module(self) -> None:
-        index = _FakeIndex([
-            _FakeEntry("ace_ets_module_button_static", "/xts/button"),
-            _FakeEntry("ace_ets_module_slider_static", "/xts/slider"),
-            _FakeEntry("ace_ets_module_text_static", "/xts/text"),
-        ])
+        index = _FakeIndex(
+            [
+                _FakeEntry("ace_ets_module_button_static", "/xts/button"),
+                _FakeEntry("ace_ets_module_slider_static", "/xts/slider"),
+                _FakeEntry("ace_ets_module_text_static", "/xts/text"),
+            ]
+        )
         matches = last_resort_targets(
             "components_ng/pattern/button/button_pattern.cpp",
             index,
@@ -75,17 +79,21 @@ class TestLastResortTargets:
         assert matches[0].module_name == "ace_ets_module_button_static"
 
     def test_score_capped_at_025(self) -> None:
-        index = _FakeIndex([
-            _FakeEntry("button", "/xts/button"),
-        ])
+        index = _FakeIndex(
+            [
+                _FakeEntry("button", "/xts/button"),
+            ]
+        )
         matches = last_resort_targets("button.cpp", index, min_jaccard=0.1)
         for m in matches:
             assert m.score <= 0.25
 
     def test_min_jaccard_filters(self) -> None:
-        index = _FakeIndex([
-            _FakeEntry("ace_ets_module_button_static", "/xts/button"),
-        ])
+        index = _FakeIndex(
+            [
+                _FakeEntry("ace_ets_module_button_static", "/xts/button"),
+            ]
+        )
         matches = last_resort_targets(
             "completely_unrelated_file.cpp",
             index,
@@ -94,10 +102,12 @@ class TestLastResortTargets:
         assert len(matches) == 0
 
     def test_top_k_limits_results(self) -> None:
-        index = _FakeIndex([
-            _FakeEntry(f"ace_ets_module_button_variant_{i}", f"/xts/b{i}")
-            for i in range(20)
-        ])
+        index = _FakeIndex(
+            [
+                _FakeEntry(f"ace_ets_module_button_variant_{i}", f"/xts/b{i}")
+                for i in range(20)
+            ]
+        )
         matches = last_resort_targets("button.cpp", index, min_jaccard=0.1, top_k=3)
         assert len(matches) <= 3
 
@@ -107,10 +117,12 @@ class TestLastResortTargets:
         assert matches == []
 
     def test_deduplicates_modules(self) -> None:
-        index = _FakeIndex([
-            _FakeEntry("ace_ets_module_button_static", "/xts/button1"),
-            _FakeEntry("ace_ets_module_button_static", "/xts/button2"),
-        ])
+        index = _FakeIndex(
+            [
+                _FakeEntry("ace_ets_module_button_static", "/xts/button1"),
+                _FakeEntry("ace_ets_module_button_static", "/xts/button2"),
+            ]
+        )
         matches = last_resort_targets("button.cpp", index, min_jaccard=0.1)
         module_names = [m.module_name for m in matches]
         assert module_names.count("ace_ets_module_button_static") == 1

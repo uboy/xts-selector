@@ -17,7 +17,6 @@ from .file_indexing import (
     extract_member_hint_keys,
 )
 from .coverage_keys import (
-    coverage_family_key,
     capability_family_key,
     extract_coverage_family_keys,
     extract_coverage_capability_keys,
@@ -91,9 +90,17 @@ def build_source_profile(
     family_keys = sorted(extract_coverage_family_keys(raw_tokens))
     capability_keys = sorted(extract_coverage_capability_keys(raw_tokens))
     type_hint_keys = sorted(extract_type_hint_keys(signals.get("type_hints", set())))
-    member_hint_keys = sorted(extract_member_hint_keys(signals.get("member_hints", set())))
+    member_hint_keys = sorted(
+        extract_member_hint_keys(signals.get("member_hints", set()))
+    )
     if capability_keys and not family_keys:
-        family_keys = sorted({capability_family_key(item) for item in capability_keys if capability_family_key(item)})
+        family_keys = sorted(
+            {
+                capability_family_key(item)
+                for item in capability_keys
+                if capability_family_key(item)
+            }
+        )
     focus_tokens = sorted(
         extract_focus_tokens(
             raw_tokens
@@ -143,9 +150,7 @@ def infer_project_family_profile(
     related_tokens = set(project_tokens)
     direct_tokens = set(extract_reason_family_tokens(project_reasons))
     generic_markers = {
-        token
-        for token in project_tokens
-        if token in _rr.GENERIC_COVERAGE_TOKENS
+        token for token in project_tokens if token in _rr.GENERIC_COVERAGE_TOKENS
     }
     family_quality: dict[str, float] = {}
     capability_quality: dict[str, float] = {}
@@ -172,7 +177,9 @@ def infer_project_family_profile(
         _bump_quality(tokens, amount, family_quality, extract_coverage_family_keys)
 
     def _bump_capability_quality(tokens: Iterable[str], amount: float) -> None:
-        _bump_quality(tokens, amount, capability_quality, extract_coverage_capability_keys)
+        _bump_quality(
+            tokens, amount, capability_quality, extract_coverage_capability_keys
+        )
 
     def _bump_counter(
         tokens: Iterable[str],
@@ -185,10 +192,14 @@ def infer_project_family_profile(
             counter[key] = counter.get(key, 0) + amount
         return keys
 
-    def _bump_family_counter(tokens: Iterable[str], counter: dict[str, int], amount: int = 1) -> set[str]:
+    def _bump_family_counter(
+        tokens: Iterable[str], counter: dict[str, int], amount: int = 1
+    ) -> set[str]:
         return _bump_counter(tokens, counter, extract_coverage_family_keys, amount)
 
-    def _bump_capability_counter(tokens: Iterable[str], counter: dict[str, int], amount: int = 1) -> set[str]:
+    def _bump_capability_counter(
+        tokens: Iterable[str], counter: dict[str, int], amount: int = 1
+    ) -> set[str]:
         return _bump_counter(tokens, counter, extract_coverage_capability_keys, amount)
 
     def _bump_direct_hits(keys: Iterable[str], counter: dict[str, int]) -> None:
@@ -214,32 +225,63 @@ def infer_project_family_profile(
         direct_key_set = set(direct_keys)
         purity_penalty = min(
             _rr.ACTIVE_RANKING_RULES.representative_extra_family_penalty_cap,
-            _rr.ACTIVE_RANKING_RULES.representative_extra_family_penalty * max(0, len(keys) - 1),
+            _rr.ACTIVE_RANKING_RULES.representative_extra_family_penalty
+            * max(0, len(keys) - 1),
         )
         for key in keys:
             quality = quality_map.get(key, 1.0)
             if key in direct_key_set and len(direct_key_set) == 1:
-                quality += _rr.ACTIVE_RANKING_RULES.family_quality_direct_single_family_bonus
+                quality += (
+                    _rr.ACTIVE_RANKING_RULES.family_quality_direct_single_family_bonus
+                )
             if key in direct_key_set and len(keys) <= 2:
-                quality += _rr.ACTIVE_RANKING_RULES.family_quality_direct_small_family_bonus
-            normalized_quality[key] = round(min(_rr.ACTIVE_RANKING_RULES.family_quality_maximum, quality), 3)
+                quality += (
+                    _rr.ACTIVE_RANKING_RULES.family_quality_direct_small_family_bonus
+                )
+            normalized_quality[key] = round(
+                min(_rr.ACTIVE_RANKING_RULES.family_quality_maximum, quality), 3
+            )
             representative = quality
-            representative += project_hits.get(key, 0) * _rr.ACTIVE_RANKING_RULES.representative_project_family_hit
-            representative += path_hits.get(key, 0) * _rr.ACTIVE_RANKING_RULES.representative_file_family_hit
-            representative += reason_hits.get(key, 0) * _rr.ACTIVE_RANKING_RULES.representative_reason_family_hit
-            representative += direct_file_hits.get(key, 0) * _rr.ACTIVE_RANKING_RULES.representative_direct_file_hit
+            representative += (
+                project_hits.get(key, 0)
+                * _rr.ACTIVE_RANKING_RULES.representative_project_family_hit
+            )
+            representative += (
+                path_hits.get(key, 0)
+                * _rr.ACTIVE_RANKING_RULES.representative_file_family_hit
+            )
+            representative += (
+                reason_hits.get(key, 0)
+                * _rr.ACTIVE_RANKING_RULES.representative_reason_family_hit
+            )
+            representative += (
+                direct_file_hits.get(key, 0)
+                * _rr.ACTIVE_RANKING_RULES.representative_direct_file_hit
+            )
             if key in direct_key_set:
-                representative += _rr.ACTIVE_RANKING_RULES.representative_direct_family_bonus
+                representative += (
+                    _rr.ACTIVE_RANKING_RULES.representative_direct_family_bonus
+                )
             if len(keys) == 1:
-                representative += _rr.ACTIVE_RANKING_RULES.representative_single_family_bonus
+                representative += (
+                    _rr.ACTIVE_RANKING_RULES.representative_single_family_bonus
+                )
             elif len(keys) <= 2 and key in direct_key_set:
-                representative += _rr.ACTIVE_RANKING_RULES.representative_small_family_bonus
+                representative += (
+                    _rr.ACTIVE_RANKING_RULES.representative_small_family_bonus
+                )
             representative -= purity_penalty
-            representative -= umbrella_penalty * _rr.ACTIVE_RANKING_RULES.representative_umbrella_penalty_weight
+            representative -= (
+                umbrella_penalty
+                * _rr.ACTIVE_RANKING_RULES.representative_umbrella_penalty_weight
+            )
             representative_quality[key] = round(
                 max(
                     _rr.ACTIVE_RANKING_RULES.representative_minimum_quality,
-                    min(_rr.ACTIVE_RANKING_RULES.representative_maximum_quality, representative),
+                    min(
+                        _rr.ACTIVE_RANKING_RULES.representative_maximum_quality,
+                        representative,
+                    ),
                 ),
                 3,
             )
@@ -261,30 +303,66 @@ def infer_project_family_profile(
         path_families = _bump_family_counter(path_tokens, family_path_hits)
         reason_families = _bump_family_counter(reason_tokens, family_reason_hits)
         path_capabilities = _bump_capability_counter(path_tokens, capability_path_hits)
-        reason_capabilities = _bump_capability_counter(reason_tokens, capability_reason_hits)
-        _bump_family_quality(path_tokens, _rr.ACTIVE_RANKING_RULES.family_quality_related_file_path)
-        _bump_capability_quality(path_tokens, _rr.ACTIVE_RANKING_RULES.family_quality_related_file_path)
+        reason_capabilities = _bump_capability_counter(
+            reason_tokens, capability_reason_hits
+        )
+        _bump_family_quality(
+            path_tokens, _rr.ACTIVE_RANKING_RULES.family_quality_related_file_path
+        )
+        _bump_capability_quality(
+            path_tokens, _rr.ACTIVE_RANKING_RULES.family_quality_related_file_path
+        )
         if any(_is_direct_evidence_reason(reason) for reason in reasons):
             direct_tokens.update(path_tokens)
             direct_tokens.update(reason_tokens)
-            _bump_family_quality(path_tokens, _rr.ACTIVE_RANKING_RULES.family_quality_direct_file_path)
-            _bump_family_quality(reason_tokens, _rr.ACTIVE_RANKING_RULES.family_quality_direct_reason_tokens)
-            _bump_capability_quality(path_tokens, _rr.ACTIVE_RANKING_RULES.family_quality_direct_file_path)
-            _bump_capability_quality(reason_tokens, _rr.ACTIVE_RANKING_RULES.family_quality_direct_reason_tokens)
+            _bump_family_quality(
+                path_tokens, _rr.ACTIVE_RANKING_RULES.family_quality_direct_file_path
+            )
+            _bump_family_quality(
+                reason_tokens,
+                _rr.ACTIVE_RANKING_RULES.family_quality_direct_reason_tokens,
+            )
+            _bump_capability_quality(
+                path_tokens, _rr.ACTIVE_RANKING_RULES.family_quality_direct_file_path
+            )
+            _bump_capability_quality(
+                reason_tokens,
+                _rr.ACTIVE_RANKING_RULES.family_quality_direct_reason_tokens,
+            )
             _bump_direct_hits(path_families | reason_families, family_direct_file_hits)
-            _bump_direct_hits(path_capabilities | reason_capabilities, capability_direct_file_hits)
+            _bump_direct_hits(
+                path_capabilities | reason_capabilities, capability_direct_file_hits
+            )
 
-    _bump_family_quality(project_tokens, _rr.ACTIVE_RANKING_RULES.family_quality_project_tokens)
-    _bump_capability_quality(project_tokens, _rr.ACTIVE_RANKING_RULES.family_quality_project_tokens)
+    _bump_family_quality(
+        project_tokens, _rr.ACTIVE_RANKING_RULES.family_quality_project_tokens
+    )
+    _bump_capability_quality(
+        project_tokens, _rr.ACTIVE_RANKING_RULES.family_quality_project_tokens
+    )
 
     family_keys = sorted(extract_coverage_family_keys(related_tokens))
     direct_family_keys = sorted(extract_coverage_family_keys(direct_tokens))
     capability_keys = sorted(extract_coverage_capability_keys(related_tokens))
     direct_capability_keys = sorted(extract_coverage_capability_keys(direct_tokens))
     if capability_keys:
-        family_keys = sorted(set(family_keys) | {capability_family_key(item) for item in capability_keys if capability_family_key(item)})
+        family_keys = sorted(
+            set(family_keys)
+            | {
+                capability_family_key(item)
+                for item in capability_keys
+                if capability_family_key(item)
+            }
+        )
     if direct_capability_keys:
-        direct_family_keys = sorted(set(direct_family_keys) | {capability_family_key(item) for item in direct_capability_keys if capability_family_key(item)})
+        direct_family_keys = sorted(
+            set(direct_family_keys)
+            | {
+                capability_family_key(item)
+                for item in direct_capability_keys
+                if capability_family_key(item)
+            }
+        )
     umbrella_penalty = 0.0
     for marker, penalty in _rr.ACTIVE_RANKING_RULES.umbrella_marker_penalties.items():
         if marker in generic_markers:
@@ -293,7 +371,8 @@ def infer_project_family_profile(
     if threshold and len(family_keys) >= threshold:
         umbrella_penalty += min(
             _rr.ACTIVE_RANKING_RULES.umbrella_family_count_penalty_cap,
-            _rr.ACTIVE_RANKING_RULES.umbrella_family_count_penalty * (len(family_keys) - (threshold - 1)),
+            _rr.ACTIVE_RANKING_RULES.umbrella_family_count_penalty
+            * (len(family_keys) - (threshold - 1)),
         )
     normalized_family_quality, family_representative_quality = _finalize_quality_scores(
         family_keys,
@@ -305,15 +384,17 @@ def infer_project_family_profile(
         family_direct_file_hits,
         umbrella_penalty,
     )
-    normalized_capability_quality, capability_representative_quality = _finalize_quality_scores(
-        capability_keys,
-        direct_capability_keys,
-        capability_quality,
-        capability_project_hits,
-        capability_path_hits,
-        capability_reason_hits,
-        capability_direct_file_hits,
-        umbrella_penalty,
+    normalized_capability_quality, capability_representative_quality = (
+        _finalize_quality_scores(
+            capability_keys,
+            direct_capability_keys,
+            capability_quality,
+            capability_project_hits,
+            capability_path_hits,
+            capability_reason_hits,
+            capability_direct_file_hits,
+            umbrella_penalty,
+        )
     )
     return {
         "family_keys": family_keys,
@@ -326,5 +407,7 @@ def infer_project_family_profile(
         "capability_representative_quality": capability_representative_quality,
         "focus_token_counts": focus_token_counts,
         "generic_markers": sorted(generic_markers),
-        "umbrella_penalty": round(min(_rr.ACTIVE_RANKING_RULES.umbrella_penalty_cap, umbrella_penalty), 3),
+        "umbrella_penalty": round(
+            min(_rr.ACTIVE_RANKING_RULES.umbrella_penalty_cap, umbrella_penalty), 3
+        ),
     }

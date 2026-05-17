@@ -36,7 +36,9 @@ def _resolve_run_store_root(path_value: str | None) -> Path:
     return default_run_store_root()
 
 
-def _resolve_report_path(from_report: str | None, last_report: bool, run_store_root: Path) -> Path:
+def _resolve_report_path(
+    from_report: str | None, last_report: bool, run_store_root: Path
+) -> Path:
     if from_report:
         return Path(from_report).expanduser().resolve()
     if last_report:
@@ -44,11 +46,15 @@ def _resolve_report_path(from_report: str | None, last_report: bool, run_store_r
         candidate = str(manifest.get("selector_report_path", "")).strip()
         if candidate:
             return Path(candidate).expanduser().resolve()
-        raise ValueError(f"latest run in {run_store_root} does not include selector_report_path")
+        raise ValueError(
+            f"latest run in {run_store_root} does not include selector_report_path"
+        )
     raise ValueError("provide --from-report, --selected-tests-json, or --last-report")
 
 
-def _resolve_selected_tests_path(report: dict[str, Any], report_path: Path, explicit: str | None) -> Path:
+def _resolve_selected_tests_path(
+    report: dict[str, Any], report_path: Path, explicit: str | None
+) -> Path:
     candidates: list[Path] = []
     if explicit:
         candidates.append(Path(explicit).expanduser().resolve())
@@ -107,7 +113,9 @@ def _entry_tokens(entry: dict[str, Any]) -> list[str]:
     return tokens
 
 
-def _select_entries(payload: dict[str, Any], requested_names: list[str]) -> tuple[list[dict[str, Any]], list[str]]:
+def _select_entries(
+    payload: dict[str, Any], requested_names: list[str]
+) -> tuple[list[dict[str, Any]], list[str]]:
     tests = [dict(item) for item in payload.get("tests", []) if isinstance(item, dict)]
     if not tests:
         raise ValueError("selected_tests.json does not contain any test entries")
@@ -115,7 +123,11 @@ def _select_entries(payload: dict[str, Any], requested_names: list[str]) -> tupl
     if not requested_names:
         selected = [item for item in tests if bool(item.get("selected_by_default"))]
         if not selected:
-            selected = [item for item in tests if str(item.get("artifact_status", "")).lower() != "missing"]
+            selected = [
+                item
+                for item in tests
+                if str(item.get("artifact_status", "")).lower() != "missing"
+            ]
         if not selected:
             selected = tests
         return selected, []
@@ -243,7 +255,9 @@ def _copy_selected_testcases(
             text = src.read_text(encoding="utf-8-sig", errors="ignore")
         except OSError:
             continue
-        matched_keys = _matching_entry_keys(token_map, src.stem.lower(), src.name.lower(), text.lower())
+        matched_keys = _matching_entry_keys(
+            token_map, src.stem.lower(), src.name.lower(), text.lower()
+        )
         if not matched_keys:
             continue
         _copy_file(src, stage_dir / rel)
@@ -264,7 +278,9 @@ def _copy_selected_testcases(
             _copy_file(src, stage_dir / rel)
             copied_relpaths.add(rel_text)
             copied_haps += 1
-            matched_keys = _matching_entry_keys(token_map, src.stem.lower(), src.name.lower())
+            matched_keys = _matching_entry_keys(
+                token_map, src.stem.lower(), src.name.lower()
+            )
             for key in matched_keys:
                 entry_hits[key] += 1
 
@@ -279,7 +295,9 @@ def _copy_selected_testcases(
             continue
         if src.name in SERVICE_FILE_NAMES:
             continue
-        matched_keys = _matching_entry_keys(token_map, src.stem.lower(), src.name.lower())
+        matched_keys = _matching_entry_keys(
+            token_map, src.stem.lower(), src.name.lower()
+        )
         if not matched_keys:
             continue
         _copy_file(src, stage_dir / rel)
@@ -346,10 +364,22 @@ def build_parser() -> argparse.ArgumentParser:
         description="Stage a compact ACTS testcase directory from selector_report.json / selected_tests.json."
     )
     parser.add_argument("--from-report", help="Path to selector_report.json.")
-    parser.add_argument("--last-report", action="store_true", help="Use the latest selector run from the run store.")
-    parser.add_argument("--run-store-root", help="Override the selector run store root used by --last-report.")
-    parser.add_argument("--selected-tests-json", help="Override the companion selected_tests.json path.")
-    parser.add_argument("--output-dir", help="Directory where staged testcases and stage_report.json will be written.")
+    parser.add_argument(
+        "--last-report",
+        action="store_true",
+        help="Use the latest selector run from the run store.",
+    )
+    parser.add_argument(
+        "--run-store-root",
+        help="Override the selector run store root used by --last-report.",
+    )
+    parser.add_argument(
+        "--selected-tests-json", help="Override the companion selected_tests.json path."
+    )
+    parser.add_argument(
+        "--output-dir",
+        help="Directory where staged testcases and stage_report.json will be written.",
+    )
     parser.add_argument(
         "--run-test-name",
         action="append",
@@ -413,12 +443,20 @@ def main(argv: list[str] | None = None) -> int:
             report_path = Path(embedded_report).expanduser().resolve()
             report = _load_json_object(report_path)
         else:
-            report_path = _resolve_report_path(args.from_report, bool(args.last_report), run_store_root)
+            report_path = _resolve_report_path(
+                args.from_report, bool(args.last_report), run_store_root
+            )
             report = _load_json_object(report_path)
-            selected_tests_path = _resolve_selected_tests_path(report, report_path, args.selected_tests_json)
+            selected_tests_path = _resolve_selected_tests_path(
+                report, report_path, args.selected_tests_json
+            )
             payload = _load_json_object(selected_tests_path)
 
-        requested_names_path = Path(args.run_test_names_file).expanduser().resolve() if args.run_test_names_file else None
+        requested_names_path = (
+            Path(args.run_test_names_file).expanduser().resolve()
+            if args.run_test_names_file
+            else None
+        )
         requested_names = normalize_requested_test_names(
             [
                 *list(args.run_test_name),
@@ -427,14 +465,22 @@ def main(argv: list[str] | None = None) -> int:
         )
         selected_entries, missing_requested = _select_entries(payload, requested_names)
 
-        acts_out_root = Path(str(report.get("acts_out_root", "")).strip()).expanduser().resolve()
+        acts_out_root = (
+            Path(str(report.get("acts_out_root", "")).strip()).expanduser().resolve()
+        )
         if not str(report.get("acts_out_root", "")).strip():
             raise ValueError("selector report does not define acts_out_root")
         source_testcases_dir = acts_out_root / "testcases"
         if not source_testcases_dir.is_dir():
-            raise ValueError(f"ACTS testcases directory does not exist: {source_testcases_dir}")
+            raise ValueError(
+                f"ACTS testcases directory does not exist: {source_testcases_dir}"
+            )
 
-        stage_root = Path(args.output_dir).expanduser().resolve() if args.output_dir else _default_stage_root(report_path)
+        stage_root = (
+            Path(args.output_dir).expanduser().resolve()
+            if args.output_dir
+            else _default_stage_root(report_path)
+        )
         stage_testcases_dir = stage_root / "testcases"
         stage_reports_dir = stage_root / "xdevice_reports"
         stage_report_path = stage_root / STAGE_REPORT_FILE_NAME
@@ -444,9 +490,13 @@ def main(argv: list[str] | None = None) -> int:
         stage_reports_dir.mkdir(parents=True, exist_ok=True)
         stage_testcases_dir.mkdir(parents=True, exist_ok=True)
 
-        copied_summary, entry_hits = _copy_selected_testcases(source_testcases_dir, stage_testcases_dir, selected_entries)
+        copied_summary, entry_hits = _copy_selected_testcases(
+            source_testcases_dir, stage_testcases_dir, selected_entries
+        )
         module_lines = [_module_label(entry) for entry in selected_entries]
-        wanted_modules_path.write_text("\n".join(module_lines) + ("\n" if module_lines else ""), encoding="utf-8")
+        wanted_modules_path.write_text(
+            "\n".join(module_lines) + ("\n" if module_lines else ""), encoding="utf-8"
+        )
 
         tests_report: list[dict[str, Any]] = []
         for index, entry in enumerate(selected_entries):
@@ -477,9 +527,13 @@ def main(argv: list[str] | None = None) -> int:
             "selected_count": len(selected_entries),
             "copied": copied_summary,
             "tests": tests_report,
-            "xdevice_command": _build_xdevice_command(acts_out_root, stage_testcases_dir, stage_reports_dir, selected_entries),
+            "xdevice_command": _build_xdevice_command(
+                acts_out_root, stage_testcases_dir, stage_reports_dir, selected_entries
+            ),
         }
-        stage_report_path.write_text(json.dumps(stage_report, ensure_ascii=False, indent=2), encoding="utf-8")
+        stage_report_path.write_text(
+            json.dumps(stage_report, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         sys.stdout.write(_render_summary(stage_report))
         return 0
     except Exception as exc:

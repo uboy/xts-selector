@@ -1,0 +1,2600 @@
+{
+  "summary": {
+    "total_manual_cases": 40,
+    "executed": 40,
+    "skipped": 0,
+    "selector_crashes": 0,
+    "selector_timeouts": 0,
+    "expected_api_observable": 34,
+    "expected_api_found": 34,
+    "expected_api_missing": 0,
+    "false_must_run_count": 0,
+    "report_missing_affected_api_field_count": 0
+  },
+  "cases": [
+    {
+      "case_id": "button_pattern_file_001",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp",
+      "expected_apis": [
+        "Button"
+      ],
+      "actual_affected_apis": [
+        "Button",
+        "ButtonAttribute.buttonStyle",
+        "ButtonAttribute.controlSize",
+        "ButtonModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 47.3,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Button"
+        ],
+        "missing": [],
+        "unexpected": [
+          "ButtonAttribute.buttonStyle",
+          "ButtonAttribute.controlSize",
+          "ButtonModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "slider_pattern_file_002",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/slider_pattern.cpp",
+      "expected_apis": [
+        "Slider"
+      ],
+      "actual_affected_apis": [
+        "Slider",
+        "SliderModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 45.9,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Slider"
+        ],
+        "missing": [],
+        "unexpected": [
+          "SliderModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "tabs_pattern_file_005",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/tabs/tabs_pattern.cpp",
+      "expected_apis": [
+        "Tabs"
+      ],
+      "actual_affected_apis": [
+        "Tabs",
+        "TabsAttribute.barOverlap",
+        "TabsAttribute.divider",
+        "TabsAttribute.onContentDidScroll",
+        "TabsModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 32.7,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Tabs"
+        ],
+        "missing": [],
+        "unexpected": [
+          "TabsAttribute.barOverlap",
+          "TabsAttribute.divider",
+          "TabsAttribute.onContentDidScroll",
+          "TabsModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/swiper/swiper_pattern.cpp",
+      "expected_apis": [
+        "Swiper"
+      ],
+      "actual_affected_apis": [
+        "Swiper",
+        "SwiperAttribute.autoPlay",
+        "SwiperAttribute.cachedCount",
+        "SwiperAttribute.curve",
+        "SwiperAttribute.disableSwipe",
+        "SwiperAttribute.displayArrow",
+        "SwiperAttribute.displayCount",
+        "SwiperAttribute.duration",
+        "SwiperAttribute.index",
+        "SwiperAttribute.indicatorInteractive",
+        "SwiperAttribute.interval",
+        "SwiperAttribute.itemSpace",
+        "SwiperAttribute.loop",
+        "SwiperAttribute.maintainVisibleContentPosition",
+        "SwiperAttribute.nestedScroll",
+        "SwiperAttribute.nextMargin",
+        "SwiperAttribute.pageFlipMode",
+        "SwiperAttribute.prevMargin",
+        "SwiperModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 28.3,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Swiper"
+        ],
+        "missing": [],
+        "unexpected": [
+          "SwiperAttribute.autoPlay",
+          "SwiperAttribute.cachedCount",
+          "SwiperAttribute.curve",
+          "SwiperAttribute.disableSwipe",
+          "SwiperAttribute.displayArrow",
+          "SwiperAttribute.displayCount",
+          "SwiperAttribute.duration",
+          "SwiperAttribute.index",
+          "SwiperAttribute.indicatorInteractive",
+          "SwiperAttribute.interval",
+          "SwiperAttribute.itemSpace",
+          "SwiperAttribute.loop",
+          "SwiperAttribute.maintainVisibleContentPosition",
+          "SwiperAttribute.nestedScroll",
+          "SwiperAttribute.nextMargin",
+          "SwiperAttribute.pageFlipMode",
+          "SwiperAttribute.prevMargin",
+          "SwiperModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/image/image_pattern.cpp",
+      "expected_apis": [
+        "Image"
+      ],
+      "actual_affected_apis": [
+        "Image",
+        "ImageAttribute.alt",
+        "ImageAttribute.autoResize",
+        "ImageAttribute.colorFilter",
+        "ImageAttribute.contentTransition",
+        "ImageAttribute.copyOption",
+        "ImageAttribute.fillColor",
+        "ImageAttribute.fitOriginalSize",
+        "ImageAttribute.hdrBrightness",
+        "ImageAttribute.matchTextDirection",
+        "ImageAttribute.orientation",
+        "ImageAttribute.sourceSize",
+        "ImageAttribute.supportSvg2",
+        "ImageAttribute.syncLoad",
+        "ImageModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 26.0,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Image"
+        ],
+        "missing": [],
+        "unexpected": [
+          "ImageAttribute.alt",
+          "ImageAttribute.autoResize",
+          "ImageAttribute.colorFilter",
+          "ImageAttribute.contentTransition",
+          "ImageAttribute.copyOption",
+          "ImageAttribute.fillColor",
+          "ImageAttribute.fitOriginalSize",
+          "ImageAttribute.hdrBrightness",
+          "ImageAttribute.matchTextDirection",
+          "ImageAttribute.orientation",
+          "ImageAttribute.sourceSize",
+          "ImageAttribute.supportSvg2",
+          "ImageAttribute.syncLoad",
+          "ImageModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text/text_pattern.cpp",
+      "expected_apis": [
+        "Text"
+      ],
+      "actual_affected_apis": [
+        "Text",
+        "TextAttribute.baselineOffset",
+        "TextAttribute.caretColor",
+        "TextAttribute.copyOption",
+        "TextAttribute.draggable",
+        "TextAttribute.ellipsisMode",
+        "TextAttribute.enableHapticFeedback",
+        "TextAttribute.fallbackLineSpacing",
+        "TextAttribute.fontColor",
+        "TextAttribute.fontFamily",
+        "TextAttribute.fontFeature",
+        "TextAttribute.fontSize",
+        "TextAttribute.fontStyle",
+        "TextAttribute.fontVariations",
+        "TextAttribute.fontWeight",
+        "TextAttribute.halfLeading",
+        "TextAttribute.heightAdaptivePolicy",
+        "TextAttribute.includeFontPadding",
+        "TextAttribute.letterSpacing",
+        "TextAttribute.lineBreakStrategy",
+        "TextAttribute.lineHeight",
+        "TextAttribute.lineSpacing",
+        "TextAttribute.maxFontScale",
+        "TextAttribute.maxLines",
+        "TextAttribute.minFontScale",
+        "TextAttribute.selectedBackgroundColor",
+        "TextAttribute.selection",
+        "TextAttribute.shaderStyle",
+        "TextAttribute.textAlign",
+        "TextAttribute.textCase",
+        "TextAttribute.textContentAlign",
+        "TextAttribute.textIndent",
+        "TextAttribute.textOverflow",
+        "TextAttribute.textShadow",
+        "TextAttribute.textVerticalAlign",
+        "TextAttribute.wordBreak",
+        "TextModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 60.2,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Text"
+        ],
+        "missing": [],
+        "unexpected": [
+          "TextAttribute.baselineOffset",
+          "TextAttribute.caretColor",
+          "TextAttribute.copyOption",
+          "TextAttribute.draggable",
+          "TextAttribute.ellipsisMode",
+          "TextAttribute.enableHapticFeedback",
+          "TextAttribute.fallbackLineSpacing",
+          "TextAttribute.fontColor",
+          "TextAttribute.fontFamily",
+          "TextAttribute.fontFeature",
+          "TextAttribute.fontSize",
+          "TextAttribute.fontStyle",
+          "TextAttribute.fontVariations",
+          "TextAttribute.fontWeight",
+          "TextAttribute.halfLeading",
+          "TextAttribute.heightAdaptivePolicy",
+          "TextAttribute.includeFontPadding",
+          "TextAttribute.letterSpacing",
+          "TextAttribute.lineBreakStrategy",
+          "TextAttribute.lineHeight",
+          "TextAttribute.lineSpacing",
+          "TextAttribute.maxFontScale",
+          "TextAttribute.maxLines",
+          "TextAttribute.minFontScale",
+          "TextAttribute.selectedBackgroundColor",
+          "TextAttribute.selection",
+          "TextAttribute.shaderStyle",
+          "TextAttribute.textAlign",
+          "TextAttribute.textCase",
+          "TextAttribute.textContentAlign",
+          "TextAttribute.textIndent",
+          "TextAttribute.textOverflow",
+          "TextAttribute.textShadow",
+          "TextAttribute.textVerticalAlign",
+          "TextAttribute.wordBreak",
+          "TextModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/list/list_pattern.cpp",
+      "expected_apis": [
+        "List"
+      ],
+      "actual_affected_apis": [
+        "List",
+        "ListAttribute.chainAnimation",
+        "ListAttribute.chainAnimationOptions",
+        "ListAttribute.contentEndOffset",
+        "ListAttribute.contentStartOffset",
+        "ListAttribute.divider",
+        "ListAttribute.enableEditMode",
+        "ListAttribute.focusWrapMode",
+        "ListAttribute.lanes",
+        "ListAttribute.listDirection",
+        "ListAttribute.onDidScroll",
+        "ListAttribute.onItemDragStart",
+        "ListAttribute.onScrollIndex",
+        "ListAttribute.onScrollVisibleContentChange",
+        "ListAttribute.scrollSnapAlign",
+        "ListAttribute.stackFromEnd",
+        "ListModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 27.9,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "List"
+        ],
+        "missing": [],
+        "unexpected": [
+          "ListAttribute.chainAnimation",
+          "ListAttribute.chainAnimationOptions",
+          "ListAttribute.contentEndOffset",
+          "ListAttribute.contentStartOffset",
+          "ListAttribute.divider",
+          "ListAttribute.enableEditMode",
+          "ListAttribute.focusWrapMode",
+          "ListAttribute.lanes",
+          "ListAttribute.listDirection",
+          "ListAttribute.onDidScroll",
+          "ListAttribute.onItemDragStart",
+          "ListAttribute.onScrollIndex",
+          "ListAttribute.onScrollVisibleContentChange",
+          "ListAttribute.scrollSnapAlign",
+          "ListAttribute.stackFromEnd",
+          "ListModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/grid/grid_pattern.cpp",
+      "expected_apis": [
+        "Grid"
+      ],
+      "actual_affected_apis": [
+        "Grid",
+        "GridAttribute.alignItems",
+        "GridAttribute.cachedCount",
+        "GridAttribute.cellLength",
+        "GridAttribute.columnsGap",
+        "GridAttribute.columnsTemplate",
+        "GridAttribute.edgeEffect",
+        "GridAttribute.enableEditMode",
+        "GridAttribute.maxCount",
+        "GridAttribute.minCount",
+        "GridAttribute.onDidScroll",
+        "GridAttribute.onItemDragStart",
+        "GridAttribute.onScrollIndex",
+        "GridAttribute.rowsGap",
+        "GridAttribute.rowsTemplate",
+        "GridAttribute.scrollBar",
+        "GridModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 34.1,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Grid"
+        ],
+        "missing": [],
+        "unexpected": [
+          "GridAttribute.alignItems",
+          "GridAttribute.cachedCount",
+          "GridAttribute.cellLength",
+          "GridAttribute.columnsGap",
+          "GridAttribute.columnsTemplate",
+          "GridAttribute.edgeEffect",
+          "GridAttribute.enableEditMode",
+          "GridAttribute.maxCount",
+          "GridAttribute.minCount",
+          "GridAttribute.onDidScroll",
+          "GridAttribute.onItemDragStart",
+          "GridAttribute.onScrollIndex",
+          "GridAttribute.rowsGap",
+          "GridAttribute.rowsTemplate",
+          "GridAttribute.scrollBar",
+          "GridModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "checkbox_pattern_file_028",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/checkbox/checkbox_pattern.cpp",
+      "expected_apis": [
+        "Checkbox"
+      ],
+      "actual_affected_apis": [
+        "Checkbox",
+        "CheckboxModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 38.6,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Checkbox"
+        ],
+        "missing": [],
+        "unexpected": [
+          "CheckboxModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "radio_pattern_file_029",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/radio/radio_pattern.cpp",
+      "expected_apis": [
+        "Radio"
+      ],
+      "actual_affected_apis": [
+        "Radio",
+        "RadioModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 36.4,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Radio"
+        ],
+        "missing": [],
+        "unexpected": [
+          "RadioModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "select_pattern_file_030",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/select/select_pattern.cpp",
+      "expected_apis": [
+        "Select"
+      ],
+      "actual_affected_apis": [
+        "Select",
+        "SelectModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 67.0,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Select"
+        ],
+        "missing": [],
+        "unexpected": [
+          "SelectModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "progress_pattern_file_031",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/progress/progress_pattern.cpp",
+      "expected_apis": [
+        "Progress"
+      ],
+      "actual_affected_apis": [
+        "Progress",
+        "ProgressModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 33.1,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Progress"
+        ],
+        "missing": [],
+        "unexpected": [
+          "ProgressModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/search/search_pattern.cpp",
+      "expected_apis": [
+        "Search"
+      ],
+      "actual_affected_apis": [
+        "Search",
+        "SearchAttribute.cancelButton",
+        "SearchAttribute.compressLeadingPunctuation",
+        "SearchAttribute.dividerColor",
+        "SearchAttribute.enableAutoSpacing",
+        "SearchAttribute.enableHapticFeedback",
+        "SearchAttribute.fallbackLineSpacing",
+        "SearchAttribute.fontColor",
+        "SearchAttribute.halfLeading",
+        "SearchAttribute.includeFontPadding",
+        "SearchAttribute.inputFilter",
+        "SearchAttribute.keyboardAppearance",
+        "SearchAttribute.letterSpacing",
+        "SearchAttribute.lineHeight",
+        "SearchAttribute.maxFontScale",
+        "SearchAttribute.maxLength",
+        "SearchAttribute.minFontScale",
+        "SearchAttribute.onChange",
+        "SearchAttribute.placeholderColor",
+        "SearchAttribute.placeholderFont",
+        "SearchAttribute.searchButton",
+        "SearchAttribute.selectedBackgroundColor",
+        "SearchAttribute.selectionMenuHidden",
+        "SearchAttribute.strokeColor",
+        "SearchAttribute.textAlign",
+        "SearchAttribute.textDirection",
+        "SearchAttribute.textIndent",
+        "SearchModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 26.6,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Search"
+        ],
+        "missing": [],
+        "unexpected": [
+          "SearchAttribute.cancelButton",
+          "SearchAttribute.compressLeadingPunctuation",
+          "SearchAttribute.dividerColor",
+          "SearchAttribute.enableAutoSpacing",
+          "SearchAttribute.enableHapticFeedback",
+          "SearchAttribute.fallbackLineSpacing",
+          "SearchAttribute.fontColor",
+          "SearchAttribute.halfLeading",
+          "SearchAttribute.includeFontPadding",
+          "SearchAttribute.inputFilter",
+          "SearchAttribute.keyboardAppearance",
+          "SearchAttribute.letterSpacing",
+          "SearchAttribute.lineHeight",
+          "SearchAttribute.maxFontScale",
+          "SearchAttribute.maxLength",
+          "SearchAttribute.minFontScale",
+          "SearchAttribute.onChange",
+          "SearchAttribute.placeholderColor",
+          "SearchAttribute.placeholderFont",
+          "SearchAttribute.searchButton",
+          "SearchAttribute.selectedBackgroundColor",
+          "SearchAttribute.selectionMenuHidden",
+          "SearchAttribute.strokeColor",
+          "SearchAttribute.textAlign",
+          "SearchAttribute.textDirection",
+          "SearchAttribute.textIndent",
+          "SearchModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "scroll_pattern_file_033",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/scroll/scroll_pattern.cpp",
+      "expected_apis": [
+        "Scroll"
+      ],
+      "actual_affected_apis": [
+        "Scroll",
+        "ScrollAttribute.edgeEffect",
+        "ScrollAttribute.enableBouncesZoom",
+        "ScrollAttribute.initialOffset",
+        "ScrollAttribute.maxZoomScale",
+        "ScrollAttribute.minZoomScale",
+        "ScrollAttribute.onScrollStop",
+        "ScrollAttribute.scrollBar",
+        "ScrollAttribute.scrollable",
+        "ScrollAttribute.zoomScale",
+        "ScrollModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 31.1,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Scroll"
+        ],
+        "missing": [],
+        "unexpected": [
+          "ScrollAttribute.edgeEffect",
+          "ScrollAttribute.enableBouncesZoom",
+          "ScrollAttribute.initialOffset",
+          "ScrollAttribute.maxZoomScale",
+          "ScrollAttribute.minZoomScale",
+          "ScrollAttribute.onScrollStop",
+          "ScrollAttribute.scrollBar",
+          "ScrollAttribute.scrollable",
+          "ScrollAttribute.zoomScale",
+          "ScrollModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "toggle_pattern_file_034",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/toggle/switch_pattern.cpp",
+      "expected_apis": [
+        "Toggle"
+      ],
+      "actual_affected_apis": [
+        "Toggle",
+        "ToggleModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 44.7,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Toggle"
+        ],
+        "missing": [],
+        "unexpected": [
+          "ToggleModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "menu_pattern_file_035",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/menu/menu_pattern.cpp",
+      "expected_apis": [
+        "Menu"
+      ],
+      "actual_affected_apis": [
+        "Menu",
+        "MenuAttribute.fontColor",
+        "MenuAttribute.menuItemDivider",
+        "MenuAttribute.radius",
+        "MenuModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 27.9,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Menu"
+        ],
+        "missing": [],
+        "unexpected": [
+          "MenuAttribute.fontColor",
+          "MenuAttribute.menuItemDivider",
+          "MenuAttribute.radius",
+          "MenuModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "button_model_file_036",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_model_ng.cpp",
+      "expected_apis": [
+        "Button"
+      ],
+      "actual_affected_apis": [
+        "Button",
+        "ButtonAttribute.buttonStyle",
+        "ButtonAttribute.controlSize",
+        "ButtonAttribute.padding",
+        "ButtonAttribute.role",
+        "ButtonModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 37.0,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Button"
+        ],
+        "missing": [],
+        "unexpected": [
+          "ButtonAttribute.buttonStyle",
+          "ButtonAttribute.controlSize",
+          "ButtonAttribute.padding",
+          "ButtonAttribute.role",
+          "ButtonModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "slider_model_file_037",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/slider_model_ng.cpp",
+      "expected_apis": [
+        "Slider"
+      ],
+      "actual_affected_apis": [
+        "Slider",
+        "SliderModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 35.6,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Slider"
+        ],
+        "missing": [],
+        "unexpected": [
+          "SliderModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/swiper/swiper_model_ng.cpp",
+      "expected_apis": [
+        "Swiper"
+      ],
+      "actual_affected_apis": [
+        "Swiper",
+        "SwiperAttribute.autoPlay",
+        "SwiperAttribute.cachedCount",
+        "SwiperAttribute.curve",
+        "SwiperAttribute.customContentTransition",
+        "SwiperAttribute.disableSwipe",
+        "SwiperAttribute.displayArrow",
+        "SwiperAttribute.displayCount",
+        "SwiperAttribute.displayMode",
+        "SwiperAttribute.duration",
+        "SwiperAttribute.effectMode",
+        "SwiperAttribute.index",
+        "SwiperAttribute.indicatorInteractive",
+        "SwiperAttribute.itemSpace",
+        "SwiperAttribute.loop",
+        "SwiperAttribute.maintainVisibleContentPosition",
+        "SwiperAttribute.nestedScroll",
+        "SwiperAttribute.nextMargin",
+        "SwiperAttribute.onAnimationEnd",
+        "SwiperAttribute.onAnimationStart",
+        "SwiperAttribute.onChange",
+        "SwiperAttribute.onContentDidScroll",
+        "SwiperAttribute.onContentWillScroll",
+        "SwiperAttribute.onGestureSwipe",
+        "SwiperAttribute.onScrollStateChanged",
+        "SwiperAttribute.onSelected",
+        "SwiperAttribute.onUnselected",
+        "SwiperAttribute.pageFlipMode",
+        "SwiperAttribute.prevMargin",
+        "SwiperModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 33.0,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Swiper"
+        ],
+        "missing": [],
+        "unexpected": [
+          "SwiperAttribute.autoPlay",
+          "SwiperAttribute.cachedCount",
+          "SwiperAttribute.curve",
+          "SwiperAttribute.customContentTransition",
+          "SwiperAttribute.disableSwipe",
+          "SwiperAttribute.displayArrow",
+          "SwiperAttribute.displayCount",
+          "SwiperAttribute.displayMode",
+          "SwiperAttribute.duration",
+          "SwiperAttribute.effectMode",
+          "SwiperAttribute.index",
+          "SwiperAttribute.indicatorInteractive",
+          "SwiperAttribute.itemSpace",
+          "SwiperAttribute.loop",
+          "SwiperAttribute.maintainVisibleContentPosition",
+          "SwiperAttribute.nestedScroll",
+          "SwiperAttribute.nextMargin",
+          "SwiperAttribute.onAnimationEnd",
+          "SwiperAttribute.onAnimationStart",
+          "SwiperAttribute.onChange",
+          "SwiperAttribute.onContentDidScroll",
+          "SwiperAttribute.onContentWillScroll",
+          "SwiperAttribute.onGestureSwipe",
+          "SwiperAttribute.onScrollStateChanged",
+          "SwiperAttribute.onSelected",
+          "SwiperAttribute.onUnselected",
+          "SwiperAttribute.pageFlipMode",
+          "SwiperAttribute.prevMargin",
+          "SwiperModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "image_model_file_039",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/image/image_model_ng.cpp",
+      "expected_apis": [
+        "Image"
+      ],
+      "actual_affected_apis": [
+        "Image",
+        "ImageAttribute.alt",
+        "ImageAttribute.autoResize",
+        "ImageAttribute.colorFilter",
+        "ImageAttribute.contentTransition",
+        "ImageAttribute.copyOption",
+        "ImageAttribute.draggable",
+        "ImageAttribute.dynamicRangeMode",
+        "ImageAttribute.enableAnalyzer",
+        "ImageAttribute.enhancedImageQuality",
+        "ImageAttribute.fillColor",
+        "ImageAttribute.fitOriginalSize",
+        "ImageAttribute.hdrBrightness",
+        "ImageAttribute.imageMatrix",
+        "ImageAttribute.interpolation",
+        "ImageAttribute.matchTextDirection",
+        "ImageAttribute.objectFit",
+        "ImageAttribute.objectRepeat",
+        "ImageAttribute.onComplete",
+        "ImageAttribute.onError",
+        "ImageAttribute.onFinish",
+        "ImageAttribute.orientation",
+        "ImageAttribute.sourceSize",
+        "ImageAttribute.supportSvg2",
+        "ImageAttribute.syncLoad",
+        "ImageModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 27.2,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Image"
+        ],
+        "missing": [],
+        "unexpected": [
+          "ImageAttribute.alt",
+          "ImageAttribute.autoResize",
+          "ImageAttribute.colorFilter",
+          "ImageAttribute.contentTransition",
+          "ImageAttribute.copyOption",
+          "ImageAttribute.draggable",
+          "ImageAttribute.dynamicRangeMode",
+          "ImageAttribute.enableAnalyzer",
+          "ImageAttribute.enhancedImageQuality",
+          "ImageAttribute.fillColor",
+          "ImageAttribute.fitOriginalSize",
+          "ImageAttribute.hdrBrightness",
+          "ImageAttribute.imageMatrix",
+          "ImageAttribute.interpolation",
+          "ImageAttribute.matchTextDirection",
+          "ImageAttribute.objectFit",
+          "ImageAttribute.objectRepeat",
+          "ImageAttribute.onComplete",
+          "ImageAttribute.onError",
+          "ImageAttribute.onFinish",
+          "ImageAttribute.orientation",
+          "ImageAttribute.sourceSize",
+          "ImageAttribute.supportSvg2",
+          "ImageAttribute.syncLoad",
+          "ImageModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "text_model_file_040",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text/text_model_ng.cpp",
+      "expected_apis": [
+        "Text"
+      ],
+      "actual_affected_apis": [
+        "Text",
+        "TextAttribute.baselineOffset",
+        "TextAttribute.bindSelectionMenu",
+        "TextAttribute.caretColor",
+        "TextAttribute.compressLeadingPunctuation",
+        "TextAttribute.contentTransition",
+        "TextAttribute.copyOption",
+        "TextAttribute.decoration",
+        "TextAttribute.draggable",
+        "TextAttribute.ellipsisMode",
+        "TextAttribute.enableAutoSpacing",
+        "TextAttribute.enableHapticFeedback",
+        "TextAttribute.fallbackLineSpacing",
+        "TextAttribute.font",
+        "TextAttribute.fontColor",
+        "TextAttribute.fontFamily",
+        "TextAttribute.fontFeature",
+        "TextAttribute.fontSize",
+        "TextAttribute.fontVariations",
+        "TextAttribute.fontWeight",
+        "TextAttribute.halfLeading",
+        "TextAttribute.heightAdaptivePolicy",
+        "TextAttribute.includeFontPadding",
+        "TextAttribute.letterSpacing",
+        "TextAttribute.lineBreakStrategy",
+        "TextAttribute.lineHeight",
+        "TextAttribute.lineSpacing",
+        "TextAttribute.marqueeOptions",
+        "TextAttribute.maxFontScale",
+        "TextAttribute.maxLines",
+        "TextAttribute.minFontScale",
+        "TextAttribute.minLines",
+        "TextAttribute.onCopy",
+        "TextAttribute.onMarqueeStateChange",
+        "TextAttribute.onTextSelectionChange",
+        "TextAttribute.onWillCopy",
+        "TextAttribute.optimizeTrailingSpace",
+        "TextAttribute.orphanCharOptimization",
+        "TextAttribute.selectedBackgroundColor",
+        "TextAttribute.selectedDragPreviewStyle",
+        "TextAttribute.textAlign",
+        "TextAttribute.textCase",
+        "TextAttribute.textContentAlign",
+        "TextAttribute.textDirection",
+        "TextAttribute.textIndent",
+        "TextAttribute.textOverflow",
+        "TextAttribute.textShadow",
+        "TextAttribute.textVerticalAlign",
+        "TextAttribute.wordBreak",
+        "TextModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 43.3,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Text"
+        ],
+        "missing": [],
+        "unexpected": [
+          "TextAttribute.baselineOffset",
+          "TextAttribute.bindSelectionMenu",
+          "TextAttribute.caretColor",
+          "TextAttribute.compressLeadingPunctuation",
+          "TextAttribute.contentTransition",
+          "TextAttribute.copyOption",
+          "TextAttribute.decoration",
+          "TextAttribute.draggable",
+          "TextAttribute.ellipsisMode",
+          "TextAttribute.enableAutoSpacing",
+          "TextAttribute.enableHapticFeedback",
+          "TextAttribute.fallbackLineSpacing",
+          "TextAttribute.font",
+          "TextAttribute.fontColor",
+          "TextAttribute.fontFamily",
+          "TextAttribute.fontFeature",
+          "TextAttribute.fontSize",
+          "TextAttribute.fontVariations",
+          "TextAttribute.fontWeight",
+          "TextAttribute.halfLeading",
+          "TextAttribute.heightAdaptivePolicy",
+          "TextAttribute.includeFontPadding",
+          "TextAttribute.letterSpacing",
+          "TextAttribute.lineBreakStrategy",
+          "TextAttribute.lineHeight",
+          "TextAttribute.lineSpacing",
+          "TextAttribute.marqueeOptions",
+          "TextAttribute.maxFontScale",
+          "TextAttribute.maxLines",
+          "TextAttribute.minFontScale",
+          "TextAttribute.minLines",
+          "TextAttribute.onCopy",
+          "TextAttribute.onMarqueeStateChange",
+          "TextAttribute.onTextSelectionChange",
+          "TextAttribute.onWillCopy",
+          "TextAttribute.optimizeTrailingSpace",
+          "TextAttribute.orphanCharOptimization",
+          "TextAttribute.selectedBackgroundColor",
+          "TextAttribute.selectedDragPreviewStyle",
+          "TextAttribute.textAlign",
+          "TextAttribute.textCase",
+          "TextAttribute.textContentAlign",
+          "TextAttribute.textDirection",
+          "TextAttribute.textIndent",
+          "TextAttribute.textOverflow",
+          "TextAttribute.textShadow",
+          "TextAttribute.textVerticalAlign",
+          "TextAttribute.wordBreak",
+          "TextModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "list_model_file_041",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/list/list_model_ng.cpp",
+      "expected_apis": [
+        "List"
+      ],
+      "actual_affected_apis": [
+        "List",
+        "ListAttribute.cachedCount",
+        "ListAttribute.chainAnimation",
+        "ListAttribute.chainAnimationOptions",
+        "ListAttribute.contentEndOffset",
+        "ListAttribute.contentStartOffset",
+        "ListAttribute.divider",
+        "ListAttribute.editModeOptions",
+        "ListAttribute.enableEditMode",
+        "ListAttribute.focusWrapMode",
+        "ListAttribute.lanes",
+        "ListAttribute.listDirection",
+        "ListAttribute.maintainVisibleContentPosition",
+        "ListAttribute.multiSelectable",
+        "ListAttribute.onDidScroll",
+        "ListAttribute.onItemDragEnter",
+        "ListAttribute.onItemDragLeave",
+        "ListAttribute.onItemDragMove",
+        "ListAttribute.onItemDragStart",
+        "ListAttribute.onItemDrop",
+        "ListAttribute.onItemMove",
+        "ListAttribute.onScrollFrameBegin",
+        "ListAttribute.onScrollIndex",
+        "ListAttribute.onScrollVisibleContentChange",
+        "ListAttribute.scrollSnapAlign",
+        "ListAttribute.scrollSnapAnimationSpeed",
+        "ListAttribute.stackFromEnd",
+        "ListAttribute.sticky",
+        "ListAttribute.supportEmptyBranchInLazyLoading",
+        "ListAttribute.syncLoad",
+        "ListModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 29.3,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "List"
+        ],
+        "missing": [],
+        "unexpected": [
+          "ListAttribute.cachedCount",
+          "ListAttribute.chainAnimation",
+          "ListAttribute.chainAnimationOptions",
+          "ListAttribute.contentEndOffset",
+          "ListAttribute.contentStartOffset",
+          "ListAttribute.divider",
+          "ListAttribute.editModeOptions",
+          "ListAttribute.enableEditMode",
+          "ListAttribute.focusWrapMode",
+          "ListAttribute.lanes",
+          "ListAttribute.listDirection",
+          "ListAttribute.maintainVisibleContentPosition",
+          "ListAttribute.multiSelectable",
+          "ListAttribute.onDidScroll",
+          "ListAttribute.onItemDragEnter",
+          "ListAttribute.onItemDragLeave",
+          "ListAttribute.onItemDragMove",
+          "ListAttribute.onItemDragStart",
+          "ListAttribute.onItemDrop",
+          "ListAttribute.onItemMove",
+          "ListAttribute.onScrollFrameBegin",
+          "ListAttribute.onScrollIndex",
+          "ListAttribute.onScrollVisibleContentChange",
+          "ListAttribute.scrollSnapAlign",
+          "ListAttribute.scrollSnapAnimationSpeed",
+          "ListAttribute.stackFromEnd",
+          "ListAttribute.sticky",
+          "ListAttribute.supportEmptyBranchInLazyLoading",
+          "ListAttribute.syncLoad",
+          "ListModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/grid/grid_model_ng.cpp",
+      "expected_apis": [
+        "Grid"
+      ],
+      "actual_affected_apis": [
+        "Grid",
+        "GridAttribute.alignItems",
+        "GridAttribute.cachedCount",
+        "GridAttribute.cellLength",
+        "GridAttribute.columnsGap",
+        "GridAttribute.columnsTemplate",
+        "GridAttribute.edgeEffect",
+        "GridAttribute.editModeOptions",
+        "GridAttribute.enableEditMode",
+        "GridAttribute.focusWrapMode",
+        "GridAttribute.friction",
+        "GridAttribute.layoutDirection",
+        "GridAttribute.maxCount",
+        "GridAttribute.minCount",
+        "GridAttribute.multiSelectable",
+        "GridAttribute.nestedScroll",
+        "GridAttribute.onItemDragEnter",
+        "GridAttribute.onItemDragLeave",
+        "GridAttribute.onItemDragMove",
+        "GridAttribute.onItemDragStart",
+        "GridAttribute.onItemDrop",
+        "GridAttribute.onScrollBarUpdate",
+        "GridAttribute.onScrollFrameBegin",
+        "GridAttribute.onScrollIndex",
+        "GridAttribute.rowsGap",
+        "GridAttribute.rowsTemplate",
+        "GridAttribute.scrollBarColor",
+        "GridAttribute.scrollBarWidth",
+        "GridAttribute.supportAnimation",
+        "GridAttribute.syncLoad",
+        "GridModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 26.1,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Grid"
+        ],
+        "missing": [],
+        "unexpected": [
+          "GridAttribute.alignItems",
+          "GridAttribute.cachedCount",
+          "GridAttribute.cellLength",
+          "GridAttribute.columnsGap",
+          "GridAttribute.columnsTemplate",
+          "GridAttribute.edgeEffect",
+          "GridAttribute.editModeOptions",
+          "GridAttribute.enableEditMode",
+          "GridAttribute.focusWrapMode",
+          "GridAttribute.friction",
+          "GridAttribute.layoutDirection",
+          "GridAttribute.maxCount",
+          "GridAttribute.minCount",
+          "GridAttribute.multiSelectable",
+          "GridAttribute.nestedScroll",
+          "GridAttribute.onItemDragEnter",
+          "GridAttribute.onItemDragLeave",
+          "GridAttribute.onItemDragMove",
+          "GridAttribute.onItemDragStart",
+          "GridAttribute.onItemDrop",
+          "GridAttribute.onScrollBarUpdate",
+          "GridAttribute.onScrollFrameBegin",
+          "GridAttribute.onScrollIndex",
+          "GridAttribute.rowsGap",
+          "GridAttribute.rowsTemplate",
+          "GridAttribute.scrollBarColor",
+          "GridAttribute.scrollBarWidth",
+          "GridAttribute.supportAnimation",
+          "GridAttribute.syncLoad",
+          "GridModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "checkbox_model_file_043",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/checkbox/checkbox_model_ng.cpp",
+      "expected_apis": [
+        "Checkbox"
+      ],
+      "actual_affected_apis": [
+        "Checkbox",
+        "CheckboxModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 36.6,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Checkbox"
+        ],
+        "missing": [],
+        "unexpected": [
+          "CheckboxModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "button_pattern_symbol_019",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp",
+      "expected_apis": [
+        "Button"
+      ],
+      "actual_affected_apis": [
+        "Button",
+        "ButtonAttribute.buttonStyle",
+        "ButtonAttribute.controlSize",
+        "ButtonModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 29.2,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Button"
+        ],
+        "missing": [],
+        "unexpected": [
+          "ButtonAttribute.buttonStyle",
+          "ButtonAttribute.controlSize",
+          "ButtonModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "native_node_accessor_011",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp",
+      "expected_apis": [],
+      "actual_affected_apis": [],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 54.3,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "dynamic_jsview_file_012",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/jsview/js_view.cpp",
+      "expected_apis": [],
+      "actual_affected_apis": [],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 27.8,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "broad_infra_pipeline_013",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/pipeline/pipeline_context.cpp",
+      "expected_apis": [],
+      "actual_affected_apis": [],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 63.5,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "broad_infra_render_node_018",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/pipeline/base/render_node.cpp",
+      "expected_apis": [],
+      "actual_affected_apis": [],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 49.3,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "content_modifier_file_010",
+      "changed_file": "foundation/arkui/ace_engine/interfaces/inner_api/ace_kit/src/view/draw/content_modifier.cpp",
+      "expected_apis": [],
+      "actual_affected_apis": [],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 26.2,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "broad_infra_property_025",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/property/property.cpp",
+      "expected_apis": [],
+      "actual_affected_apis": [],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 31.2,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "radio_model_file_044",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/radio/radio_model_ng.cpp",
+      "expected_apis": [
+        "Radio"
+      ],
+      "actual_affected_apis": [
+        "Radio",
+        "RadioModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 31.0,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Radio"
+        ],
+        "missing": [],
+        "unexpected": [
+          "RadioModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "select_model_file_045",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/select/select_model_ng.cpp",
+      "expected_apis": [
+        "Select"
+      ],
+      "actual_affected_apis": [
+        "Select",
+        "SelectModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 36.5,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Select"
+        ],
+        "missing": [],
+        "unexpected": [
+          "SelectModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "progress_model_file_046",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/progress/progress_model_ng.cpp",
+      "expected_apis": [
+        "Progress"
+      ],
+      "actual_affected_apis": [
+        "Progress",
+        "ProgressModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 31.9,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Progress"
+        ],
+        "missing": [],
+        "unexpected": [
+          "ProgressModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "search_model_file_047",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/search/search_model_ng.cpp",
+      "expected_apis": [
+        "Search"
+      ],
+      "actual_affected_apis": [
+        "Search",
+        "SearchAttribute.autoCapitalizationMode",
+        "SearchAttribute.compressLeadingPunctuation",
+        "SearchAttribute.copyOption",
+        "SearchAttribute.customKeyboard",
+        "SearchAttribute.dividerColor",
+        "SearchAttribute.enableAutoSpacing",
+        "SearchAttribute.enableHapticFeedback",
+        "SearchAttribute.enablePreviewText",
+        "SearchAttribute.fallbackLineSpacing",
+        "SearchAttribute.fontColor",
+        "SearchAttribute.fontFeature",
+        "SearchAttribute.halfLeading",
+        "SearchAttribute.includeFontPadding",
+        "SearchAttribute.inputFilter",
+        "SearchAttribute.keyboardAppearance",
+        "SearchAttribute.letterSpacing",
+        "SearchAttribute.lineHeight",
+        "SearchAttribute.maxFontScale",
+        "SearchAttribute.maxLength",
+        "SearchAttribute.minFontScale",
+        "SearchAttribute.onChange",
+        "SearchAttribute.onContentScroll",
+        "SearchAttribute.onCopy",
+        "SearchAttribute.onCut",
+        "SearchAttribute.onEditChange",
+        "SearchAttribute.onPaste",
+        "SearchAttribute.onSubmit",
+        "SearchAttribute.onTextSelectionChange",
+        "SearchAttribute.onWillAttachIME",
+        "SearchAttribute.onWillCopy",
+        "SearchAttribute.onWillCut",
+        "SearchAttribute.placeholderColor",
+        "SearchAttribute.placeholderFont",
+        "SearchAttribute.searchButton",
+        "SearchAttribute.selectedBackgroundColor",
+        "SearchAttribute.selectedDragPreviewStyle",
+        "SearchAttribute.selectionMenuHidden",
+        "SearchAttribute.stopBackPress",
+        "SearchAttribute.strokeColor",
+        "SearchAttribute.strokeJoinStyle",
+        "SearchAttribute.strokeWidth",
+        "SearchAttribute.textAlign",
+        "SearchAttribute.textDirection",
+        "SearchAttribute.textFont",
+        "SearchAttribute.textIndent",
+        "SearchAttribute.type",
+        "SearchModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 32.0,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Search"
+        ],
+        "missing": [],
+        "unexpected": [
+          "SearchAttribute.autoCapitalizationMode",
+          "SearchAttribute.compressLeadingPunctuation",
+          "SearchAttribute.copyOption",
+          "SearchAttribute.customKeyboard",
+          "SearchAttribute.dividerColor",
+          "SearchAttribute.enableAutoSpacing",
+          "SearchAttribute.enableHapticFeedback",
+          "SearchAttribute.enablePreviewText",
+          "SearchAttribute.fallbackLineSpacing",
+          "SearchAttribute.fontColor",
+          "SearchAttribute.fontFeature",
+          "SearchAttribute.halfLeading",
+          "SearchAttribute.includeFontPadding",
+          "SearchAttribute.inputFilter",
+          "SearchAttribute.keyboardAppearance",
+          "SearchAttribute.letterSpacing",
+          "SearchAttribute.lineHeight",
+          "SearchAttribute.maxFontScale",
+          "SearchAttribute.maxLength",
+          "SearchAttribute.minFontScale",
+          "SearchAttribute.onChange",
+          "SearchAttribute.onContentScroll",
+          "SearchAttribute.onCopy",
+          "SearchAttribute.onCut",
+          "SearchAttribute.onEditChange",
+          "SearchAttribute.onPaste",
+          "SearchAttribute.onSubmit",
+          "SearchAttribute.onTextSelectionChange",
+          "SearchAttribute.onWillAttachIME",
+          "SearchAttribute.onWillCopy",
+          "SearchAttribute.onWillCut",
+          "SearchAttribute.placeholderColor",
+          "SearchAttribute.placeholderFont",
+          "SearchAttribute.searchButton",
+          "SearchAttribute.selectedBackgroundColor",
+          "SearchAttribute.selectedDragPreviewStyle",
+          "SearchAttribute.selectionMenuHidden",
+          "SearchAttribute.stopBackPress",
+          "SearchAttribute.strokeColor",
+          "SearchAttribute.strokeJoinStyle",
+          "SearchAttribute.strokeWidth",
+          "SearchAttribute.textAlign",
+          "SearchAttribute.textDirection",
+          "SearchAttribute.textFont",
+          "SearchAttribute.textIndent",
+          "SearchAttribute.type",
+          "SearchModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/scroll/scroll_model_ng.cpp",
+      "expected_apis": [
+        "Scroll"
+      ],
+      "actual_affected_apis": [
+        "Scroll",
+        "ScrollAttribute.edgeEffect",
+        "ScrollAttribute.enableBouncesZoom",
+        "ScrollAttribute.enablePaging",
+        "ScrollAttribute.friction",
+        "ScrollAttribute.initialOffset",
+        "ScrollAttribute.maxZoomScale",
+        "ScrollAttribute.minZoomScale",
+        "ScrollAttribute.nestedScroll",
+        "ScrollAttribute.onDidScroll",
+        "ScrollAttribute.onDidZoom",
+        "ScrollAttribute.onScrollEdge",
+        "ScrollAttribute.onScrollFrameBegin",
+        "ScrollAttribute.onScrollStart",
+        "ScrollAttribute.onScrollStop",
+        "ScrollAttribute.onWillScroll",
+        "ScrollAttribute.onZoomStart",
+        "ScrollAttribute.onZoomStop",
+        "ScrollAttribute.scrollBar",
+        "ScrollAttribute.scrollBarColor",
+        "ScrollAttribute.scrollBarWidth",
+        "ScrollAttribute.scrollSnap",
+        "ScrollAttribute.zoomScale",
+        "ScrollModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 27.9,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Scroll"
+        ],
+        "missing": [],
+        "unexpected": [
+          "ScrollAttribute.edgeEffect",
+          "ScrollAttribute.enableBouncesZoom",
+          "ScrollAttribute.enablePaging",
+          "ScrollAttribute.friction",
+          "ScrollAttribute.initialOffset",
+          "ScrollAttribute.maxZoomScale",
+          "ScrollAttribute.minZoomScale",
+          "ScrollAttribute.nestedScroll",
+          "ScrollAttribute.onDidScroll",
+          "ScrollAttribute.onDidZoom",
+          "ScrollAttribute.onScrollEdge",
+          "ScrollAttribute.onScrollFrameBegin",
+          "ScrollAttribute.onScrollStart",
+          "ScrollAttribute.onScrollStop",
+          "ScrollAttribute.onWillScroll",
+          "ScrollAttribute.onZoomStart",
+          "ScrollAttribute.onZoomStop",
+          "ScrollAttribute.scrollBar",
+          "ScrollAttribute.scrollBarColor",
+          "ScrollAttribute.scrollBarWidth",
+          "ScrollAttribute.scrollSnap",
+          "ScrollAttribute.zoomScale",
+          "ScrollModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "toggle_model_file_049",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/toggle/toggle_model_ng.cpp",
+      "expected_apis": [
+        "Toggle"
+      ],
+      "actual_affected_apis": [
+        "Toggle",
+        "ToggleModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 41.3,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Toggle"
+        ],
+        "missing": [],
+        "unexpected": [
+          "ToggleModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "menu_model_file_050",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/menu/menu_model_ng.cpp",
+      "expected_apis": [
+        "Menu"
+      ],
+      "actual_affected_apis": [
+        "Menu",
+        "MenuAttribute.fontColor",
+        "MenuModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 32.8,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Menu"
+        ],
+        "missing": [],
+        "unexpected": [
+          "MenuAttribute.fontColor",
+          "MenuModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "slider_model_ng_file_051",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/slider_model_ng.cpp",
+      "expected_apis": [
+        "Slider"
+      ],
+      "actual_affected_apis": [
+        "Slider",
+        "SliderModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 35.7,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Slider"
+        ],
+        "missing": [],
+        "unexpected": [
+          "SliderModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/tabs/tabs_model_ng.cpp",
+      "expected_apis": [
+        "Tabs"
+      ],
+      "actual_affected_apis": [
+        "Tabs",
+        "TabsAttribute.animationCurve",
+        "TabsAttribute.animationDuration",
+        "TabsAttribute.barBackgroundBlurStyle",
+        "TabsAttribute.barBackgroundColor",
+        "TabsAttribute.barBackgroundEffect",
+        "TabsAttribute.barGridAlign",
+        "TabsAttribute.barHeight",
+        "TabsAttribute.barOverlap",
+        "TabsAttribute.barWidth",
+        "TabsAttribute.cachedMaxCount",
+        "TabsAttribute.divider",
+        "TabsAttribute.edgeEffect",
+        "TabsAttribute.fadingEdge",
+        "TabsAttribute.nestedScroll",
+        "TabsAttribute.onAnimationEnd",
+        "TabsAttribute.onAnimationStart",
+        "TabsAttribute.onChange",
+        "TabsAttribute.onContentDidScroll",
+        "TabsAttribute.onContentWillChange",
+        "TabsAttribute.onGestureSwipe",
+        "TabsAttribute.onSelected",
+        "TabsAttribute.onTabBarClick",
+        "TabsAttribute.onUnselected",
+        "TabsAttribute.pageFlipMode",
+        "TabsAttribute.scrollable",
+        "TabsAttribute.vertical",
+        "TabsModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 25.0,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Tabs"
+        ],
+        "missing": [],
+        "unexpected": [
+          "TabsAttribute.animationCurve",
+          "TabsAttribute.animationDuration",
+          "TabsAttribute.barBackgroundBlurStyle",
+          "TabsAttribute.barBackgroundColor",
+          "TabsAttribute.barBackgroundEffect",
+          "TabsAttribute.barGridAlign",
+          "TabsAttribute.barHeight",
+          "TabsAttribute.barOverlap",
+          "TabsAttribute.barWidth",
+          "TabsAttribute.cachedMaxCount",
+          "TabsAttribute.divider",
+          "TabsAttribute.edgeEffect",
+          "TabsAttribute.fadingEdge",
+          "TabsAttribute.nestedScroll",
+          "TabsAttribute.onAnimationEnd",
+          "TabsAttribute.onAnimationStart",
+          "TabsAttribute.onChange",
+          "TabsAttribute.onContentDidScroll",
+          "TabsAttribute.onContentWillChange",
+          "TabsAttribute.onGestureSwipe",
+          "TabsAttribute.onSelected",
+          "TabsAttribute.onTabBarClick",
+          "TabsAttribute.onUnselected",
+          "TabsAttribute.pageFlipMode",
+          "TabsAttribute.scrollable",
+          "TabsAttribute.vertical",
+          "TabsModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    }
+  ]
+}

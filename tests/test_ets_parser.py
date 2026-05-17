@@ -9,6 +9,7 @@ Tests verify:
 - Class definition detection
 - Round-trip serialization
 """
+
 from __future__ import annotations
 
 import pytest
@@ -27,8 +28,14 @@ class TestButtonTestParsing:
         result: EtsParseResult = parse_ets_file(button_test_file)
 
         # Find Button constructions
-        button_usages = [u for u in result.usages if u.usage_type == "construction" and u.symbol_name == "Button"]
-        assert len(button_usages) == 2, f"Expected 2 Button constructions, found {len(button_usages)}"
+        button_usages = [
+            u
+            for u in result.usages
+            if u.usage_type == "construction" and u.symbol_name == "Button"
+        ]
+        assert len(button_usages) == 2, (
+            f"Expected 2 Button constructions, found {len(button_usages)}"
+        )
 
     def test_parse_button_test_finds_chained_methods(self, fixtures_dir):
         """Parse button_test.ets and find chained methods."""
@@ -41,8 +48,17 @@ class TestButtonTestParsing:
         chained_usages = [u for u in result.usages if u.usage_type == "chained_method"]
         method_names = {u.symbol_name for u in chained_usages}
 
-        expected_methods = {"type", "buttonStyle", "role", "onClick", "controlSize", "contentModifier"}
-        assert method_names == expected_methods, f"Expected {expected_methods}, got {method_names}"
+        expected_methods = {
+            "type",
+            "buttonStyle",
+            "role",
+            "onClick",
+            "controlSize",
+            "contentModifier",
+        }
+        assert method_names == expected_methods, (
+            f"Expected {expected_methods}, got {method_names}"
+        )
 
     def test_parse_button_test_finds_property_access(self, fixtures_dir):
         """Parse button_test.ets and find property accesses."""
@@ -52,11 +68,20 @@ class TestButtonTestParsing:
         result: EtsParseResult = parse_ets_file(button_test_file)
 
         # Find property accesses
-        property_usages = [u for u in result.usages if u.usage_type == "property_access"]
+        property_usages = [
+            u for u in result.usages if u.usage_type == "property_access"
+        ]
         property_names = {u.symbol_name for u in property_usages}
 
-        expected_props = {"ButtonType.Capsule", "ButtonType.Normal", "ButtonStyleMode.NORMAL", "ButtonRole.NORMAL"}
-        assert property_names == expected_props, f"Expected {expected_props}, got {property_names}"
+        expected_props = {
+            "ButtonType.Capsule",
+            "ButtonType.Normal",
+            "ButtonStyleMode.NORMAL",
+            "ButtonRole.NORMAL",
+        }
+        assert property_names == expected_props, (
+            f"Expected {expected_props}, got {property_names}"
+        )
 
     def test_parse_button_test_finds_components(self, fixtures_dir):
         """Parse button_test.ets and find @Component struct."""
@@ -65,7 +90,9 @@ class TestButtonTestParsing:
         button_test_file = fixtures_dir / "ets_tests" / "button_test.ets"
         result: EtsParseResult = parse_ets_file(button_test_file)
 
-        assert "ButtonTest" in result.components, f"Expected 'ButtonTest' in components, got {result.components}"
+        assert "ButtonTest" in result.components, (
+            f"Expected 'ButtonTest' in components, got {result.components}"
+        )
 
     def test_parse_button_test_finds_classes(self, fixtures_dir):
         """Parse button_test.ets and find modifier class."""
@@ -74,7 +101,9 @@ class TestButtonTestParsing:
         button_test_file = fixtures_dir / "ets_tests" / "button_test.ets"
         result: EtsParseResult = parse_ets_file(button_test_file)
 
-        assert "ButtonModifierExample" in result.classes, f"Expected 'ButtonModifierExample' in classes, got {result.classes}"
+        assert "ButtonModifierExample" in result.classes, (
+            f"Expected 'ButtonModifierExample' in classes, got {result.classes}"
+        )
 
 
 class TestSliderTestParsing:
@@ -88,8 +117,14 @@ class TestSliderTestParsing:
         result: EtsParseResult = parse_ets_file(slider_test_file)
 
         # Find Slider construction
-        slider_usages = [u for u in result.usages if u.usage_type == "construction" and u.symbol_name == "Slider"]
-        assert len(slider_usages) == 1, f"Expected 1 Slider construction, found {len(slider_usages)}"
+        slider_usages = [
+            u
+            for u in result.usages
+            if u.usage_type == "construction" and u.symbol_name == "Slider"
+        ]
+        assert len(slider_usages) == 1, (
+            f"Expected 1 Slider construction, found {len(slider_usages)}"
+        )
 
     def test_parse_slider_test_finds_chained_methods(self, fixtures_dir):
         """Parse slider_test.ets and find chained methods."""
@@ -103,7 +138,9 @@ class TestSliderTestParsing:
         method_names = {u.symbol_name for u in chained_usages}
 
         expected_methods = {"step", "style", "blockColor"}
-        assert method_names == expected_methods, f"Expected {expected_methods}, got {method_names}"
+        assert method_names == expected_methods, (
+            f"Expected {expected_methods}, got {method_names}"
+        )
 
 
 class TestNavigationTestParsing:
@@ -117,8 +154,14 @@ class TestNavigationTestParsing:
         result: EtsParseResult = parse_ets_file(navigation_test_file)
 
         # Find Navigation construction
-        nav_usages = [u for u in result.usages if u.usage_type == "construction" and u.symbol_name == "Navigation"]
-        assert len(nav_usages) == 1, f"Expected 1 Navigation construction, found {len(nav_usages)}"
+        nav_usages = [
+            u
+            for u in result.usages
+            if u.usage_type == "construction" and u.symbol_name == "Navigation"
+        ]
+        assert len(nav_usages) == 1, (
+            f"Expected 1 Navigation construction, found {len(nav_usages)}"
+        )
 
     def test_parse_navigation_test_finds_chained_methods(self, fixtures_dir):
         """Parse navigation_test.ets and find chained methods.
@@ -138,8 +181,12 @@ class TestNavigationTestParsing:
 
         # At minimum, we should find mode and navBarWidth
         # title may not be detected due to tree-sitter parsing limitations
-        assert "mode" in method_names, f"Expected 'mode' in chained methods, got {method_names}"
-        assert "navBarWidth" in method_names, f"Expected 'navBarWidth' in chained methods, got {method_names}"
+        assert "mode" in method_names, (
+            f"Expected 'mode' in chained methods, got {method_names}"
+        )
+        assert "navBarWidth" in method_names, (
+            f"Expected 'navBarWidth' in chained methods, got {method_names}"
+        )
 
 
 class TestChainedMethodExtraction:
@@ -167,7 +214,9 @@ class TestChainedMethodExtraction:
 
         chained_usages = [u for u in result.usages if u.usage_type == "chained_method"]
         for usage in chained_usages:
-            assert usage.line is not None, f"Expected line number for {usage.symbol_name}"
+            assert usage.line is not None, (
+                f"Expected line number for {usage.symbol_name}"
+            )
             assert usage.line > 0
 
 
@@ -183,8 +232,12 @@ class TestComponentDetection:
             result: EtsParseResult = parse_ets_file(test_file)
 
             # Should find the component struct
-            expected_component = f"{test_name.replace('_', ' ').title().replace(' ', '')}Test"
-            assert len(result.components) > 0, f"{test_name}: Expected at least one component"
+            expected_component = (
+                f"{test_name.replace('_', ' ').title().replace(' ', '')}Test"
+            )
+            assert len(result.components) > 0, (
+                f"{test_name}: Expected at least one component"
+            )
 
 
 class TestEtsUsageSerialization:
@@ -269,5 +322,6 @@ def fixtures_dir():
     """Return the fixtures directory path."""
     from pathlib import Path
     import arkui_xts_selector
+
     module_dir = Path(arkui_xts_selector.__file__).parent
     return module_dir.parent.parent / "tests" / "fixtures"

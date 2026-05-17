@@ -5,11 +5,10 @@ ACE engine repository locations and PR API response formats.
 
 Import boundary: standard library only.
 """
+
 from __future__ import annotations
 
-import re
 from pathlib import Path
-from typing import Callable
 
 _ACE_ENGINE_PREFIXES = [
     "foundation/arkui/ace_engine/",
@@ -48,7 +47,7 @@ def normalize_path(path: str, repo_root: str | Path | None = None) -> str:
         path_lower = path.lower()
         root_lower = repo_root.lower().rstrip("/")
         if path_lower.startswith(root_lower + "/"):
-            path = path[len(root_lower) + 1:]
+            path = path[len(root_lower) + 1 :]
 
     path = strip_ace_engine_prefix(path)
 
@@ -67,7 +66,7 @@ def strip_ace_engine_prefix(rel_path: str) -> str:
     path_lower = rel_path.lower()
     for prefix in _ACE_ENGINE_PREFIXES:
         if path_lower.startswith(prefix.lower()):
-            return rel_path[len(prefix):]
+            return rel_path[len(prefix) :]
     return rel_path
 
 

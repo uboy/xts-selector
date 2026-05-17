@@ -9,6 +9,7 @@ Tests verify:
 - _classify_risk direct testing
 - PrResolveEntry frozen dataclass
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -71,7 +72,9 @@ class TestResolvePrFrameNodeCriticalRisk:
             "foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp"
         ]
 
-        result = resolve_pr(changed_files, ace_index, sdk_index, inverted, broad_rules_path)
+        result = resolve_pr(
+            changed_files, ace_index, sdk_index, inverted, broad_rules_path
+        )
 
         # Should have one entry with critical risk
         assert len(result.entries) == 1
@@ -103,7 +106,9 @@ class TestResolvePrPipelineHighRisk:
             "foundation/arkui/ace_engine/frameworks/core/pipeline_ng/pipeline_context.cpp"
         ]
 
-        result = resolve_pr(changed_files, ace_index, sdk_index, inverted, broad_rules_path)
+        result = resolve_pr(
+            changed_files, ace_index, sdk_index, inverted, broad_rules_path
+        )
 
         # Should have one entry with high risk
         assert len(result.entries) == 1
@@ -137,9 +142,12 @@ class TestBroadInfraNewRules:
         from arkui_xts_selector.indexing.ace_indexer import AceIndexResult
         from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
         from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+
         return resolve_pr(
             [changed_file],
-            AceIndexResult(), SdkIndexResult(), InvertedIndex(),
+            AceIndexResult(),
+            SdkIndexResult(),
+            InvertedIndex(),
             Path("config/broad_infrastructure_files.json"),
         )
 
@@ -203,12 +211,15 @@ class TestBroadInfraNewRules:
         from arkui_xts_selector.indexing.ace_indexer import AceIndexResult
         from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
         from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+
         result = resolve_pr(
             [
                 "foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp",
                 "foundation/arkui/ace_engine/frameworks/core/components_ng/layout/layout_wrapper.cpp",
             ],
-            AceIndexResult(), SdkIndexResult(), InvertedIndex(),
+            AceIndexResult(),
+            SdkIndexResult(),
+            InvertedIndex(),
             Path("config/broad_infrastructure_files.json"),
         )
         assert result.overall_false_negative_risk == "critical"
@@ -297,49 +308,57 @@ class TestClassifyRiskLevels:
 
     def test_classify_risk_no_consumers(self):
         """APIs but no consumers → high risk."""
-        mappings = [SourceApiMapping(
-            source_qualified="TestClass::SetTest",
-            api_public_name="test",
-            confidence="strong",
-            file_role="model_static",
-            source_file_path="test.cpp",
-        )]
+        mappings = [
+            SourceApiMapping(
+                source_qualified="TestClass::SetTest",
+                api_public_name="test",
+                confidence="strong",
+                file_role="model_static",
+                source_file_path="test.cpp",
+            )
+        ]
         risk = _classify_risk(["test"], [], mappings)
         assert risk == "high"
 
     def test_classify_risk_medium(self):
         """Few consumers without strong mappings → medium risk."""
-        mappings = [SourceApiMapping(
-            source_qualified="TestClass::SetTest",
-            api_public_name="test",
-            confidence="medium",
-            file_role="model_static",
-            source_file_path="test.cpp",
-        )]
+        mappings = [
+            SourceApiMapping(
+                source_qualified="TestClass::SetTest",
+                api_public_name="test",
+                confidence="medium",
+                file_role="model_static",
+                source_file_path="test.cpp",
+            )
+        ]
         risk = _classify_risk(["test"], ["proj1", "proj2"], mappings)
         assert risk == "medium"
 
     def test_classify_risk_low(self):
         """Many consumers or strong mappings → low risk."""
         # Case 1: Many consumers with medium confidence
-        mappings = [SourceApiMapping(
-            source_qualified="TestClass::SetTest",
-            api_public_name="test",
-            confidence="medium",
-            file_role="model_static",
-            source_file_path="test.cpp",
-        )]
+        mappings = [
+            SourceApiMapping(
+                source_qualified="TestClass::SetTest",
+                api_public_name="test",
+                confidence="medium",
+                file_role="model_static",
+                source_file_path="test.cpp",
+            )
+        ]
         risk = _classify_risk(["test"], ["proj1", "proj2", "proj3"], mappings)
         assert risk == "low"
 
         # Case 2: Few consumers but strong confidence
-        strong_mappings = [SourceApiMapping(
-            source_qualified="TestClass::SetTest",
-            api_public_name="test",
-            confidence="strong",
-            file_role="model_static",
-            source_file_path="test.cpp",
-        )]
+        strong_mappings = [
+            SourceApiMapping(
+                source_qualified="TestClass::SetTest",
+                api_public_name="test",
+                confidence="strong",
+                file_role="model_static",
+                source_file_path="test.cpp",
+            )
+        ]
         risk = _classify_risk(["test"], ["proj1"], strong_mappings)
         assert risk == "low"
 
@@ -403,13 +422,15 @@ class TestFindMappingsForFile:
 
     def test_find_mappings_exact_match(self):
         """Exact match works."""
-        mappings = [SourceApiMapping(
-            source_qualified="TestClass::SetTest",
-            api_public_name="test",
-            confidence="strong",
-            file_role="model_static",
-            source_file_path="exact/path.cpp",
-        )]
+        mappings = [
+            SourceApiMapping(
+                source_qualified="TestClass::SetTest",
+                api_public_name="test",
+                confidence="strong",
+                file_role="model_static",
+                source_file_path="exact/path.cpp",
+            )
+        ]
         by_file = {"exact/path.cpp": mappings}
 
         result = _find_mappings_for_file("exact/path.cpp", by_file)
@@ -417,13 +438,15 @@ class TestFindMappingsForFile:
 
     def test_find_mappings_basename_match(self):
         """Basename match works."""
-        mappings = [SourceApiMapping(
-            source_qualified="TestClass::SetTest",
-            api_public_name="test",
-            confidence="strong",
-            file_role="model_static",
-            source_file_path="some/path/to/test.cpp",
-        )]
+        mappings = [
+            SourceApiMapping(
+                source_qualified="TestClass::SetTest",
+                api_public_name="test",
+                confidence="strong",
+                file_role="model_static",
+                source_file_path="some/path/to/test.cpp",
+            )
+        ]
         by_file = {"some/path/to/test.cpp": mappings}
 
         result = _find_mappings_for_file("other/path/to/test.cpp", by_file)
@@ -465,7 +488,9 @@ class TestSelectionReasons:
             assert isinstance(reason, SelectionReason)
             assert reason.project_path
             assert len(reason.matched_apis) > 0
-            assert "role" in reason.matched_apis or any("role" in api for api in reason.matched_apis)
+            assert "role" in reason.matched_apis or any(
+                "role" in api for api in reason.matched_apis
+            )
 
     def test_selection_reason_to_dict(self):
         """SelectionReason.to_dict returns correct structure."""
@@ -513,7 +538,9 @@ class TestCoverageGap:
 
         result = resolve_pr(
             ["frameworks/core/components_ng/pattern/button/button_model_static.cpp"],
-            ace_index, sdk_index, inverted,
+            ace_index,
+            sdk_index,
+            inverted,
         )
 
         # coverage_gap should be a tuple
@@ -521,7 +548,10 @@ class TestCoverageGap:
 
     def test_coverage_gap_with_uncovered_api(self):
         """coverage_gap contains APIs with no consumers."""
-        from arkui_xts_selector.indexing.ace_indexer import AceIndexEntry, AceIndexResult
+        from arkui_xts_selector.indexing.ace_indexer import (
+            AceIndexEntry,
+            AceIndexResult,
+        )
         from arkui_xts_selector.indexing.cpp_parser import CppClass, CppMethod
         from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
         from arkui_xts_selector.indexing.inverted_index import InvertedIndex
@@ -531,19 +561,25 @@ class TestCoverageGap:
             file_path="test/test_model_static.cpp",
             role="model_static",
             family="component",
-            classes=(CppClass(
-                name="TestModel",
-                methods=(CppMethod(
-                    name="SetTestApi",
-                    qualified="TestModel::SetTestApi",
-                ),),
-            ),),
+            classes=(
+                CppClass(
+                    name="TestModel",
+                    methods=(
+                        CppMethod(
+                            name="SetTestApi",
+                            qualified="TestModel::SetTestApi",
+                        ),
+                    ),
+                ),
+            ),
         )
         ace_index = AceIndexResult(entries=(ace_entry,))
         sdk_index = SdkIndexResult()
         inverted = InvertedIndex()  # Empty — no consumers
 
-        result = resolve_pr(["test/test_model_static.cpp"], ace_index, sdk_index, inverted)
+        result = resolve_pr(
+            ["test/test_model_static.cpp"], ace_index, sdk_index, inverted
+        )
 
         # API should be in coverage_gap since no consumers exist
         if result.entries and result.entries[0].affected_apis:
@@ -560,24 +596,46 @@ class TestHunkLevelResolution:
 
     def _make_ace_with_methods(self):
         """Build ACE index with methods at known line ranges."""
-        from arkui_xts_selector.indexing.ace_indexer import AceIndexEntry, AceIndexResult
+        from arkui_xts_selector.indexing.ace_indexer import (
+            AceIndexEntry,
+            AceIndexResult,
+        )
         from arkui_xts_selector.indexing.cpp_parser import CppClass, CppMethod
 
-        return AceIndexResult(entries=(
-            AceIndexEntry(
-                file_path="test/button_model_static.cpp",
-                role="model_static",
-                family="button",
-                classes=(CppClass(
-                    name="ButtonModel",
-                    methods=(
-                        CppMethod(name="SetRole", qualified="ButtonModel::SetRole", line=100, end_line=115),
-                        CppMethod(name="SetButtonStyle", qualified="ButtonModel::SetButtonStyle", line=120, end_line=140),
-                        CppMethod(name="SetLabel", qualified="ButtonModel::SetLabel", line=200, end_line=220),
+        return AceIndexResult(
+            entries=(
+                AceIndexEntry(
+                    file_path="test/button_model_static.cpp",
+                    role="model_static",
+                    family="button",
+                    classes=(
+                        CppClass(
+                            name="ButtonModel",
+                            methods=(
+                                CppMethod(
+                                    name="SetRole",
+                                    qualified="ButtonModel::SetRole",
+                                    line=100,
+                                    end_line=115,
+                                ),
+                                CppMethod(
+                                    name="SetButtonStyle",
+                                    qualified="ButtonModel::SetButtonStyle",
+                                    line=120,
+                                    end_line=140,
+                                ),
+                                CppMethod(
+                                    name="SetLabel",
+                                    qualified="ButtonModel::SetLabel",
+                                    line=200,
+                                    end_line=220,
+                                ),
+                            ),
+                        ),
                     ),
-                ),),
-            ),
-        ))
+                ),
+            )
+        )
 
     def test_hunk_filter_selects_overlapping_methods(self):
         """Changed range 120-130 only selects SetButtonStyle, not SetRole or SetLabel."""
@@ -587,7 +645,9 @@ class TestHunkLevelResolution:
         ace = self._make_ace_with_methods()
         result = resolve_pr(
             ["test/button_model_static.cpp"],
-            ace, SdkIndexResult(), InvertedIndex(),
+            ace,
+            SdkIndexResult(),
+            InvertedIndex(),
             changed_ranges={"test/button_model_static.cpp": [(120, 130)]},
         )
 
@@ -606,7 +666,9 @@ class TestHunkLevelResolution:
         ace = self._make_ace_with_methods()
         result = resolve_pr(
             ["test/button_model_static.cpp"],
-            ace, SdkIndexResult(), InvertedIndex(),
+            ace,
+            SdkIndexResult(),
+            InvertedIndex(),
             changed_ranges={"test/button_model_static.cpp": [(100, 110), (200, 210)]},
         )
 
@@ -623,7 +685,9 @@ class TestHunkLevelResolution:
         ace = self._make_ace_with_methods()
         result = resolve_pr(
             ["test/button_model_static.cpp"],
-            ace, SdkIndexResult(), InvertedIndex(),
+            ace,
+            SdkIndexResult(),
+            InvertedIndex(),
         )
 
         entry = result.entries[0]
@@ -646,14 +710,14 @@ class TestHunkLevelResolution:
         )
 
         # Overlapping ranges
-        assert m.overlaps_range(90, 105) is True   # Partial overlap
-        assert m.overlaps_range(110, 120) is True   # Partial overlap
-        assert m.overlaps_range(100, 115) is True   # Exact match
-        assert m.overlaps_range(50, 200) is True    # Contains
+        assert m.overlaps_range(90, 105) is True  # Partial overlap
+        assert m.overlaps_range(110, 120) is True  # Partial overlap
+        assert m.overlaps_range(100, 115) is True  # Exact match
+        assert m.overlaps_range(50, 200) is True  # Contains
 
         # Non-overlapping ranges
-        assert m.overlaps_range(50, 99) is False    # Before
-        assert m.overlaps_range(116, 200) is False   # After
+        assert m.overlaps_range(50, 99) is False  # Before
+        assert m.overlaps_range(116, 200) is False  # After
 
     def test_overlaps_range_no_line_info(self):
         """SourceApiMapping without line info always overlaps."""
@@ -677,6 +741,7 @@ class TestCppNamingResolution:
         from arkui_xts_selector.indexing.ace_indexer import AceIndexResult
         from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
         from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+
         return AceIndexResult(), SdkIndexResult(), InvertedIndex()
 
     def test_naming_resolver_finds_test_dirs(self, empty_indices, xts_root):
@@ -759,10 +824,17 @@ class TestCppNamingResolution:
     def test_broad_infra_takes_priority_over_naming(self, empty_indices, xts_root):
         """Broad infra match takes priority over naming convention."""
         from pathlib import Path
+
         ace, sdk, inv = empty_indices
-        broad_rules = Path(__file__).resolve().parent.parent / "config" / "broad_infrastructure_files.json"
+        broad_rules = (
+            Path(__file__).resolve().parent.parent
+            / "config"
+            / "broad_infrastructure_files.json"
+        )
         result = resolve_pr(
-            changed_files=["foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp"],
+            changed_files=[
+                "foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp"
+            ],
             ace_index=ace,
             sdk_index=sdk,
             inverted=inv,
@@ -777,6 +849,7 @@ class TestCppNamingResolution:
 @pytest.fixture
 def xts_root():
     import os
+
     repo = os.environ.get("OHOS_REPO_ROOT", str(Path.home() / "proj/ohos_master"))
     root = Path(repo) / "test" / "xts" / "acts" / "arkui"
     if not root.is_dir():
@@ -805,6 +878,7 @@ class TestCanonicalFieldStrictGate:
         )
 
         from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+
         result = _resolve_pr_core(
             changed_files=["button.cpp"],
             by_file={"button.cpp": [mapping]},
@@ -833,6 +907,7 @@ class TestCanonicalFieldStrictGate:
         )
 
         from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+
         result = _resolve_pr_core(
             changed_files=["button.cpp"],
             by_file={"button.cpp": [mapping]},
@@ -840,7 +915,9 @@ class TestCanonicalFieldStrictGate:
             rules=[],
         )
         assert len(result.entries) == 1
-        assert result.entries[0].canonical_affected_apis == ("api:v1:ButtonAttribute#role",)
+        assert result.entries[0].canonical_affected_apis == (
+            "api:v1:ButtonAttribute#role",
+        )
 
     def test_canonical_excludes_non_api_v1_prefix(self):
         """sdk_confirmed=True but api_id without api:v1: prefix → excluded."""
@@ -860,6 +937,7 @@ class TestCanonicalFieldStrictGate:
         )
 
         from arkui_xts_selector.indexing.inverted_index import InvertedIndex
+
         result = _resolve_pr_core(
             changed_files=["button.cpp"],
             by_file={"button.cpp": [mapping]},
@@ -878,18 +956,23 @@ class TestLowConfidenceResolvedFiles:
         """Files resolved via last_resort appear in low_confidence_resolved_files."""
         from arkui_xts_selector.indexing.pr_resolver import _resolve_pr_core
         from arkui_xts_selector.indexing.inverted_index import InvertedIndex
-        from arkui_xts_selector.indexing.target_index import RunnableTargetEntry, TargetIndexResult
+        from arkui_xts_selector.indexing.target_index import (
+            RunnableTargetEntry,
+            TargetIndexResult,
+        )
 
         # Use a bare filename that won't match ACE path markers or naming conventions
         # but has high token overlap with the target (button → button, jaccard=1.0)
-        target_index = TargetIndexResult(entries=[
-            RunnableTargetEntry(
-                project_path="ace_ets_module_button_test",
-                project_id="ace_ets_module_button_test",
-                module_name="ace_ets_module_button_test",
-                family_keys=("button",),
-            ),
-        ])
+        target_index = TargetIndexResult(
+            entries=[
+                RunnableTargetEntry(
+                    project_path="ace_ets_module_button_test",
+                    project_id="ace_ets_module_button_test",
+                    module_name="ace_ets_module_button_test",
+                    family_keys=("button",),
+                ),
+            ]
+        )
 
         result = _resolve_pr_core(
             changed_files=["button.cpp"],
@@ -901,7 +984,9 @@ class TestLowConfidenceResolvedFiles:
         assert len(result.entries) == 1
         entry = result.entries[0]
         # Must have been resolved by last_resort (token match)
-        assert entry.consumer_projects, "last_resort should resolve button.cpp via token match"
+        assert entry.consumer_projects, (
+            "last_resort should resolve button.cpp via token match"
+        )
         assert "button.cpp" in result.low_confidence_resolved_files
         assert entry.unresolved_reason is None
 

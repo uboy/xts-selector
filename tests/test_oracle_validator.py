@@ -1,8 +1,8 @@
 """Tests for oracle_validator module."""
+
 from __future__ import annotations
 
 from arkui_xts_selector.validation.oracle_validator import (
-    OracleValidationResult,
     validate_oracle_output,
 )
 

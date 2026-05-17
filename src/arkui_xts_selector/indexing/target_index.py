@@ -6,17 +6,18 @@ replacing repeated os.walk calls with indexed lookups.
 The index maps family keys to runnable test targets, enabling bounded
 family lookup instead of fuzzy prefix matching on every query.
 """
+
 from __future__ import annotations
 
-import json
 import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
 @dataclass(frozen=True)
 class RunnableTargetEntry:
     """A single XTS test target with runnability metadata."""
+
     project_path: str
     project_id: str
     test_json: str | None = None
@@ -30,6 +31,7 @@ class RunnableTargetEntry:
 @dataclass
 class TargetIndexResult:
     """Built target index from XTS root."""
+
     entries: list[RunnableTargetEntry] = field(default_factory=list)
     _family_index: dict[str, list[int]] = field(default_factory=dict)
     _id_index: dict[str, int] = field(default_factory=dict)
@@ -56,7 +58,7 @@ def _extract_family_keys(dir_name: str) -> tuple[str, ...]:
     if not dir_name.startswith("ace_ets_module_"):
         return ()
 
-    suffix = dir_name[len("ace_ets_module_"):]
+    suffix = dir_name[len("ace_ets_module_") :]
     if not suffix:
         return ()
 

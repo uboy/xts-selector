@@ -6,14 +6,13 @@ Tests verify:
 - category_rules.json is valid JSON with expected structure
 - product_source is the default fallback
 """
+
 from __future__ import annotations
 
 import json
 
-import pytest
 
 from arkui_xts_selector.indexing.file_category import (
-    FileCategory,
     classify_file,
 )
 
@@ -28,7 +27,9 @@ class TestClassifyTestOnly:
 
     def test_unittest_directory_cpp(self):
         """C++ file under unittest/ directory."""
-        path = "frameworks/core/components_ng/pattern/button/unittest/button_unittest.cpp"
+        path = (
+            "frameworks/core/components_ng/pattern/button/unittest/button_unittest.cpp"
+        )
         assert classify_file(path) == "test_only"
 
     def test_xts_directory_ets(self):
@@ -236,6 +237,7 @@ class TestFileCategoryRulesJson:
     def test_json_file_exists_and_valid(self):
         """category_rules.json exists and is valid JSON."""
         import os
+
         rules_path = "/data/shared/common/projects/ohos-helper/ohos_helper/arkui-xts-selector/config/file_category_rules.json"
         assert os.path.exists(rules_path)
 

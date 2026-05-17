@@ -7,12 +7,23 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 
-from .models import ComparisonReport, RunMetadata, TestIdentity, TestResult, TestTransition
+from .models import (
+    ComparisonReport,
+    RunMetadata,
+    TestIdentity,
+    TestResult,
+    TestTransition,
+)
 
 
 def _escape(text: object) -> str:
     value = str(text or "")
-    return value.replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ").replace("\r", " ")
+    return (
+        value.replace("\\", "\\\\")
+        .replace("|", "\\|")
+        .replace("\n", " ")
+        .replace("\r", " ")
+    )
 
 
 def _meta_label(meta: RunMetadata) -> str:
@@ -23,7 +34,9 @@ def _meta_label(meta: RunMetadata) -> str:
     return "run"
 
 
-def _append_table(lines: list[str], headers: list[str], rows: list[list[object]]) -> None:
+def _append_table(
+    lines: list[str], headers: list[str], rows: list[list[object]]
+) -> None:
     lines.append("| " + " | ".join(headers) + " |")
     lines.append("| " + " | ".join(["---"] * len(headers)) + " |")
     for row in rows:
@@ -39,7 +52,9 @@ def _message_for_transition(transition: TestTransition) -> str:
     return transition.target_message or transition.base_message or ""
 
 
-def _render_transition_section(lines: list[str], title: str, transitions: list[TestTransition]) -> None:
+def _render_transition_section(
+    lines: list[str], title: str, transitions: list[TestTransition]
+) -> None:
     lines.append(f"## {title}")
     lines.append("")
     if not transitions:
@@ -63,7 +78,9 @@ def _render_transition_section(lines: list[str], title: str, transitions: list[T
                     index,
                     _identity_label(transition.identity),
                     transition.base_outcome.value if transition.base_outcome else "",
-                    transition.target_outcome.value if transition.target_outcome else "",
+                    transition.target_outcome.value
+                    if transition.target_outcome
+                    else "",
                     transition.target_failure_type.value,
                     _message_for_transition(transition),
                 ]
@@ -87,10 +104,30 @@ def format_markdown(report: ComparisonReport) -> str:
         lines,
         ["Metric", "Base", "Target", "Delta"],
         [
-            ["Total Tests", report.base.total_tests, report.target.total_tests, report.target.total_tests - report.base.total_tests],
-            ["Passed", report.base.pass_count, report.target.pass_count, report.target.pass_count - report.base.pass_count],
-            ["Failed", report.base.fail_count, report.target.fail_count, report.target.fail_count - report.base.fail_count],
-            ["Blocked", report.base.blocked_count, report.target.blocked_count, report.target.blocked_count - report.base.blocked_count],
+            [
+                "Total Tests",
+                report.base.total_tests,
+                report.target.total_tests,
+                report.target.total_tests - report.base.total_tests,
+            ],
+            [
+                "Passed",
+                report.base.pass_count,
+                report.target.pass_count,
+                report.target.pass_count - report.base.pass_count,
+            ],
+            [
+                "Failed",
+                report.base.fail_count,
+                report.target.fail_count,
+                report.target.fail_count - report.base.fail_count,
+            ],
+            [
+                "Blocked",
+                report.base.blocked_count,
+                report.target.blocked_count,
+                report.target.blocked_count - report.base.blocked_count,
+            ],
         ],
     )
 
@@ -129,13 +166,17 @@ def format_markdown(report: ComparisonReport) -> str:
 
     _render_transition_section(lines, "Regressions", report.regressions)
     _render_transition_section(lines, "New Fails", report.new_fails)
-    _render_transition_section(lines, "Newly Blocked", [
-        transition
-        for module in report.modules
-        for suite_transitions in module.suites.values()
-        for transition in suite_transitions
-        if transition.kind.value == "NEW_BLOCKED"
-    ])
+    _render_transition_section(
+        lines,
+        "Newly Blocked",
+        [
+            transition
+            for module in report.modules
+            for suite_transitions in module.suites.values()
+            for transition in suite_transitions
+            if transition.kind.value == "NEW_BLOCKED"
+        ],
+    )
     _render_transition_section(lines, "Improvements", report.improvements)
     _render_transition_section(lines, "Persistent Fails", report.persistent_fails)
 
@@ -163,7 +204,9 @@ def format_markdown(report: ComparisonReport) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def format_single_run_markdown(meta: RunMetadata, results: dict[TestIdentity, TestResult]) -> str:
+def format_single_run_markdown(
+    meta: RunMetadata, results: dict[TestIdentity, TestResult]
+) -> str:
     label = _meta_label(meta)
     lines: list[str] = [
         f"# XTS Run Summary: {label}",
@@ -223,7 +266,9 @@ def format_single_run_markdown(meta: RunMetadata, results: dict[TestIdentity, Te
                 ["#", "Suite", "Case"],
                 [
                     [index, suite, case]
-                    for index, (suite, case) in enumerate(meta.task_info.unsuccessful[module_name], 1)
+                    for index, (suite, case) in enumerate(
+                        meta.task_info.unsuccessful[module_name], 1
+                    )
                 ],
             )
 

@@ -4,6 +4,7 @@ This module indexes ETS test files and extracts API references from parsed usage
 
 Import boundary: standard library only.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -17,11 +18,14 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class EtsTestEntry:
     """An ETS test file entry with extracted API references."""
+
     file_path: str
     test_module: str  # Derived from directory structure
     usages: tuple["EtsUsage", ...] = ()
     api_references: tuple[str, ...] = ()  # API symbol names referenced
-    entry_kind: str = "consumer"  # "consumer" (XTS test file) or "bridge" (generated/sdk source)
+    entry_kind: str = (
+        "consumer"  # "consumer" (XTS test file) or "bridge" (generated/sdk source)
+    )
 
     @property
     def is_consumer(self) -> bool:
@@ -54,6 +58,7 @@ class EtsTestEntry:
         usages: tuple["EtsUsage", ...] = ()
         if usages_data:
             from .ets_parser import EtsUsage
+
             usages = tuple(EtsUsage.from_dict(u) for u in usages_data)
 
         return cls(
@@ -68,6 +73,7 @@ class EtsTestEntry:
 @dataclass(frozen=True)
 class EtsIndexError:
     """An error that occurred during ETS indexing."""
+
     file_path: str
     error: str
 
@@ -90,13 +96,18 @@ class EtsIndexError:
 @dataclass(frozen=True)
 class EtsIndexResult:
     """Result of indexing ETS test files."""
+
     entries: tuple[EtsTestEntry, ...] = ()
     errors: tuple[EtsIndexError, ...] = ()
     total_usages: int = 0
     index_time_ms: float = 0.0
     source: str = "ets_indexer"
-    imports_from: dict[str, list[str]] = field(default_factory=dict, repr=False, compare=False)
-    imported_by: dict[str, list[str]] = field(default_factory=dict, repr=False, compare=False)
+    imports_from: dict[str, list[str]] = field(
+        default_factory=dict, repr=False, compare=False
+    )
+    imported_by: dict[str, list[str]] = field(
+        default_factory=dict, repr=False, compare=False
+    )
 
     def find_importers(self, file_path: str) -> list[str]:
         """Find all files that import from the given file path."""
@@ -209,9 +220,10 @@ def _classify_entry(file_path: str) -> str:
 def _walk_depth(root: Path, max_depth: int):
     """Walk directory tree up to max_depth, yielding Path entries."""
     import os
+
     root_str = str(root)
     for dirpath, dirnames, filenames in os.walk(root):
-        depth = dirpath[len(root_str):].count(os.sep)
+        depth = dirpath[len(root_str) :].count(os.sep)
         if depth >= max_depth:
             dirnames.clear()  # Don't descend further
         for filename in filenames:
@@ -245,7 +257,7 @@ def build_ets_index(xts_root: Path, max_depth: int | None = None) -> EtsIndexRes
         else:
             ets_files = sorted(xts_root.rglob("*.ets"))
 
-    from .ets_parser import parse_ets_file, EtsParseResult
+    from .ets_parser import parse_ets_file
 
     entries: list[EtsTestEntry] = []
     errors: list[EtsIndexError] = []
@@ -271,10 +283,12 @@ def build_ets_index(xts_root: Path, max_depth: int | None = None) -> EtsIndexRes
             parse_results.append((str(ets_file), parse_result))
 
         except Exception as e:
-            errors.append(EtsIndexError(
-                file_path=str(ets_file),
-                error=str(e),
-            ))
+            errors.append(
+                EtsIndexError(
+                    file_path=str(ets_file),
+                    error=str(e),
+                )
+            )
 
     # Build import graphs from extracted imports
     imports_from: dict[str, list[str]] = {}

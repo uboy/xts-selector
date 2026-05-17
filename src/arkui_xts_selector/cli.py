@@ -11,43 +11,23 @@ This is impact analysis, not runtime coverage. It correlates:
 from __future__ import annotations
 
 import argparse
-from bisect import bisect_right
-import hashlib
 import json
-import math
-import os
 import re
-import shlex
-import shutil
-import subprocess
 import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from configparser import ConfigParser
-from dataclasses import dataclass, field
-from functools import lru_cache
 from pathlib import Path
-from typing import Iterable, Callable
+from typing import Callable
 from urllib.parse import urlparse
 
-from rich import box
-from rich.console import Console
-from rich.padding import Padding
-from rich.table import Table
 
 from .api_lineage import ApiLineageMap, build_api_lineage_map
+from .api_entity_details import build_affected_api_entity_details
 from .constants import COMMON_PROJECT_HINTS
 from .api_surface import (
-    BOTH,
-    DYNAMIC,
-    STATIC,
-    classify_ace_engine_surface,
-    classify_xts_file_surface,
-    classify_xts_project_surface,
     parse_query_surface_intent,
-    surface_to_variants_mode,
 )
 from .build_state import build_guidance, inspect_product_build
 from .built_artifacts import inspect_built_artifacts, load_built_artifact_index
@@ -58,17 +38,6 @@ from .daily_prebuilt import (
     DEFAULT_FIRMWARE_COMPONENT,
     DEFAULT_SDK_CACHE_ROOT,
     DEFAULT_SDK_COMPONENT,
-    PreparedDailyArtifact,
-    PreparedDailyPrebuilt,
-    daily_component_candidates,
-    discover_image_bundle_roots,
-    derive_date_from_tag,
-    is_placeholder_metadata,
-    list_daily_tags,
-    prepare_daily_prebuilt,
-    prepare_daily_firmware,
-    prepare_daily_sdk,
-    resolve_daily_build,
 )
 from .execution import (
     RUN_PRIORITY_CHOICES,
@@ -76,27 +45,16 @@ from .execution import (
     SHARD_MODE_CHOICES,
     attach_execution_plan,
     build_run_target_entry,
-    collect_unique_run_targets,
     execute_planned_targets,
     normalize_requested_test_names,
     preflight_execution,
     read_requested_test_names,
     resolve_devices,
 )
-from .flashing import flash_image_bundle
-from .consumer_semantics import (
-    extract_consumer_semantics,
-    extract_typed_field_accesses as extract_typed_field_accesses_semantic,
-)
 from .run_store import (
-    COMPLETED_RUN_STATUSES,
-    RunSession,
     build_run_manifest,
     create_run_session,
     default_run_store_root,
-    list_run_manifests,
-    normalize_run_label,
-    resolve_latest_run,
     write_run_artifacts,
 )
 from .runtime_history import (
@@ -115,44 +73,33 @@ from .workspace import (
     default_sdk_api_root,
     default_xts_root,
     discover_repo_root,
-    resolve_workspace_path,
 )
-from .progress import _suite_label, _format_duration_seconds
 from .report_human import (
     print_human,
     print_executive_summary,
     build_next_steps,
     build_coverage_run_commands,
-    _format_case_summary,
-    _ProgressTracker,
 )
 from .coverage_planner import (
     build_global_coverage_recommendations,
-    test_json_data,
     driver_module_name,
     driver_type,
     build_unresolved_analysis,
     build_function_coverage_rows,
-    unresolved_reason,
     _build_coverage_gap_report,
-    _classify_unresolved,
 )
 from .progress import (
     emit_progress,
-    emit_subprogress,
     build_progress_callback,
     build_execution_progress_callback,
     write_execution_artifact_index,
     prepare_daily_prebuilt_from_config,
     prepare_daily_sdk_from_config,
-    prepare_daily_firmware_from_config,
-    resolve_local_firmware_root,
     _has_local_acts_artifacts,
     _sync_prebuilt_acts_to_local_root,
 )
 from .query import (
     build_query_signals,
-    normalize_member_hint,
     explain_symbol_query_sources,
     search_code_matches,
 )
@@ -161,7 +108,6 @@ from .report_json import (
     write_json_report,
     resolve_selected_tests_output_path,
     resolve_selected_tests_report_base_path,
-    build_selected_tests_payload,
     write_selected_tests_report,
     load_selector_report,
     resolve_selector_report_input,
@@ -170,175 +116,76 @@ from .report_json import (
 from .utility_modes import (
     run_list_tags_mode,
     utility_mode_requested,
-    write_and_render_utility_report,
     run_benchmark_mode,
     run_inspect_mode,
     run_utility_mode,
 )
 from .signal_inference import (
-    composite_mapping_matches,
-    apply_composite_mapping,
     infer_signals,
     apply_api_lineage_signals,
     collect_source_only_consumers,
     compute_signal_symbol_df,
-    variant_matches,
     resolve_variants_mode,
 )
 from .project_index import (
     repo_rel as project_index_repo_rel,
-    initialize_generic_path_tokens,
-    get_generic_path_tokens,
     default_cache_path as project_index_default_cache_path,
     default_cache_meta_path as project_index_default_cache_meta_path,
-    parse_bundle_name,
-    parse_test_file_names_from_test_json,
-    classify_project_variant,
-    parse_test_json,
     parse_test_file_names,
     infer_xdevice_module_name,
     guess_build_target,
-    xts_source_files,
-    build_manifest_hash,
-    discover_projects,
     load_or_build_projects,
     load_sdk_index,
-    normalize_ohos_module,
-    family_tokens_from_path,
-    dynamic_module_symbols,
-    ensure_project_search_summary,
-    ensure_project_files_loaded,
-    project_matches_exact_api_prefilter,
-    project_might_match,
     select_candidate_projects,
-    _build_project_hash,
 )
 from .scoring import (
     UBIQUITOUS_DF_FRACTION,
-    symbol_score,
-    score_file,
     score_project,
     confidence,
     project_has_non_lexical_evidence,
     candidate_bucket,
     filter_project_results_by_relevance,
-    specificity_target_tokens,
     classify_project_scope,
-    scope_sort_key,
-    bucket_sort_key,
-    project_result_sort_tuple,
+)
+from .gate_adapter import apply_must_run_gate
+from .scoring import (
     sort_project_results,
-    split_scope_groups,
     matched_file_surfaces,
     should_keep_project_for_surface,
-    project_entry_primary_surfaces,
-    project_entry_supports_surface,
-    project_entry_is_surface_exclusive,
     restrict_explicit_surface_projects,
     diversify_symbol_query_projects,
     coverage_signature,
     deduplicate_by_coverage_signature,
     make_coverage_source,
-    coverage_rank_weight,
 )
 from .source_profile import (
-    repo_rel as source_profile_repo_rel,
     build_source_profile,
     infer_project_family_profile,
 )
-from .signal_scoring import (
-    ets_source_focus_tokens,
-    ets_name_matches_source_focus,
-    source_token_matches_source_focus,
-    imported_ets_symbol_matches_source_focus,
-    strip_ets_import_statements,
-    imported_ets_symbol_used_in_body,
-    ohos_module_signal_tokens,
-    classify_ohos_module_signal_strength,
-    should_keep_ets_signal_name,
-    suite_source_family_gains,
-    suite_source_family_representative_scores,
-    suite_source_capability_gains,
-    suite_source_capability_representative_scores,
-    suite_source_type_hint_gains,
-    suite_source_member_hint_gains,
-    suite_source_member_hint_representative_scores,
-    suite_source_type_hint_representative_scores,
-    suite_source_focus_token_overlap,
-    normalize_type_hint,
-    extract_native_accessor_type_hints,
-)
-from .symbol_tracing import (
-    trace_symbols_to_components,
-    resolve_ace_engine_components,
-)
-from .coverage_keys import (
-    coverage_family_key,
-    is_registered_family_token,
-    capability_family_key,
-    coverage_capability_key,
-    extract_coverage_family_keys,
-    extract_coverage_capability_keys,
-    extract_reason_family_tokens,
-    extract_focus_tokens,
-    related_signal_base_token,
-    related_signal_family_token,
-)
 from .file_indexing import (
-    extract_typed_field_accesses,
-    extract_type_hint_keys,
-    extract_member_hint_keys,
-    extract_exported_type_names,
-    extract_exported_interface_member_hints,
     infer_project_type_hint_profile,
     infer_project_member_hint_profile,
-    parse_test_file,
-)
-from .tree_sitter_parsers import (
-    trace_shared_file_to_components,
-    trace_generated_ets_to_methods,
 )
 from .git_host import (
     resolve_path,
     normalize_git_host_kind,
     load_ini_git_host_config,
-    load_ini_gitcode_config,
     git_changed_files,
-    run_git,
-    parse_pr_number,
-    parse_owner_repo_from_pr,
-    parse_owner_repo_from_remote_url,
-    discover_owner_repo_from_git_remote,
     resolve_pr_owner_repo,
     fetch_pr_changed_files,
-    infer_git_host_kind,
     resolve_pr_api_credentials,
-    fetch_git_host_api_json,
     fetch_pr_metadata_via_api,
-    fetch_pr_changed_files_via_api,
     fetch_pr_changed_files_and_ranges_via_api,
 )
 from .changed_files import (
     normalize_changed_files,
     parse_changed_ranges,
-    merge_changed_ranges,
     merge_changed_range_maps,
-    build_line_start_offsets,
-    offset_to_line_number,
-    span_overlaps_changed_ranges,
-    extract_text_in_changed_ranges,
-    parse_unified_diff_changed_ranges,
-    extract_patch_text_from_pr_file_item,
     load_changed_file_exclusion_config,
-    changed_file_match_keys,
-    describe_changed_file,
-    match_changed_file_exclusion,
     filter_changed_files_for_xts,
 )
 from .mapping_config import (
-    add_family_symbol,
     build_content_modifier_index,
-    merge_mapping_dict,
     default_path_rules_file,
     default_composite_mappings_file,
     default_changed_file_exclusions_file,
@@ -352,28 +199,17 @@ from .ranking_rules import (
 )
 from .tokens import (
     compact_token,
-    normalize_family_name,
-    normalize_capability_name,
-    snake_to_pascal,
-    pascal_to_snake,
-    tokenize_path_parts,
-    path_component_tokens,
-    path_signal_tokens,
 )
 from .file_io import (
     read_text,
     load_json_file,
-    load_json_if_exists,
 )
 from .models import (
     XtsUserError,
-    XtsWorkspaceSnapshot,
     SdkIndex,
     ContentModifierIndex,
     MappingConfig,
-    ChangedFileExclusionConfig,
     AppConfig,
-    TestFileIndex,
     TestProjectIndex,
 )
 
@@ -391,7 +227,9 @@ def resolve_pr_changed_files_with_ranges(
     pr_source: str,
 ) -> tuple[list[Path], dict[Path, list[tuple[int, int]]]]:
     """Compatibility wrapper preserving cli-level monkeypatch points."""
-    owner_repo = resolve_pr_owner_repo(pr_ref, app_config.git_repo_root, app_config.git_remote)
+    owner_repo = resolve_pr_owner_repo(
+        pr_ref, app_config.git_repo_root, app_config.git_remote
+    )
     api_error: RuntimeError | None = None
     if pr_source in ("auto", "api"):
         api_kind, api_url, token = resolve_pr_api_credentials(app_config, pr_ref)
@@ -400,7 +238,9 @@ def resolve_pr_changed_files_with_ranges(
                 "PR API mode requires git host credentials; pass --git-host-token/--git-host-url or --git-host-config with [gitcode]/[codehub] token/url."
             )
         elif owner_repo is None:
-            api_error = RuntimeError("could not determine owner/repo for PR API mode from --pr-url or local git remote")
+            api_error = RuntimeError(
+                "could not determine owner/repo for PR API mode from --pr-url or local git remote"
+            )
         else:
             try:
                 fetch_pr_metadata_via_api(
@@ -423,7 +263,11 @@ def resolve_pr_changed_files_with_ranges(
             except RuntimeError as exc:
                 api_error = exc
         if pr_source == "api":
-            raise api_error if api_error is not None else RuntimeError("PR API mode failed")
+            raise (
+                api_error
+                if api_error is not None
+                else RuntimeError("PR API mode failed")
+            )
 
     try:
         return fetch_pr_changed_files(
@@ -438,9 +282,13 @@ def resolve_pr_changed_files_with_ranges(
         raise
 
 
-def resolve_pr_changed_files(app_config: AppConfig, pr_ref: str, pr_source: str) -> list[Path]:
+def resolve_pr_changed_files(
+    app_config: AppConfig, pr_ref: str, pr_source: str
+) -> list[Path]:
     """Resolve PR changed files while preserving the historical cli API."""
-    changed_files, _changed_ranges = resolve_pr_changed_files_with_ranges(app_config, pr_ref, pr_source)
+    changed_files, _changed_ranges = resolve_pr_changed_files_with_ranges(
+        app_config, pr_ref, pr_source
+    )
     return changed_files
 
 
@@ -519,14 +367,24 @@ DEFAULT_CHANGED_FILE_EXCLUSION_RULES = {
 }
 
 IMPORT_RE = re.compile(r"""from\s+['"]([^'"]+)['"]""")
-IMPORT_BINDING_RE = re.compile(r"""import\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]""", re.S)
-DEFAULT_IMPORT_RE = re.compile(r"""import\s+([A-Za-z_][A-Za-z0-9_]*)\s+from\s+['"]([^'"]+)['"]""")
+IMPORT_BINDING_RE = re.compile(
+    r"""import\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]""", re.S
+)
+DEFAULT_IMPORT_RE = re.compile(
+    r"""import\s+([A-Za-z_][A-Za-z0-9_]*)\s+from\s+['"]([^'"]+)['"]"""
+)
 IDENTIFIER_CALL_RE = re.compile(r"""\b([A-Z][A-Za-z0-9_]*)\s*\(""")
 MEMBER_CALL_RE = re.compile(r"""\.([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
 WORD_RE = re.compile(r"""\b[A-Za-z_][A-Za-z0-9_]{2,}\b""")
-PARAM_TYPE_RE = re.compile(r"""[\(,]\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([A-Z][A-Za-z0-9_]*)\b""")
-VAR_TYPE_RE = re.compile(r"""\b(?:const|let|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([A-Z][A-Za-z0-9_]*)\b""")
-MEMBER_ACCESS_RE = re.compile(r"""\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b(?!\s*\()""")
+PARAM_TYPE_RE = re.compile(
+    r"""[\(,]\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([A-Z][A-Za-z0-9_]*)\b"""
+)
+VAR_TYPE_RE = re.compile(
+    r"""\b(?:const|let|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([A-Z][A-Za-z0-9_]*)\b"""
+)
+MEMBER_ACCESS_RE = re.compile(
+    r"""\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b(?!\s*\()"""
+)
 TYPED_OBJECT_LITERAL_RE = re.compile(
     r"""\b(?:const|let|var)\s+[A-Za-z_][A-Za-z0-9_]*\s*:\s*([A-Z][A-Za-z0-9_]*)\s*=\s*\{(?P<body>[^{}]*)\}""",
     re.S,
@@ -534,26 +392,43 @@ TYPED_OBJECT_LITERAL_RE = re.compile(
 OBJECT_LITERAL_FIELD_RE = re.compile(r"""\b([A-Za-z_][A-Za-z0-9_]*)\s*:""")
 OHOS_MODULE_RE = re.compile(r"""@ohos\.[A-Za-z0-9._]+""")
 CPP_IDENTIFIER_RE = re.compile(r"""\b[A-Z][A-Za-z0-9_]{2,}\b""")
-TYPE_MEMBER_CALL_RE = re.compile(r"""\b([A-Z][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
+TYPE_MEMBER_CALL_RE = re.compile(
+    r"""\b([A-Z][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\s*\("""
+)
 EXPORT_CLASS_RE = re.compile(r"""\bexport\s+class\s+([A-Z][A-Za-z0-9_]*)\b""")
 EXPORT_INTERFACE_RE = re.compile(r"""\bexport\s+interface\s+([A-Z][A-Za-z0-9_]*)\b""")
 EXPORT_INTERFACE_BLOCK_RE = re.compile(
     r"""\bexport\s+(?:declare\s+)?interface\s+([A-Z][A-Za-z0-9_]*)[^{]*\{(?P<body>.*?)\}""",
     re.S,
 )
-INTERFACE_PROPERTY_RE = re.compile(r"""^\s*(?:readonly\s+)?([A-Za-z_][A-Za-z0-9_]*)\??\s*:\s*[^;{}]+;?\s*$""", re.M)
-INTERFACE_METHOD_RE = re.compile(r"""^\s*(?:readonly\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\([^;{}]*\)\s*:\s*[^;]+;?\s*$""", re.M)
-PUBLIC_METHOD_RE = re.compile(r"""\bpublic\s+(?:static\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
+INTERFACE_PROPERTY_RE = re.compile(
+    r"""^\s*(?:readonly\s+)?([A-Za-z_][A-Za-z0-9_]*)\??\s*:\s*[^;{}]+;?\s*$""", re.M
+)
+INTERFACE_METHOD_RE = re.compile(
+    r"""^\s*(?:readonly\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\([^;{}]*\)\s*:\s*[^;]+;?\s*$""",
+    re.M,
+)
+PUBLIC_METHOD_RE = re.compile(
+    r"""\bpublic\s+(?:static\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\("""
+)
 UNIFIED_DIFF_HUNK_RE = re.compile(r"""^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@""", re.M)
-GENERATED_ACCESSOR_NAMESPACE_RE = re.compile(r"""GeneratedModifier::([A-Za-z_][A-Za-z0-9_]*)Accessor\b""")
+GENERATED_ACCESSOR_NAMESPACE_RE = re.compile(
+    r"""GeneratedModifier::([A-Za-z_][A-Za-z0-9_]*)Accessor\b"""
+)
 GET_ACCESSOR_RE = re.compile(r"""\bGet([A-Za-z_][A-Za-z0-9_]*)Accessor\s*\(""")
 PEER_INCLUDE_RE = re.compile(r"#include\s+\"[^\"]*/([a-z0-9_]+)_peer\.h\"")
 DYNAMIC_MODULE_RE = re.compile(r"""GetDynamicModule\("([A-Za-z0-9_]+)"\)""")
 DECLARE_INTERFACE_RE = re.compile(r"""\bdeclare\s+interface\s+([A-Z][A-Za-z0-9_]*)\b""")
-DECLARE_TYPE_RE = re.compile(r"""\bdeclare\s+(?:type|typedef)\s+([A-Z][A-Za-z0-9_]*)\b""")
-DECLARE_FUNCTION_RE = re.compile(r"""\bdeclare\s+function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
+DECLARE_TYPE_RE = re.compile(
+    r"""\bdeclare\s+(?:type|typedef)\s+([A-Z][A-Za-z0-9_]*)\b"""
+)
+DECLARE_FUNCTION_RE = re.compile(
+    r"""\bdeclare\s+function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\("""
+)
 DECLARE_MODULE_RE = re.compile(r"""declare\s+module\s+['"]([^'"]+)['"]""")
-TS_EXPORT_TYPE_RE = re.compile(r"""\bexport\s+(?:type|interface|class|const|function)\s+([A-Za-z_][A-Za-z0-9_]*)\b""")
+TS_EXPORT_TYPE_RE = re.compile(
+    r"""\bexport\s+(?:type|interface|class|const|function)\s+([A-Za-z_][A-Za-z0-9_]*)\b"""
+)
 CPP_FUNCTION_DEF_RE = re.compile(
     r"""(?:(?:const\s+)?(?:void|bool|int|auto|static|RefPtr|AceType|"""
     r"""std::(?:optional|string|pair|shared_ptr|unique_ptr)|"""
@@ -564,8 +439,12 @@ CPP_FUNCTION_DEF_RE = re.compile(
     r"""typename\s+\w+)\s+)?"""
     r"""(\b[A-Z][A-Za-z0-9_]{2,}\b)\s*\("""
 )
-CPP_METHOD_DEF_RE = re.compile(r"""(\b[A-Z][A-Za-z0-9_]{2,})::([A-Z][A-Za-z0-9_]{2,})\s*\(""")
-TYPED_ATTRIBUTE_MODIFIER_RE = re.compile(r"""AttributeModifier<([A-Za-z_][A-Za-z0-9_]*)Attribute>""")
+CPP_METHOD_DEF_RE = re.compile(
+    r"""(\b[A-Z][A-Za-z0-9_]{2,})::([A-Z][A-Za-z0-9_]{2,})\s*\("""
+)
+TYPED_ATTRIBUTE_MODIFIER_RE = re.compile(
+    r"""AttributeModifier<([A-Za-z_][A-Za-z0-9_]*)Attribute>"""
+)
 EXTENDS_MODIFIER_RE = re.compile(r"""extends\s+([A-Za-z_][A-Za-z0-9_]*)Modifier\b""")
 HOOK_CONTENT_MODIFIER_RE = re.compile(r"""\bhook([A-Za-z0-9]+)ContentModifier\b""")
 IDL_CONTENT_MODIFIER_RE = re.compile(r"""\b(?:reset)?contentModifier([A-Za-z0-9]+)\b""")
@@ -573,8 +452,15 @@ CONTENT_MODIFIER_CUSTOM_RE = re.compile(r"""GetCustomModifier\("contentModifier"
 INCLUDE_PATTERN_COMPONENT_RE = re.compile(r"""pattern/([^/]+)/""")
 REASON_SYMBOL_RE = re.compile(r"""\b([A-Z][A-Za-z0-9_]*)\b""")
 CONTENT_MODIFIER_NOISE = {
-    "accessor", "builder", "commonview", "configuration", "content", "helper",
-    "implementation", "modifier", "native",
+    "accessor",
+    "builder",
+    "commonview",
+    "configuration",
+    "content",
+    "helper",
+    "implementation",
+    "modifier",
+    "native",
 }
 
 SPECIAL_PATH_RULES = {
@@ -610,8 +496,17 @@ SPECIAL_PATH_RULES = {
         "symbols": ["DisplaySync", "SwiperDynamicSyncScene", "MarqueeDynamicSyncScene"],
     },
     "scrollable": {
-        "symbols": ["Scroll", "List", "Grid", "WaterFlow", "Scroller",
-                     "ScrollModifier", "ListModifier", "GridModifier", "WaterFlowModifier"],
+        "symbols": [
+            "Scroll",
+            "List",
+            "Grid",
+            "WaterFlow",
+            "Scroller",
+            "ScrollModifier",
+            "ListModifier",
+            "GridModifier",
+            "WaterFlowModifier",
+        ],
         "project_hints": ["scroll", "list", "grid", "waterflow"],
     },
     "textfield": {
@@ -646,102 +541,140 @@ SPECIAL_PATH_RULES = {
 
 PATTERN_ALIAS = {
     # --- Already present ---
-    "button":       ["Button", "ButtonModifier", "Toggle", "ToggleModifier", "ToggleButton"],
-    "toggle":       ["Toggle", "ToggleModifier", "ToggleButton"],
-    "text":         ["Text", "Span", "TextModifier", "SpanModifier", "ContainerSpanModifier"],
-    "text_input":   ["TextInput", "TextInputModifier"],
-    "text_area":    ["TextArea", "TextAreaModifier"],
-    "text_clock":   ["TextClock", "TextClockModifier"],
-    "text_picker":  ["TextPicker", "TextPickerModifier"],
-    "list":         ["List", "ListItem", "ListItemGroup", "ListModifier", "ListItemModifier", "ListItemGroupModifier"],
-    "grid":         ["Grid", "GridModifier", "GridItem", "GridItemModifier"],
-    "grid_row":     ["GridRow", "GridRowModifier"],
-    "grid_col":     ["GridCol", "GridColModifier"],
-    "navigation":   ["Navigation", "Navigator", "NavDestination", "NavRouter",
-                     "NavigationModifier", "NavDestinationModifier", "NavigatorModifier"],
-    "search":       ["Search", "SearchModifier"],
-    "swiper":       ["Swiper", "SwiperModifier"],
-    "rich_editor":  ["RichEditor", "RichEditorModifier", "SelectionMenu"],
-    "dialog":       ["Dialog", "AlertDialog", "ActionSheet", "CustomDialog", "promptAction"],
-    "overlay":      ["OverlayManager", "bindOverlay", "bindPopup", "bindSheet"],
+    "button": ["Button", "ButtonModifier", "Toggle", "ToggleModifier", "ToggleButton"],
+    "toggle": ["Toggle", "ToggleModifier", "ToggleButton"],
+    "text": ["Text", "Span", "TextModifier", "SpanModifier", "ContainerSpanModifier"],
+    "text_input": ["TextInput", "TextInputModifier"],
+    "text_area": ["TextArea", "TextAreaModifier"],
+    "text_clock": ["TextClock", "TextClockModifier"],
+    "text_picker": ["TextPicker", "TextPickerModifier"],
+    "list": [
+        "List",
+        "ListItem",
+        "ListItemGroup",
+        "ListModifier",
+        "ListItemModifier",
+        "ListItemGroupModifier",
+    ],
+    "grid": ["Grid", "GridModifier", "GridItem", "GridItemModifier"],
+    "grid_row": ["GridRow", "GridRowModifier"],
+    "grid_col": ["GridCol", "GridColModifier"],
+    "navigation": [
+        "Navigation",
+        "Navigator",
+        "NavDestination",
+        "NavRouter",
+        "NavigationModifier",
+        "NavDestinationModifier",
+        "NavigatorModifier",
+    ],
+    "search": ["Search", "SearchModifier"],
+    "swiper": ["Swiper", "SwiperModifier"],
+    "rich_editor": ["RichEditor", "RichEditorModifier", "SelectionMenu"],
+    "dialog": ["Dialog", "AlertDialog", "ActionSheet", "CustomDialog", "promptAction"],
+    "overlay": ["OverlayManager", "bindOverlay", "bindPopup", "bindSheet"],
     # --- New entries based on SDK arkui/ Modifier declarations ---
-    "slider":               ["Slider", "SliderModifier"],
-    "image":                ["Image", "ImageModifier", "ImageSpanModifier"],
-    "image_animator":       ["ImageAnimator", "ImageAnimatorModifier"],
-    "checkbox":             ["Checkbox", "CheckboxModifier"],
-    "checkboxgroup":        ["CheckboxGroup", "CheckboxGroupModifier"],
-    "radio":                ["Radio", "RadioModifier"],
-    "rating":               ["Rating", "RatingModifier"],
-    "progress":             ["Progress", "ProgressModifier"],
-    "loading_progress":     ["LoadingProgress", "LoadingProgressModifier"],
-    "gauge":                ["Gauge", "GaugeModifier"],
-    "data_panel":           ["DataPanel", "DataPanelModifier"],
-    "marquee":              ["Marquee", "MarqueeModifier"],
-    "qrcode":               ["QRCode", "QRCodeModifier"],
-    "badge":                ["Badge"],
-    "select":               ["Select", "SelectModifier"],
-    "video":                ["Video", "VideoModifier"],
-    "canvas":               ["Canvas"],
-    "tabs":                 ["Tabs", "TabContent", "TabsModifier"],
-    "waterflow":            ["WaterFlow", "WaterFlowModifier"],
-    "refresh":              ["Refresh", "RefreshModifier"],
-    "scroll":               ["Scroll", "ScrollModifier", "Scroller"],
-    "indexer":              ["AlphabetIndexer", "AlphabetIndexerModifier"],
-    "patternlock":          ["PatternLock", "PatternLockModifier"],
-    "picker":               ["DatePicker", "DatePickerModifier"],
-    "calendar":             ["Calendar"],
-    "calendar_picker":      ["CalendarPicker", "CalendarPickerModifier"],
-    "time_picker":          ["TimePicker", "TimePickerModifier"],
-    "texttimer":            ["TextTimer", "TextTimerModifier"],
-    "counter":              ["Counter", "CounterModifier"],
-    "divider":              ["Divider", "DividerModifier"],
-    "blank":                ["Blank", "BlankModifier"],
-    "hyperlink":            ["Hyperlink", "HyperlinkModifier"],
-    "side_bar":             ["SideBarContainer", "SideBarContainerModifier"],
-    "linear_layout":        ["Column", "Row", "ColumnModifier", "RowModifier"],
-    "flex":                 ["Flex", "FlexModifier"],
-    "stack":                ["Stack", "StackModifier"],
-    "linear_split":         ["ColumnSplit", "RowSplit", "ColumnSplitModifier", "RowSplitModifier"],
-    "stepper":              ["Stepper", "StepperItem", "StepperModifier", "StepperItemModifier"],
-    "panel":                ["Panel", "PanelModifier"],
-    "particle":             ["Particle", "ParticleModifier"],
-    "menu":                 ["Menu", "MenuItem", "MenuItemGroup", "MenuModifier", "MenuItemModifier"],
-    "relative_container":   ["RelativeContainer"],
+    "slider": ["Slider", "SliderModifier"],
+    "image": ["Image", "ImageModifier", "ImageSpanModifier"],
+    "image_animator": ["ImageAnimator", "ImageAnimatorModifier"],
+    "checkbox": ["Checkbox", "CheckboxModifier"],
+    "checkboxgroup": ["CheckboxGroup", "CheckboxGroupModifier"],
+    "radio": ["Radio", "RadioModifier"],
+    "rating": ["Rating", "RatingModifier"],
+    "progress": ["Progress", "ProgressModifier"],
+    "loading_progress": ["LoadingProgress", "LoadingProgressModifier"],
+    "gauge": ["Gauge", "GaugeModifier"],
+    "data_panel": ["DataPanel", "DataPanelModifier"],
+    "marquee": ["Marquee", "MarqueeModifier"],
+    "qrcode": ["QRCode", "QRCodeModifier"],
+    "badge": ["Badge"],
+    "select": ["Select", "SelectModifier"],
+    "video": ["Video", "VideoModifier"],
+    "canvas": ["Canvas"],
+    "tabs": ["Tabs", "TabContent", "TabsModifier"],
+    "waterflow": ["WaterFlow", "WaterFlowModifier"],
+    "refresh": ["Refresh", "RefreshModifier"],
+    "scroll": ["Scroll", "ScrollModifier", "Scroller"],
+    "indexer": ["AlphabetIndexer", "AlphabetIndexerModifier"],
+    "patternlock": ["PatternLock", "PatternLockModifier"],
+    "picker": ["DatePicker", "DatePickerModifier"],
+    "calendar": ["Calendar"],
+    "calendar_picker": ["CalendarPicker", "CalendarPickerModifier"],
+    "time_picker": ["TimePicker", "TimePickerModifier"],
+    "texttimer": ["TextTimer", "TextTimerModifier"],
+    "counter": ["Counter", "CounterModifier"],
+    "divider": ["Divider", "DividerModifier"],
+    "blank": ["Blank", "BlankModifier"],
+    "hyperlink": ["Hyperlink", "HyperlinkModifier"],
+    "side_bar": ["SideBarContainer", "SideBarContainerModifier"],
+    "linear_layout": ["Column", "Row", "ColumnModifier", "RowModifier"],
+    "flex": ["Flex", "FlexModifier"],
+    "stack": ["Stack", "StackModifier"],
+    "linear_split": [
+        "ColumnSplit",
+        "RowSplit",
+        "ColumnSplitModifier",
+        "RowSplitModifier",
+    ],
+    "stepper": ["Stepper", "StepperItem", "StepperModifier", "StepperItemModifier"],
+    "panel": ["Panel", "PanelModifier"],
+    "particle": ["Particle", "ParticleModifier"],
+    "menu": ["Menu", "MenuItem", "MenuItemGroup", "MenuModifier", "MenuItemModifier"],
+    "relative_container": ["RelativeContainer"],
     # --- NEW ENTRIES: HIGH priority (SDK declarations + XTS tests) ---
-    "gesture":              ["GestureGroup", "TapGesture", "LongPressGesture",
-                             "PanGesture", "PinchGesture", "RotationGesture", "SwipeGesture"],
-    "xcomponent":           ["XComponent", "XComponentController"],
-    "web":                  ["Web", "WebviewController"],
-    "form":                 ["FormComponent", "FormLink"],
-    "folder_stack":         ["FolderStack"],
-    "animator":             ["Animator"],
-    "scroll_bar":           ["ScrollBar"],
-    "toast":                ["promptAction"],
-    "sheet":                ["bindSheet", "SheetSize"],
-    "action_sheet":         ["ActionSheet"],
-    "bubble":               ["Popup", "bindPopup"],
-    "symbol":               ["SymbolGlyph", "SymbolSpan", "SymbolSpanModifier"],
-    "security_component":   ["LocationButton", "PasteButton", "SaveButton"],
-    "navrouter":            ["NavRouter", "NavDestination"],
-    "navigator":            ["Navigator"],
-    "toolbaritem":          ["ToolBar", "ToolBarItem"],
+    "gesture": [
+        "GestureGroup",
+        "TapGesture",
+        "LongPressGesture",
+        "PanGesture",
+        "PinchGesture",
+        "RotationGesture",
+        "SwipeGesture",
+    ],
+    "xcomponent": ["XComponent", "XComponentController"],
+    "web": ["Web", "WebviewController"],
+    "form": ["FormComponent", "FormLink"],
+    "folder_stack": ["FolderStack"],
+    "animator": ["Animator"],
+    "scroll_bar": ["ScrollBar"],
+    "toast": ["promptAction"],
+    "sheet": ["bindSheet", "SheetSize"],
+    "action_sheet": ["ActionSheet"],
+    "bubble": ["Popup", "bindPopup"],
+    "symbol": ["SymbolGlyph", "SymbolSpan", "SymbolSpanModifier"],
+    "security_component": ["LocationButton", "PasteButton", "SaveButton"],
+    "navrouter": ["NavRouter", "NavDestination"],
+    "navigator": ["Navigator"],
+    "toolbaritem": ["ToolBar", "ToolBarItem"],
     # --- NEW ENTRIES: MEDIUM priority (internal, but XTS-linked) ---
-    "text_field":           ["TextInput", "TextArea", "TextInputModifier", "TextAreaModifier"],
-    "scrollable":           ["Scroll", "List", "Grid", "WaterFlow"],
-    "node_container":       ["NodeContainer"],
-    "effect_component":     ["EffectComponent"],
-    "form_link":            ["FormLink"],
-    "grid_container":       ["GridContainer"],
-    "swiper_indicator":     ["Swiper", "SwiperModifier"],
-    "render_node":          ["RenderNode", "FrameNode", "BuilderNode"],
+    "text_field": ["TextInput", "TextArea", "TextInputModifier", "TextAreaModifier"],
+    "scrollable": ["Scroll", "List", "Grid", "WaterFlow"],
+    "node_container": ["NodeContainer"],
+    "effect_component": ["EffectComponent"],
+    "form_link": ["FormLink"],
+    "grid_container": ["GridContainer"],
+    "swiper_indicator": ["Swiper", "SwiperModifier"],
+    "render_node": ["RenderNode", "FrameNode", "BuilderNode"],
 }
 
 DEFAULT_COMPOSITE_MAPPINGS = {
     "content_modifier_helper_accessor": {
         "families": [
-            "button", "checkbox", "checkboxgroup", "datapanel", "gauge",
-            "loadingprogress", "menuitem", "progress", "radio", "rating",
-            "select", "slider", "textclock", "texttimer", "toggle",
+            "button",
+            "checkbox",
+            "checkboxgroup",
+            "datapanel",
+            "gauge",
+            "loadingprogress",
+            "menuitem",
+            "progress",
+            "radio",
+            "rating",
+            "select",
+            "slider",
+            "textclock",
+            "texttimer",
+            "toggle",
         ],
         "project_hints": ["contentmodifier"],
         "method_hints": ["contentModifier"],
@@ -792,7 +725,9 @@ def format_report(
     setup_started = time.perf_counter()
     built_artifacts = inspect_built_artifacts(REPO_ROOT, acts_out_root)
     built_artifact_index = load_built_artifact_index(REPO_ROOT, acts_out_root)
-    product_build = inspect_product_build(REPO_ROOT, app_config.product_name, acts_out_root)
+    product_build = inspect_product_build(
+        REPO_ROOT, app_config.product_name, acts_out_root
+    )
     report = {
         "repo_root": str(REPO_ROOT),
         "xts_root": str(xts_root),
@@ -800,9 +735,15 @@ def format_report(
         "git_repo_root": str(git_repo_root),
         "acts_out_root": str(acts_out_root or (REPO_ROOT / "out/release/suites/acts")),
         "cache_file": str(app_config.cache_file) if app_config.cache_file else None,
-        "ranking_rules_file": str(app_config.ranking_rules_file) if app_config.ranking_rules_file else None,
-        "runtime_state_root": str(app_config.runtime_state_root) if app_config.runtime_state_root else None,
-        "runtime_history_file": str(default_runtime_history_file(app_config.runtime_state_root)),
+        "ranking_rules_file": str(app_config.ranking_rules_file)
+        if app_config.ranking_rules_file
+        else None,
+        "runtime_state_root": str(app_config.runtime_state_root)
+        if app_config.runtime_state_root
+        else None,
+        "runtime_history_file": str(
+            default_runtime_history_file(app_config.runtime_state_root)
+        ),
         "hdc_path": str(app_config.hdc_path) if app_config.hdc_path else None,
         "hdc_endpoint": app_config.hdc_endpoint,
         "built_artifacts": built_artifacts,
@@ -833,21 +774,29 @@ def format_report(
             "consumer_file_count": len(api_lineage_map.consumer_file_to_apis),
             "consumer_project_count": len(api_lineage_map.consumer_project_to_apis),
             "source_only_consumer_file_count": sum(
-                1 for kind in api_lineage_map.consumer_file_kinds.values() if kind == "source_only"
+                1
+                for kind in api_lineage_map.consumer_file_kinds.values()
+                if kind == "source_only"
             ),
             "source_only_consumer_project_count": sum(
-                1 for kind in api_lineage_map.consumer_project_kinds.values() if kind == "source_only"
+                1
+                for kind in api_lineage_map.consumer_project_kinds.values()
+                if kind == "source_only"
             ),
         }
     coverage_candidates: list[dict[str, object]] = []
-    report["timings_ms"]["report_setup"] = round((time.perf_counter() - setup_started) * 1000, 3)
+    report["timings_ms"]["report_setup"] = round(
+        (time.perf_counter() - setup_started) * 1000, 3
+    )
     selected_build_targets: list[str] = []
     changed_started = time.perf_counter()
     for changed_file in changed_files:
         if progress_callback:
             progress_callback(f"scoring changed file {repo_rel(changed_file)}")
         rel = repo_rel(changed_file)
-        changed_ranges = list((changed_ranges_by_file or {}).get(changed_file.resolve(), []))
+        changed_ranges = list(
+            (changed_ranges_by_file or {}).get(changed_file.resolve(), [])
+        )
         signals = infer_signals(
             changed_file,
             sdk_index,
@@ -857,7 +806,11 @@ def format_report(
             api_lineage_map=api_lineage_map,
             repo_root=app_config.repo_root,
         )
-        affected_api_entities, file_level_affected_api_entities, derived_source_symbols = apply_api_lineage_signals(
+        (
+            affected_api_entities,
+            file_level_affected_api_entities,
+            derived_source_symbols,
+        ) = apply_api_lineage_signals(
             changed_file,
             signals,
             api_lineage_map,
@@ -883,11 +836,15 @@ def format_report(
         if changed_symbols:
             source_profile["changed_symbols"] = sorted(changed_symbols)
         if changed_ranges:
-            source_profile["changed_ranges"] = [f"{start}:{end}" for start, end in changed_ranges]
+            source_profile["changed_ranges"] = [
+                f"{start}:{end}" for start, end in changed_ranges
+            ]
         if derived_source_symbols:
             source_profile["derived_source_symbols"] = derived_source_symbols
         if file_level_affected_api_entities != affected_api_entities:
-            source_profile["file_level_affected_api_entities"] = file_level_affected_api_entities
+            source_profile["file_level_affected_api_entities"] = (
+                file_level_affected_api_entities
+            )
         project_results = []
         all_variant_projects, candidate_projects = select_candidate_projects(
             projects,
@@ -898,11 +855,14 @@ def format_report(
         # Symbols imported by >30% of candidate projects get 0 import/call
         # score — their evidence must come from type hints, member hints,
         # or typed field access instead.
-        _symbol_df, _total_projects = compute_signal_symbol_df(candidate_projects, signals)
+        _symbol_df, _total_projects = compute_signal_symbol_df(
+            candidate_projects, signals
+        )
         signals["_symbol_df"] = _symbol_df
         signals["_total_projects"] = _total_projects
         _ubiquitous_symbols = {
-            sym for sym, count in _symbol_df.items()
+            sym
+            for sym, count in _symbol_df.items()
             if _total_projects > 0 and count > _total_projects * UBIQUITOUS_DF_FRACTION
         }
         # Propagate to score_file: ubiquitous type hint tokens get 0 points
@@ -914,18 +874,29 @@ def format_report(
             score, project_reasons, file_hits = score_project(project, signals)
             if score <= 0:
                 continue
-            if not should_keep_project_for_surface(project, file_hits, effective_variants_mode):
+            if not should_keep_project_for_surface(
+                project, file_hits, effective_variants_mode
+            ):
                 continue
             hit_surfaces = sorted(matched_file_surfaces(file_hits))
-            _nlx = project_has_non_lexical_evidence(project_reasons, file_hits, ubiquitous_symbols=_ubiquitous_symbols)
-            family_profile = infer_project_family_profile(project, project_reasons, file_hits)
+            _nlx = project_has_non_lexical_evidence(
+                project_reasons, file_hits, ubiquitous_symbols=_ubiquitous_symbols
+            )
+            family_profile = infer_project_family_profile(
+                project, project_reasons, file_hits
+            )
             type_hint_profile = infer_project_type_hint_profile(file_hits, signals)
             member_hint_profile = infer_project_member_hint_profile(file_hits, signals)
             _evidence_profile = {
                 "direct_type_hint_keys": type_hint_profile["direct_type_hint_keys"],
-                "direct_member_hint_keys": member_hint_profile["direct_member_hint_keys"],
+                "direct_member_hint_keys": member_hint_profile[
+                    "direct_member_hint_keys"
+                ],
             }
             _bucket = candidate_bucket(score, _nlx, evidence_profile=_evidence_profile)
+            _bucket, _gate_blockers = apply_must_run_gate(
+                _bucket, score, _nlx, _evidence_profile, project_reasons,
+            )
             scope_tier, specificity_score, scope_reasons = classify_project_scope(
                 project,
                 signals,
@@ -937,13 +908,19 @@ def format_report(
                 # are eligible for coverage deduplication. Must-run and
                 # high-confidence suites always pass through so that every
                 # explicitly-tested suite is preserved regardless of keep_per_signature.
-                "_coverage_sig": coverage_signature(file_hits, project_path_key=project.path_key) if _bucket == "possible related" else None,
+                "_coverage_sig": coverage_signature(
+                    file_hits, project_path_key=project.path_key
+                )
+                if _bucket == "possible related"
+                else None,
                 "score": score,
                 "specificity_score": specificity_score,
                 "scope_tier": scope_tier,
                 "scope_reasons": scope_reasons if debug_trace else scope_reasons[:3],
                 "confidence": confidence(score),
                 "bucket": _bucket,
+                "bucket_gate_passed": not _gate_blockers,
+                "bucket_gate_blockers": _gate_blockers,
                 "variant": project.variant,
                 "surface": project.surface,
                 "supported_surfaces": sorted(project.supported_surfaces),
@@ -951,23 +928,35 @@ def format_report(
                 "project": project.relative_root,
                 "test_json": project.test_json,
                 "bundle_name": project.bundle_name,
-                "driver_module_name": driver_module_name(project.test_json, repo_root=app_config.repo_root),
-                "xdevice_module_name": infer_xdevice_module_name(project.test_json, repo_root=app_config.repo_root),
+                "driver_module_name": driver_module_name(
+                    project.test_json, repo_root=app_config.repo_root
+                ),
+                "xdevice_module_name": infer_xdevice_module_name(
+                    project.test_json, repo_root=app_config.repo_root
+                ),
                 "build_target": guess_build_target(project.relative_root),
-                "driver_type": driver_type(project.test_json, repo_root=app_config.repo_root),
+                "driver_type": driver_type(
+                    project.test_json, repo_root=app_config.repo_root
+                ),
                 "family_keys": family_profile["family_keys"],
                 "direct_family_keys": family_profile["direct_family_keys"],
                 "family_quality": family_profile["family_quality"],
-                "family_representative_quality": family_profile["family_representative_quality"],
+                "family_representative_quality": family_profile[
+                    "family_representative_quality"
+                ],
                 "capability_keys": family_profile["capability_keys"],
                 "direct_capability_keys": family_profile["direct_capability_keys"],
                 "capability_quality": family_profile["capability_quality"],
-                "capability_representative_quality": family_profile["capability_representative_quality"],
+                "capability_representative_quality": family_profile[
+                    "capability_representative_quality"
+                ],
                 "type_hint_keys": type_hint_profile["type_hint_keys"],
                 "direct_type_hint_keys": type_hint_profile["direct_type_hint_keys"],
                 "type_hint_focus_counts": type_hint_profile["focus_token_counts"],
                 "member_hint_keys": member_hint_profile["member_hint_keys"],
-                "direct_member_hint_keys": member_hint_profile["direct_member_hint_keys"],
+                "direct_member_hint_keys": member_hint_profile[
+                    "direct_member_hint_keys"
+                ],
                 "member_hint_focus_counts": member_hint_profile["focus_token_counts"],
                 "focus_token_counts": family_profile["focus_token_counts"],
                 "umbrella_penalty": family_profile["umbrella_penalty"],
@@ -994,17 +983,32 @@ def format_report(
         # hint evidence to avoid flooding the output. Specific component files
         # (e.g. menu_item_pattern.cpp in pattern/menu/menu_item/) are NOT
         # subject to this filter even if they have many family tokens.
-        _is_infrastructure_file = "/common/" in rel or rel.split("/")[-1].startswith("base_")
+        _is_infrastructure_file = "/common/" in rel or rel.split("/")[-1].startswith(
+            "base_"
+        )
         _broad_family_count = len(signals.get("family_tokens", set()))
-        if _is_infrastructure_file and _broad_family_count >= 3 and len(project_results) > 5:
+        if (
+            _is_infrastructure_file
+            and _broad_family_count >= 3
+            and len(project_results) > 5
+        ):
             project_results = [
-                p for p in project_results
+                p
+                for p in project_results
                 if p.get("direct_type_hint_keys") or p.get("direct_member_hint_keys")
             ]
         sort_project_results(project_results)
-        project_results = deduplicate_by_coverage_signature(project_results, keep_per_signature)
-        filtered_project_results, relevance_summary = filter_project_results_by_relevance(project_results, relevance_mode)
-        shown_project_results = filtered_project_results if top_projects <= 0 else filtered_project_results[:top_projects]
+        project_results = deduplicate_by_coverage_signature(
+            project_results, keep_per_signature
+        )
+        filtered_project_results, relevance_summary = (
+            filter_project_results_by_relevance(project_results, relevance_mode)
+        )
+        shown_project_results = (
+            filtered_project_results
+            if top_projects <= 0
+            else filtered_project_results[:top_projects]
+        )
         coverage_source = make_coverage_source("changed_file", rel)
         # Only include projects with meaningful scores in coverage candidates.
         # Projects with very low scores (path token overlap only) add noise
@@ -1034,13 +1038,13 @@ def format_report(
             api_lineage_map,
         )
         uncovered_functions = [
-            row["symbol"] for row in function_coverage
+            row["symbol"]
+            for row in function_coverage
             if row.get("status") not in {"covered", "indirectly_covered"}
         ]
-        uncovered_apis = (
-            api_coverage["not_covered"]
-            + [e["api_entity"] for e in api_coverage["unresolved"]]
-        )
+        uncovered_apis = api_coverage["not_covered"] + [
+            e["api_entity"] for e in api_coverage["unresolved"]
+        ]
         result_item = {
             "changed_file": rel,
             "changed_symbols": sorted(changed_symbols or []),
@@ -1048,6 +1052,9 @@ def format_report(
             "derived_source_symbols": derived_source_symbols,
             "touched_source_functions": derived_source_symbols,
             "affected_api_entities": affected_api_entities,
+            "affected_api_entity_details": build_affected_api_entity_details(
+                affected_api_entities, sdk_index, api_lineage_map,
+            ),
             "file_level_affected_api_entities": file_level_affected_api_entities,
             "api_coverage": api_coverage,
             "direct_covering_suites": api_coverage["direct_covering_suites"],
@@ -1090,12 +1097,14 @@ def format_report(
         }
         if debug_trace:
             result_item["debug"] = {
-                    "candidate_project_count": len(candidate_projects),
-                    "candidate_projects_before_prefilter": len(all_variant_projects),
-                    "candidate_projects_after_prefilter": len(candidate_projects),
-                    "matched_project_count": len(filtered_project_results),
-                }
-        selected_build_targets.extend(guess_build_target(item["project"]) for item in shown_project_results)
+                "candidate_project_count": len(candidate_projects),
+                "candidate_projects_before_prefilter": len(all_variant_projects),
+                "candidate_projects_after_prefilter": len(candidate_projects),
+                "matched_project_count": len(filtered_project_results),
+            }
+        selected_build_targets.extend(
+            guess_build_target(item["project"]) for item in shown_project_results
+        )
         unresolved = build_unresolved_analysis(
             signals,
             project_results,
@@ -1126,7 +1135,12 @@ def format_report(
         report["source_only_consumers"].extend(source_only_consumers)
         report["coverage_gap"].extend(api_coverage["not_covered"])
         report["results"].append(result_item)
-    report["timings_ms"]["changed_file_analysis"] = round((time.perf_counter() - changed_started) * 1000, 3)
+    report["affected_api_entity_details"] = build_affected_api_entity_details(
+        report["affected_api_entities"], sdk_index, api_lineage_map,
+    )
+    report["timings_ms"]["changed_file_analysis"] = round(
+        (time.perf_counter() - changed_started) * 1000, 3
+    )
     symbol_started = time.perf_counter()
     for query in symbol_queries:
         if progress_callback:
@@ -1144,29 +1158,44 @@ def format_report(
             effective_variants_mode,
         )
         # IDF for symbol queries (same logic as changed_file section)
-        _sq_symbol_df, _sq_total_projects = compute_signal_symbol_df(candidate_projects, signals)
+        _sq_symbol_df, _sq_total_projects = compute_signal_symbol_df(
+            candidate_projects, signals
+        )
         signals["_symbol_df"] = _sq_symbol_df
         signals["_total_projects"] = _sq_total_projects
         _sq_ubiquitous_symbols = {
-            sym for sym, count in _sq_symbol_df.items()
-            if _sq_total_projects > 0 and count > _sq_total_projects * UBIQUITOUS_DF_FRACTION
+            sym
+            for sym, count in _sq_symbol_df.items()
+            if _sq_total_projects > 0
+            and count > _sq_total_projects * UBIQUITOUS_DF_FRACTION
         }
         for project in candidate_projects:
             score, project_reasons, file_hits = score_project(project, signals)
             if score <= 0:
                 continue
-            if not should_keep_project_for_surface(project, file_hits, effective_variants_mode):
+            if not should_keep_project_for_surface(
+                project, file_hits, effective_variants_mode
+            ):
                 continue
             hit_surfaces = sorted(matched_file_surfaces(file_hits))
-            _nlx = project_has_non_lexical_evidence(project_reasons, file_hits, ubiquitous_symbols=_sq_ubiquitous_symbols)
-            family_profile = infer_project_family_profile(project, project_reasons, file_hits)
+            _nlx = project_has_non_lexical_evidence(
+                project_reasons, file_hits, ubiquitous_symbols=_sq_ubiquitous_symbols
+            )
+            family_profile = infer_project_family_profile(
+                project, project_reasons, file_hits
+            )
             type_hint_profile = infer_project_type_hint_profile(file_hits, signals)
             member_hint_profile = infer_project_member_hint_profile(file_hits, signals)
             _evidence_profile = {
                 "direct_type_hint_keys": type_hint_profile["direct_type_hint_keys"],
-                "direct_member_hint_keys": member_hint_profile["direct_member_hint_keys"],
+                "direct_member_hint_keys": member_hint_profile[
+                    "direct_member_hint_keys"
+                ],
             }
             _bucket = candidate_bucket(score, _nlx, evidence_profile=_evidence_profile)
+            _bucket, _gate_blockers = apply_must_run_gate(
+                _bucket, score, _nlx, _evidence_profile, project_reasons,
+            )
             scope_tier, specificity_score, scope_reasons = classify_project_scope(
                 project,
                 signals,
@@ -1174,13 +1203,19 @@ def format_report(
                 file_hits,
             )
             project_entry = {
-                "_coverage_sig": coverage_signature(file_hits, project_path_key=project.path_key) if _bucket == "possible related" else None,
+                "_coverage_sig": coverage_signature(
+                    file_hits, project_path_key=project.path_key
+                )
+                if _bucket == "possible related"
+                else None,
                 "score": score,
                 "specificity_score": specificity_score,
                 "scope_tier": scope_tier,
                 "scope_reasons": scope_reasons if debug_trace else scope_reasons[:3],
                 "confidence": confidence(score),
                 "bucket": _bucket,
+                "bucket_gate_passed": not _gate_blockers,
+                "bucket_gate_blockers": _gate_blockers,
                 "variant": project.variant,
                 "surface": project.surface,
                 "supported_surfaces": sorted(project.supported_surfaces),
@@ -1188,24 +1223,38 @@ def format_report(
                 "project": project.relative_root,
                 "test_json": project.test_json,
                 "bundle_name": project.bundle_name,
-                "driver_module_name": driver_module_name(project.test_json, repo_root=app_config.repo_root),
-                "xdevice_module_name": infer_xdevice_module_name(project.test_json, repo_root=app_config.repo_root),
+                "driver_module_name": driver_module_name(
+                    project.test_json, repo_root=app_config.repo_root
+                ),
+                "xdevice_module_name": infer_xdevice_module_name(
+                    project.test_json, repo_root=app_config.repo_root
+                ),
                 "build_target": guess_build_target(project.relative_root),
-                "driver_type": driver_type(project.test_json, repo_root=app_config.repo_root),
-                "test_haps": parse_test_file_names(project.test_json, repo_root=app_config.repo_root),
+                "driver_type": driver_type(
+                    project.test_json, repo_root=app_config.repo_root
+                ),
+                "test_haps": parse_test_file_names(
+                    project.test_json, repo_root=app_config.repo_root
+                ),
                 "family_keys": family_profile["family_keys"],
                 "direct_family_keys": family_profile["direct_family_keys"],
                 "family_quality": family_profile["family_quality"],
-                "family_representative_quality": family_profile["family_representative_quality"],
+                "family_representative_quality": family_profile[
+                    "family_representative_quality"
+                ],
                 "capability_keys": family_profile["capability_keys"],
                 "direct_capability_keys": family_profile["direct_capability_keys"],
                 "capability_quality": family_profile["capability_quality"],
-                "capability_representative_quality": family_profile["capability_representative_quality"],
+                "capability_representative_quality": family_profile[
+                    "capability_representative_quality"
+                ],
                 "type_hint_keys": type_hint_profile["type_hint_keys"],
                 "direct_type_hint_keys": type_hint_profile["direct_type_hint_keys"],
                 "type_hint_focus_counts": type_hint_profile["focus_token_counts"],
                 "member_hint_keys": member_hint_profile["member_hint_keys"],
-                "direct_member_hint_keys": member_hint_profile["direct_member_hint_keys"],
+                "direct_member_hint_keys": member_hint_profile[
+                    "direct_member_hint_keys"
+                ],
                 "member_hint_focus_counts": member_hint_profile["focus_token_counts"],
                 "focus_token_counts": family_profile["focus_token_counts"],
                 "umbrella_penalty": family_profile["umbrella_penalty"],
@@ -1227,16 +1276,26 @@ def format_report(
                 }
             project_results.append(project_entry)
         sort_project_results(project_results)
-        project_results = deduplicate_by_coverage_signature(project_results, keep_per_signature)
-        filtered_project_results, relevance_summary = filter_project_results_by_relevance(project_results, relevance_mode)
+        project_results = deduplicate_by_coverage_signature(
+            project_results, keep_per_signature
+        )
+        filtered_project_results, relevance_summary = (
+            filter_project_results_by_relevance(project_results, relevance_mode)
+        )
         display_project_results = restrict_explicit_surface_projects(
             filtered_project_results,
             query_surface_intent.requested_surface,
             explicit_surface_query=bool(query_surface_intent.reasons),
         )
-        shown_project_results = display_project_results if top_projects <= 0 else display_project_results[:top_projects]
+        shown_project_results = (
+            display_project_results
+            if top_projects <= 0
+            else display_project_results[:top_projects]
+        )
         if effective_variants_mode == "both":
-            shown_project_results = diversify_symbol_query_projects(display_project_results, top_projects)
+            shown_project_results = diversify_symbol_query_projects(
+                display_project_results, top_projects
+            )
         coverage_source = make_coverage_source("symbol_query", query)
         coverage_candidates.extend(
             {
@@ -1286,14 +1345,18 @@ def format_report(
         }
         if debug_trace:
             symbol_item["debug"] = {
-                    "candidate_project_count": len(candidate_projects),
-                    "candidate_projects_before_prefilter": len(all_variant_projects),
-                    "candidate_projects_after_prefilter": len(candidate_projects),
-                    "matched_project_count": len(display_project_results),
-                }
+                "candidate_project_count": len(candidate_projects),
+                "candidate_projects_before_prefilter": len(all_variant_projects),
+                "candidate_projects_after_prefilter": len(candidate_projects),
+                "matched_project_count": len(display_project_results),
+            }
         report["symbol_queries"].append(symbol_item)
-        selected_build_targets.extend(guess_build_target(item["project"]) for item in shown_project_results)
-    report["timings_ms"]["symbol_query_analysis"] = round((time.perf_counter() - symbol_started) * 1000, 3)
+        selected_build_targets.extend(
+            guess_build_target(item["project"]) for item in shown_project_results
+        )
+    report["timings_ms"]["symbol_query_analysis"] = round(
+        (time.perf_counter() - symbol_started) * 1000, 3
+    )
     code_root = git_repo_root
     code_started = time.perf_counter()
     for query in code_queries:
@@ -1305,7 +1368,9 @@ def format_report(
                 "matches": search_code_matches(query, code_root),
             }
         )
-    report["timings_ms"]["code_query_analysis"] = round((time.perf_counter() - code_started) * 1000, 3)
+    report["timings_ms"]["code_query_analysis"] = round(
+        (time.perf_counter() - code_started) * 1000, 3
+    )
     report["coverage_recommendations"] = build_global_coverage_recommendations(
         coverage_candidates,
         repo_root=REPO_ROOT,
@@ -1314,31 +1379,74 @@ def format_report(
         device=device,
     )
     if runtime_history_index is not None:
-        annotate_report_runtime_estimates(report, runtime_history_index, requested_tool=requested_run_tool)
+        annotate_report_runtime_estimates(
+            report, runtime_history_index, requested_tool=requested_run_tool
+        )
     if progress_callback:
         progress_callback("assembling build guidance")
     guidance_started = time.perf_counter()
-    guidance = build_guidance(REPO_ROOT, report["built_artifacts"], report["product_build"], app_config, selected_build_targets)
-    report["timings_ms"]["build_guidance"] = round((time.perf_counter() - guidance_started) * 1000, 3)
+    guidance = build_guidance(
+        REPO_ROOT,
+        report["built_artifacts"],
+        report["product_build"],
+        app_config,
+        selected_build_targets,
+    )
+    report["timings_ms"]["build_guidance"] = round(
+        (time.perf_counter() - guidance_started) * 1000, 3
+    )
     if guidance:
         report["build_guidance"] = guidance
     report["timings_ms"]["report_total"] = round(sum(report["timings_ms"].values()), 3)
     return report
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     progress_group = parser.add_mutually_exclusive_group()
     json_group = parser.add_mutually_exclusive_group()
     parser.add_argument("--config", help="JSON config file.")
-    parser.add_argument("--changed-file", action="append", default=[], help="Changed file path. Can be repeated.")
-    parser.add_argument("--changed-symbol", action="append", default=[], help="Optional changed symbol/function name used to narrow affected APIs for changed-file analysis. Can be repeated.")
-    parser.add_argument("--changed-range", action="append", default=[], help="Optional changed line range used to derive touched source symbols, in 'start:end' or 'path:start:end' form. Can be repeated.")
-    parser.add_argument("--symbol-query", action="append", default=[], help="Find XTS tests by component/symbol name, e.g. ButtonModifier.")
-    parser.add_argument("--code-query", action="append", default=[], help="Find code files by keyword, e.g. ButtonModifier.")
-    parser.add_argument("--changed-files-from", help="Text file with one changed file path per line.")
-    parser.add_argument("--git-diff", help="Optional git diff ref, for example HEAD~1..HEAD.")
+    parser.add_argument(
+        "--changed-file",
+        action="append",
+        default=[],
+        help="Changed file path. Can be repeated.",
+    )
+    parser.add_argument(
+        "--changed-symbol",
+        action="append",
+        default=[],
+        help="Optional changed symbol/function name used to narrow affected APIs for changed-file analysis. Can be repeated.",
+    )
+    parser.add_argument(
+        "--changed-range",
+        action="append",
+        default=[],
+        help="Optional changed line range used to derive touched source symbols, in 'start:end' or 'path:start:end' form. Can be repeated.",
+    )
+    parser.add_argument(
+        "--symbol-query",
+        action="append",
+        default=[],
+        help="Find XTS tests by component/symbol name, e.g. ButtonModifier.",
+    )
+    parser.add_argument(
+        "--code-query",
+        action="append",
+        default=[],
+        help="Find code files by keyword, e.g. ButtonModifier.",
+    )
+    parser.add_argument(
+        "--changed-files-from", help="Text file with one changed file path per line."
+    )
+    parser.add_argument(
+        "--git-diff", help="Optional git diff ref, for example HEAD~1..HEAD."
+    )
     parser.add_argument("--git-root", help="Git root to use with --git-diff.")
-    parser.add_argument("--pr-url", help="GitCode/CodeHub PR or MR URL, for example https://gitcode.com/.../pull/82225 or https://codehub.example.com/.../merge_requests/12")
+    parser.add_argument(
+        "--pr-url",
+        help="GitCode/CodeHub PR or MR URL, for example https://gitcode.com/.../pull/82225 or https://codehub.example.com/.../merge_requests/12",
+    )
     parser.add_argument("--pr-number", help="Git host PR/MR number.")
     parser.add_argument(
         "--pr-source",
@@ -1347,36 +1455,122 @@ def parse_args() -> argparse.Namespace:
         help="How to resolve PR/MR changed files: auto prefers the detected host API when token/config is available, api forces API mode, git forces git-fetch mode.",
     )
     parser.add_argument("--git-remote", help="Git remote for PR fetching.")
-    parser.add_argument("--git-base-branch", help="Base branch for PR diff. Default: master.")
-    parser.add_argument("--git-host-kind", choices=GIT_HOST_KIND_CHOICES, default="auto", help="PR API host kind. auto detects from the PR URL and falls back to GitCode-compatible behavior.")
-    parser.add_argument("--git-host-url", help="Git host base URL for API mode, for example https://gitcode.com or https://codehub.example.com")
+    parser.add_argument(
+        "--git-base-branch", help="Base branch for PR diff. Default: master."
+    )
+    parser.add_argument(
+        "--git-host-kind",
+        choices=GIT_HOST_KIND_CHOICES,
+        default="auto",
+        help="PR API host kind. auto detects from the PR URL and falls back to GitCode-compatible behavior.",
+    )
+    parser.add_argument(
+        "--git-host-url",
+        help="Git host base URL for API mode, for example https://gitcode.com or https://codehub.example.com",
+    )
     parser.add_argument("--git-host-token", help="Git host access token for API mode.")
-    parser.add_argument("--gitcode-api-url", help="Deprecated alias for --git-host-url, kept for backward compatibility.")
-    parser.add_argument("--gitcode-token", help="Deprecated alias for --git-host-token, kept for backward compatibility.")
-    parser.add_argument("--git-host-config", help="Path to INI config with [gitcode] or [codehub] token/url entries.")
-    parser.add_argument("--repo-root", help="Explicit OHOS workspace root. By default the CLI auto-discovers the workspace, including sibling ohos_master trees.")
+    parser.add_argument(
+        "--gitcode-api-url",
+        help="Deprecated alias for --git-host-url, kept for backward compatibility.",
+    )
+    parser.add_argument(
+        "--gitcode-token",
+        help="Deprecated alias for --git-host-token, kept for backward compatibility.",
+    )
+    parser.add_argument(
+        "--git-host-config",
+        help="Path to INI config with [gitcode] or [codehub] token/url entries.",
+    )
+    parser.add_argument(
+        "--repo-root",
+        help="Explicit OHOS workspace root. By default the CLI auto-discovers the workspace, including sibling ohos_master trees.",
+    )
     parser.add_argument("--xts-root", help="Absolute or relative path to XTS root.")
-    parser.add_argument("--sdk-api-root", help="Absolute or relative path to SDK api root.")
-    parser.add_argument("--acts-out-root", help="Built ACTS output root, for xdevice command generation.")
-    parser.add_argument("--path-rules-file", help="Optional JSON file with path and alias mapping rules.")
-    parser.add_argument("--composite-mappings-file", help="Optional JSON file with multi-component mapping rules.")
-    parser.add_argument("--ranking-rules-file", help="Optional JSON file with family-group, generic-token, umbrella, and planner ranking rules.")
-    parser.add_argument("--changed-file-exclusions-file", help="Optional JSON file with changed-file path prefixes to exclude from XTS analysis.")
-    parser.add_argument("--device", help="Optional device serial/connect key visible from the selected HDC server.")
-    parser.add_argument("--devices", action="append", default=[], help="Comma-separated device serial list for command generation and execution.")
-    parser.add_argument("--devices-from", help="File with one device serial per line (comments with # are ignored).")
-    parser.add_argument("--server-host", help="Optional remote Linux execution host for wrapper-driven `ohos xts ...` flows.")
-    parser.add_argument("--server-user", help="Optional remote Linux user for --server-host. Default: current user on the caller side.")
-    parser.add_argument("--product-name", help="Product name for build guidance. Default: rk3568.")
-    parser.add_argument("--system-size", help="System size for build guidance. Default: standard.")
-    parser.add_argument("--xts-suitetype", help="Optional xts_suitetype for build guidance, for example hap_static or hap_dynamic.")
-    parser.add_argument("--run-now", action="store_true", help="Immediately execute selected run targets after report generation.")
-    parser.add_argument("--from-report", help="Reuse a previously saved selector JSON report instead of recomputing selection.")
-    parser.add_argument("--last-report", action="store_true", help="Reuse the latest saved selector JSON report from the run store.")
-    parser.add_argument("--run-label", help="Optional label for storing this planned/executed selector run, for example baseline or v1.")
-    parser.add_argument("--run-store-root", help="Directory used to persist labeled selector runs. Default: <selector_repo>/.runs")
-    parser.add_argument("--runtime-state-root", help="Shared runtime state directory for device locks and runtime history. Default: /tmp/arkui_xts_selector_state")
-    parser.add_argument("--daily-build-tag", help="Daily build tag for prebuilt suites, for example 20260403_120242.")
+    parser.add_argument(
+        "--sdk-api-root", help="Absolute or relative path to SDK api root."
+    )
+    parser.add_argument(
+        "--acts-out-root",
+        help="Built ACTS output root, for xdevice command generation.",
+    )
+    parser.add_argument(
+        "--path-rules-file",
+        help="Optional JSON file with path and alias mapping rules.",
+    )
+    parser.add_argument(
+        "--composite-mappings-file",
+        help="Optional JSON file with multi-component mapping rules.",
+    )
+    parser.add_argument(
+        "--ranking-rules-file",
+        help="Optional JSON file with family-group, generic-token, umbrella, and planner ranking rules.",
+    )
+    parser.add_argument(
+        "--changed-file-exclusions-file",
+        help="Optional JSON file with changed-file path prefixes to exclude from XTS analysis.",
+    )
+    parser.add_argument(
+        "--device",
+        help="Optional device serial/connect key visible from the selected HDC server.",
+    )
+    parser.add_argument(
+        "--devices",
+        action="append",
+        default=[],
+        help="Comma-separated device serial list for command generation and execution.",
+    )
+    parser.add_argument(
+        "--devices-from",
+        help="File with one device serial per line (comments with # are ignored).",
+    )
+    parser.add_argument(
+        "--server-host",
+        help="Optional remote Linux execution host for wrapper-driven `ohos xts ...` flows.",
+    )
+    parser.add_argument(
+        "--server-user",
+        help="Optional remote Linux user for --server-host. Default: current user on the caller side.",
+    )
+    parser.add_argument(
+        "--product-name", help="Product name for build guidance. Default: rk3568."
+    )
+    parser.add_argument(
+        "--system-size", help="System size for build guidance. Default: standard."
+    )
+    parser.add_argument(
+        "--xts-suitetype",
+        help="Optional xts_suitetype for build guidance, for example hap_static or hap_dynamic.",
+    )
+    parser.add_argument(
+        "--run-now",
+        action="store_true",
+        help="Immediately execute selected run targets after report generation.",
+    )
+    parser.add_argument(
+        "--from-report",
+        help="Reuse a previously saved selector JSON report instead of recomputing selection.",
+    )
+    parser.add_argument(
+        "--last-report",
+        action="store_true",
+        help="Reuse the latest saved selector JSON report from the run store.",
+    )
+    parser.add_argument(
+        "--run-label",
+        help="Optional label for storing this planned/executed selector run, for example baseline or v1.",
+    )
+    parser.add_argument(
+        "--run-store-root",
+        help="Directory used to persist labeled selector runs. Default: <selector_repo>/.runs",
+    )
+    parser.add_argument(
+        "--runtime-state-root",
+        help="Shared runtime state directory for device locks and runtime history. Default: /tmp/arkui_xts_selector_state",
+    )
+    parser.add_argument(
+        "--daily-build-tag",
+        help="Daily build tag for prebuilt suites, for example 20260403_120242.",
+    )
     parser.add_argument(
         "--daily-component",
         help=(
@@ -1385,62 +1579,231 @@ def parse_args() -> argparse.Namespace:
             "still accepted and will first try <board>_Dyn_Sta_XTS."
         ),
     )
-    parser.add_argument("--daily-branch", help="Daily build branch filter. Default: master.")
-    parser.add_argument("--daily-date", help="Daily build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --daily-build-tag.")
-    parser.add_argument("--daily-cache-root", help=f"Cache directory for downloaded/extracted daily full packages. Default: {DEFAULT_DAILY_CACHE_ROOT}")
-    parser.add_argument("--quick", action="store_true", help="Quick mode: skip daily download and use only local ACTS artifacts. Use when you have a built tree or want fast analysis with reduced accuracy.")
-    parser.add_argument("--benchmark", action="store_true", help="Run benchmark cases from canonical corpus and exit with code 1 if any fail.")
-    parser.add_argument("--benchmark-fixtures-dir", help="Directory containing canonical corpus benchmark fixtures. Default: tests/fixtures/canonical_corpus")
-    parser.add_argument("--inspect", action="store_true", help="Enable inspect mode for querying the persisted dependency/lineage map.")
-    parser.add_argument("--inspect-api-entity", help="Inspect mode: show all source files, consumers, and projects that reference this API entity.")
-    parser.add_argument("--inspect-source-file", help="Inspect mode: show all API entities and consumers reachable from this source file.")
-    parser.add_argument("--inspect-consumer-project", help="Inspect mode: show all API entities and source files reachable from this consumer project.")
-    parser.add_argument("--download-daily-tests", action="store_true", help="Download and extract the daily XTS package described by --daily-* options, then exit.")
-    parser.add_argument("--download-daily-sdk", action="store_true", help="Download and extract the daily SDK package described by --sdk-* options, then exit.")
-    parser.add_argument("--download-daily-firmware", action="store_true", help="Download and extract the daily firmware image package described by --firmware-* options, then exit.")
-    parser.add_argument("--flash-daily-firmware", action="store_true", help="Download/extract the daily firmware image package described by --firmware-* options and flash it to the connected device, then exit.")
-    parser.add_argument("--sdk-build-tag", help="Daily SDK build tag, for example 20260404_120537.")
-    parser.add_argument("--sdk-component", help=f"Daily SDK component name. Default: {DEFAULT_SDK_COMPONENT}.")
-    parser.add_argument("--sdk-branch", help="Daily SDK branch filter. Default: master.")
-    parser.add_argument("--sdk-date", help="Daily SDK build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --sdk-build-tag.")
-    parser.add_argument("--sdk-cache-root", help=f"Cache directory for downloaded/extracted daily SDK packages. Default: {DEFAULT_SDK_CACHE_ROOT}")
-    parser.add_argument("--firmware-build-tag", help="Daily firmware build tag, for example 20260404_120244.")
-    parser.add_argument("--firmware-component", help=f"Daily firmware component name. Default: {DEFAULT_FIRMWARE_COMPONENT}.")
-    parser.add_argument("--firmware-branch", help="Daily firmware branch filter. Default: master.")
-    parser.add_argument("--firmware-date", help="Daily firmware build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --firmware-build-tag.")
-    parser.add_argument("--firmware-cache-root", help=f"Cache directory for downloaded/extracted daily firmware packages. Default: {DEFAULT_FIRMWARE_CACHE_ROOT}")
-    parser.add_argument("--flash-firmware-path", help="Path to an unpacked local firmware image bundle root, or a parent directory containing one, to flash directly.")
     parser.add_argument(
-        "--list-daily-tags", metavar="TYPE",
+        "--daily-branch", help="Daily build branch filter. Default: master."
+    )
+    parser.add_argument(
+        "--daily-date",
+        help="Daily build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --daily-build-tag.",
+    )
+    parser.add_argument(
+        "--daily-cache-root",
+        help=f"Cache directory for downloaded/extracted daily full packages. Default: {DEFAULT_DAILY_CACHE_ROOT}",
+    )
+    parser.add_argument(
+        "--quick",
+        action="store_true",
+        help="Quick mode: skip daily download and use only local ACTS artifacts. Use when you have a built tree or want fast analysis with reduced accuracy.",
+    )
+    parser.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="Run benchmark cases from canonical corpus and exit with code 1 if any fail.",
+    )
+    parser.add_argument(
+        "--benchmark-fixtures-dir",
+        help="Directory containing canonical corpus benchmark fixtures. Default: tests/fixtures/canonical_corpus",
+    )
+    parser.add_argument(
+        "--inspect",
+        action="store_true",
+        help="Enable inspect mode for querying the persisted dependency/lineage map.",
+    )
+    parser.add_argument(
+        "--inspect-api-entity",
+        help="Inspect mode: show all source files, consumers, and projects that reference this API entity.",
+    )
+    parser.add_argument(
+        "--inspect-source-file",
+        help="Inspect mode: show all API entities and consumers reachable from this source file.",
+    )
+    parser.add_argument(
+        "--inspect-consumer-project",
+        help="Inspect mode: show all API entities and source files reachable from this consumer project.",
+    )
+    parser.add_argument(
+        "--download-daily-tests",
+        action="store_true",
+        help="Download and extract the daily XTS package described by --daily-* options, then exit.",
+    )
+    parser.add_argument(
+        "--download-daily-sdk",
+        action="store_true",
+        help="Download and extract the daily SDK package described by --sdk-* options, then exit.",
+    )
+    parser.add_argument(
+        "--download-daily-firmware",
+        action="store_true",
+        help="Download and extract the daily firmware image package described by --firmware-* options, then exit.",
+    )
+    parser.add_argument(
+        "--flash-daily-firmware",
+        action="store_true",
+        help="Download/extract the daily firmware image package described by --firmware-* options and flash it to the connected device, then exit.",
+    )
+    parser.add_argument(
+        "--sdk-build-tag", help="Daily SDK build tag, for example 20260404_120537."
+    )
+    parser.add_argument(
+        "--sdk-component",
+        help=f"Daily SDK component name. Default: {DEFAULT_SDK_COMPONENT}.",
+    )
+    parser.add_argument(
+        "--sdk-branch", help="Daily SDK branch filter. Default: master."
+    )
+    parser.add_argument(
+        "--sdk-date",
+        help="Daily SDK build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --sdk-build-tag.",
+    )
+    parser.add_argument(
+        "--sdk-cache-root",
+        help=f"Cache directory for downloaded/extracted daily SDK packages. Default: {DEFAULT_SDK_CACHE_ROOT}",
+    )
+    parser.add_argument(
+        "--firmware-build-tag",
+        help="Daily firmware build tag, for example 20260404_120244.",
+    )
+    parser.add_argument(
+        "--firmware-component",
+        help=f"Daily firmware component name. Default: {DEFAULT_FIRMWARE_COMPONENT}.",
+    )
+    parser.add_argument(
+        "--firmware-branch", help="Daily firmware branch filter. Default: master."
+    )
+    parser.add_argument(
+        "--firmware-date",
+        help="Daily firmware build date in YYYYMMDD or YYYY-MM-DD. Defaults to the date derived from --firmware-build-tag.",
+    )
+    parser.add_argument(
+        "--firmware-cache-root",
+        help=f"Cache directory for downloaded/extracted daily firmware packages. Default: {DEFAULT_FIRMWARE_CACHE_ROOT}",
+    )
+    parser.add_argument(
+        "--flash-firmware-path",
+        help="Path to an unpacked local firmware image bundle root, or a parent directory containing one, to flash directly.",
+    )
+    parser.add_argument(
+        "--list-daily-tags",
+        metavar="TYPE",
         help="List recent daily build tags and exit. TYPE: tests (default), sdk, firmware.",
     )
-    parser.add_argument("--list-tags-count", type=int, default=10, metavar="N",
-        help="Number of tags to show with --list-daily-tags. Default: 10.")
-    parser.add_argument("--list-tags-after", metavar="DATE",
-        help="Only list tags on or after this date (YYYYMMDD or YYYY-MM-DD).")
-    parser.add_argument("--list-tags-before", metavar="DATE",
-        help="Only list tags on or before this date (YYYYMMDD or YYYY-MM-DD). Default: today.")
-    parser.add_argument("--list-tags-lookback", type=int, default=30, metavar="DAYS",
-        help="How many days back to search when listing tags. Default: 30.")
-    parser.add_argument("--flash-py-path", help="Path to the Rockchip flash.py helper used for board flashing.")
-    parser.add_argument("--hdc-path", help="Path to hdc used for generated commands, execution preflight, and flashing.")
-    parser.add_argument("--hdc-endpoint", help="Remote HDC server endpoint HOST:PORT used for generated commands, preflight, and execution.")
-    parser.add_argument("--run-tool", choices=RUN_TOOL_CHOICES, default="auto", help="Execution tool to use for --run-now. Default: auto.")
-    parser.add_argument("--skip-install", action="store_true", default=False, help="Skip automatic HAP installation before aa_test execution. Use when HAPs are already installed on the device.")
-    parser.add_argument("--run-priority", choices=RUN_PRIORITY_CHOICES, default="recommended", help="Execution priority for --run-now. required = strongest unique coverage, recommended = required plus additional unique coverage, all = include duplicate fallback coverage.")
-    parser.add_argument("--shard-mode", choices=SHARD_MODE_CHOICES, default="mirror", help="Execution distribution mode. mirror = all selected targets on every device; split = shard unique targets across devices.")
-    parser.add_argument("--parallel-jobs", type=int, default=1, help="Maximum number of device queues to execute in parallel for --run-now. Same-device commands stay sequential.")
-    parser.add_argument("--device-lock-timeout", type=float, default=30.0, help="Wait up to N seconds for an exclusive device lock before blocking that device queue. Default: 30.")
-    parser.add_argument("--run-top-targets", type=int, default=0, help="Execute at most N unique run targets. 0 = all.")
-    parser.add_argument("--run-test-name", action="append", default=[], help="Run only the named suite. Can be repeated. Matches names and aliases from selected_tests.json.")
-    parser.add_argument("--run-test-names-file", help="Text file with one or comma-separated suite names per line for manual run selection.")
-    parser.add_argument("--run-timeout", type=float, default=0.0, help="Per-command timeout in seconds for --run-now. 0 = disabled.")
-    parser.add_argument("--relevance-mode", choices=RELEVANCE_MODE_CHOICES, default="all", help="Filter ranked projects by relevance. all = current behavior, balanced = must-run + high-confidence, strict = must-run only.")
-    parser.add_argument("--variants", choices=["auto", "static", "dynamic", "both"], default="auto", help="Filter returned candidates by variant. Default: auto.")
-    parser.add_argument("--top-projects", type=int, default=12, help="Number of ranked suites to display per source. 0 = show all. Default: 12.")
+    parser.add_argument(
+        "--list-tags-count",
+        type=int,
+        default=10,
+        metavar="N",
+        help="Number of tags to show with --list-daily-tags. Default: 10.",
+    )
+    parser.add_argument(
+        "--list-tags-after",
+        metavar="DATE",
+        help="Only list tags on or after this date (YYYYMMDD or YYYY-MM-DD).",
+    )
+    parser.add_argument(
+        "--list-tags-before",
+        metavar="DATE",
+        help="Only list tags on or before this date (YYYYMMDD or YYYY-MM-DD). Default: today.",
+    )
+    parser.add_argument(
+        "--list-tags-lookback",
+        type=int,
+        default=30,
+        metavar="DAYS",
+        help="How many days back to search when listing tags. Default: 30.",
+    )
+    parser.add_argument(
+        "--flash-py-path",
+        help="Path to the Rockchip flash.py helper used for board flashing.",
+    )
+    parser.add_argument(
+        "--hdc-path",
+        help="Path to hdc used for generated commands, execution preflight, and flashing.",
+    )
+    parser.add_argument(
+        "--hdc-endpoint",
+        help="Remote HDC server endpoint HOST:PORT used for generated commands, preflight, and execution.",
+    )
+    parser.add_argument(
+        "--run-tool",
+        choices=RUN_TOOL_CHOICES,
+        default="auto",
+        help="Execution tool to use for --run-now. Default: auto.",
+    )
+    parser.add_argument(
+        "--skip-install",
+        action="store_true",
+        default=False,
+        help="Skip automatic HAP installation before aa_test execution. Use when HAPs are already installed on the device.",
+    )
+    parser.add_argument(
+        "--run-priority",
+        choices=RUN_PRIORITY_CHOICES,
+        default="recommended",
+        help="Execution priority for --run-now. required = strongest unique coverage, recommended = required plus additional unique coverage, all = include duplicate fallback coverage.",
+    )
+    parser.add_argument(
+        "--shard-mode",
+        choices=SHARD_MODE_CHOICES,
+        default="mirror",
+        help="Execution distribution mode. mirror = all selected targets on every device; split = shard unique targets across devices.",
+    )
+    parser.add_argument(
+        "--parallel-jobs",
+        type=int,
+        default=1,
+        help="Maximum number of device queues to execute in parallel for --run-now. Same-device commands stay sequential.",
+    )
+    parser.add_argument(
+        "--device-lock-timeout",
+        type=float,
+        default=30.0,
+        help="Wait up to N seconds for an exclusive device lock before blocking that device queue. Default: 30.",
+    )
+    parser.add_argument(
+        "--run-top-targets",
+        type=int,
+        default=0,
+        help="Execute at most N unique run targets. 0 = all.",
+    )
+    parser.add_argument(
+        "--run-test-name",
+        action="append",
+        default=[],
+        help="Run only the named suite. Can be repeated. Matches names and aliases from selected_tests.json.",
+    )
+    parser.add_argument(
+        "--run-test-names-file",
+        help="Text file with one or comma-separated suite names per line for manual run selection.",
+    )
+    parser.add_argument(
+        "--run-timeout",
+        type=float,
+        default=0.0,
+        help="Per-command timeout in seconds for --run-now. 0 = disabled.",
+    )
+    parser.add_argument(
+        "--relevance-mode",
+        choices=RELEVANCE_MODE_CHOICES,
+        default="all",
+        help="Filter ranked projects by relevance. all = current behavior, balanced = must-run + high-confidence, strict = must-run only.",
+    )
+    parser.add_argument(
+        "--variants",
+        choices=["auto", "static", "dynamic", "both"],
+        default="auto",
+        help="Filter returned candidates by variant. Default: auto.",
+    )
+    parser.add_argument(
+        "--top-projects",
+        type=int,
+        default=12,
+        help="Number of ranked suites to display per source. 0 = show all. Default: 12.",
+    )
     parser.add_argument("--top-files", type=int, default=5)
     parser.add_argument(
-        "--keep-per-signature", type=int, default=0,
+        "--keep-per-signature",
+        type=int,
+        default=0,
         help=(
             "Deduplicate output by coverage signature. "
             "Keep at most N projects that provide identical evidence for the query. "
@@ -1449,42 +1812,111 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--cache-file", default=str(DEFAULT_CACHE_FILE))
-    parser.add_argument("--debug-trace", action="store_true", help="Include timing metadata and extra ranking diagnostics in the report.")
-    parser.add_argument("--show-source-evidence", action="store_true", help="Show per-source Changed File evidence blocks even in combined multi-source PR/MR reports.")
-    progress_group.add_argument("--progress", action="store_true", help="Explicitly enable phase-progress messages (default behavior).")
-    progress_group.add_argument("--no-progress", action="store_true", help="Disable phase-progress messages.")
+    parser.add_argument(
+        "--debug-trace",
+        action="store_true",
+        help="Include timing metadata and extra ranking diagnostics in the report.",
+    )
+    parser.add_argument(
+        "--show-source-evidence",
+        action="store_true",
+        help="Show per-source Changed File evidence blocks even in combined multi-source PR/MR reports.",
+    )
+    progress_group.add_argument(
+        "--progress",
+        action="store_true",
+        help="Explicitly enable phase-progress messages (default behavior).",
+    )
+    progress_group.add_argument(
+        "--no-progress", action="store_true", help="Disable phase-progress messages."
+    )
     parser.add_argument("--no-cache", action="store_true")
-    json_group.add_argument("--json", action="store_true", help="Write machine-readable JSON to stdout instead of the default report file.")
-    json_group.add_argument("--json-out", help="Write machine-readable JSON to the specified file path.")
+    json_group.add_argument(
+        "--json",
+        action="store_true",
+        help="Write machine-readable JSON to stdout instead of the default report file.",
+    )
+    json_group.add_argument(
+        "--json-out", help="Write machine-readable JSON to the specified file path."
+    )
 
     # Add subcommands for specialized indexing operations
-    subparsers = parser.add_subparsers(dest="command", help="Specialized indexing commands")
+    subparsers = parser.add_subparsers(
+        dest="command", help="Specialized indexing commands"
+    )
 
-    trace_parser = subparsers.add_parser("trace", help="Trace a source symbol to consumer tests")
-    trace_parser.add_argument("target", help="File path and symbol, e.g. path/to/file.cpp:SetRole")
+    trace_parser = subparsers.add_parser(
+        "trace", help="Trace a source symbol to consumer tests"
+    )
+    trace_parser.add_argument(
+        "target", help="File path and symbol, e.g. path/to/file.cpp:SetRole"
+    )
     trace_parser.add_argument("--repo-root", help="OHOS workspace root")
     trace_parser.add_argument("--sdk-root", help="SDK root directory")
 
-    explain_parser = subparsers.add_parser("explain", help="List API entities that a test project covers")
-    explain_parser.add_argument("test_project", help="Path to the test project directory")
+    explain_parser = subparsers.add_parser(
+        "explain", help="List API entities that a test project covers"
+    )
+    explain_parser.add_argument(
+        "test_project", help="Path to the test project directory"
+    )
 
-    batch_parser = subparsers.add_parser("validate-batch", help="In-process batch validation: load indices once, resolve multiple PRs")
-    batch_parser.add_argument("--pr-list-file", required=True, help="File with PR URLs (one per line)")
-    batch_parser.add_argument("--sample-size", type=int, default=None, help="Limit to first N PRs")
-    batch_parser.add_argument("--timeout", type=int, default=300, help="Per-PR timeout in seconds (default: 300)")
-    batch_parser.add_argument("--output", default="local/batch_results.json", help="Output JSON path")
-    batch_parser.add_argument("--cache-dir", default="local/pr_cache", help="Cache directory for per-PR results")
+    batch_parser = subparsers.add_parser(
+        "validate-batch",
+        help="In-process batch validation: load indices once, resolve multiple PRs",
+    )
+    batch_parser.add_argument(
+        "--pr-list-file", required=True, help="File with PR URLs (one per line)"
+    )
+    batch_parser.add_argument(
+        "--sample-size", type=int, default=None, help="Limit to first N PRs"
+    )
+    batch_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=300,
+        help="Per-PR timeout in seconds (default: 300)",
+    )
+    batch_parser.add_argument(
+        "--output", default="local/batch_results.json", help="Output JSON path"
+    )
+    batch_parser.add_argument(
+        "--cache-dir",
+        default="local/pr_cache",
+        help="Cache directory for per-PR results",
+    )
     batch_parser.add_argument("--repo-root", default=None, help="OHOS workspace root")
     batch_parser.add_argument("--xts-root", default=None, help="XTS tests root")
     batch_parser.add_argument("--sdk-api-root", default=None, help="SDK API root")
-    batch_parser.add_argument("--git-host-config", default=None, help="Git host config file (INI with token)")
-    batch_parser.add_argument("--workers", type=int, default=80, help="Max parallel workers (default: 80, clamped to cpu_count)")
-    batch_parser.add_argument("--pr-api-cache-dir", default="local/pr_api_cache", help="Cache directory for raw PR API responses")
-    batch_parser.add_argument("--pr-cache-mode", choices=["read-write", "read-only", "refresh"], default="read-write", help="PR API cache mode (default: read-write)")
-    batch_parser.add_argument("--allow-expired-overrides", action="store_true", help="Allow expired manual overrides (default: CI fails on expired)")
+    batch_parser.add_argument(
+        "--git-host-config", default=None, help="Git host config file (INI with token)"
+    )
+    batch_parser.add_argument(
+        "--workers",
+        type=int,
+        default=80,
+        help="Max parallel workers (default: 80, clamped to cpu_count)",
+    )
+    batch_parser.add_argument(
+        "--pr-api-cache-dir",
+        default="local/pr_api_cache",
+        help="Cache directory for raw PR API responses",
+    )
+    batch_parser.add_argument(
+        "--pr-cache-mode",
+        choices=["read-write", "read-only", "refresh"],
+        default="read-write",
+        help="PR API cache mode (default: read-write)",
+    )
+    batch_parser.add_argument(
+        "--allow-expired-overrides",
+        action="store_true",
+        help="Allow expired manual overrides (default: CI fails on expired)",
+    )
 
     parser.add_argument(
-        "--use-graph-resolver", action="store_true",
+        "--use-graph-resolver",
+        action="store_true",
         help="Add graph-based selection results in JSON under 'graph_selection' key. Experimental, default off.",
     )
 
@@ -1492,55 +1924,113 @@ def parse_args() -> argparse.Namespace:
     audit_parser = subparsers.add_parser("audit", help="Audit log operations")
     audit_sub = audit_parser.add_subparsers(dest="audit_command")
 
-    fn_rate_parser = audit_sub.add_parser("fn-rate", help="Compute false-negative rate from audit log")
-    fn_rate_parser.add_argument("--days", type=int, default=30, help="Analyze last N days (default: 30)")
-    fn_rate_parser.add_argument("--audit-dir", default=None, help="Audit log directory (default: .runs/audit/)")
+    fn_rate_parser = audit_sub.add_parser(
+        "fn-rate", help="Compute false-negative rate from audit log"
+    )
+    fn_rate_parser.add_argument(
+        "--days", type=int, default=30, help="Analyze last N days (default: 30)"
+    )
+    fn_rate_parser.add_argument(
+        "--audit-dir", default=None, help="Audit log directory (default: .runs/audit/)"
+    )
 
-    record_parser = audit_sub.add_parser("record", help="Record a PR run result to audit log")
+    record_parser = audit_sub.add_parser(
+        "record", help="Record a PR run result to audit log"
+    )
     record_parser.add_argument("--pr-number", type=int, required=True, help="PR number")
-    record_parser.add_argument("--selected", nargs="*", default=[], help="Selected test targets")
-    record_parser.add_argument("--ran", nargs="*", default=[], help="Actually executed test targets")
-    record_parser.add_argument("--failed", nargs="*", default=[], help="Failed test targets")
-    record_parser.add_argument("--selector-report", default=None, help="Path to selector report JSON")
+    record_parser.add_argument(
+        "--selected", nargs="*", default=[], help="Selected test targets"
+    )
+    record_parser.add_argument(
+        "--ran", nargs="*", default=[], help="Actually executed test targets"
+    )
+    record_parser.add_argument(
+        "--failed", nargs="*", default=[], help="Failed test targets"
+    )
+    record_parser.add_argument(
+        "--selector-report", default=None, help="Path to selector report JSON"
+    )
     record_parser.add_argument("--audit-dir", default=None, help="Audit log directory")
 
     # Oracle extract subcommand (Wave 4, W1.5)
-    oracle_parser = subparsers.add_parser("oracle-extract", help="Extract ground-truth API changes from PR diff")
+    oracle_parser = subparsers.add_parser(
+        "oracle-extract", help="Extract ground-truth API changes from PR diff"
+    )
     oracle_parser.add_argument("--pr-number", type=int, required=True, help="PR number")
     oracle_parser.add_argument("--repo-root", required=True, help="OHOS workspace root")
-    oracle_parser.add_argument("--cache-dir", default="local/pr_api_cache", help="PR API cache directory")
-    oracle_parser.add_argument("--git-host-config", default=None, help="Git host config file")
-    oracle_parser.add_argument("--output", default=None, help="Output JSON path (default: stdout)")
+    oracle_parser.add_argument(
+        "--cache-dir", default="local/pr_api_cache", help="PR API cache directory"
+    )
+    oracle_parser.add_argument(
+        "--git-host-config", default=None, help="Git host config file"
+    )
+    oracle_parser.add_argument(
+        "--output", default=None, help="Output JSON path (default: stdout)"
+    )
 
     # Coverage eval subcommand (Wave 4, W2.6)
-    cov_parser = subparsers.add_parser("coverage-eval", help="Evaluate selector coverage against golden fixtures")
-    cov_parser.add_argument("--batch-results", required=True, help="Path to batch_results.json")
-    cov_parser.add_argument("--golden", required=True, help="Path to golden fixtures JSON")
-    cov_parser.add_argument("--baseline", default=None, help="Path to baseline metrics JSON (for regression gate)")
+    cov_parser = subparsers.add_parser(
+        "coverage-eval", help="Evaluate selector coverage against golden fixtures"
+    )
+    cov_parser.add_argument(
+        "--batch-results", required=True, help="Path to batch_results.json"
+    )
+    cov_parser.add_argument(
+        "--golden", required=True, help="Path to golden fixtures JSON"
+    )
+    cov_parser.add_argument(
+        "--baseline",
+        default=None,
+        help="Path to baseline metrics JSON (for regression gate)",
+    )
     cov_parser.add_argument("--output", default=None, help="Output JSON path")
-    cov_parser.add_argument("--report-md", default=None, help="Output markdown report path")
+    cov_parser.add_argument(
+        "--report-md", default=None, help="Output markdown report path"
+    )
 
     return parser.parse_args()
 
 
 def load_app_config(args: argparse.Namespace) -> AppConfig:
     selector_repo_root = PROJECT_ROOT
-    cfg = load_json_file(resolve_path(args.config, selector_repo_root, selector_repo_root)) if args.config else {}
+    cfg = (
+        load_json_file(
+            resolve_path(args.config, selector_repo_root, selector_repo_root)
+        )
+        if args.config
+        else {}
+    )
     repo_root = discover_repo_root(
         explicit_root=args.repo_root or cfg.get("repo_root"),
         selector_repo_root=selector_repo_root,
     )
-    git_host_kind = normalize_git_host_kind(args.git_host_kind or cfg.get("git_host_kind"))
+    git_host_kind = normalize_git_host_kind(
+        args.git_host_kind or cfg.get("git_host_kind")
+    )
     git_host_config_value = args.git_host_config or cfg.get("git_host_config")
-    git_host_config_path = resolve_path(git_host_config_value, repo_root, repo_root) if git_host_config_value else None
+    git_host_config_path = (
+        resolve_path(git_host_config_value, repo_root, repo_root)
+        if git_host_config_value
+        else None
+    )
     ini_url, ini_token = load_ini_git_host_config(
         git_host_config_value,
         repo_root,
         git_host_kind if git_host_kind != "auto" else "gitcode",
     )
-    xts_root = resolve_path(args.xts_root or cfg.get("xts_root"), default_xts_root(repo_root), repo_root)
-    sdk_api_root = resolve_path(args.sdk_api_root or cfg.get("sdk_api_root"), default_sdk_api_root(repo_root), repo_root)
-    git_repo_root = resolve_path(args.git_root or cfg.get("git_repo_root"), default_git_repo_root(repo_root), repo_root)
+    xts_root = resolve_path(
+        args.xts_root or cfg.get("xts_root"), default_xts_root(repo_root), repo_root
+    )
+    sdk_api_root = resolve_path(
+        args.sdk_api_root or cfg.get("sdk_api_root"),
+        default_sdk_api_root(repo_root),
+        repo_root,
+    )
+    git_repo_root = resolve_path(
+        args.git_root or cfg.get("git_repo_root"),
+        default_git_repo_root(repo_root),
+        repo_root,
+    )
     git_remote = args.git_remote or cfg.get("git_remote") or "gitcode"
     git_base_branch = args.git_base_branch or cfg.get("git_base_branch") or "master"
     config_devices_raw = cfg.get("devices", [])
@@ -1551,7 +2041,11 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
     else:
         config_devices = []
     devices_from_value = args.devices_from or cfg.get("devices_from")
-    devices_from_path = resolve_path(devices_from_value, repo_root, repo_root) if devices_from_value else None
+    devices_from_path = (
+        resolve_path(devices_from_value, repo_root, repo_root)
+        if devices_from_value
+        else None
+    )
     devices = resolve_devices(
         cli_devices=args.devices,
         cli_device=args.device,
@@ -1565,27 +2059,64 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
     product_name = args.product_name or cfg.get("product_name") or "rk3568"
     system_size = args.system_size or cfg.get("system_size") or "standard"
     xts_suitetype = args.xts_suitetype or cfg.get("xts_suitetype")
-    acts_out_root = resolve_path(args.acts_out_root or cfg.get("acts_out_root"), default_acts_out_root(repo_root), repo_root)
-    path_rules_file = resolve_path(
-        args.path_rules_file or cfg.get("path_rules_file"),
-        default_path_rules_file() or repo_root,
+    acts_out_root = resolve_path(
+        args.acts_out_root or cfg.get("acts_out_root"),
+        default_acts_out_root(repo_root),
         repo_root,
-    ) if (args.path_rules_file or cfg.get("path_rules_file") or default_path_rules_file()) else None
-    composite_mappings_file = resolve_path(
-        args.composite_mappings_file or cfg.get("composite_mappings_file"),
-        default_composite_mappings_file() or repo_root,
-        repo_root,
-    ) if (args.composite_mappings_file or cfg.get("composite_mappings_file") or default_composite_mappings_file()) else None
-    ranking_rules_file = resolve_path(
-        args.ranking_rules_file or cfg.get("ranking_rules_file"),
-        default_ranking_rules_file() or repo_root,
-        repo_root,
-    ) if (args.ranking_rules_file or cfg.get("ranking_rules_file") or default_ranking_rules_file()) else None
-    changed_file_exclusions_file = resolve_path(
-        args.changed_file_exclusions_file or cfg.get("changed_file_exclusions_file"),
-        default_changed_file_exclusions_file() or repo_root,
-        repo_root,
-    ) if (args.changed_file_exclusions_file or cfg.get("changed_file_exclusions_file") or default_changed_file_exclusions_file()) else None
+    )
+    path_rules_file = (
+        resolve_path(
+            args.path_rules_file or cfg.get("path_rules_file"),
+            default_path_rules_file() or repo_root,
+            repo_root,
+        )
+        if (
+            args.path_rules_file
+            or cfg.get("path_rules_file")
+            or default_path_rules_file()
+        )
+        else None
+    )
+    composite_mappings_file = (
+        resolve_path(
+            args.composite_mappings_file or cfg.get("composite_mappings_file"),
+            default_composite_mappings_file() or repo_root,
+            repo_root,
+        )
+        if (
+            args.composite_mappings_file
+            or cfg.get("composite_mappings_file")
+            or default_composite_mappings_file()
+        )
+        else None
+    )
+    ranking_rules_file = (
+        resolve_path(
+            args.ranking_rules_file or cfg.get("ranking_rules_file"),
+            default_ranking_rules_file() or repo_root,
+            repo_root,
+        )
+        if (
+            args.ranking_rules_file
+            or cfg.get("ranking_rules_file")
+            or default_ranking_rules_file()
+        )
+        else None
+    )
+    changed_file_exclusions_file = (
+        resolve_path(
+            args.changed_file_exclusions_file
+            or cfg.get("changed_file_exclusions_file"),
+            default_changed_file_exclusions_file() or repo_root,
+            repo_root,
+        )
+        if (
+            args.changed_file_exclusions_file
+            or cfg.get("changed_file_exclusions_file")
+            or default_changed_file_exclusions_file()
+        )
+        else None
+    )
     run_store_root = resolve_path(
         args.run_store_root or cfg.get("run_store_root"),
         default_run_store_root(selector_repo_root),
@@ -1607,28 +2138,54 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         selector_repo_root,
     )
     firmware_cache_root = resolve_path(
-        args.firmware_cache_root or cfg.get("firmware_cache_root") or str(DEFAULT_FIRMWARE_CACHE_ROOT),
+        args.firmware_cache_root
+        or cfg.get("firmware_cache_root")
+        or str(DEFAULT_FIRMWARE_CACHE_ROOT),
         DEFAULT_FIRMWARE_CACHE_ROOT,
         selector_repo_root,
     )
-    flash_py_path = resolve_path(
-        args.flash_py_path or cfg.get("flash_py_path"),
-        selector_repo_root,
-        selector_repo_root,
-    ) if (args.flash_py_path or cfg.get("flash_py_path")) else None
-    flash_firmware_path = resolve_path(
-        args.flash_firmware_path or cfg.get("flash_firmware_path"),
-        selector_repo_root,
-        selector_repo_root,
-    ) if (args.flash_firmware_path or cfg.get("flash_firmware_path")) else None
-    hdc_path = resolve_path(
-        args.hdc_path or cfg.get("hdc_path"),
-        selector_repo_root,
-        selector_repo_root,
-    ) if (args.hdc_path or cfg.get("hdc_path")) else None
+    flash_py_path = (
+        resolve_path(
+            args.flash_py_path or cfg.get("flash_py_path"),
+            selector_repo_root,
+            selector_repo_root,
+        )
+        if (args.flash_py_path or cfg.get("flash_py_path"))
+        else None
+    )
+    flash_firmware_path = (
+        resolve_path(
+            args.flash_firmware_path or cfg.get("flash_firmware_path"),
+            selector_repo_root,
+            selector_repo_root,
+        )
+        if (args.flash_firmware_path or cfg.get("flash_firmware_path"))
+        else None
+    )
+    hdc_path = (
+        resolve_path(
+            args.hdc_path or cfg.get("hdc_path"),
+            selector_repo_root,
+            selector_repo_root,
+        )
+        if (args.hdc_path or cfg.get("hdc_path"))
+        else None
+    )
     hdc_endpoint = args.hdc_endpoint or cfg.get("hdc_endpoint")
-    git_host_api_url = args.git_host_url or cfg.get("git_host_api_url") or args.gitcode_api_url or cfg.get("gitcode_api_url") or ini_url
-    git_host_token = args.git_host_token or cfg.get("git_host_token") or args.gitcode_token or cfg.get("gitcode_token") or ini_token
+    git_host_api_url = (
+        args.git_host_url
+        or cfg.get("git_host_api_url")
+        or args.gitcode_api_url
+        or cfg.get("gitcode_api_url")
+        or ini_url
+    )
+    git_host_token = (
+        args.git_host_token
+        or cfg.get("git_host_token")
+        or args.gitcode_token
+        or cfg.get("gitcode_token")
+        or ini_token
+    )
     gitcode_api_url = args.gitcode_api_url or cfg.get("gitcode_api_url") or ini_url
     gitcode_token = args.gitcode_token or cfg.get("gitcode_token") or ini_token
     cache_value = None if args.no_cache else (args.cache_file or cfg.get("cache_file"))
@@ -1669,20 +2226,30 @@ def load_app_config(args: argparse.Namespace) -> AppConfig:
         run_store_root=run_store_root,
         runtime_state_root=runtime_state_root,
         shard_mode=args.shard_mode or cfg.get("shard_mode") or "mirror",
-        device_lock_timeout=float(args.device_lock_timeout if args.device_lock_timeout is not None else (cfg.get("device_lock_timeout") or 30.0)),
+        device_lock_timeout=float(
+            args.device_lock_timeout
+            if args.device_lock_timeout is not None
+            else (cfg.get("device_lock_timeout") or 30.0)
+        ),
         daily_build_tag=args.daily_build_tag or cfg.get("daily_build_tag"),
-        daily_component=args.daily_component or cfg.get("daily_component") or DEFAULT_DAILY_COMPONENT,
+        daily_component=args.daily_component
+        or cfg.get("daily_component")
+        or DEFAULT_DAILY_COMPONENT,
         daily_branch=args.daily_branch or cfg.get("daily_branch") or "master",
         daily_date=args.daily_date or cfg.get("daily_date"),
         daily_cache_root=daily_cache_root,
         quick_mode=bool(args.quick),
         sdk_build_tag=args.sdk_build_tag or cfg.get("sdk_build_tag"),
-        sdk_component=args.sdk_component or cfg.get("sdk_component") or DEFAULT_SDK_COMPONENT,
+        sdk_component=args.sdk_component
+        or cfg.get("sdk_component")
+        or DEFAULT_SDK_COMPONENT,
         sdk_branch=args.sdk_branch or cfg.get("sdk_branch") or "master",
         sdk_date=args.sdk_date or cfg.get("sdk_date"),
         sdk_cache_root=sdk_cache_root,
         firmware_build_tag=args.firmware_build_tag or cfg.get("firmware_build_tag"),
-        firmware_component=args.firmware_component or cfg.get("firmware_component") or DEFAULT_FIRMWARE_COMPONENT,
+        firmware_component=args.firmware_component
+        or cfg.get("firmware_component")
+        or DEFAULT_FIRMWARE_COMPONENT,
         firmware_branch=args.firmware_branch or cfg.get("firmware_branch") or "master",
         firmware_date=args.firmware_date or cfg.get("firmware_date"),
         firmware_cache_root=firmware_cache_root,
@@ -1711,6 +2278,7 @@ def _cmd_oracle_extract(args: argparse.Namespace) -> int:
         try:
             raw = json.loads(pr_json.read_text(encoding="utf-8"))
             from .pr_cache import PrCacheEntry
+
             entry = PrCacheEntry.from_dict(raw)
             pr_url_pattern = raw.get("pr_url", str(pr_json))
             break
@@ -1726,7 +2294,10 @@ def _cmd_oracle_extract(args: argparse.Namespace) -> int:
         return 1
 
     if not entry.base_sha or not entry.head_sha:
-        print(f"PR #{pr_number} has no SHA data — run refresh_pr_metadata first", file=sys.stderr)
+        print(
+            f"PR #{pr_number} has no SHA data — run refresh_pr_metadata first",
+            file=sys.stderr,
+        )
         return 1
 
     changes = extract_method_changes(
@@ -1737,6 +2308,7 @@ def _cmd_oracle_extract(args: argparse.Namespace) -> int:
     )
 
     from dataclasses import asdict
+
     mappings = map_method_changes([asdict(c) for c in changes])
     grouped = group_by_confidence(mappings)
 
@@ -1808,7 +2380,9 @@ def validate_inputs(args: argparse.Namespace, app_config: AppConfig) -> list[str
         return errors
     parsed = urlparse(pr_url)
     if not parsed.scheme or not parsed.netloc:
-        errors.append(f"invalid PR URL format: {pr_url!r} - expected https://gitcode.com/.../pull/NNN")
+        errors.append(
+            f"invalid PR URL format: {pr_url!r} - expected https://gitcode.com/.../pull/NNN"
+        )
     elif "/pull/" not in parsed.path and "/pulls/" not in parsed.path:
         errors.append(f"PR URL does not look like a pull request URL: {pr_url!r}")
     return errors
@@ -1822,18 +2396,22 @@ def main() -> int:
     # Handle subcommands
     if args.command == "trace":
         from .indexing.trace import cmd_trace
+
         return cmd_trace(args)
     if args.command == "explain":
         from .indexing.explain import cmd_explain
+
         return cmd_explain(args)
     if args.command == "validate-batch":
         from .batch_validate import cmd_validate_batch
+
         return cmd_validate_batch(args)
 
     if args.command == "audit":
         if args.audit_command == "fn-rate":
             from .audit.analyzer import compute_fn_rate, format_fn_rate_report
             from pathlib import Path as _Path
+
             report = compute_fn_rate(
                 audit_dir=_Path(args.audit_dir) if args.audit_dir else None,
                 days=args.days,
@@ -1844,6 +2422,7 @@ def main() -> int:
             from .audit.recorder import record_run
             import json as _json
             from pathlib import Path as _Path
+
             selector_report = None
             if args.selector_report:
                 selector_report = _json.loads(_Path(args.selector_report).read_text())
@@ -1857,7 +2436,10 @@ def main() -> int:
             )
             print(f"Recorded audit entry for PR #{args.pr_number}")
             return 0
-        print("Usage: arkui-xts-selector audit <fn-rate|record> [options]", file=sys.stderr)
+        print(
+            "Usage: arkui-xts-selector audit <fn-rate|record> [options]",
+            file=sys.stderr,
+        )
         return 1
 
     if args.command == "oracle-extract":
@@ -1899,7 +2481,9 @@ def main() -> int:
         return 2
     if app_config.quick_mode:
         # Quick mode: skip daily download, use only local artifacts
-        emit_progress(progress_enabled, "quick mode enabled (using local ACTS artifacts only)")
+        emit_progress(
+            progress_enabled, "quick mode enabled (using local ACTS artifacts only)"
+        )
         if not _has_local_acts_artifacts(app_config.acts_out_root):
             print(
                 "warning: --quick mode active but no local ACTS artifacts found. "
@@ -1916,7 +2500,10 @@ def main() -> int:
                 flush=True,
             )
     elif app_config.daily_build_tag or app_config.daily_date:
-        emit_progress(progress_enabled, f"preparing daily prebuilt {app_config.daily_build_tag or app_config.daily_date}")
+        emit_progress(
+            progress_enabled,
+            f"preparing daily prebuilt {app_config.daily_build_tag or app_config.daily_date}",
+        )
         try:
             prepare_daily_prebuilt_from_config(app_config)
         except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
@@ -1932,7 +2519,9 @@ def main() -> int:
             file=sys.stderr,
             flush=True,
         )
-        emit_progress(progress_enabled, f"preparing daily prebuilt {app_config.daily_date}")
+        emit_progress(
+            progress_enabled, f"preparing daily prebuilt {app_config.daily_date}"
+        )
         try:
             prepared = prepare_daily_prebuilt_from_config(app_config)
         except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
@@ -1959,7 +2548,9 @@ def main() -> int:
                     print(f"daily prebuilt sync failed: {exc}", file=sys.stderr)
                     return 2
                 else:
-                    print(f"warning: daily prebuilt sync failed: {exc}", file=sys.stderr)
+                    print(
+                        f"warning: daily prebuilt sync failed: {exc}", file=sys.stderr
+                    )
                     synced_root = None
             if synced_root is not None:
                 app_config.acts_out_root = synced_root
@@ -1973,12 +2564,20 @@ def main() -> int:
         if app_config.sdk_date is None and app_config.sdk_build_tag is None:
             app_config.sdk_date = time.strftime("%Y%m%d")
         if app_config.sdk_date or app_config.sdk_build_tag:
-            emit_progress(progress_enabled, f"auto-downloading daily SDK {app_config.sdk_build_tag or app_config.sdk_date}")
+            emit_progress(
+                progress_enabled,
+                f"auto-downloading daily SDK {app_config.sdk_build_tag or app_config.sdk_date}",
+            )
             try:
                 prepared_sdk = prepare_daily_sdk_from_config(app_config)
                 if prepared_sdk.primary_root is not None:
                     app_config.sdk_api_root = prepared_sdk.primary_root
-            except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
+            except (
+                OSError,
+                ValueError,
+                FileNotFoundError,
+                urllib.error.URLError,
+            ) as exc:
                 print(f"warning: SDK auto-download failed: {exc}", file=sys.stderr)
 
     source_report_path = resolve_selector_report_input(
@@ -1986,7 +2585,11 @@ def main() -> int:
         bool(args.last_report),
         app_config.run_store_root or default_run_store_root(PROJECT_ROOT),
     )
-    source_report = load_selector_report(source_report_path) if source_report_path is not None else None
+    source_report = (
+        load_selector_report(source_report_path)
+        if source_report_path is not None
+        else None
+    )
     run_session = (
         create_run_session(
             app_config.run_label,
@@ -1994,7 +2597,11 @@ def main() -> int:
             selector_repo_root=app_config.selector_repo_root,
         )
         if app_config.run_label
-        else (run_session_from_report(source_report, source_report_path) if source_report is not None and source_report_path is not None else None)
+        else (
+            run_session_from_report(source_report, source_report_path)
+            if source_report is not None and source_report_path is not None
+            else None
+        )
     )
     if not json_to_stdout:
         if args.json_out:
@@ -2005,13 +2612,21 @@ def main() -> int:
             json_output_path = source_report_path
         else:
             json_output_path = resolve_json_output_path(None)
-    xdevice_reports_root = (run_session.run_dir / "xdevice_reports") if run_session is not None else None
+    xdevice_reports_root = (
+        (run_session.run_dir / "xdevice_reports") if run_session is not None else None
+    )
     changed_inputs = list(args.changed_file)
-    changed_symbols = [item.strip() for item in args.changed_symbol if item and item.strip()]
-    symbol_queries = [item.strip() for item in args.symbol_query if item and item.strip()]
+    changed_symbols = [
+        item.strip() for item in args.changed_symbol if item and item.strip()
+    ]
+    symbol_queries = [
+        item.strip() for item in args.symbol_query if item and item.strip()
+    ]
     code_queries = [item.strip() for item in args.code_query if item and item.strip()]
     requested_test_names_path = (
-        resolve_path(args.run_test_names_file, app_config.repo_root, app_config.repo_root)
+        resolve_path(
+            args.run_test_names_file, app_config.repo_root, app_config.repo_root
+        )
         if args.run_test_names_file
         else None
     )
@@ -2024,7 +2639,13 @@ def main() -> int:
     execution_progress_callback = build_execution_progress_callback(progress_enabled)
 
     if args.changed_files_from:
-        changed_inputs.extend(read_text(resolve_path(args.changed_files_from, app_config.repo_root, app_config.repo_root)).splitlines())
+        changed_inputs.extend(
+            read_text(
+                resolve_path(
+                    args.changed_files_from, app_config.repo_root, app_config.repo_root
+                )
+            ).splitlines()
+        )
 
     if source_report is not None:
         report = source_report
@@ -2034,12 +2655,18 @@ def main() -> int:
         report["requested_devices"] = list(app_config.devices)
         report["execution_server_host"] = app_config.server_host or ""
         report["execution_server_user"] = app_config.server_user or ""
-        report["execution_xdevice_reports_root"] = str(xdevice_reports_root) if xdevice_reports_root is not None else ""
+        report["execution_xdevice_reports_root"] = (
+            str(xdevice_reports_root) if xdevice_reports_root is not None else ""
+        )
         report["execution_summary"] = {}
-        selected_tests_report_base_path = resolve_selected_tests_report_base_path(run_session, json_output_path)
+        selected_tests_report_base_path = resolve_selected_tests_report_base_path(
+            run_session, json_output_path
+        )
         if json_output_path is not None:
             report["json_output_path"] = str(json_output_path)
-            selected_tests_json_path = resolve_selected_tests_output_path(selected_tests_report_base_path)
+            selected_tests_json_path = resolve_selected_tests_output_path(
+                selected_tests_report_base_path
+            )
             if selected_tests_json_path is not None:
                 report["selected_tests_json_path"] = str(selected_tests_json_path)
         if run_session is not None:
@@ -2049,7 +2676,12 @@ def main() -> int:
                 "timestamp": run_session.timestamp,
                 "status": str(report.get("selector_run", {}).get("status", "planned")),
                 "run_dir": str(run_session.run_dir),
-                "run_store_root": str((app_config.run_store_root or default_run_store_root(PROJECT_ROOT)).resolve()),
+                "run_store_root": str(
+                    (
+                        app_config.run_store_root
+                        or default_run_store_root(PROJECT_ROOT)
+                    ).resolve()
+                ),
                 "selector_report_path": str(run_session.selector_report_path),
                 "manifest_path": str(run_session.manifest_path),
             }
@@ -2132,41 +2764,66 @@ def main() -> int:
             elif execution_interrupted:
                 status = "interrupted"
             elif execution_summary is not None:
-                status = "completed_with_failures" if execution_summary.get("has_failures") else "completed"
+                status = (
+                    "completed_with_failures"
+                    if execution_summary.get("has_failures")
+                    else "completed"
+                )
             report["selector_run"]["status"] = status
         if execution_summary is not None:
             report["runtime_history_update"] = update_runtime_history(
                 default_runtime_history_file(app_config.runtime_state_root),
                 report,
-                run_label=str(report.get("selector_run", {}).get("label") or app_config.run_label or ""),
+                run_label=str(
+                    report.get("selector_run", {}).get("label")
+                    or app_config.run_label
+                    or ""
+                ),
             )
         else:
             report["runtime_history_update"] = {
-                "history_file": str(default_runtime_history_file(app_config.runtime_state_root)),
+                "history_file": str(
+                    default_runtime_history_file(app_config.runtime_state_root)
+                ),
                 "updated_targets": 0,
                 "updated_samples": 0,
                 "significant_updates": 0,
             }
 
-        artifact_output_dir = run_session.run_dir if run_session is not None else (json_output_path.parent if json_output_path is not None else None)
-        artifact_index_path = write_execution_artifact_index(report, artifact_output_dir)
+        artifact_output_dir = (
+            run_session.run_dir
+            if run_session is not None
+            else (json_output_path.parent if json_output_path is not None else None)
+        )
+        artifact_index_path = write_execution_artifact_index(
+            report, artifact_output_dir
+        )
         if artifact_index_path is not None:
             report["execution_artifact_index_path"] = str(artifact_index_path)
 
         emit_progress(progress_enabled, "writing JSON report")
-        written_json_path = write_json_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)
-        selected_tests_report_base_path = resolve_selected_tests_report_base_path(run_session, written_json_path)
+        written_json_path = write_json_report(
+            report, json_to_stdout=json_to_stdout, json_output_path=json_output_path
+        )
+        selected_tests_report_base_path = resolve_selected_tests_report_base_path(
+            run_session, written_json_path
+        )
         if selected_tests_report_base_path is not None:
-            selected_tests_path = write_selected_tests_report(report, selected_tests_report_base_path)
+            selected_tests_path = write_selected_tests_report(
+                report, selected_tests_report_base_path
+            )
             if selected_tests_path is not None:
                 report["selected_tests_json_path"] = str(selected_tests_path)
                 if written_json_path is not None:
-                    write_json_report(report, json_to_stdout=False, json_output_path=written_json_path)
+                    write_json_report(
+                        report, json_to_stdout=False, json_output_path=written_json_path
+                    )
         if run_session is not None:
             manifest = build_run_manifest(
                 report,
                 selector_repo_root=app_config.selector_repo_root or PROJECT_ROOT,
-                run_store_root=app_config.run_store_root or default_run_store_root(PROJECT_ROOT),
+                run_store_root=app_config.run_store_root
+                or default_run_store_root(PROJECT_ROOT),
                 session=run_session,
                 status=report["selector_run"]["status"],
                 shard_mode=app_config.shard_mode,
@@ -2185,10 +2842,14 @@ def main() -> int:
             return 1
         return 0
 
-    changed_files = normalize_changed_files(changed_inputs, base_roots=[app_config.repo_root, app_config.git_repo_root])
+    changed_files = normalize_changed_files(
+        changed_inputs, base_roots=[app_config.repo_root, app_config.git_repo_root]
+    )
     if args.git_diff:
         try:
-            changed_files.extend(git_changed_files(app_config.git_repo_root, args.git_diff))
+            changed_files.extend(
+                git_changed_files(app_config.git_repo_root, args.git_diff)
+            )
         except RuntimeError as exc:
             print(f"error: git diff failed: {exc}", file=sys.stderr)
             return 2
@@ -2214,7 +2875,10 @@ def main() -> int:
                 hint = f"PR not found. Check the PR URL or number: {getattr(args, 'pr_url', None) or getattr(args, 'pr_number', None)}"
             else:
                 hint = "Check the PR URL, configured git host credentials, and network access."
-            print(f"error: {XtsUserError(f'cannot fetch PR diff: {message}', hint=hint)}", file=sys.stderr)
+            print(
+                f"error: {XtsUserError(f'cannot fetch PR diff: {message}', hint=hint)}",
+                file=sys.stderr,
+            )
             return 2
 
     deduped: list[Path] = []
@@ -2239,23 +2903,32 @@ def main() -> int:
         return 2
 
     if not changed_files and not symbol_queries and not code_queries:
-        print("No changed files, symbol queries, or code queries were provided.", file=sys.stderr)
+        print(
+            "No changed files, symbol queries, or code queries were provided.",
+            file=sys.stderr,
+        )
         return 2
 
     exclusion_started = time.perf_counter()
-    exclusion_config = load_changed_file_exclusion_config(app_config.changed_file_exclusions_file)
+    exclusion_config = load_changed_file_exclusion_config(
+        app_config.changed_file_exclusions_file
+    )
     changed_files, excluded_inputs = filter_changed_files_for_xts(
         changed_files,
         app_config.git_repo_root,
         exclusion_config,
     )
-    changed_file_filtering_ms = round((time.perf_counter() - exclusion_started) * 1000, 3)
+    changed_file_filtering_ms = round(
+        (time.perf_counter() - exclusion_started) * 1000, 3
+    )
 
     progress_callback = build_progress_callback(progress_enabled, len(changed_files))
 
     emit_progress(progress_enabled, "loading XTS project index")
     load_started = time.perf_counter()
-    projects, cache_used = load_or_build_projects(app_config.xts_root, app_config.cache_file)
+    projects, cache_used = load_or_build_projects(
+        app_config.xts_root, app_config.cache_file
+    )
     load_projects_ms = round((time.perf_counter() - load_started) * 1000, 3)
     emit_progress(progress_enabled, "loading SDK index")
     sdk_started = time.perf_counter()
@@ -2264,7 +2937,9 @@ def main() -> int:
     emit_progress(progress_enabled, "building content modifier index")
     content_started = time.perf_counter()
     content_index = build_content_modifier_index()
-    build_content_modifier_index_ms = round((time.perf_counter() - content_started) * 1000, 3)
+    build_content_modifier_index_ms = round(
+        (time.perf_counter() - content_started) * 1000, 3
+    )
     emit_progress(progress_enabled, "loading mapping config")
     mapping_started = time.perf_counter()
     api_lineage_map = None
@@ -2282,7 +2957,9 @@ def main() -> int:
             runtime_state_root=app_config.runtime_state_root,
             project_cache_file=app_config.cache_file,
         )
-        build_api_lineage_map_ms = round((time.perf_counter() - lineage_started) * 1000, 3)
+        build_api_lineage_map_ms = round(
+            (time.perf_counter() - lineage_started) * 1000, 3
+        )
         if api_lineage_map is not None:
             lineage_auto_alias = api_lineage_map.auto_pattern_alias()
     mapping_config = load_mapping_config(
@@ -2293,8 +2970,12 @@ def main() -> int:
     load_mapping_config_ms = round((time.perf_counter() - mapping_started) * 1000, 3)
     emit_progress(progress_enabled, "loading runtime history")
     runtime_history_started = time.perf_counter()
-    runtime_history_index = build_runtime_history_index(default_runtime_history_file(app_config.runtime_state_root))
-    load_runtime_history_ms = round((time.perf_counter() - runtime_history_started) * 1000, 3)
+    runtime_history_index = build_runtime_history_index(
+        default_runtime_history_file(app_config.runtime_state_root)
+    )
+    load_runtime_history_ms = round(
+        (time.perf_counter() - runtime_history_started) * 1000, 3
+    )
     api_lineage_map = None
     api_lineage_map_path = None
     build_api_lineage_map_ms = 0.0
@@ -2309,7 +2990,9 @@ def main() -> int:
             runtime_state_root=app_config.runtime_state_root,
             project_cache_file=app_config.cache_file,
         )
-        build_api_lineage_map_ms = round((time.perf_counter() - lineage_started) * 1000, 3)
+        build_api_lineage_map_ms = round(
+            (time.perf_counter() - lineage_started) * 1000, 3
+        )
     emit_progress(progress_enabled, "building report")
     report_started = time.perf_counter()
     report = format_report(
@@ -2341,23 +3024,33 @@ def main() -> int:
         api_lineage_map=api_lineage_map,
         api_lineage_map_path=api_lineage_map_path,
     )
-    report["acts_out_root"] = str(app_config.acts_out_root or (app_config.repo_root / "out/release/suites/acts"))
+    report["acts_out_root"] = str(
+        app_config.acts_out_root or (app_config.repo_root / "out/release/suites/acts")
+    )
     report["excluded_inputs"] = excluded_inputs
-    report["timings_ms"].update({
-        "changed_file_filtering": changed_file_filtering_ms,
-        "load_projects": load_projects_ms,
-        "load_sdk_index": load_sdk_index_ms,
-        "build_content_modifier_index": build_content_modifier_index_ms,
-        "load_mapping_config": load_mapping_config_ms,
-        "load_runtime_history": load_runtime_history_ms,
-        "build_api_lineage_map": build_api_lineage_map_ms,
-        "main_report_call": round((time.perf_counter() - report_started) * 1000, 3),
-    })
-    report["timings_ms"]["total_runtime"] = round((time.perf_counter() - runtime_started) * 1000, 3)
+    report["timings_ms"].update(
+        {
+            "changed_file_filtering": changed_file_filtering_ms,
+            "load_projects": load_projects_ms,
+            "load_sdk_index": load_sdk_index_ms,
+            "build_content_modifier_index": build_content_modifier_index_ms,
+            "load_mapping_config": load_mapping_config_ms,
+            "load_runtime_history": load_runtime_history_ms,
+            "build_api_lineage_map": build_api_lineage_map_ms,
+            "main_report_call": round((time.perf_counter() - report_started) * 1000, 3),
+        }
+    )
+    report["timings_ms"]["total_runtime"] = round(
+        (time.perf_counter() - runtime_started) * 1000, 3
+    )
     # ---- Graph-based resolver (Phase 7, experimental, under flag) ----
     if args.use_graph_resolver and changed_files:
         try:
-            from .indexing.cache import cached_sdk_index, cached_ace_index, cached_inverted_index
+            from .indexing.cache import (
+                cached_sdk_index,
+                cached_ace_index,
+                cached_inverted_index,
+            )
             from .indexing.sdk_indexer import SdkIndexResult
             from .indexing.ace_indexer import AceIndexResult
             from .indexing.inverted_index import InvertedIndex
@@ -2365,16 +3058,31 @@ def main() -> int:
 
             graph_started = time.perf_counter()
 
-            _sdk_root = app_config.sdk_api_root or (app_config.repo_root / "interface/sdk-js/api")
+            _sdk_root = app_config.sdk_api_root or (
+                app_config.repo_root / "interface/sdk-js/api"
+            )
             _ace_root = app_config.repo_root / "foundation/arkui/ace_engine"
             _xts_root = app_config.xts_root
 
-            _sdk = cached_sdk_index(_sdk_root) if _sdk_root.is_dir() else SdkIndexResult()
-            _ace = cached_ace_index(_ace_root) if _ace_root.is_dir() else AceIndexResult()
-            _inverted = cached_inverted_index(_xts_root, sdk_index=_sdk, sdk_api_root=_sdk_root) if _xts_root and _xts_root.is_dir() else InvertedIndex()
+            _sdk = (
+                cached_sdk_index(_sdk_root) if _sdk_root.is_dir() else SdkIndexResult()
+            )
+            _ace = (
+                cached_ace_index(_ace_root) if _ace_root.is_dir() else AceIndexResult()
+            )
+            _inverted = (
+                cached_inverted_index(_xts_root, sdk_index=_sdk, sdk_api_root=_sdk_root)
+                if _xts_root and _xts_root.is_dir()
+                else InvertedIndex()
+            )
 
             from .indexing.target_index import build_target_index, TargetIndexResult
-            _target_index = build_target_index(_xts_root) if _xts_root and _xts_root.is_dir() else TargetIndexResult()
+
+            _target_index = (
+                build_target_index(_xts_root)
+                if _xts_root and _xts_root.is_dir()
+                else TargetIndexResult()
+            )
 
             _broad_rules = PROJECT_ROOT / "config" / "broad_infrastructure_files.json"
 
@@ -2394,7 +3102,11 @@ def main() -> int:
             )
 
             # Apply conservative fallback policy (Phase 11)
-            _result = apply_fallback(_result, xts_root=_xts_root if _xts_root else None, target_index=_target_index)
+            _result = apply_fallback(
+                _result,
+                xts_root=_xts_root if _xts_root else None,
+                target_index=_target_index,
+            )
 
             def _entry_to_dict(e):
                 d = {
@@ -2435,15 +3147,21 @@ def main() -> int:
             graph_selection["fallback_reason"] = _result.fallback_reason
             graph_selection["fallback_level"] = _result.fallback_level
             if _result.fallback_extra_targets:
-                graph_selection["fallback_extra_targets"] = list(_result.fallback_extra_targets)
+                graph_selection["fallback_extra_targets"] = list(
+                    _result.fallback_extra_targets
+                )
             # Phase 7: CI policy and unresolved tracking
-            graph_selection["ci_policy_recommendation"] = _result.ci_policy_recommendation
+            graph_selection["ci_policy_recommendation"] = (
+                _result.ci_policy_recommendation
+            )
             graph_selection["ci_policy_reason"] = _result.ci_policy_reason
             graph_selection["semantic_source"] = _result.semantic_source
             if _result.unresolved_files:
                 graph_selection["unresolved_files"] = list(_result.unresolved_files)
             report["graph_selection"] = graph_selection
-            report["timings_ms"]["graph_resolver"] = round((time.perf_counter() - graph_started) * 1000, 3)
+            report["timings_ms"]["graph_resolver"] = round(
+                (time.perf_counter() - graph_started) * 1000, 3
+            )
         except Exception as exc:
             report["graph_selection"] = {"error": str(exc)}
     # ---- End graph-based resolver ----
@@ -2451,16 +3169,22 @@ def main() -> int:
     report["requested_devices"] = list(app_config.devices)
     report["execution_server_host"] = app_config.server_host or ""
     report["execution_server_user"] = app_config.server_user or ""
-    report["execution_xdevice_reports_root"] = str(xdevice_reports_root) if xdevice_reports_root is not None else ""
+    report["execution_xdevice_reports_root"] = (
+        str(xdevice_reports_root) if xdevice_reports_root is not None else ""
+    )
     if app_config.daily_prebuilt is not None:
         report["daily_prebuilt"] = {
             **app_config.daily_prebuilt.to_dict(),
             "note": app_config.daily_prebuilt_note,
         }
-    selected_tests_report_base_path = resolve_selected_tests_report_base_path(run_session, json_output_path)
+    selected_tests_report_base_path = resolve_selected_tests_report_base_path(
+        run_session, json_output_path
+    )
     if json_output_path is not None:
         report["json_output_path"] = str(json_output_path)
-        selected_tests_json_path = resolve_selected_tests_output_path(selected_tests_report_base_path)
+        selected_tests_json_path = resolve_selected_tests_output_path(
+            selected_tests_report_base_path
+        )
         if selected_tests_json_path is not None:
             report["selected_tests_json_path"] = str(selected_tests_json_path)
     if run_session is not None:
@@ -2470,7 +3194,11 @@ def main() -> int:
             "timestamp": run_session.timestamp,
             "status": "planned",
             "run_dir": str(run_session.run_dir),
-            "run_store_root": str((app_config.run_store_root or default_run_store_root(PROJECT_ROOT)).resolve()),
+            "run_store_root": str(
+                (
+                    app_config.run_store_root or default_run_store_root(PROJECT_ROOT)
+                ).resolve()
+            ),
             "selector_report_path": str(run_session.selector_report_path),
             "manifest_path": str(run_session.manifest_path),
         }
@@ -2495,7 +3223,9 @@ def main() -> int:
         skip_install=args.skip_install,
     )
     report["show_source_evidence"] = bool(args.show_source_evidence or args.debug_trace)
-    report["coverage_run_commands"] = build_coverage_run_commands(report, app_config, args)
+    report["coverage_run_commands"] = build_coverage_run_commands(
+        report, app_config, args
+    )
     report["next_steps"] = build_next_steps(report, app_config, args)
     execution_summary = None
     execution_preflight = None
@@ -2550,7 +3280,11 @@ def main() -> int:
         elif execution_interrupted:
             status = "interrupted"
         elif execution_summary is not None:
-            status = "completed_with_failures" if execution_summary.get("has_failures") else "completed"
+            status = (
+                "completed_with_failures"
+                if execution_summary.get("has_failures")
+                else "completed"
+            )
         report["selector_run"]["status"] = status
     if execution_summary is not None:
         report["runtime_history_update"] = update_runtime_history(
@@ -2560,31 +3294,46 @@ def main() -> int:
         )
     else:
         report["runtime_history_update"] = {
-            "history_file": str(default_runtime_history_file(app_config.runtime_state_root)),
+            "history_file": str(
+                default_runtime_history_file(app_config.runtime_state_root)
+            ),
             "updated_targets": 0,
             "updated_samples": 0,
             "significant_updates": 0,
         }
 
-    artifact_output_dir = run_session.run_dir if run_session is not None else (json_output_path.parent if json_output_path is not None else None)
+    artifact_output_dir = (
+        run_session.run_dir
+        if run_session is not None
+        else (json_output_path.parent if json_output_path is not None else None)
+    )
     artifact_index_path = write_execution_artifact_index(report, artifact_output_dir)
     if artifact_index_path is not None:
         report["execution_artifact_index_path"] = str(artifact_index_path)
 
     emit_progress(progress_enabled, "writing JSON report")
-    written_json_path = write_json_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)
-    selected_tests_report_base_path = resolve_selected_tests_report_base_path(run_session, written_json_path)
+    written_json_path = write_json_report(
+        report, json_to_stdout=json_to_stdout, json_output_path=json_output_path
+    )
+    selected_tests_report_base_path = resolve_selected_tests_report_base_path(
+        run_session, written_json_path
+    )
     if selected_tests_report_base_path is not None:
-        selected_tests_path = write_selected_tests_report(report, selected_tests_report_base_path)
+        selected_tests_path = write_selected_tests_report(
+            report, selected_tests_report_base_path
+        )
         if selected_tests_path is not None:
             report["selected_tests_json_path"] = str(selected_tests_path)
             if written_json_path is not None:
-                write_json_report(report, json_to_stdout=False, json_output_path=written_json_path)
+                write_json_report(
+                    report, json_to_stdout=False, json_output_path=written_json_path
+                )
     if run_session is not None:
         manifest = build_run_manifest(
             report,
             selector_repo_root=app_config.selector_repo_root or PROJECT_ROOT,
-            run_store_root=app_config.run_store_root or default_run_store_root(PROJECT_ROOT),
+            run_store_root=app_config.run_store_root
+            or default_run_store_root(PROJECT_ROOT),
             session=run_session,
             status=report["selector_run"]["status"],
             shard_mode=app_config.shard_mode,

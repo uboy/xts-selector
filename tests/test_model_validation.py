@@ -25,7 +25,6 @@ from arkui_xts_selector.model.evidence import (
     ConfidenceLevel,
 )
 from arkui_xts_selector.model.selection import (
-    SemanticBucket,
     RunnabilityState,
 )
 
@@ -58,7 +57,7 @@ class InternalNamespaceTests(unittest.TestCase):
         canonical = internal_id.canonical()
         self.assertTrue(
             canonical.startswith("api:"),
-            f"Expected 'api:' prefix for ApiEntityId, got: {canonical}"
+            f"Expected 'api:' prefix for ApiEntityId, got: {canonical}",
         )
 
         # But the namespace field distinguishes it as internal
@@ -108,7 +107,7 @@ class HelperFamilyDistinctnessTests(unittest.TestCase):
             component_canonical,
             f"Helper family and component should have distinct ids:\n"
             f"  Helper: {helper_canonical}\n"
-            f"  Component: {component_canonical}"
+            f"  Component: {component_canonical}",
         )
 
         # The kind field is the differentiator
@@ -260,7 +259,7 @@ class CandidateDiscoveryEvidenceTests(unittest.TestCase):
             ev.is_semantic,
             "is_semantic returns True for fallback_heuristic - this is a "
             "known gap. Fallback heuristic should be candidate-discovery only "
-            "unless joined with stronger evidence."
+            "unless joined with stronger evidence.",
         )
 
         # Document that parser_level=0 indicates discovery-only
@@ -285,7 +284,7 @@ class CandidateDiscoveryEvidenceTests(unittest.TestCase):
             ev.is_semantic,
             "is_semantic returns True for path_rule - this is a known gap. "
             "Path rule should be candidate-discovery only unless joined with "
-            "stronger evidence."
+            "stronger evidence.",
         )
 
         # Document that parser_level=0 indicates discovery-only
@@ -312,7 +311,7 @@ class PublicApiIdFormatTests(unittest.TestCase):
         # Must start with api:v1:
         self.assertTrue(
             canonical.startswith("api:v1:"),
-            f"Expected canonical id to start with 'api:v1:', got: {canonical}"
+            f"Expected canonical id to start with 'api:v1:', got: {canonical}",
         )
 
         # Must contain percent-encoding for module dots
@@ -384,11 +383,7 @@ class EnumCompletenessTests(unittest.TestCase):
         actual_kinds = {member.value for member in ApiEntityKind}
 
         missing = required_kinds - actual_kinds
-        self.assertEqual(
-            len(missing),
-            0,
-            f"Missing ApiEntityKind values: {missing}"
-        )
+        self.assertEqual(len(missing), 0, f"Missing ApiEntityKind values: {missing}")
 
         # Verify all actual kinds are among required ones
         extra = actual_kinds - required_kinds
@@ -398,8 +393,7 @@ class EnumCompletenessTests(unittest.TestCase):
             pass
 
     def test_api_surface_kind_enum_complete(self) -> None:
-        """All required ApiSurfaceKind values exist: static, dynamic, shared, unknown.
-        """
+        """All required ApiSurfaceKind values exist: static, dynamic, shared, unknown."""
         required_surfaces = {
             "static",
             "dynamic",
@@ -410,11 +404,7 @@ class EnumCompletenessTests(unittest.TestCase):
         actual_surfaces = {member.value for member in ApiSurfaceKind}
 
         missing = required_surfaces - actual_surfaces
-        self.assertEqual(
-            len(missing),
-            0,
-            f"Missing ApiSurfaceKind values: {missing}"
-        )
+        self.assertEqual(len(missing), 0, f"Missing ApiSurfaceKind values: {missing}")
 
         # Verify all actual surfaces are among required ones
         extra = actual_surfaces - required_surfaces
@@ -447,7 +437,7 @@ class RunnabilityStateTests(unittest.TestCase):
             overlap,
             {"unknown"},
             f"Only 'unknown' should overlap between RunnabilityState and "
-            f"ConfidenceLevel. Found overlap: {overlap}"
+            f"ConfidenceLevel. Found overlap: {overlap}",
         )
 
         # Verify distinctness of non-overlapping values
@@ -457,7 +447,7 @@ class RunnabilityStateTests(unittest.TestCase):
         self.assertEqual(
             len(runnability_without_unknown & confidence_without_unknown),
             0,
-            "No values other than 'unknown' should overlap"
+            "No values other than 'unknown' should overlap",
         )
 
 

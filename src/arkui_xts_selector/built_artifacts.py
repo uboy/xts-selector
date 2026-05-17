@@ -29,7 +29,7 @@ def parse_module_info(module_info_path: Path) -> list[str]:
     entries: list[str] = []
     for line in text.splitlines():
         line = line.strip()
-        if not line or line.startswith('#'):
+        if not line or line.startswith("#"):
             continue
         entries.append(line)
     return entries
@@ -39,7 +39,7 @@ def inspect_built_artifacts(repo_root: Path, acts_out_root: Path | None) -> dict
     root = acts_out_root or (repo_root / "out/release/suites/acts")
     testcases_dir = root / "testcases"
     module_info = testcases_dir / "module_info.list"
-    json_paths = sorted(testcases_dir.glob('*.json')) if testcases_dir.exists() else []
+    json_paths = sorted(testcases_dir.glob("*.json")) if testcases_dir.exists() else []
     module_entries = parse_module_info(module_info) if module_info.exists() else []
     return {
         "acts_out_root": str(root),
@@ -47,7 +47,9 @@ def inspect_built_artifacts(repo_root: Path, acts_out_root: Path | None) -> dict
         "module_info_exists": module_info.exists(),
         "testcase_json_count": len(json_paths),
         "module_info_entry_count": len(module_entries),
-        "status": "built" if testcases_dir.exists() and module_info.exists() else "missing",
+        "status": "built"
+        if testcases_dir.exists() and module_info.exists()
+        else "missing",
     }
 
 
@@ -66,35 +68,39 @@ def load_built_artifact_index(repo_root: Path, acts_out_root: Path | None) -> di
 
     testcase_modules: list[dict] = []
     hap_runtime_modules: dict[str, dict] = {}
-    for json_path in sorted(testcases_dir.glob('*.json')):
+    for json_path in sorted(testcases_dir.glob("*.json")):
         data = load_json(json_path)
         if not isinstance(data, dict):
             continue
-        driver = data.get('driver', {}) if isinstance(data.get('driver'), dict) else {}
+        driver = data.get("driver", {}) if isinstance(data.get("driver"), dict) else {}
         test_file_names: list[str] = []
-        for kit in data.get('kits', []):
+        for kit in data.get("kits", []):
             if not isinstance(kit, dict):
                 continue
-            names = kit.get('test-file-name', [])
+            names = kit.get("test-file-name", [])
             if isinstance(names, list):
-                test_file_names.extend([item for item in names if isinstance(item, str)])
-        testcase_modules.append({
-            "json": str(json_path),
-            "bundle_name": driver.get('bundle-name'),
-            "driver_module_name": driver.get('module-name'),
-            "driver_type": driver.get('type'),
-            "test_file_names": test_file_names,
-        })
+                test_file_names.extend(
+                    [item for item in names if isinstance(item, str)]
+                )
+        testcase_modules.append(
+            {
+                "json": str(json_path),
+                "bundle_name": driver.get("bundle-name"),
+                "driver_module_name": driver.get("module-name"),
+                "driver_type": driver.get("type"),
+                "test_file_names": test_file_names,
+            }
+        )
         for name in test_file_names:
-            if not name.endswith('.hap'):
+            if not name.endswith(".hap"):
                 continue
             stem = Path(name).stem
             hap_runtime_modules[stem] = {
                 "hap": name,
                 "stem": stem,
                 "source_json": str(json_path),
-                "bundle_name": driver.get('bundle-name'),
-                "driver_module_name": driver.get('module-name'),
+                "bundle_name": driver.get("bundle-name"),
+                "driver_module_name": driver.get("module-name"),
             }
 
     module_entries = parse_module_info(module_info) if module_info.exists() else []
@@ -105,7 +111,9 @@ def load_built_artifact_index(repo_root: Path, acts_out_root: Path | None) -> di
         "testcase_modules_count": len(testcase_modules),
         "hap_runtime_modules_count": len(hap_runtime_modules),
         "testcase_modules": testcase_modules,
-        "hap_runtime_modules": sorted(hap_runtime_modules.values(), key=lambda item: item['stem']),
+        "hap_runtime_modules": sorted(
+            hap_runtime_modules.values(), key=lambda item: item["stem"]
+        ),
     }
 
 
@@ -180,14 +188,22 @@ def resolve_test_hap_names_from_artifact_index(
     return [], ""
 
 
-def resolve_target_artifact_availability(target: dict[str, Any], built_artifact_index: dict[str, Any] | None) -> dict[str, str]:
+def resolve_target_artifact_availability(
+    target: dict[str, Any], built_artifact_index: dict[str, Any] | None
+) -> dict[str, str]:
     index = built_artifact_index if isinstance(built_artifact_index, dict) else {}
     testcase_modules = index.get("testcase_modules", [])
     module_info_entries = index.get("module_info_entries", [])
     hap_runtime_modules = index.get("hap_runtime_modules", [])
     testcase_count = int(index.get("testcase_modules_count", 0) or 0)
     hap_count = int(index.get("hap_runtime_modules_count", 0) or 0)
-    has_verifiable_inventory = bool(testcase_modules or module_info_entries or hap_runtime_modules or testcase_count or hap_count)
+    has_verifiable_inventory = bool(
+        testcase_modules
+        or module_info_entries
+        or hap_runtime_modules
+        or testcase_count
+        or hap_count
+    )
 
     if not has_verifiable_inventory:
         return {
@@ -197,15 +213,29 @@ def resolve_target_artifact_availability(target: dict[str, Any], built_artifact_
         }
 
     available_tokens: dict[str, set[str]] = {
-        "module_info.list": _artifact_identifier_set(module_info_entries if isinstance(module_info_entries, list) else []),
+        "module_info.list": _artifact_identifier_set(
+            module_info_entries if isinstance(module_info_entries, list) else []
+        ),
         "driver_module_name": _artifact_identifier_set(
-            [item.get("driver_module_name") for item in testcase_modules if isinstance(item, dict)]
+            [
+                item.get("driver_module_name")
+                for item in testcase_modules
+                if isinstance(item, dict)
+            ]
         ),
         "bundle_name": _artifact_identifier_set(
-            [item.get("bundle_name") for item in testcase_modules if isinstance(item, dict)]
+            [
+                item.get("bundle_name")
+                for item in testcase_modules
+                if isinstance(item, dict)
+            ]
         ),
         "testcase_json": _artifact_identifier_set(
-            [Path(str(item.get("json") or "")).stem for item in testcase_modules if isinstance(item, dict)]
+            [
+                Path(str(item.get("json") or "")).stem
+                for item in testcase_modules
+                if isinstance(item, dict)
+            ]
         ),
         "hap_runtime": _artifact_identifier_set(
             [item.get("stem") for item in hap_runtime_modules if isinstance(item, dict)]

@@ -24,19 +24,27 @@ from .usage import (
 )
 
 
-_NON_MODULE_API_KINDS = frozenset({
-    "component", "modifier", "attribute",
-    "event_or_method", "configuration", "helper_family",
-})
+_NON_MODULE_API_KINDS = frozenset(
+    {
+        "component",
+        "modifier",
+        "attribute",
+        "event_or_method",
+        "configuration",
+        "helper_family",
+    }
+)
 
-_COVERAGE_SPECIFIC_RULES = frozenset({
-    "must_run_unresolved_coverage",
-    "must_run_harness_only",
-    "must_run_broad_fallback",
-    "must_run_unknown_usage_shape",
-    "must_run_import_only_non_module",
-    "must_run_diff_args_better_test_exists",
-})
+_COVERAGE_SPECIFIC_RULES = frozenset(
+    {
+        "must_run_unresolved_coverage",
+        "must_run_harness_only",
+        "must_run_broad_fallback",
+        "must_run_unknown_usage_shape",
+        "must_run_import_only_non_module",
+        "must_run_diff_args_better_test_exists",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -51,7 +59,7 @@ class BucketGateInputs:
     consumer_usage_confidence: ConfidenceLevel
     coverage_equivalence: CoverageEquivalenceClass
     usage_kind: UsageKind = "unknown"
-    api_kind: str = ""                       # ApiEntityKind value
+    api_kind: str = ""  # ApiEntityKind value
     only_fallback_source_evidence: bool = False
     only_path_rule_source_evidence: bool = False
     generic_fanout: bool = False
@@ -75,10 +83,7 @@ def assign_bucket(inputs: BucketGateInputs) -> SemanticBucket:
         return "possible"
 
     # 3. Import-only evidence for non-module API never reaches must_run.
-    if (
-        inputs.usage_kind == "import"
-        and inputs.api_kind in _NON_MODULE_API_KINDS
-    ):
+    if inputs.usage_kind == "import" and inputs.api_kind in _NON_MODULE_API_KINDS:
         if inputs.consumer_usage_confidence in ("strong", "medium"):
             return "recommended"
         return "possible"
@@ -90,10 +95,7 @@ def assign_bucket(inputs: BucketGateInputs) -> SemanticBucket:
         return "possible"
 
     # 5. Generic fan-out without strong direct consumer evidence — possible.
-    if (
-        inputs.generic_fanout
-        and inputs.consumer_usage_confidence != "strong"
-    ):
+    if inputs.generic_fanout and inputs.consumer_usage_confidence != "strong":
         return "possible"
 
     # 6. Broad fallback always degrades.
@@ -122,10 +124,10 @@ def assign_bucket(inputs: BucketGateInputs) -> SemanticBucket:
         "exact_api_different_call_style",
     ):
         return "recommended"
-    if (
-        inputs.source_impact_confidence in ("strong", "medium")
-        and inputs.consumer_usage_confidence in ("strong", "medium")
-    ):
+    if inputs.source_impact_confidence in (
+        "strong",
+        "medium",
+    ) and inputs.consumer_usage_confidence in ("strong", "medium"):
         return "recommended"
 
     # 9. Anything else is possible.
@@ -151,10 +153,7 @@ def violates_must_run_gate(inputs: BucketGateInputs) -> tuple[str, ...]:
     if inputs.coverage_equivalence == "exact_api_unknown_usage_shape":
         rules.append("must_run_unknown_usage_shape")
 
-    if (
-        inputs.usage_kind == "import"
-        and inputs.api_kind in _NON_MODULE_API_KINDS
-    ):
+    if inputs.usage_kind == "import" and inputs.api_kind in _NON_MODULE_API_KINDS:
         rules.append("must_run_import_only_non_module")
 
     if inputs.only_fallback_source_evidence:
@@ -162,10 +161,7 @@ def violates_must_run_gate(inputs: BucketGateInputs) -> tuple[str, ...]:
     if inputs.only_path_rule_source_evidence:
         rules.append("must_run_path_only_source")
 
-    if (
-        inputs.generic_fanout
-        and inputs.consumer_usage_confidence != "strong"
-    ):
+    if inputs.generic_fanout and inputs.consumer_usage_confidence != "strong":
         rules.append("must_run_generic_fanout_no_direct_consumer")
 
     # Confidence requirements.

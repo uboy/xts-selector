@@ -9,8 +9,15 @@ from tempfile import TemporaryDirectory
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from arkui_xts_selector.cli import resolve_selector_report_input, run_session_from_report
-from arkui_xts_selector.run_store import create_run_session, resolve_labeled_run, resolve_latest_run
+from arkui_xts_selector.cli import (
+    resolve_selector_report_input,
+    run_session_from_report,
+)
+from arkui_xts_selector.run_store import (
+    create_run_session,
+    resolve_labeled_run,
+    resolve_latest_run,
+)
 from arkui_xts_selector.workspace import default_acts_out_root, discover_repo_root
 
 
@@ -81,7 +88,9 @@ class WorkspaceDiscoveryTests(unittest.TestCase):
 
 
 class RunStoreResolutionTests(unittest.TestCase):
-    def test_resolve_labeled_run_prefers_latest_comparable_completed_manifest(self) -> None:
+    def test_resolve_labeled_run_prefers_latest_comparable_completed_manifest(
+        self,
+    ) -> None:
         with TemporaryDirectory() as tmpdir:
             run_store_root = Path(tmpdir) / ".runs"
             comparable_dir = Path(tmpdir) / "baseline-result"
@@ -127,8 +136,12 @@ class RunStoreResolutionTests(unittest.TestCase):
 
             resolved = resolve_labeled_run(run_store_root, "baseline")
 
-        self.assertEqual(Path(resolved["_manifest_path"]), completed.manifest_path.resolve())
-        self.assertEqual(resolved["_resolved_result_paths"], [str(comparable_dir.resolve())])
+        self.assertEqual(
+            Path(resolved["_manifest_path"]), completed.manifest_path.resolve()
+        )
+        self.assertEqual(
+            resolved["_resolved_result_paths"], [str(comparable_dir.resolve())]
+        )
 
     def test_resolve_latest_run_returns_newest_manifest(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -172,9 +185,13 @@ class RunStoreResolutionTests(unittest.TestCase):
 
             resolved = resolve_latest_run(run_store_root, label="report")
 
-        self.assertEqual(Path(resolved["_manifest_path"]), second.manifest_path.resolve())
+        self.assertEqual(
+            Path(resolved["_manifest_path"]), second.manifest_path.resolve()
+        )
 
-    def test_resolve_selector_report_input_uses_latest_manifest_report_path(self) -> None:
+    def test_resolve_selector_report_input_uses_latest_manifest_report_path(
+        self,
+    ) -> None:
         with TemporaryDirectory() as tmpdir:
             run_store_root = Path(tmpdir) / ".runs"
             session = create_run_session(

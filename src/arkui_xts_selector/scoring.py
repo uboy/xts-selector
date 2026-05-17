@@ -54,7 +54,9 @@ def symbol_score(
     # import/call evidence is non-discriminative. Only direct evidence
     # (type hints, member hints, typed fields) should score.
     df = symbol_df.get(signal_symbol, 0) if symbol_df else 0
-    is_idf_ubiquitous = total_projects > 0 and df > total_projects * UBIQUITOUS_DF_FRACTION
+    is_idf_ubiquitous = (
+        total_projects > 0 and df > total_projects * UBIQUITOUS_DF_FRACTION
+    )
 
     is_static_ubiquitous = base in UBIQUITOUS_BASES
     strong = (not is_static_ubiquitous) or path_supports or family_supports
@@ -67,7 +69,9 @@ def symbol_score(
         if is_idf_ubiquitous and not path_supports:
             # Ubiquitous symbol in a non-specific project: soft IDF penalty (+1 instead of full)
             score += 1
-            reasons.append(f"{reason_prefix}imports symbol {signal_symbol} (ubiquitous)")
+            reasons.append(
+                f"{reason_prefix}imports symbol {signal_symbol} (ubiquitous)"
+            )
         else:
             if weak:
                 score += 2 if strong else 1
@@ -99,20 +103,30 @@ def symbol_score(
         if weak:
             word_score = 0
         else:
-            word_score = 2 if strong and not is_static_ubiquitous else (1 if strong else 0)
+            word_score = (
+                2 if strong and not is_static_ubiquitous else (1 if strong else 0)
+            )
         score += word_score
         if word_score:
             reasons.append(f"{reason_prefix}mentions {lower}")
     return score, reasons
 
 
-def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple[int, list[str]]:
+def score_file(
+    file_index: TestFileIndex, signals: dict[str, set[str]]
+) -> tuple[int, list[str]]:
     score = 0
     reasons: list[str] = []
     lowered_member_calls = {compact_token(member) for member in file_index.member_calls}
-    identifier_call_tokens = {compact_token(identifier) for identifier in file_index.identifier_calls}
-    imported_symbol_tokens = {compact_token(symbol) for symbol in file_index.imported_symbols}
-    exact_member_keys = _typed_member_tokens(file_index.typed_field_accesses) | _typed_member_tokens(file_index.type_member_calls)
+    identifier_call_tokens = {
+        compact_token(identifier) for identifier in file_index.identifier_calls
+    }
+    imported_symbol_tokens = {
+        compact_token(symbol) for symbol in file_index.imported_symbols
+    }
+    exact_member_keys = _typed_member_tokens(
+        file_index.typed_field_accesses
+    ) | _typed_member_tokens(file_index.type_member_calls)
     type_member_calls_by_token: dict[str, set[str]] = {}
     for entry in file_index.type_member_calls:
         owner, separator, member = entry.partition(".")
@@ -124,8 +138,15 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
         owner, separator, field_name = entry.partition(".")
         owner_token = compact_token(owner)
         field_token = compact_token(field_name)
-        if owner_token and separator and field_token and field_token not in GENERIC_TYPED_FIELD_NAMES:
-            typed_field_accesses_by_token.setdefault(owner_token, set()).add(field_token)
+        if (
+            owner_token
+            and separator
+            and field_token
+            and field_token not in GENERIC_TYPED_FIELD_NAMES
+        ):
+            typed_field_accesses_by_token.setdefault(owner_token, set()).add(
+                field_token
+            )
 
     for module in sorted(signals["modules"]):
         if module in file_index.imports:
@@ -150,7 +171,10 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
         )
         score += delta
         reasons.extend(symbol_reasons)
-        if symbol.endswith("Modifier") and compact_token(symbol[:-8]) in file_index.typed_modifier_bases:
+        if (
+            symbol.endswith("Modifier")
+            and compact_token(symbol[:-8]) in file_index.typed_modifier_bases
+        ):
             typed_modifier_matches.append(symbol)
     for symbol in sorted(signals.get("weak_symbols", set())):
         delta, symbol_reasons = symbol_score(
@@ -167,7 +191,9 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
 
     if typed_modifier_matches:
         score += 5
-        reasons.append(f"typed modifier evidence for {', '.join(sorted(typed_modifier_matches))}")
+        reasons.append(
+            f"typed modifier evidence for {', '.join(sorted(typed_modifier_matches))}"
+        )
 
     method_member_matches: list[str] = []
     for method in sorted(signals.get("method_hints", set())):
@@ -211,27 +237,39 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
         # Reduce ubiquitous type construction: +1 instead of +5.
         # Deep evidence (member calls, field access) still scores full.
         _ubiq_type_tokens = signals.get("_ubiquitous_type_tokens", set())
-        _non_ubiq_constructors = [h for h in constructor_matches if compact_token(h) not in _ubiq_type_tokens]
+        _non_ubiq_constructors = [
+            h for h in constructor_matches if compact_token(h) not in _ubiq_type_tokens
+        ]
         if _non_ubiq_constructors:
             score += 5
-            reasons.append(f"constructs hinted type {', '.join(sorted(_non_ubiq_constructors))}")
+            reasons.append(
+                f"constructs hinted type {', '.join(sorted(_non_ubiq_constructors))}"
+            )
         else:
             # Ubiquitous type: minimal score, not zero (preserves recall)
             score += 1
     if import_matches:
         _ubiq_type_tokens = signals.get("_ubiquitous_type_tokens", set())
-        _non_ubiq_imports = [h for h in import_matches if compact_token(h) not in _ubiq_type_tokens]
+        _non_ubiq_imports = [
+            h for h in import_matches if compact_token(h) not in _ubiq_type_tokens
+        ]
         if _non_ubiq_imports:
             score += 3
-            reasons.append(f"imports hinted type {', '.join(sorted(_non_ubiq_imports))}")
+            reasons.append(
+                f"imports hinted type {', '.join(sorted(_non_ubiq_imports))}"
+            )
         else:
             score += 1
     if type_member_matches:
         score += 5
-        reasons.append(f"calls hinted type member {', '.join(sorted(type_member_matches))}")
+        reasons.append(
+            f"calls hinted type member {', '.join(sorted(type_member_matches))}"
+        )
     if typed_field_matches:
         score += 9
-        reasons.append(f"reads/writes fields of hinted type {', '.join(sorted(typed_field_matches))}")
+        reasons.append(
+            f"reads/writes fields of hinted type {', '.join(sorted(typed_field_matches))}"
+        )
 
     exact_member_matches = []
     for member_hint in sorted(signals.get("member_hints", set())):
@@ -240,7 +278,9 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
             exact_member_matches.append(str(member_hint))
     if exact_member_matches:
         score += 11
-        reasons.append(f"matches exact changed member {', '.join(sorted(exact_member_matches))}")
+        reasons.append(
+            f"matches exact changed member {', '.join(sorted(exact_member_matches))}"
+        )
 
     for token in sorted(signals["project_hints"]):
         if token and token in compact_token(file_index.relative_path):
@@ -286,7 +326,9 @@ def score_file(file_index: TestFileIndex, signals: dict[str, set[str]]) -> tuple
     return score, deduped
 
 
-def score_project(project: TestProjectIndex, signals: dict[str, set[str]]) -> tuple[int, list[str], list[tuple[int, TestFileIndex, list[str]]]]:
+def score_project(
+    project: TestProjectIndex, signals: dict[str, set[str]]
+) -> tuple[int, list[str], list[tuple[int, TestFileIndex, list[str]]]]:
     ensure_project_files_loaded(project)
     project_score = 0
     project_reasons: list[str] = []
@@ -316,7 +358,9 @@ def score_project(project: TestProjectIndex, signals: dict[str, set[str]]) -> tu
             convergence = math.floor(math.log2(len(file_hits)))
             if convergence > 0:
                 project_score += convergence
-                project_reasons.append(f"convergence +{convergence} ({len(file_hits)} files)")
+                project_reasons.append(
+                    f"convergence +{convergence} ({len(file_hits)} files)"
+                )
     return project_score, project_reasons, file_hits
 
 
@@ -336,17 +380,17 @@ def project_has_non_lexical_evidence(
     # Direct evidence patterns that always count as non-lexical,
     # regardless of symbol ubiquity.
     _direct_evidence_prefixes = (
-        'constructs hinted type ',
-        'imports hinted type ',
-        'calls hinted type member ',
-        'reads/writes fields of hinted type ',
-        'member call .',
+        "constructs hinted type ",
+        "imports hinted type ",
+        "calls hinted type member ",
+        "reads/writes fields of hinted type ",
+        "member call .",
     )
     for reason in project_reasons:
-        if reason.startswith('imports '):
+        if reason.startswith("imports "):
             # Skip ubiquitous symbol imports — they don't discriminate
             if ubiquitous_symbols:
-                sym = reason[len('imports '):]
+                sym = reason[len("imports ") :]
                 if sym in ubiquitous_symbols:
                     continue
             return True
@@ -355,15 +399,15 @@ def project_has_non_lexical_evidence(
             # Direct evidence always counts
             if any(reason.startswith(p) for p in _direct_evidence_prefixes):
                 return True
-            if reason.startswith('imports '):
+            if reason.startswith("imports "):
                 if ubiquitous_symbols:
-                    sym = reason[len('imports '):]
+                    sym = reason[len("imports ") :]
                     if sym in ubiquitous_symbols:
                         continue
                 return True
-            if reason.startswith('calls '):
+            if reason.startswith("calls "):
                 if ubiquitous_symbols:
-                    sym = reason[len('calls '):].rstrip('()')
+                    sym = reason[len("calls ") :].rstrip("()")
                     if sym in ubiquitous_symbols:
                         continue
                 return True
@@ -376,19 +420,27 @@ def candidate_bucket(
     evidence_profile: dict[str, object] | None = None,
 ) -> str:
     # Strong evidence: type hints or member hints matched directly
-    has_type_evidence = bool(evidence_profile and evidence_profile.get("direct_type_hint_keys"))
-    has_member_evidence = bool(evidence_profile and evidence_profile.get("direct_member_hint_keys"))
+    has_type_evidence = bool(
+        evidence_profile and evidence_profile.get("direct_type_hint_keys")
+    )
+    has_member_evidence = bool(
+        evidence_profile and evidence_profile.get("direct_member_hint_keys")
+    )
 
     # Projects with direct type/member evidence are high-confidence matches
-    if score >= 24 and has_non_lexical_evidence and (has_type_evidence or has_member_evidence):
-        return 'must-run'
+    if (
+        score >= 24
+        and has_non_lexical_evidence
+        and (has_type_evidence or has_member_evidence)
+    ):
+        return "must-run"
     # Non-lexical evidence but no direct type/member match — still relevant, protected from dedup
     if score >= 24 and has_non_lexical_evidence:
-        return 'high-confidence related'
+        return "high-confidence related"
     if score >= 12 and has_non_lexical_evidence:
-        return 'possible related'
+        return "possible related"
     # Weak evidence only — exclude from output
-    return 'excluded'
+    return "excluded"
 
 
 def filter_project_results_by_relevance(
@@ -410,7 +462,11 @@ def filter_project_results_by_relevance(
         bucket = str(item.get("bucket") or "possible related")
         if bucket in counts_before:
             counts_before[bucket] += 1
-    filtered = [item for item in project_results if str(item.get("bucket") or "possible related") in allowed]
+    filtered = [
+        item
+        for item in project_results
+        if str(item.get("bucket") or "possible related") in allowed
+    ]
     counts_after = {
         "must-run": 0,
         "high-confidence related": 0,
@@ -488,14 +544,21 @@ def classify_project_scope(
     target_tokens = specificity_target_tokens(signals)
     project_tokens = {
         compact_token(part)
-        for part in tokenize_path_parts(project.path_key or project.relative_root.lower())
+        for part in tokenize_path_parts(
+            project.path_key or project.relative_root.lower()
+        )
         if compact_token(part)
     }
     project_tokens.update(
-        token for token in path_component_tokens(project.path_key or project.relative_root.lower())
+        token
+        for token in path_component_tokens(
+            project.path_key or project.relative_root.lower()
+        )
         if token
     )
-    generic_project_tokens = sorted(token for token in project_tokens if token in _rr.GENERIC_SCOPE_TOKENS)
+    generic_project_tokens = sorted(
+        token for token in project_tokens if token in _rr.GENERIC_SCOPE_TOKENS
+    )
     project_target_tokens = sorted(
         target
         for target in target_tokens
@@ -506,7 +569,9 @@ def classify_project_scope(
     top_hit_target_tokens: set[str] = set()
     direct_evidence_count = 0
     target_path_match_count = 0
-    total_file_score = sum(file_score for file_score, _file_index, _reasons in file_hits)
+    total_file_score = sum(
+        file_score for file_score, _file_index, _reasons in file_hits
+    )
     top_score = file_hits[0][0] if file_hits else 0
     top_share = (top_score / total_file_score) if total_file_score else 0.0
 
@@ -516,7 +581,9 @@ def classify_project_scope(
         if matched_tokens:
             target_path_match_count += 1
             top_hit_target_tokens.update(matched_tokens)
-        direct_evidence_count += sum(1 for reason in reasons if _is_direct_evidence_reason(reason))
+        direct_evidence_count += sum(
+            1 for reason in reasons if _is_direct_evidence_reason(reason)
+        )
 
     specificity_score = 0
     scope_reasons: list[str] = []
@@ -535,7 +602,9 @@ def classify_project_scope(
 
     if direct_evidence_count >= 4:
         specificity_score += 5
-        scope_reasons.append("top matching files contain strong direct API usage evidence")
+        scope_reasons.append(
+            "top matching files contain strong direct API usage evidence"
+        )
     elif direct_evidence_count >= 2:
         specificity_score += 3
         scope_reasons.append("top matching files contain direct API usage evidence")
@@ -569,9 +638,8 @@ def classify_project_scope(
         )
 
     broad_by_shape = (
-        (len(generic_project_tokens) >= 1 and not project_target_tokens)
-        or (len(file_hits) >= 5 and direct_evidence_count <= 1)
-    )
+        len(generic_project_tokens) >= 1 and not project_target_tokens
+    ) or (len(file_hits) >= 5 and direct_evidence_count <= 1)
     direct_candidate = (
         project_target_tokens
         and direct_evidence_count >= 2
@@ -587,7 +655,11 @@ def classify_project_scope(
         scope_tier = "broad"
 
     if not scope_reasons:
-        scope_reasons = list(project_reasons[:2]) if project_reasons else ["scope inferred from aggregate ranking evidence"]
+        scope_reasons = (
+            list(project_reasons[:2])
+            if project_reasons
+            else ["scope inferred from aggregate ranking evidence"]
+        )
     return scope_tier, max(0, specificity_score), scope_reasons
 
 
@@ -614,12 +686,22 @@ def sort_project_results(project_results: list[dict]) -> None:
 
 
 def split_scope_groups(entries: list[dict]) -> tuple[list[dict], list[dict]]:
-    primary = [item for item in entries if str(item.get("scope_tier", "broad")) in PRIMARY_SCOPE_TIERS]
-    broader = [item for item in entries if str(item.get("scope_tier", "broad")) not in PRIMARY_SCOPE_TIERS]
+    primary = [
+        item
+        for item in entries
+        if str(item.get("scope_tier", "broad")) in PRIMARY_SCOPE_TIERS
+    ]
+    broader = [
+        item
+        for item in entries
+        if str(item.get("scope_tier", "broad")) not in PRIMARY_SCOPE_TIERS
+    ]
     return primary, broader
 
 
-def matched_file_surfaces(file_hits: list[tuple[int, TestFileIndex, list[str]]]) -> set[str]:
+def matched_file_surfaces(
+    file_hits: list[tuple[int, TestFileIndex, list[str]]],
+) -> set[str]:
     return {
         file_index.surface
         for _score, file_index, _reasons in file_hits
@@ -695,14 +777,16 @@ def restrict_explicit_surface_projects(
         return project_results
 
     exclusive = [
-        item for item in project_results
+        item
+        for item in project_results
         if project_entry_is_surface_exclusive(item, requested_surface)
     ]
     if exclusive:
         return exclusive
 
     supporting = [
-        item for item in project_results
+        item
+        for item in project_results
         if project_entry_supports_surface(item, requested_surface)
     ]
     if supporting:
@@ -710,9 +794,13 @@ def restrict_explicit_surface_projects(
     return project_results
 
 
-def diversify_symbol_query_projects(project_results: list[dict], top_projects: int) -> list[dict]:
+def diversify_symbol_query_projects(
+    project_results: list[dict], top_projects: int
+) -> list[dict]:
     """Ensure diversity in top projects by surface and path."""
-    shown = list(project_results if top_projects <= 0 else project_results[:top_projects])
+    shown = list(
+        project_results if top_projects <= 0 else project_results[:top_projects]
+    )
     if len(shown) < 2:
         return shown
 
@@ -742,7 +830,9 @@ def diversify_symbol_query_projects(project_results: list[dict], top_projects: i
             )
         if candidate is None or candidate in shown:
             continue
-        while replace_cursor >= 0 and shown[replace_cursor].get("project") == candidate.get("project"):
+        while replace_cursor >= 0 and shown[replace_cursor].get(
+            "project"
+        ) == candidate.get("project"):
             replace_cursor -= 1
         if replace_cursor < 0:
             break
@@ -789,14 +879,18 @@ def coverage_signature(
 
     path_category: set[str] = set()
     if project_path_key:
-        last_segment = project_path_key.rsplit("/", 1)[-1] if "/" in project_path_key else project_path_key
+        last_segment = (
+            project_path_key.rsplit("/", 1)[-1]
+            if "/" in project_path_key
+            else project_path_key
+        )
         for prefix in ("ace_ets_component_", "ace_ets_module_", "ace_c_arkui_"):
             if last_segment.startswith(prefix):
-                last_segment = last_segment[len(prefix):]
+                last_segment = last_segment[len(prefix) :]
                 break
         for suffix in ("_static", "_dynamic"):
             if last_segment.endswith(suffix):
-                last_segment = last_segment[:-len(suffix)]
+                last_segment = last_segment[: -len(suffix)]
         path_category.add(f"_category:{compact_token(last_segment)}")
 
     return frozenset(reasons | member_tokens | path_category)
@@ -851,4 +945,4 @@ def make_coverage_source(source_type: str, source_value: str) -> dict[str, str]:
 
 def coverage_rank_weight(rank: int) -> float:
     normalized = max(_rr.ACTIVE_RANKING_RULES.rank_weight_floor, int(rank or 1))
-    return 1.0 / float(normalized ** _rr.ACTIVE_RANKING_RULES.rank_weight_power)
+    return 1.0 / float(normalized**_rr.ACTIVE_RANKING_RULES.rank_weight_power)

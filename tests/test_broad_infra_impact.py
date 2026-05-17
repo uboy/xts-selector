@@ -1,4 +1,5 @@
 """Tests for broad_infra.match_to_impact (Phase 1, Task 1.2)."""
+
 from __future__ import annotations
 
 from arkui_xts_selector.indexing.broad_infra import BroadInfraMatch, match_to_impact

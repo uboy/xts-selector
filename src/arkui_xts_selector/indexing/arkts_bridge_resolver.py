@@ -7,6 +7,7 @@ Handles three categories of bridge files:
 
 Returns typed ImpactCandidate objects, not raw XTS directory selections.
 """
+
 from __future__ import annotations
 
 import re
@@ -33,23 +34,29 @@ _KOALA_INTERFACE_RE = re.compile(
 )
 
 # Generic files that affect all components, not a single one
-_GENERIC_BRIDGE_FILES = frozenset({
-    "common.ets", "Common.ets",
-    "builder.ets", "Builder.ets",
-    "enums.ets", "Enums.ets",
-    "units.ets",
-    "resources.ets", "Resources.ets",
-    "idlize.ets",
-    "component_storage.ets",
-    "componentDrawered.ets",
-    "componentUtils.ets",
-    "peerModel.ets",
-    "staticCommon.ets",
-    "typePeers.ets",
-    "ArkCommonProps.ets",
-    "ArkComponent.ets",
-    "ArkStructCommon.ets",
-})
+_GENERIC_BRIDGE_FILES = frozenset(
+    {
+        "common.ets",
+        "Common.ets",
+        "builder.ets",
+        "Builder.ets",
+        "enums.ets",
+        "Enums.ets",
+        "units.ets",
+        "resources.ets",
+        "Resources.ets",
+        "idlize.ets",
+        "component_storage.ets",
+        "componentDrawered.ets",
+        "componentUtils.ets",
+        "peerModel.ets",
+        "staticCommon.ets",
+        "typePeers.ets",
+        "ArkCommonProps.ets",
+        "ArkComponent.ets",
+        "ArkStructCommon.ets",
+    }
+)
 
 # Family name normalization: camelCase component name -> snake_case family
 _CAMEL_TO_SNAKE_PATTERNS = [
@@ -74,7 +81,7 @@ def _normalize_family(name: str) -> str:
 
 def _camel_to_snake(name: str) -> str:
     """RichEditor → rich_editor; ButtonAttribute → button_attribute."""
-    s = re.sub(r'(?<!^)(?=[A-Z])', '_', name).lower()
+    s = re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
     return s
 
 

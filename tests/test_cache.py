@@ -8,6 +8,7 @@ Tests verify:
 - Inverted index serialization round-trip
 - Corrupt cache files are handled gracefully
 """
+
 from __future__ import annotations
 
 import json
@@ -22,8 +23,6 @@ from arkui_xts_selector.indexing.cache import (
     _save_cache,
     cached_sdk_index,
     cached_ace_index,
-    cached_inverted_index,
-    CACHE_ROOT,
 )
 from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
 from arkui_xts_selector.indexing.ace_indexer import AceIndexResult
@@ -233,11 +232,17 @@ class TestCachedInvertedIndex:
 
         # Verify structure
         assert len(restored.by_api) == 2
-        assert len(restored.by_api["api:v1:arkui.static:component:ohos.arkui#Button"]) == 2
-        assert len(restored.by_api["api:v1:arkui.static:component:ohos.arkui#Slider"]) == 1
+        assert (
+            len(restored.by_api["api:v1:arkui.static:component:ohos.arkui#Button"]) == 2
+        )
+        assert (
+            len(restored.by_api["api:v1:arkui.static:component:ohos.arkui#Slider"]) == 1
+        )
 
         # Verify consumer entry fields
-        button_consumer = restored.by_api["api:v1:arkui.static:component:ohos.arkui#Button"][0]
+        button_consumer = restored.by_api[
+            "api:v1:arkui.static:component:ohos.arkui#Button"
+        ][0]
         assert button_consumer.project_path == "test/project"
         assert button_consumer.file_path == "/test/test.ets"
         assert button_consumer.line == 10
@@ -293,7 +298,7 @@ class TestCacheInvalidation:
 @pytest.fixture
 def fixtures_dir():
     """Return the fixtures directory path."""
-    from pathlib import Path
     import arkui_xts_selector
+
     module_dir = Path(arkui_xts_selector.__file__).parent
     return module_dir.parent.parent / "tests" / "fixtures"

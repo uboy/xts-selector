@@ -6,6 +6,7 @@ function declarations, and variable declarations.
 
 Import boundary: standard library + arkui_xts_selector.model only.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -15,14 +16,13 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import tree_sitter
 
-from ..model.evidence import ConfidenceLevel
-from ..model.api import ApiEntityId
 from .parser_contracts import ParserResult, SymbolDiscovery
 
 
 # ---------------------------------------------------------------------------
 # SdkDtsParser – tree-sitter TypeScript parser for .d.ts files
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class SdkDtsParser:
@@ -119,7 +119,9 @@ class SdkDtsParser:
         if not name_node:
             return
 
-        class_name = code[name_node.start_byte:name_node.end_byte].decode("utf-8", errors="replace")
+        class_name = code[name_node.start_byte : name_node.end_byte].decode(
+            "utf-8", errors="replace"
+        )
 
         # Emit the class itself
         kind = self._classify_class(class_name)
@@ -146,7 +148,9 @@ class SdkDtsParser:
         if not name_node:
             return
 
-        interface_name = code[name_node.start_byte:name_node.end_byte].decode("utf-8", errors="replace")
+        interface_name = code[name_node.start_byte : name_node.end_byte].decode(
+            "utf-8", errors="replace"
+        )
 
         # Emit the interface itself
         kind = self._classify_class(interface_name)
@@ -168,7 +172,11 @@ class SdkDtsParser:
                 self._emit_class_body_members(interface_name, child, code, symbols)
 
     def _emit_class_body_members(
-        self, class_name: str, body_node: "tree_sitter.Node", code: bytes, symbols: list[SymbolDiscovery]
+        self,
+        class_name: str,
+        body_node: "tree_sitter.Node",
+        code: bytes,
+        symbols: list[SymbolDiscovery],
     ) -> None:
         """Emit all members from a class body or interface body."""
         for child in body_node.children:
@@ -182,7 +190,11 @@ class SdkDtsParser:
                 self._emit_method(class_name, child, code, symbols)
 
     def _emit_object_type_members(
-        self, interface_name: str, type_node: "tree_sitter.Node", code: bytes, symbols: list[SymbolDiscovery]
+        self,
+        interface_name: str,
+        type_node: "tree_sitter.Node",
+        code: bytes,
+        symbols: list[SymbolDiscovery],
     ) -> None:
         """Emit all members from an object type (used in interfaces)."""
         for child in type_node.children:
@@ -200,7 +212,9 @@ class SdkDtsParser:
         if not name_node:
             return
 
-        func_name = code[name_node.start_byte:name_node.end_byte].decode("utf-8", errors="replace")
+        func_name = code[name_node.start_byte : name_node.end_byte].decode(
+            "utf-8", errors="replace"
+        )
 
         symbols.append(
             SymbolDiscovery(
@@ -223,7 +237,9 @@ class SdkDtsParser:
             if child.type == "variable_declarator":
                 name_node = self._child_named(child, "name")
                 if name_node:
-                    const_name = code[name_node.start_byte:name_node.end_byte].decode("utf-8", errors="replace")
+                    const_name = code[name_node.start_byte : name_node.end_byte].decode(
+                        "utf-8", errors="replace"
+                    )
 
                     symbols.append(
                         SymbolDiscovery(
@@ -240,7 +256,9 @@ class SdkDtsParser:
                     if var_child.type == "variable_declarator":
                         name_node = self._child_named(var_child, "name")
                         if name_node:
-                            const_name = code[name_node.start_byte:name_node.end_byte].decode("utf-8", errors="replace")
+                            const_name = code[
+                                name_node.start_byte : name_node.end_byte
+                            ].decode("utf-8", errors="replace")
 
                             symbols.append(
                                 SymbolDiscovery(
@@ -254,14 +272,20 @@ class SdkDtsParser:
                             break  # Only process the first declarator
 
     def _emit_method(
-        self, class_name: str, node: "tree_sitter.Node", code: bytes, symbols: list[SymbolDiscovery]
+        self,
+        class_name: str,
+        node: "tree_sitter.Node",
+        code: bytes,
+        symbols: list[SymbolDiscovery],
     ) -> None:
         """Emit a class method as ClassName.method."""
         name_node = self._child_named(node, "name")
         if not name_node:
             return
 
-        method_name = code[name_node.start_byte:name_node.end_byte].decode("utf-8", errors="replace")
+        method_name = code[name_node.start_byte : name_node.end_byte].decode(
+            "utf-8", errors="replace"
+        )
         full_name = f"{class_name}.{method_name}"
 
         symbols.append(
@@ -275,14 +299,20 @@ class SdkDtsParser:
         )
 
     def _emit_property(
-        self, class_name: str, node: "tree_sitter.Node", code: bytes, symbols: list[SymbolDiscovery]
+        self,
+        class_name: str,
+        node: "tree_sitter.Node",
+        code: bytes,
+        symbols: list[SymbolDiscovery],
     ) -> None:
         """Emit a class property as ClassName.prop."""
         name_node = self._child_named(node, "name")
         if not name_node:
             return
 
-        prop_name = code[name_node.start_byte:name_node.end_byte].decode("utf-8", errors="replace")
+        prop_name = code[name_node.start_byte : name_node.end_byte].decode(
+            "utf-8", errors="replace"
+        )
         full_name = f"{class_name}.{prop_name}"
 
         symbols.append(
@@ -312,7 +342,9 @@ class SdkDtsParser:
         # Default to component if no known suffix
         return "component"
 
-    def _child_named(self, node: "tree_sitter.Node", field_name: str) -> "tree_sitter.Node | None":
+    def _child_named(
+        self, node: "tree_sitter.Node", field_name: str
+    ) -> "tree_sitter.Node | None":
         """Helper to find a child node by field name."""
         return node.child_by_field_name(field_name)
 
@@ -327,39 +359,59 @@ class SdkDtsParser:
                         name_node = spec.child_by_field_name("name")
                         alias_node = spec.child_by_field_name("alias")
                         if name_node and alias_node:
-                            original = code[name_node.start_byte:name_node.end_byte].decode("utf-8", errors="replace")
-                            alias = code[alias_node.start_byte:alias_node.end_byte].decode("utf-8", errors="replace")
+                            original = code[
+                                name_node.start_byte : name_node.end_byte
+                            ].decode("utf-8", errors="replace")
+                            alias = code[
+                                alias_node.start_byte : alias_node.end_byte
+                            ].decode("utf-8", errors="replace")
                             if original != alias:
                                 aliases.append((alias, original))
             # Recurse into wrapped nodes (export default, etc.)
-            elif child.type in ("lexical_declaration", "function_declaration", "class_declaration", "interface_declaration"):
+            elif child.type in (
+                "lexical_declaration",
+                "function_declaration",
+                "class_declaration",
+                "interface_declaration",
+            ):
                 pass  # handled elsewhere
 
     def _extract_type_alias(
-        self, node: "tree_sitter.Node", code: bytes, symbols: list[SymbolDiscovery], aliases: list[tuple[str, str]]
+        self,
+        node: "tree_sitter.Node",
+        code: bytes,
+        symbols: list[SymbolDiscovery],
+        aliases: list[tuple[str, str]],
     ) -> None:
         """Extract type aliases: type Z = X."""
         name_node = node.child_by_field_name("name")
         value_node = node.child_by_field_name("value")
         if name_node and value_node:
-            alias_name = code[name_node.start_byte:name_node.end_byte].decode("utf-8", errors="replace")
+            alias_name = code[name_node.start_byte : name_node.end_byte].decode(
+                "utf-8", errors="replace"
+            )
             # Check if value is a simple type reference (not a complex type)
             if value_node.type == "type_identifier":
-                original_name = code[value_node.start_byte:value_node.end_byte].decode("utf-8", errors="replace")
+                original_name = code[
+                    value_node.start_byte : value_node.end_byte
+                ].decode("utf-8", errors="replace")
                 if alias_name != original_name:
                     aliases.append((alias_name, original_name))
-                    symbols.append(SymbolDiscovery(
-                        symbol=alias_name,
-                        line=node.start_point[0] + 1,
-                        span=(node.start_byte, node.end_byte),
-                        kind="type_alias",
-                        confidence="medium",
-                    ))
+                    symbols.append(
+                        SymbolDiscovery(
+                            symbol=alias_name,
+                            line=node.start_point[0] + 1,
+                            span=(node.start_byte, node.end_byte),
+                            kind="type_alias",
+                            confidence="medium",
+                        )
+                    )
 
 
 # ---------------------------------------------------------------------------
 # Convenience function
 # ---------------------------------------------------------------------------
+
 
 def parse_dts_file(path: Path) -> ParserResult:
     """Parse a .d.ts file and return a ParserResult.

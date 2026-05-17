@@ -12,6 +12,7 @@ Tests verify:
 - Risk level correctly merges when multiple files match
 - JSON config validates correctly
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -76,12 +77,12 @@ def rules_path(tmp_path: Path) -> Path:
                 "id": "render_paint",
                 "match_paths": [
                     "foundation/arkui/ace_engine/frameworks/core/components_ng/render/.*paint.*\\.(cpp|h)",
-                    "foundation/arkui/ace_engine/frameworks/core/components_ng/render/.*draw.*\\.(cpp|h)"
+                    "foundation/arkui/ace_engine/frameworks/core/components_ng/render/.*draw.*\\.(cpp|h)",
                 ],
                 "match_kind": "regex",
                 "fan_out_target": "all_components",
                 "false_negative_risk": "medium",
-                "rationale": "Render layer paint/draw methods affect visible component rendering"
+                "rationale": "Render layer paint/draw methods affect visible component rendering",
             },
             {
                 "id": "render_node_adapter",
@@ -91,7 +92,7 @@ def rules_path(tmp_path: Path) -> Path:
                 "match_kind": "regex",
                 "fan_out_target": "all_components",
                 "false_negative_risk": "medium",
-                "rationale": "Render adapter layer between components and platform render"
+                "rationale": "Render adapter layer between components and platform render",
             },
             {
                 "id": "declarative_engine",
@@ -101,7 +102,7 @@ def rules_path(tmp_path: Path) -> Path:
                 "match_kind": "regex",
                 "fan_out_target": "all_components",
                 "false_negative_risk": "high",
-                "rationale": "Declarative frontend engine bridge — affects all JS-bound components"
+                "rationale": "Declarative frontend engine bridge — affects all JS-bound components",
             },
         ],
     }
@@ -387,7 +388,10 @@ class TestConfigValidation:
         frame_rule = next(r for r in rules if r["id"] == "frame_node_core")
         assert frame_rule["false_negative_risk"] == "critical"
         assert frame_rule["fan_out_target"] == "all_pattern_components"
-        assert frame_rule["rationale"] == "FrameNode is the base class for every UI element."
+        assert (
+            frame_rule["rationale"]
+            == "FrameNode is the base class for every UI element."
+        )
 
         idlize_rule = next(r for r in rules if r["id"] == "idlize_generator")
         assert idlize_rule["match_kind"] == "regex"
@@ -398,7 +402,9 @@ class TestConfigValidation:
         assert render_paint_rule["false_negative_risk"] == "medium"
         assert len(render_paint_rule["match_paths"]) == 2
 
-        declarative_engine_rule = next(r for r in rules if r["id"] == "declarative_engine")
+        declarative_engine_rule = next(
+            r for r in rules if r["id"] == "declarative_engine"
+        )
         assert declarative_engine_rule["match_kind"] == "regex"
         assert declarative_engine_rule["false_negative_risk"] == "high"
 

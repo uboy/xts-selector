@@ -5,6 +5,7 @@ Builds a directed graph of target relationships for transitive dependency lookup
 
 Import boundary: standard library only.
 """
+
 from __future__ import annotations
 
 import re
@@ -16,7 +17,7 @@ from typing import Final
 
 # Compile regex patterns once at module load
 _TARGET_RE: Final = re.compile(r'ohos_(?:unit|module)?test\("([^"]+)"\)')
-_DEPS_RE: Final = re.compile(r'deps\s*=\s*\[([^\]]+)\]', re.DOTALL)
+_DEPS_RE: Final = re.compile(r"deps\s*=\s*\[([^\]]+)\]", re.DOTALL)
 _DEP_ENTRY_RE: Final = re.compile(r'"([^"]+)"')
 
 
@@ -29,6 +30,7 @@ class GnDepEntry:
         deps: Tuple of dependency target paths (e.g., ("//path/to:target", ...))
         file_path: Absolute path to the BUILD.gn file
     """
+
     target_name: str
     deps: tuple[str, ...] = ()
     file_path: str = ""
@@ -59,6 +61,7 @@ class GnDepGraph:
     Attributes:
         entries: Dict mapping target_name -> GnDepEntry
     """
+
     entries: dict[str, GnDepEntry]
 
     def find_deps(self, target: str, max_depth: int = 2) -> list[str]:
@@ -114,7 +117,10 @@ class GnDepGraph:
         """Reconstruct from a dict produced by :meth:`to_dict`."""
         entries_data = data.get("entries", {})
         return cls(
-            entries={name: GnDepEntry.from_dict(entry_data) for name, entry_data in entries_data.items()},
+            entries={
+                name: GnDepEntry.from_dict(entry_data)
+                for name, entry_data in entries_data.items()
+            },
         )
 
 
@@ -152,7 +158,7 @@ def parse_gn_file(path: Path) -> GnDepEntry | None:
 
     # Look for deps assignment in the next 2000 characters (heuristic)
     # Most GN target blocks are under 2000 chars
-    search_area = content[start_pos:start_pos + 2000]
+    search_area = content[start_pos : start_pos + 2000]
 
     deps_match = _DEPS_RE.search(search_area)
     if deps_match:

@@ -7,13 +7,12 @@ destructuring, rebinding, @kit.ArkUI aggregate imports.
 Run:
     python3 -m unittest tests.test_consumer_semantics_extended -v
 """
+
 from __future__ import annotations
 
 import unittest
 from arkui_xts_selector.consumer_semantics import (
     extract_consumer_semantics,
-    ConsumerSemantics,
-    compact_token,
 )
 
 
@@ -25,7 +24,9 @@ class TypeMemberCallTests(unittest.TestCase):
         text = "ButtonAttribute.role()"
         result = extract_consumer_semantics(text)
         self.assertIn("ButtonAttribute.role", result.type_member_calls)
-        self.assertEqual(result.evidence_kinds.get("ButtonAttribute.role"), "type_member_call")
+        self.assertEqual(
+            result.evidence_kinds.get("ButtonAttribute.role"), "type_member_call"
+        )
 
     def test_menu_item_configuration_call(self) -> None:
         """MenuItemConfiguration.items() should be extracted."""
@@ -49,7 +50,9 @@ class EventTypeFieldTests(unittest.TestCase):
         text = "ClickEvent.globalX"
         result = extract_consumer_semantics(text)
         self.assertIn("ClickEvent.globalX", result.event_type_fields)
-        self.assertEqual(result.evidence_kinds.get("ClickEvent.globalX"), "event_type_field")
+        self.assertEqual(
+            result.evidence_kinds.get("ClickEvent.globalX"), "event_type_field"
+        )
 
     def test_key_event_key_code(self) -> None:
         """KeyEvent.keyCode should be extracted."""
@@ -183,7 +186,9 @@ class EvidenceKindTrackingTests(unittest.TestCase):
         """Type.member calls should have 'type_member_call' evidence kind."""
         text = "ButtonAttribute.role()"
         result = extract_consumer_semantics(text)
-        self.assertEqual(result.evidence_kinds.get("ButtonAttribute.role"), "type_member_call")
+        self.assertEqual(
+            result.evidence_kinds.get("ButtonAttribute.role"), "type_member_call"
+        )
 
     def test_field_write_evidence_kind(self) -> None:
         """Typed field accesses should have 'field_write' evidence kind."""
@@ -196,7 +201,9 @@ class EvidenceKindTrackingTests(unittest.TestCase):
         """EventType.field accesses should have 'event_type_field' evidence kind."""
         text = "ClickEvent.globalX"
         result = extract_consumer_semantics(text)
-        self.assertEqual(result.evidence_kinds.get("ClickEvent.globalX"), "event_type_field")
+        self.assertEqual(
+            result.evidence_kinds.get("ClickEvent.globalX"), "event_type_field"
+        )
 
     def test_evidence_kinds_not_empty_for_rich_text(self) -> None:
         """Rich text with multiple patterns should have non-empty evidence_kinds."""

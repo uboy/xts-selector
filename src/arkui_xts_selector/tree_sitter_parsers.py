@@ -27,6 +27,7 @@ def _get_ts_cpp_parser() -> tuple["tree_sitter.Parser", "tree_sitter.Language"]:
     if _TS_CPP_PARSER is None:
         import tree_sitter as ts
         import tree_sitter_cpp as tscpp
+
         _TS_CPP_LANG = ts.Language(tscpp.language())
         _TS_CPP_PARSER = ts.Parser(_TS_CPP_LANG)
     return _TS_CPP_PARSER, _TS_CPP_LANG
@@ -38,6 +39,7 @@ def _get_ts_ts_parser() -> tuple["tree_sitter.Parser", "tree_sitter.Language"]:
     if _TS_TS_PARSER is None:
         import tree_sitter as ts
         import tree_sitter_typescript as tsts
+
         _TS_TS_LANG = ts.Language(tsts.language_typescript())
         _TS_TS_PARSER = ts.Parser(_TS_TS_LANG)
     return _TS_TS_PARSER, _TS_TS_LANG
@@ -52,12 +54,18 @@ def _ts_extract_func_name(decl_node, code_bytes: bytes) -> str | None:
     """
     for child in decl_node.children:
         if child.type == "identifier":
-            return code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+            return code_bytes[child.start_byte : child.end_byte].decode(
+                "utf-8", errors="replace"
+            )
         if child.type == "field_identifier":
-            return code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+            return code_bytes[child.start_byte : child.end_byte].decode(
+                "utf-8", errors="replace"
+            )
         if child.type == "qualified_identifier":
             # Find the rightmost simple identifier child
-            raw = code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+            raw = code_bytes[child.start_byte : child.end_byte].decode(
+                "utf-8", errors="replace"
+            )
             if "::" in raw:
                 # For complex qualified identifiers like "std::optional<T> FuncName",
                 # extract the last simple identifier by walking child nodes
@@ -65,11 +73,14 @@ def _ts_extract_func_name(decl_node, code_bytes: bytes) -> str | None:
                     best = None
                     for c in node.children:
                         if c.type == "identifier":
-                            best = code_bytes[c.start_byte:c.end_byte].decode("utf-8", errors="replace")
+                            best = code_bytes[c.start_byte : c.end_byte].decode(
+                                "utf-8", errors="replace"
+                            )
                         sub = _find_last_identifier(c)
                         if sub:
                             best = sub
                     return best
+
                 last_id = _find_last_identifier(child)
                 if last_id:
                     return last_id
@@ -80,16 +91,20 @@ def _ts_extract_func_name(decl_node, code_bytes: bytes) -> str | None:
 def _ts_extract_calls(node, code_bytes: bytes) -> list[str]:
     """Extract all call expression callee names from a subtree."""
     calls: list[str] = []
+
     def walk(n):
         if n.type == "call_expression":
             callee = n.child_by_field_name("function")
             if callee:
-                name = code_bytes[callee.start_byte:callee.end_byte].decode("utf-8", errors="replace")
+                name = code_bytes[callee.start_byte : callee.end_byte].decode(
+                    "utf-8", errors="replace"
+                )
                 if "::" in name:
                     name = name.rsplit("::", 1)[-1]
                 calls.append(name)
         for child in n.children:
             walk(child)
+
     walk(node)
     return calls
 
@@ -242,8 +257,12 @@ def trace_shared_file_to_components(
             # tree-sitter uses 0-based rows; changed_ranges are 1-based
             start_row = max(0, start_line - 1)
             end_row = end_line  # exclusive in our range
-            start_byte = byte_offsets[start_row] if start_row < len(byte_offsets) else len(code)
-            end_byte = byte_offsets[end_row] if end_row < len(byte_offsets) else len(code)
+            start_byte = (
+                byte_offsets[start_row] if start_row < len(byte_offsets) else len(code)
+            )
+            end_byte = (
+                byte_offsets[end_row] if end_row < len(byte_offsets) else len(code)
+            )
 
             # Find nodes overlapping with the changed range
             def collect_names(node):
@@ -262,7 +281,9 @@ def trace_shared_file_to_components(
                                 defined_symbols.add(name)
                         elif child.type in ("identifier", "qualified_identifier"):
                             defined_symbols.add(
-                                code[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                                code[child.start_byte : child.end_byte].decode(
+                                    "utf-8", errors="replace"
+                                )
                             )
                 for child in node.children:
                     collect_names(child)
@@ -279,7 +300,9 @@ def trace_shared_file_to_components(
                             defined_symbols.add(name)
                     elif child.type in ("identifier", "qualified_identifier"):
                         defined_symbols.add(
-                            code[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                            code[child.start_byte : child.end_byte].decode(
+                                "utf-8", errors="replace"
+                            )
                         )
             for child in node.children:
                 collect_all_names(child)
@@ -308,7 +331,9 @@ def trace_shared_file_to_components(
 
 
 def _ts_find_component_methods(
-    root_node, code_bytes: bytes, changed_ranges: list[tuple[int, int]] | None,
+    root_node,
+    code_bytes: bytes,
+    changed_ranges: list[tuple[int, int]] | None,
 ) -> list[str]:
     """Find SDK method names in a generated .ets file using tree-sitter TS.
 
@@ -323,7 +348,9 @@ def _ts_find_component_methods(
             # Get the name
             name_node = node.child_by_field_name("name")
             if name_node:
-                method_name = code_bytes[name_node.start_byte:name_node.end_byte].decode("utf-8", errors="replace")
+                method_name = code_bytes[
+                    name_node.start_byte : name_node.end_byte
+                ].decode("utf-8", errors="replace")
                 # Skip private/internal methods
                 if method_name and not method_name.startswith("_"):
                     if changed_ranges:
@@ -355,7 +382,10 @@ def trace_generated_ets_to_methods(
     rel_lower = changed_file.name.lower()
     # Only trace generated .ets files (in arkui-ohos or generated directories)
     path_str = str(changed_file).replace("\\", "/").lower()
-    if not (rel_lower.endswith(".ets") and ("generated" in path_str or "arkui-ohos" in path_str)):
+    if not (
+        rel_lower.endswith(".ets")
+        and ("generated" in path_str or "arkui-ohos" in path_str)
+    ):
         return None
 
     try:

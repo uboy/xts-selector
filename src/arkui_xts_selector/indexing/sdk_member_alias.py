@@ -1,4 +1,5 @@
 """SDK member alias resolution."""
+
 from __future__ import annotations
 
 import json
@@ -6,19 +7,29 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-_CONFIG_PATH = Path(__file__).resolve().parents[3] / "config" / "sdk_member_aliases.json"
+_CONFIG_PATH = (
+    Path(__file__).resolve().parents[3] / "config" / "sdk_member_aliases.json"
+)
 
 
 @lru_cache(maxsize=1)
 def load_aliases() -> dict:
     if not _CONFIG_PATH.exists():
-        return {"method_to_member": {}, "family_member_to_parent": {},
-                "method_to_member_with_prefix_strip": {}, "blacklist": {"patterns": []}}
+        return {
+            "method_to_member": {},
+            "family_member_to_parent": {},
+            "method_to_member_with_prefix_strip": {},
+            "blacklist": {"patterns": []},
+        }
     try:
         return json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
-        return {"method_to_member": {}, "family_member_to_parent": {},
-                "method_to_member_with_prefix_strip": {}, "blacklist": {"patterns": []}}
+        return {
+            "method_to_member": {},
+            "family_member_to_parent": {},
+            "method_to_member_with_prefix_strip": {},
+            "blacklist": {"patterns": []},
+        }
 
 
 def normalize_member(method_name: str, api_name: str) -> str:

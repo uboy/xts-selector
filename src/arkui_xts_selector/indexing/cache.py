@@ -5,11 +5,11 @@ source directories (or individual files for smaller trees).
 
 Cache directory: /tmp/arkui_xts_selector_cache/ (configurable via CACHE_ROOT env var).
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
-import time
 from pathlib import Path
 
 from .sdk_indexer import SdkIndexResult, build_sdk_index
@@ -153,7 +153,9 @@ def cached_ets_index(xts_root: Path) -> EtsIndexResult:
     return result
 
 
-def cached_inverted_index(xts_root: Path, sdk_index: SdkIndexResult, sdk_api_root: Path | None = None) -> InvertedIndex:
+def cached_inverted_index(
+    xts_root: Path, sdk_index: SdkIndexResult, sdk_api_root: Path | None = None
+) -> InvertedIndex:
     """Build or load cached inverted index.
 
     Depends on ETS index + SDK index signatures for invalidation.

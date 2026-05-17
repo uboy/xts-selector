@@ -41,7 +41,7 @@ from .tokens import (
 )
 
 if TYPE_CHECKING:
-    from .workspace import discover_repo_root
+    pass
 
 # NOTE: REPO_ROOT is expected to be set by the importing module
 # This module provides get_repo_root() for lazy initialization
@@ -53,6 +53,7 @@ def _get_repo_root() -> Path:
     global _REPO_ROOT
     if _REPO_ROOT is None:
         from .workspace import discover_repo_root
+
         _REPO_ROOT = discover_repo_root()
     return _REPO_ROOT
 
@@ -84,6 +85,7 @@ def get_generic_path_tokens() -> set[str]:
 # Cache and Path Functions
 # ============================================================================
 
+
 def default_cache_path(xts_root: Path) -> Path:
     """Generate workspace-specific cache path to avoid race conditions."""
     workspace_hash = hashlib.sha256(str(xts_root.resolve()).encode()).hexdigest()[:12]
@@ -98,6 +100,7 @@ def default_cache_meta_path(cache_file: Path) -> Path:
 # ============================================================================
 # Test JSON Parsing Functions
 # ============================================================================
+
 
 def parse_bundle_name(test_json: Path) -> str | None:
     """Parse bundle name from a Test.json file."""
@@ -130,27 +133,29 @@ def parse_test_file_names_from_test_json(test_json: Path) -> list[str]:
     return result
 
 
-def _classify_project_variant_from_names(relative_root: str, test_file_names: list[str]) -> str:
+def _classify_project_variant_from_names(
+    relative_root: str, test_file_names: list[str]
+) -> str:
     """Classify project variant based on directory and test file names."""
     markers: set[str] = set()
     root_lower = relative_root.lower()
-    if 'static' in root_lower:
-        markers.add('static')
-    if 'dynamic' in root_lower:
-        markers.add('dynamic')
+    if "static" in root_lower:
+        markers.add("static")
+    if "dynamic" in root_lower:
+        markers.add("dynamic")
     for item in test_file_names:
         lower = item.lower()
-        if 'statictest' in lower or 'hap_static' in lower or '_static' in lower:
-            markers.add('static')
-        if 'dynamictest' in lower or 'hap_dynamic' in lower or '_dynamic' in lower:
-            markers.add('dynamic')
-    if markers == {'static', 'dynamic'}:
-        return 'both'
-    if 'static' in markers:
-        return 'static'
-    if 'dynamic' in markers:
-        return 'dynamic'
-    return 'unknown'
+        if "statictest" in lower or "hap_static" in lower or "_static" in lower:
+            markers.add("static")
+        if "dynamictest" in lower or "hap_dynamic" in lower or "_dynamic" in lower:
+            markers.add("dynamic")
+    if markers == {"static", "dynamic"}:
+        return "both"
+    if "static" in markers:
+        return "static"
+    if "dynamic" in markers:
+        return "dynamic"
+    return "unknown"
 
 
 def classify_project_variant(
@@ -160,7 +165,9 @@ def classify_project_variant(
 ) -> str:
     """Classify project variant using semantic analysis or name-based fallback."""
     if files is not None:
-        semantic = classify_xts_project_surface(file_index.surface for file_index in files)
+        semantic = classify_xts_project_surface(
+            file_index.surface for file_index in files
+        )
         if semantic.variant != "unknown":
             return semantic.variant
     return _classify_project_variant_from_names(relative_root, test_file_names)
@@ -175,9 +182,10 @@ def parse_test_json(path_value: str, repo_root: Path | None = None) -> dict:
     if repo_root is None:
         # Try to get REPO_ROOT from calling module's globals
         import sys
+
         frame = sys._getframe(1)
         try:
-            repo_root = frame.f_globals.get('REPO_ROOT')
+            repo_root = frame.f_globals.get("REPO_ROOT")
             if repo_root is None:
                 repo_root = _get_repo_root()
         finally:
@@ -185,7 +193,9 @@ def parse_test_json(path_value: str, repo_root: Path | None = None) -> dict:
     return load_json_file(resolve_path(path_value, repo_root, repo_root))
 
 
-def parse_test_file_names(test_json_path: str, repo_root: Path | None = None) -> list[str]:
+def parse_test_file_names(
+    test_json_path: str, repo_root: Path | None = None
+) -> list[str]:
     """Parse test file names from a Test.json file path."""
     data = parse_test_json(test_json_path, repo_root=repo_root)
     result: list[str] = []
@@ -200,7 +210,9 @@ def parse_test_file_names(test_json_path: str, repo_root: Path | None = None) ->
     return result
 
 
-def infer_xdevice_module_name(test_json_path: str, repo_root: Path | None = None) -> str | None:
+def infer_xdevice_module_name(
+    test_json_path: str, repo_root: Path | None = None
+) -> str | None:
     """Infer the xdevice module name from a Test.json file."""
     for name in parse_test_file_names(test_json_path, repo_root=repo_root):
         if name.endswith(".hap"):
@@ -219,13 +231,16 @@ def guess_build_target(project_root: str) -> str:
 # Source File Discovery Functions
 # ============================================================================
 
+
 def xts_source_files(xts_root: Path) -> list[Path]:
     """Discover all source files in the XTS workspace."""
     skip_dirs = {".git", ".ohpm", "node_modules", "oh_modules", "out"}
     paths: set[Path] = set()
     if not xts_root.exists():
         return []
-    for dirpath, dirnames, filenames in os.walk(xts_root, topdown=True, onerror=lambda _exc: None):
+    for dirpath, dirnames, filenames in os.walk(
+        xts_root, topdown=True, onerror=lambda _exc: None
+    ):
         dirnames[:] = [name for name in dirnames if name not in skip_dirs]
         base = Path(dirpath)
         for filename in filenames:
@@ -252,6 +267,7 @@ def build_manifest_hash(paths: list[Path]) -> str:
 # Project Discovery and Indexing Functions
 # ============================================================================
 
+
 def discover_projects(xts_root: Path) -> list[TestProjectIndex]:
     """Discover all test projects in the XTS workspace."""
     projects: list[TestProjectIndex] = []
@@ -261,7 +277,9 @@ def discover_projects(xts_root: Path) -> list[TestProjectIndex]:
             continue
         root = test_json.parent
         files: list[TestFileIndex] = []
-        for dirpath, dirnames, filenames in os.walk(root, topdown=True, onerror=lambda _exc: None):
+        for dirpath, dirnames, filenames in os.walk(
+            root, topdown=True, onerror=lambda _exc: None
+        ):
             dirnames[:] = [name for name in dirnames if name not in skip_dirs]
             base = Path(dirpath)
             for filename in filenames:
@@ -272,7 +290,9 @@ def discover_projects(xts_root: Path) -> list[TestProjectIndex]:
         relative_root = repo_rel(root)
         test_json_rel = repo_rel(test_json)
         test_file_names = parse_test_file_names_from_test_json(test_json)
-        surface_profile = classify_xts_project_surface(file_index.surface for file_index in files)
+        surface_profile = classify_xts_project_surface(
+            file_index.surface for file_index in files
+        )
         projects.append(
             TestProjectIndex(
                 relative_root=relative_root,
@@ -280,7 +300,9 @@ def discover_projects(xts_root: Path) -> list[TestProjectIndex]:
                 bundle_name=parse_bundle_name(test_json),
                 files=files,
                 path_key=str(root.relative_to(xts_root)).replace(os.sep, "/").lower(),
-                variant=classify_project_variant(relative_root, test_file_names, files=files),
+                variant=classify_project_variant(
+                    relative_root, test_file_names, files=files
+                ),
                 surface=surface_profile.surface,
                 supported_surfaces=set(surface_profile.supported_surfaces),
             )
@@ -299,15 +321,21 @@ def _capture_xts_workspace_snapshot(xts_root: Path) -> XtsWorkspaceSnapshot:
     h = hashlib.sha256()
     file_count = 0
     newest_mtime_ns = 0
-    for dirpath, dirnames, filenames in os.walk(xts_root, topdown=True, onerror=lambda _exc: None):
+    for dirpath, dirnames, filenames in os.walk(
+        xts_root, topdown=True, onerror=lambda _exc: None
+    ):
         dirnames[:] = sorted(name for name in dirnames if name not in skip_dirs)
         try:
-            newest_mtime_ns = max(newest_mtime_ns, int(Path(dirpath).stat().st_mtime_ns))
+            newest_mtime_ns = max(
+                newest_mtime_ns, int(Path(dirpath).stat().st_mtime_ns)
+            )
         except OSError:
             pass
         base = Path(dirpath)
         for filename in sorted(filenames):
-            if filename != "Test.json" and not filename.endswith((".ets", ".ts", ".js")):
+            if filename != "Test.json" and not filename.endswith(
+                (".ets", ".ts", ".js")
+            ):
                 continue
             path = base / filename
             try:
@@ -327,11 +355,15 @@ def _capture_xts_workspace_snapshot(xts_root: Path) -> XtsWorkspaceSnapshot:
 def _build_project_hash(project_root: Path, skip_dirs: set[str]) -> str:
     """Compute hash for a single project based on its relevant source files."""
     h = hashlib.sha256()
-    for dirpath, dirnames, filenames in os.walk(project_root, topdown=True, onerror=lambda _exc: None):
+    for dirpath, dirnames, filenames in os.walk(
+        project_root, topdown=True, onerror=lambda _exc: None
+    ):
         dirnames[:] = sorted(name for name in dirnames if name not in skip_dirs)
         base = Path(dirpath)
         for filename in sorted(filenames):
-            if filename != "Test.json" and not filename.endswith((".ets", ".ts", ".js")):
+            if filename != "Test.json" and not filename.endswith(
+                (".ets", ".ts", ".js")
+            ):
                 continue
             path = base / filename
             try:
@@ -351,7 +383,9 @@ def _build_single_project(
     """Build index for a single project directory."""
     skip_dirs = {".git", ".ohpm", "node_modules", "oh_modules", "out"}
     files: list[TestFileIndex] = []
-    for dirpath, dirnames, filenames in os.walk(root, topdown=True, onerror=lambda _exc: None):
+    for dirpath, dirnames, filenames in os.walk(
+        root, topdown=True, onerror=lambda _exc: None
+    ):
         dirnames[:] = [name for name in dirnames if name not in skip_dirs]
         base = Path(dirpath)
         for filename in filenames:
@@ -362,7 +396,9 @@ def _build_single_project(
     relative_root = repo_rel(root)
     test_json_rel = repo_rel(test_json)
     test_file_names = parse_test_file_names_from_test_json(test_json)
-    surface_profile = classify_xts_project_surface(file_index.surface for file_index in files)
+    surface_profile = classify_xts_project_surface(
+        file_index.surface for file_index in files
+    )
     return TestProjectIndex(
         relative_root=relative_root,
         test_json=test_json_rel,
@@ -375,7 +411,9 @@ def _build_single_project(
     )
 
 
-def _projects_from_cache_payload(cache_data: dict[str, object], *, lazy_files: bool) -> list[TestProjectIndex]:
+def _projects_from_cache_payload(
+    cache_data: dict[str, object], *, lazy_files: bool
+) -> list[TestProjectIndex]:
     """Deserialize projects from cache data."""
     return [
         TestProjectIndex.from_dict(item["data"], lazy_files=lazy_files)
@@ -384,7 +422,9 @@ def _projects_from_cache_payload(cache_data: dict[str, object], *, lazy_files: b
     ]
 
 
-def load_or_build_projects(xts_root: Path, cache_file: Path | None) -> tuple[list[TestProjectIndex], bool]:
+def load_or_build_projects(
+    xts_root: Path, cache_file: Path | None
+) -> tuple[list[TestProjectIndex], bool]:
     """Load projects from cache or build them from scratch."""
     CACHE_VERSION = 5
 
@@ -393,15 +433,25 @@ def load_or_build_projects(xts_root: Path, cache_file: Path | None) -> tuple[lis
     cache_meta_file = default_cache_meta_path(cache_file) if cache_file else None
 
     # Fast path: validate the workspace against a tiny sidecar metadata file.
-    if cache_file and cache_file.exists() and cache_meta_file and cache_meta_file.exists():
+    if (
+        cache_file
+        and cache_file.exists()
+        and cache_meta_file
+        and cache_meta_file.exists()
+    ):
         try:
             meta_payload = json.loads(read_text(cache_meta_file))
             if meta_payload.get("version") == CACHE_VERSION:
                 workspace_snapshot = _capture_xts_workspace_snapshot(xts_root)
-                if meta_payload.get("workspace_signature") == workspace_snapshot.signature:
+                if (
+                    meta_payload.get("workspace_signature")
+                    == workspace_snapshot.signature
+                ):
                     cache_data = json.loads(read_text(cache_file))
                     if cache_data.get("version") == CACHE_VERSION:
-                        projects = _projects_from_cache_payload(cache_data, lazy_files=True)
+                        projects = _projects_from_cache_payload(
+                            cache_data, lazy_files=True
+                        )
                         for project in projects:
                             if not project.search_summary_ready:
                                 ensure_project_search_summary(project)
@@ -413,12 +463,20 @@ def load_or_build_projects(xts_root: Path, cache_file: Path | None) -> tuple[lis
     # If the workspace-specific cache file is newer than every relevant source
     # file and directory in the workspace, the cache cannot be stale for this
     # workspace snapshot, so we can safely restore it and backfill the sidecar.
-    if cache_file and cache_file.exists() and cache_meta_file and not cache_meta_file.exists():
+    if (
+        cache_file
+        and cache_file.exists()
+        and cache_meta_file
+        and not cache_meta_file.exists()
+    ):
         try:
             workspace_snapshot = _capture_xts_workspace_snapshot(xts_root)
             cache_stat = cache_file.stat()
             cache_data = json.loads(read_text(cache_file))
-            if cache_data.get("version") == CACHE_VERSION and int(cache_stat.st_mtime_ns) >= workspace_snapshot.newest_mtime_ns:
+            if (
+                cache_data.get("version") == CACHE_VERSION
+                and int(cache_stat.st_mtime_ns) >= workspace_snapshot.newest_mtime_ns
+            ):
                 projects = _projects_from_cache_payload(cache_data, lazy_files=True)
                 for project in projects:
                     if not project.search_summary_ready:
@@ -493,8 +551,14 @@ def load_or_build_projects(xts_root: Path, cache_file: Path | None) -> tuple[lis
             "version": CACHE_VERSION,
             "projects": new_cache,
         }
-        cache_file.write_text(json.dumps(cache_payload, ensure_ascii=False), encoding="utf-8")
-    if cache_file and cache_meta_file and (cache_changed or not cache_meta_file.exists()):
+        cache_file.write_text(
+            json.dumps(cache_payload, ensure_ascii=False), encoding="utf-8"
+        )
+    if (
+        cache_file
+        and cache_meta_file
+        and (cache_changed or not cache_meta_file.exists())
+    ):
         workspace_signature = _build_xts_workspace_signature(xts_root)
         cache_meta_file.write_text(
             json.dumps(
@@ -515,6 +579,7 @@ def load_or_build_projects(xts_root: Path, cache_file: Path | None) -> tuple[lis
 # SDK Index Functions
 # ============================================================================
 
+
 def load_sdk_index(sdk_api_root: Path) -> SdkIndex:
     """Load SDK API index from the SDK API root directory."""
     index = SdkIndex()
@@ -528,14 +593,18 @@ def load_sdk_index(sdk_api_root: Path) -> SdkIndex:
             index.component_names.add(symbol)
             index.component_file_bases[compact_token(base)] = symbol
 
-    for path in sorted(sdk_arkui_root.glob("*Modifier.d.ts")) + sorted(sdk_arkui_root.glob("*Modifier.static.d.ets")):
+    for path in sorted(sdk_arkui_root.glob("*Modifier.d.ts")) + sorted(
+        sdk_arkui_root.glob("*Modifier.static.d.ets")
+    ):
         base = path.name
         if base.endswith(".d.ts"):
-            symbol = base[:-len(".d.ts")]
+            symbol = base[: -len(".d.ts")]
         else:
-            symbol = base[:-len(".static.d.ets")]
+            symbol = base[: -len(".static.d.ets")]
         index.modifier_names.add(symbol)
-        index.modifier_file_bases[compact_token(symbol.replace("Modifier", ""))] = symbol
+        index.modifier_file_bases[compact_token(symbol.replace("Modifier", ""))] = (
+            symbol
+        )
 
     for path in sorted(sdk_api_root.glob("@ohos.*")):
         name = path.name
@@ -551,7 +620,9 @@ def normalize_ohos_module(module: str, sdk_modules: set[str]) -> str | None:
     """Normalize an OHOS module name to match SDK modules."""
     if module in sdk_modules:
         return module
-    prefixes = [candidate for candidate in sdk_modules if module.startswith(candidate + ".")]
+    prefixes = [
+        candidate for candidate in sdk_modules if module.startswith(candidate + ".")
+    ]
     if prefixes:
         return max(prefixes, key=len)
     return None
@@ -561,17 +632,20 @@ def normalize_ohos_module(module: str, sdk_modules: set[str]) -> str | None:
 # Token and Symbol Functions
 # ============================================================================
 
+
 def family_tokens_from_path(rel: str, sdk_index: SdkIndex) -> set[str]:
     """Extract family tokens from a file path."""
     rel_lower = rel.lower()
     parts = tokenize_path_parts(rel_lower)
     generic_tokens = get_generic_path_tokens()
     families = {
-        compact_token(part) for part in parts
+        compact_token(part)
+        for part in parts
         if len(part) >= 3 and compact_token(part) not in generic_tokens
     }
     families.update(
-        token for token in path_component_tokens(rel_lower)
+        token
+        for token in path_component_tokens(rel_lower)
         if token and token not in generic_tokens
     )
 
@@ -610,6 +684,7 @@ def dynamic_module_symbols(
 # ============================================================================
 # Project Search and Matching Functions
 # ============================================================================
+
 
 def ensure_project_search_summary(project: TestProjectIndex) -> TestProjectIndex:
     """Ensure project has search summary populated."""
@@ -671,7 +746,9 @@ def ensure_project_search_summary(project: TestProjectIndex) -> TestProjectIndex
             if normalized:
                 project.search_exact_member_keys.add(normalized)
         project.search_typed_modifier_bases.update(file_index.typed_modifier_bases)
-        project.search_words.update(compact_token(word) for word in file_index.words if compact_token(word))
+        project.search_words.update(
+            compact_token(word) for word in file_index.words if compact_token(word)
+        )
         project.search_evidence_kinds.update(file_index.evidence_kinds)
 
     project.search_path_tokens = {token for token in path_tokens if token}
@@ -685,14 +762,24 @@ def ensure_project_files_loaded(project: TestProjectIndex) -> TestProjectIndex:
     """Ensure project files are loaded from serialization."""
     if project.files or not project._serialized_files:
         return project
-    project.files = [TestFileIndex.from_dict(item) for item in project._serialized_files if isinstance(item, dict)]
+    project.files = [
+        TestFileIndex.from_dict(item)
+        for item in project._serialized_files
+        if isinstance(item, dict)
+    ]
     return project
 
 
-def project_matches_exact_api_prefilter(project: TestProjectIndex, signals: dict[str, set[str]]) -> bool:
+def project_matches_exact_api_prefilter(
+    project: TestProjectIndex, signals: dict[str, set[str]]
+) -> bool:
     """Check if project matches exact API prefilter entities."""
     ensure_project_search_summary(project)
-    exact_api_entities = {str(item) for item in signals.get("exact_api_prefilter_entities", set()) if "." in str(item)}
+    exact_api_entities = {
+        str(item)
+        for item in signals.get("exact_api_prefilter_entities", set())
+        if "." in str(item)
+    }
     exact_member_hints = extract_member_hint_keys(signals.get("member_hints", set()))
     if not exact_api_entities and not exact_member_hints:
         return False
@@ -718,7 +805,12 @@ def project_matches_exact_api_prefilter(project: TestProjectIndex, signals: dict
             continue
         owner_token = compact_token(owner)
         method_token = compact_token(method)
-        if owner_token and method_token and owner_token in type_tokens and method_token in member_tokens:
+        if (
+            owner_token
+            and method_token
+            and owner_token in type_tokens
+            and method_token in member_tokens
+        ):
             return True
     return False
 
@@ -732,10 +824,14 @@ def project_might_match(
     """Check if a project might match the given signals."""
     ensure_project_search_summary(project)
     exact_api_prefilter = (
-        bool(signals.get("exact_api_prefilter_entities"))
-        or bool(extract_member_hint_keys(signals.get("member_hints", set())))
-        or any("." in item for item in signals.get("symbols", set()))
-    ) if exact_api_prefilter_mode is None else bool(exact_api_prefilter_mode)
+        (
+            bool(signals.get("exact_api_prefilter_entities"))
+            or bool(extract_member_hint_keys(signals.get("member_hints", set())))
+            or any("." in item for item in signals.get("symbols", set()))
+        )
+        if exact_api_prefilter_mode is None
+        else bool(exact_api_prefilter_mode)
+    )
 
     if exact_api_prefilter:
         return project_matches_exact_api_prefilter(project, signals)
@@ -772,7 +868,10 @@ def project_might_match(
 
     for symbol in signals.get("symbols", set()):
         symbol_token = compact_token(symbol)
-        if symbol in project.search_imported_symbols or symbol in project.search_identifier_calls:
+        if (
+            symbol in project.search_imported_symbols
+            or symbol in project.search_identifier_calls
+        ):
             return True
         if symbol_token and (
             symbol_token in project.search_imported_symbol_tokens
@@ -800,11 +899,11 @@ def project_might_match(
 
 def variant_matches(project_variant: str, variants_mode: str) -> bool:
     """Check if a project variant matches the requested variants mode."""
-    if variants_mode in {'auto', 'both'}:
+    if variants_mode in {"auto", "both"}:
         return True
-    if project_variant == 'both':
+    if project_variant == "both":
         return True
-    if project_variant == 'unknown':
+    if project_variant == "unknown":
         return False
     return project_variant == variants_mode
 
@@ -815,7 +914,11 @@ def select_candidate_projects(
     variants_mode: str,
 ) -> tuple[list[TestProjectIndex], list[TestProjectIndex]]:
     """Select candidate projects based on signals and variants mode."""
-    variant_projects = [project for project in projects if variant_matches(project.variant, variants_mode)]
+    variant_projects = [
+        project
+        for project in projects
+        if variant_matches(project.variant, variants_mode)
+    ]
     exact_shortlisted: list[TestProjectIndex] = []
     if signals.get("exact_api_prefilter_entities"):
         exact_shortlisted = [

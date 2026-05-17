@@ -1,4 +1,5 @@
 """Coverage-driven test impact index."""
+
 from __future__ import annotations
 import json
 from dataclasses import dataclass, field
@@ -26,6 +27,7 @@ class CoverageIndex:
 
     def lookup_coverage(self, source_file: str) -> list[CoverageEntry]:
         import os
+
         entries = self._forward.get(source_file)
         if entries:
             return entries
@@ -46,9 +48,13 @@ class CoverageIndex:
         forward_serialized = {}
         for k, entries in self._forward.items():
             forward_serialized[k] = [
-                {"source_file": e.source_file, "test_id": e.test_id,
-                 "line_count": e.line_count, "total_lines": e.total_lines,
-                 "coverage_ratio": e.coverage_ratio}
+                {
+                    "source_file": e.source_file,
+                    "test_id": e.test_id,
+                    "line_count": e.line_count,
+                    "total_lines": e.total_lines,
+                    "coverage_ratio": e.coverage_ratio,
+                }
                 for e in entries
             ]
         return {"imported_at": self.imported_at, "entries": forward_serialized}
@@ -65,13 +71,16 @@ class CoverageIndex:
                     total_lines=int(e.get("total_lines", 0)),
                     coverage_ratio=float(e.get("coverage_ratio", 0)),
                 )
-                for e in entries if isinstance(e, dict)
+                for e in entries
+                if isinstance(e, dict)
             ]
         return cls(_forward=forward, imported_at=data.get("imported_at", ""))
 
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(self.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+        path.write_text(
+            json.dumps(self.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
 
     @classmethod
     def load(cls, path: Path) -> CoverageIndex:

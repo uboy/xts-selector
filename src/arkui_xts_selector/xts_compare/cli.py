@@ -33,16 +33,28 @@ from xml.etree.ElementTree import ParseError as XmlParseError
 from ..run_store import default_run_store_root, resolve_labeled_run
 from .compare import compare_runs, build_timeline
 from .format_html import format_html, format_single_run_html
-from .format_json import report_to_dict, single_run_to_dict, timeline_to_dict, write_json
+from .format_json import (
+    report_to_dict,
+    single_run_to_dict,
+    timeline_to_dict,
+    write_json,
+)
 from .format_markdown import format_markdown, format_single_run_markdown
 from .format_terminal import format_report, format_single_run, format_timeline
 from .models import FailureType, InputOrderInfo, RunMetadata, TestIdentity, TestOutcome
-from .parse import discover_archives_with_metadata, find_summary_xml, load_run, sort_run_paths
+from .parse import (
+    discover_archives_with_metadata,
+    find_summary_xml,
+    load_run,
+    sort_run_paths,
+)
 from .selector_integration import correlate_with_selector, load_selector_report
 
 
 class XtsCompareArgumentParser(argparse.ArgumentParser):
-    def parse_args(self, args: list[str] | None = None, namespace: argparse.Namespace | None = None) -> argparse.Namespace:
+    def parse_args(
+        self, args: list[str] | None = None, namespace: argparse.Namespace | None = None
+    ) -> argparse.Namespace:
         parsed = super().parse_args(args, namespace)
         _validate_args(self, parsed)
         return parsed
@@ -274,12 +286,18 @@ def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
         parser.error("positional paths are not allowed with --base or --base-label")
     if args.timeline is not None and args.paths:
         parser.error("positional paths are not allowed with --timeline")
-    if args.timeline is not None and (args.base_label is not None or args.target_label is not None):
-        parser.error("--base-label and --target-label are not supported with --timeline")
+    if args.timeline is not None and (
+        args.base_label is not None or args.target_label is not None
+    ):
+        parser.error(
+            "--base-label and --target-label are not supported with --timeline"
+        )
     if has_target and not has_base:
         parser.error("--target or --target-label requires --base or --base-label")
     if has_base and not has_target:
-        parser.error("--target or --target-label is required when using --base or --base-label")
+        parser.error(
+            "--target or --target-label is required when using --base or --base-label"
+        )
     if not explicit_mode and not args.paths:
         parser.error("one of the arguments --base, --timeline, or PATH is required")
     if args.scan_limit < 0:
@@ -342,7 +360,9 @@ def _set_input_order(
 def _prepare_compare_args(args: argparse.Namespace) -> None:
     if args.base is not None or args.base_label is not None:
         base_ref = args.base if args.base is not None else f"label:{args.base_label}"
-        target_ref = args.target if args.target is not None else f"label:{args.target_label}"
+        target_ref = (
+            args.target if args.target is not None else f"label:{args.target_label}"
+        )
         _set_input_order(
             args,
             mode="compare",
@@ -351,8 +371,12 @@ def _prepare_compare_args(args: argparse.Namespace) -> None:
             paths=[base_ref, target_ref],
             origin="flags",
             details={
-                base_ref: Path(args.base).name if args.base else f"label {args.base_label}",
-                target_ref: Path(args.target).name if args.target else f"label {args.target_label}",
+                base_ref: Path(args.base).name
+                if args.base
+                else f"label {args.base_label}",
+                target_ref: Path(args.target).name
+                if args.target
+                else f"label {args.target_label}",
             },
         )
         return
@@ -401,7 +425,9 @@ def _prepare_timeline_args(args: argparse.Namespace) -> None:
         )
         print(
             f"Auto-detected timeline order ({source}): "
-            + " -> ".join(f"{Path(path).name} [{details[path]}]" for path in ordered_paths),
+            + " -> ".join(
+                f"{Path(path).name} [{details[path]}]" for path in ordered_paths
+            ),
             file=sys.stderr,
         )
         return
@@ -443,9 +469,7 @@ def _parse_failure_types(raw: str | None) -> set[FailureType] | None:
         else:
             result.add(ftype)
     if invalid:
-        raise ValueError(
-            "unknown failure type(s): " + ", ".join(invalid)
-        )
+        raise ValueError("unknown failure type(s): " + ", ".join(invalid))
     return result or None
 
 
@@ -561,9 +585,13 @@ def _load_compare_source(
     strict_archive: bool,
 ) -> tuple[RunMetadata, dict[TestIdentity, object]]:
     if label_value:
-        meta, results = _load_labeled_run(label_value, label_root=label_root, strict_archive=strict_archive)
+        meta, results = _load_labeled_run(
+            label_value, label_root=label_root, strict_archive=strict_archive
+        )
     elif path_value:
-        meta, results = load_run(path_value, label=display_label or "", strict_archive=strict_archive)
+        meta, results = load_run(
+            path_value, label=display_label or "", strict_archive=strict_archive
+        )
     else:
         raise ValueError("compare input is missing both path and label")
 
@@ -581,9 +609,14 @@ def _emit(text: str, output_path: str | None) -> None:
 
 
 def _run_compare(args: argparse.Namespace) -> int:
-    selected_output_modes = sum(1 for enabled in (args.json, args.html, args.markdown) if enabled)
+    selected_output_modes = sum(
+        1 for enabled in (args.json, args.html, args.markdown) if enabled
+    )
     if selected_output_modes > 1:
-        print("error: --json, --html, and --markdown are mutually exclusive", file=sys.stderr)
+        print(
+            "error: --json, --html, and --markdown are mutually exclusive",
+            file=sys.stderr,
+        )
         return 2
 
     labels = _parse_labels(args.labels, 2)
@@ -629,7 +662,9 @@ def _run_compare(args: argparse.Namespace) -> int:
         min_time_delta_ms=args.min_time_delta,
         min_time_ratio=args.min_time_ratio,
     )
-    report.input_order = getattr(args, "input_order", InputOrderInfo(mode="compare", source="explicit"))
+    report.input_order = getattr(
+        args, "input_order", InputOrderInfo(mode="compare", source="explicit")
+    )
     if args.selector_report:
         try:
             selector_report = load_selector_report(args.selector_report)
@@ -638,12 +673,18 @@ def _run_compare(args: argparse.Namespace) -> int:
             return 2
         report.selector_correlations = correlate_with_selector(report, selector_report)
 
-    if not args.show_persistent and report.summary.regression == 0 and report.summary.persistent_fail > 0:
+    if (
+        not args.show_persistent
+        and report.summary.regression == 0
+        and report.summary.persistent_fail > 0
+    ):
         args.show_persistent = True
 
     if args.html and not args.output:
         args.output = f"xts_compare_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
-        print(f"HTML output requires a file. Writing to: {args.output}", file=sys.stderr)
+        print(
+            f"HTML output requires a file. Writing to: {args.output}", file=sys.stderr
+        )
 
     if args.json:
         data = report_to_dict(report)
@@ -684,7 +725,10 @@ def _run_compare(args: argparse.Namespace) -> int:
 
 def _run_timeline(args: argparse.Namespace) -> int:
     if args.html or args.markdown:
-        print("error: --html and --markdown are only supported in compare or single-run mode", file=sys.stderr)
+        print(
+            "error: --html and --markdown are only supported in compare or single-run mode",
+            file=sys.stderr,
+        )
         return 2
     paths = args.timeline
     labels = _parse_labels(args.labels, len(paths))
@@ -692,7 +736,9 @@ def _run_timeline(args: argparse.Namespace) -> int:
     runs = []
     for path, label in zip(paths, labels):
         try:
-            meta, results = load_run(path, label=label or "", strict_archive=args.strict_archive)
+            meta, results = load_run(
+                path, label=label or "", strict_archive=args.strict_archive
+            )
         except (FileNotFoundError, ValueError, OSError, XmlParseError) as exc:
             print(f"error loading run '{path}': {exc}", file=sys.stderr)
             return 2
@@ -701,7 +747,9 @@ def _run_timeline(args: argparse.Namespace) -> int:
         runs.append((meta, results))
 
     timeline = build_timeline(runs)
-    timeline.input_order = getattr(args, "input_order", InputOrderInfo(mode="timeline", source="explicit"))
+    timeline.input_order = getattr(
+        args, "input_order", InputOrderInfo(mode="timeline", source="explicit")
+    )
 
     if args.json:
         data = timeline_to_dict(timeline)
@@ -722,7 +770,9 @@ def _run_timeline(args: argparse.Namespace) -> int:
 def _run_single(path: str, args: argparse.Namespace) -> int:
     label = _parse_labels(args.labels, 1)[0] or None
     try:
-        meta, results = load_run(path, label=label or "", strict_archive=args.strict_archive)
+        meta, results = load_run(
+            path, label=label or "", strict_archive=args.strict_archive
+        )
     except (FileNotFoundError, ValueError, OSError, XmlParseError) as exc:
         print(f"error loading run: {exc}", file=sys.stderr)
         return 2
@@ -744,7 +794,10 @@ def _run_single(path: str, args: argparse.Namespace) -> int:
     if args.html:
         if not args.output:
             args.output = f"xts_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
-            print(f"HTML output requires a file. Writing to: {args.output}", file=sys.stderr)
+            print(
+                f"HTML output requires a file. Writing to: {args.output}",
+                file=sys.stderr,
+            )
         _emit(format_single_run_html(meta, results), args.output)
         return 0
 

@@ -1,4 +1,5 @@
 """Tests for unresolved analytics (C.5)."""
+
 from __future__ import annotations
 
 import json
@@ -21,44 +22,75 @@ class TestAnalyzeUnresolved:
         assert report["unresolved_files"] == 0
 
     def test_all_resolved(self, tmp_path: Path) -> None:
-        p = _write_results(tmp_path, [
-            {"graph_selection": {"entries": [
-                {"changed_file": "button.cpp", "unresolved_reason": None},
-            ]}},
-        ])
+        p = _write_results(
+            tmp_path,
+            [
+                {
+                    "graph_selection": {
+                        "entries": [
+                            {"changed_file": "button.cpp", "unresolved_reason": None},
+                        ]
+                    }
+                },
+            ],
+        )
         report = analyze_unresolved(p)
         assert report["resolved_files"] == 1
         assert report["unresolved_files"] == 0
         assert report["resolution_rate"] == 1.0
 
     def test_unresolved_counted(self, tmp_path: Path) -> None:
-        p = _write_results(tmp_path, [
-            {"graph_selection": {"entries": [
-                {"changed_file": "unknown.cpp", "unresolved_reason": "no_match"},
-            ]}},
-        ])
+        p = _write_results(
+            tmp_path,
+            [
+                {
+                    "graph_selection": {
+                        "entries": [
+                            {
+                                "changed_file": "unknown.cpp",
+                                "unresolved_reason": "no_match",
+                            },
+                        ]
+                    }
+                },
+            ],
+        )
         report = analyze_unresolved(p)
         assert report["unresolved_files"] == 1
         assert report["unique_unresolved_paths"] == 1
 
     def test_top_unresolved_sorted(self, tmp_path: Path) -> None:
-        p = _write_results(tmp_path, [
-            {"graph_selection": {"entries": [
-                {"changed_file": "a.cpp", "unresolved_reason": "x"},
-                {"changed_file": "b.cpp", "unresolved_reason": "x"},
-                {"changed_file": "a.cpp", "unresolved_reason": "x"},
-            ]}},
-        ])
+        p = _write_results(
+            tmp_path,
+            [
+                {
+                    "graph_selection": {
+                        "entries": [
+                            {"changed_file": "a.cpp", "unresolved_reason": "x"},
+                            {"changed_file": "b.cpp", "unresolved_reason": "x"},
+                            {"changed_file": "a.cpp", "unresolved_reason": "x"},
+                        ]
+                    }
+                },
+            ],
+        )
         report = analyze_unresolved(p)
         assert report["top_unresolved_paths"][0]["path"] == "a.cpp"
         assert report["top_unresolved_paths"][0]["count"] == 2
 
     def test_directory_aggregation(self, tmp_path: Path) -> None:
-        p = _write_results(tmp_path, [
-            {"graph_selection": {"entries": [
-                {"changed_file": "x/y/z/w/a.cpp", "unresolved_reason": "x"},
-                {"changed_file": "x/y/z/w/b.cpp", "unresolved_reason": "x"},
-            ]}},
-        ])
+        p = _write_results(
+            tmp_path,
+            [
+                {
+                    "graph_selection": {
+                        "entries": [
+                            {"changed_file": "x/y/z/w/a.cpp", "unresolved_reason": "x"},
+                            {"changed_file": "x/y/z/w/b.cpp", "unresolved_reason": "x"},
+                        ]
+                    }
+                },
+            ],
+        )
         report = analyze_unresolved(p)
         assert len(report["top_unresolved_directories"]) > 0

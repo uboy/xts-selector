@@ -11,6 +11,7 @@ Usage:
         --cache-dir local/pr_api_cache \
         --workers 80
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,8 +31,16 @@ GITCODE_API = "https://gitcode.com/api/v5"
 
 def _clear_proxy_env():
     """Clear all proxy environment variables."""
-    for v in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY",
-              "all_proxy", "ALL_PROXY", "no_proxy", "NO_PROXY"):
+    for v in (
+        "http_proxy",
+        "https_proxy",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "all_proxy",
+        "ALL_PROXY",
+        "no_proxy",
+        "NO_PROXY",
+    ):
         os.environ.pop(v, None)
 
 
@@ -150,9 +159,11 @@ def _process_one(url: str, cache_dir: Path, token: str) -> tuple[int, str, int]:
     if cpath.exists():
         try:
             data = json.loads(cpath.read_text())
-            if (data.get("fetch_status") == "ok"
-                    and data.get("changed_files")
-                    and data.get("raw_patch_hunks")):
+            if (
+                data.get("fetch_status") == "ok"
+                and data.get("changed_files")
+                and data.get("raw_patch_hunks")
+            ):
                 return pr_number, "cached", len(data["changed_files"])
         except (json.JSONDecodeError, OSError):
             pass
@@ -161,7 +172,11 @@ def _process_one(url: str, cache_dir: Path, token: str) -> tuple[int, str, int]:
     cpath.parent.mkdir(parents=True, exist_ok=True)
     cpath.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    status = "ok" if data["fetch_status"] == "ok" else f"error:{data.get('api_error', '')[:60]}"
+    status = (
+        "ok"
+        if data["fetch_status"] == "ok"
+        else f"error:{data.get('api_error', '')[:60]}"
+    )
     return pr_number, status, len(data.get("changed_files", []))
 
 
@@ -176,25 +191,25 @@ def main():
         "--pr-list-file",
         type=Path,
         default=Path("local/pr_lists/ace_engine_merged_recent.txt"),
-        help="File containing PR URLs (one per line)"
+        help="File containing PR URLs (one per line)",
     )
     parser.add_argument(
         "--cache-dir",
         type=Path,
         default=Path("local/pr_api_cache"),
-        help="Directory to store cache files"
+        help="Directory to store cache files",
     )
     parser.add_argument(
         "--workers",
         type=int,
         default=80,
-        help="Number of parallel workers (default: 80)"
+        help="Number of parallel workers (default: 80)",
     )
     parser.add_argument(
         "--token-env",
         type=str,
         default="GITCODE_TOKEN",
-        help="Environment variable name for GitCode token (default: GITCODE_TOKEN)"
+        help="Environment variable name for GitCode token (default: GITCODE_TOKEN)",
     )
 
     args = parser.parse_args()
@@ -210,8 +225,11 @@ def main():
         print(f"PR list not found: {args.pr_list_file}", file=sys.stderr)
         sys.exit(1)
 
-    urls = [l.strip() for l in args.pr_list_file.read_text().splitlines()
-            if l.strip() and not l.startswith("#")]
+    urls = [
+        l.strip()
+        for l in args.pr_list_file.read_text().splitlines()
+        if l.strip() and not l.startswith("#")
+    ]
     print(f"Processing {len(urls)} PRs with {args.workers} workers...", flush=True)
 
     done = 0
@@ -221,8 +239,9 @@ def main():
     t0 = time.perf_counter()
 
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        futures = {pool.submit(_process_one, url, args.cache_dir, token): url
-                  for url in urls}
+        futures = {
+            pool.submit(_process_one, url, args.cache_dir, token): url for url in urls
+        }
         for future in as_completed(futures):
             pr_number, status, file_count = future.result()
             done += 1
@@ -236,8 +255,11 @@ def main():
             elapsed = time.perf_counter() - t0
             rate = done / elapsed if elapsed > 0 else 0
             eta = (len(urls) - done) / rate / 60 if rate > 0 else 0
-            print(f"  [{done}/{len(urls)}] PR #{pr_number}: {status} ({file_count} files)  "
-                  f"({rate:.1f}/s, ETA {eta:.0f}m)", flush=True)
+            print(
+                f"  [{done}/{len(urls)}] PR #{pr_number}: {status} ({file_count} files)  "
+                f"({rate:.1f}/s, ETA {eta:.0f}m)",
+                flush=True,
+            )
 
     total_time = time.perf_counter() - t0
     print(f"\nDone in {total_time:.1f}s: ok={ok}, cached={cached}, errors={errors}")

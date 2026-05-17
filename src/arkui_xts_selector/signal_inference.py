@@ -17,9 +17,6 @@ from .api_surface import (
     classify_ace_engine_surface,
     surface_to_variants_mode,
 )
-from .consumer_semantics import (
-    extract_typed_field_accesses as extract_typed_field_accesses_semantic,
-)
 from .models import (
     SdkIndex,
     ContentModifierIndex,
@@ -32,7 +29,6 @@ from .constants import (
     OHOS_MODULE_RE,
     CPP_IDENTIFIER_RE,
     TYPE_MEMBER_CALL_RE,
-    IMPORT_RE,
     IMPORT_BINDING_RE,
     DEFAULT_IMPORT_RE,
     IDENTIFIER_CALL_RE,
@@ -56,7 +52,6 @@ from .file_io import (
 )
 from .tokens import (
     compact_token,
-    normalize_family_name,
     snake_to_pascal,
     pascal_to_snake,
     tokenize_path_parts,
@@ -79,7 +74,6 @@ from .file_indexing import (
 from .coverage_keys import (
     FAMILY_TOKEN_ALIAS_INDEX,
     coverage_family_key,
-    extract_coverage_family_keys,
     related_signal_base_token,
     related_signal_family_token,
     GENERIC_PUBLIC_METHOD_HINTS,
@@ -114,18 +108,32 @@ from .project_index import (
 # Main signal inference functions
 
 
-def composite_mapping_matches(mapping_key: str, changed_file: Path, rel_lower: str) -> bool:
+def composite_mapping_matches(
+    mapping_key: str, changed_file: Path, rel_lower: str
+) -> bool:
     """Check if a composite mapping key matches the changed file."""
     compact_key = compact_token(mapping_key)
     stem = compact_token(changed_file.stem)
     rel_compact = compact_token(rel_lower)
     if compact_key and (compact_key in stem or compact_key in rel_compact):
         return True
-    key_tokens = {compact_token(part) for part in tokenize_path_parts(mapping_key) if compact_token(part)}
+    key_tokens = {
+        compact_token(part)
+        for part in tokenize_path_parts(mapping_key)
+        if compact_token(part)
+    }
     if not key_tokens:
         return False
-    stem_tokens = {compact_token(part) for part in tokenize_path_parts(changed_file.stem.lower()) if compact_token(part)}
-    rel_tokens = {compact_token(part) for part in tokenize_path_parts(rel_lower) if compact_token(part)}
+    stem_tokens = {
+        compact_token(part)
+        for part in tokenize_path_parts(changed_file.stem.lower())
+        if compact_token(part)
+    }
+    rel_tokens = {
+        compact_token(part)
+        for part in tokenize_path_parts(rel_lower)
+        if compact_token(part)
+    }
     return key_tokens.issubset(stem_tokens) or key_tokens.issubset(rel_tokens)
 
 
@@ -147,7 +155,9 @@ def apply_composite_mapping(
             if family_key:
                 signals["project_hints"].add(family_key)
                 signals["family_tokens"].add(family_key)
-                signals["symbols"].update(content_index.family_to_symbols.get(family_key, set()))
+                signals["symbols"].update(
+                    content_index.family_to_symbols.get(family_key, set())
+                )
         signals["project_hints"].update(rule.get("project_hints", []))
         signals["method_hints"].update(rule.get("method_hints", []))
         signals["type_hints"].update(rule.get("type_hints", []))
@@ -187,7 +197,7 @@ def infer_signals(
     if os.path.isabs(rel):
         path_parts = [part for part in changed_file.parts if part]
         if "generated" in path_parts:
-            rel = "/".join(path_parts[path_parts.index("generated"):])
+            rel = "/".join(path_parts[path_parts.index("generated") :])
         else:
             rel = "/".join(path_parts[-4:])
     rel_lower = rel.lower()
@@ -201,8 +211,7 @@ def infer_signals(
     # is later truncated to last 4 parts.
     _full_path_lower = str(changed_file).lower()
     is_state_management = (
-        "statemanagement" in _full_path_lower
-        or "state_mgmt" in _full_path_lower
+        "statemanagement" in _full_path_lower or "state_mgmt" in _full_path_lower
     )
     is_manager_infra = "core/manager/" in _full_path_lower
 
@@ -248,7 +257,13 @@ def infer_signals(
         # Convert PascalCase to lowercase: ArkDataPanel -> datapanel
         component_name = pascal_to_snake(pascal_name)
         # Exclude common utility files
-        if component_name not in ("common", "classdefine", "classmock", "component", "commonshape"):
+        if component_name not in (
+            "common",
+            "classdefine",
+            "classmock",
+            "component",
+            "commonshape",
+        ):
             compact = compact_token(component_name)
             signals["project_hints"].add(compact)
             signals["family_tokens"].add(compact)
@@ -293,10 +308,9 @@ def infer_signals(
             pascal = snake_to_pascal(comp)
             # Use PATTERN_ALIAS-derived names when available for correct casing
             # (e.g., "checkboxgroup" -> "CheckboxGroup" not "Checkboxgroup")
-            alias_symbols = (
-                mapping_config.pattern_alias.get(comp, [])
-                or mapping_config.pattern_alias.get(compact, [])
-            )
+            alias_symbols = mapping_config.pattern_alias.get(
+                comp, []
+            ) or mapping_config.pattern_alias.get(compact, [])
             if alias_symbols:
                 # First alias entry is typically the component class name
                 canonical_name = alias_symbols[0]
@@ -314,11 +328,16 @@ def infer_signals(
     # Universal symbol tracing for C++ files not resolved by path patterns.
     # Extracts CamelCase identifiers from the file and maps them to components
     # via the pre-built symbol-to-component index.
-    if (not resolved_components
-        and changed_file.suffix.lower() in (".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".hh")
-        and repo_root):
+    if (
+        not resolved_components
+        and changed_file.suffix.lower()
+        in (".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".hh")
+        and repo_root
+    ):
         sym_components = trace_symbols_to_components(
-            changed_file, list(changed_ranges or []), repo_root,
+            changed_file,
+            list(changed_ranges or []),
+            repo_root,
         )
         if sym_components:
             # Sort by hit count (most specific first), take top components
@@ -329,10 +348,9 @@ def infer_signals(
                 signals["project_hints"].add(compact)
                 signals["family_tokens"].add(compact)
                 pascal = snake_to_pascal(comp)
-                alias_symbols = (
-                    mapping_config.pattern_alias.get(comp, [])
-                    or mapping_config.pattern_alias.get(compact, [])
-                )
+                alias_symbols = mapping_config.pattern_alias.get(
+                    comp, []
+                ) or mapping_config.pattern_alias.get(compact, [])
                 if alias_symbols:
                     signals["type_hints"].add(alias_symbols[0])
                     signals["symbols"].update(alias_symbols)
@@ -348,16 +366,16 @@ def infer_signals(
     # to find which SDK API methods overlap with changed_ranges.
     if resolved_components and changed_file.suffix.lower() == ".ets":
         ets_methods = trace_generated_ets_to_methods(
-            changed_file, list(changed_ranges or []),
+            changed_file,
+            list(changed_ranges or []),
         )
         if ets_methods:
             signals["method_hints"].update(ets_methods)
             # Add member_hints for exact matching
             for comp, _source in resolved_components:
-                alias_syms = (
-                    mapping_config.pattern_alias.get(comp, [])
-                    or mapping_config.pattern_alias.get(compact_token(comp), [])
-                )
+                alias_syms = mapping_config.pattern_alias.get(
+                    comp, []
+                ) or mapping_config.pattern_alias.get(compact_token(comp), [])
                 attr_name = alias_syms[0] if alias_syms else snake_to_pascal(comp)
                 for method in ets_methods:
                     signals["member_hints"].add(f"{attr_name}Attribute.{method}")
@@ -392,27 +410,38 @@ def infer_signals(
         if family in sdk_index.modifier_file_bases:
             signals["symbols"].add(sdk_index.modifier_file_bases[family])
             signals["project_hints"].add(family)
-        signals["symbols"].update(mapping_config.pattern_alias.get(canonical_family, []))
+        signals["symbols"].update(
+            mapping_config.pattern_alias.get(canonical_family, [])
+        )
         if canonical_family != family:
             signals["project_hints"].add(canonical_family)
 
     if changed_file.suffix.lower() == ".ets":
         text = read_text(changed_file)
         normalized_changed_ranges = merge_changed_ranges(changed_ranges)
-        source_families = {FAMILY_TOKEN_ALIAS_INDEX.get(family, family) for family in signals["family_tokens"]}
+        source_families = {
+            FAMILY_TOKEN_ALIAS_INDEX.get(family, family)
+            for family in signals["family_tokens"]
+        }
         source_focus = ets_source_focus_tokens(source_families)
         body_text = strip_ets_import_statements(text)
         body_identifier_calls = set(IDENTIFIER_CALL_RE.findall(body_text))
-        body_type_member_owners = {owner for owner, _member in TYPE_MEMBER_CALL_RE.findall(body_text)}
+        body_type_member_owners = {
+            owner for owner, _member in TYPE_MEMBER_CALL_RE.findall(body_text)
+        }
         body_words = {word.lower() for word in WORD_RE.findall(body_text)}
 
         for match in OHOS_MODULE_RE.findall(text):
             module_names = {match}
-            normalized_module = normalize_ohos_module(match, sdk_index.top_level_modules)
+            normalized_module = normalize_ohos_module(
+                match, sdk_index.top_level_modules
+            )
             if normalized_module:
                 module_names.add(normalized_module)
             for module_name in module_names:
-                strength = classify_ohos_module_signal_strength(module_name, source_focus, source_families)
+                strength = classify_ohos_module_signal_strength(
+                    module_name, source_focus, source_families
+                )
                 if strength == "strong":
                     signals["modules"].add(module_name)
                 elif strength == "weak":
@@ -430,18 +459,24 @@ def infer_signals(
             else:
                 return
             family_token = related_signal_family_token(cleaned)
-            mapped_family = coverage_family_key(family_token) or coverage_family_key(related_signal_base_token(cleaned))
+            mapped_family = coverage_family_key(family_token) or coverage_family_key(
+                related_signal_base_token(cleaned)
+            )
             if strength == "strong" and mapped_family:
                 signals["family_tokens"].add(mapped_family)
                 signals["project_hints"].add(mapped_family)
-                signals["symbols"].update(mapping_config.pattern_alias.get(mapped_family, []))
+                signals["symbols"].update(
+                    mapping_config.pattern_alias.get(mapped_family, [])
+                )
 
         exported_type_names = extract_exported_type_names(
             text,
             changed_ranges=normalized_changed_ranges or None,
         )
         for name in sorted(exported_type_names):
-            if not source_families or should_keep_ets_signal_name(name, source_families, allow_source_family_fallback=True):
+            if not source_families or should_keep_ets_signal_name(
+                name, source_families, allow_source_family_fallback=True
+            ):
                 _add_ets_type_signal(name, "strong")
         exported_member_hints = extract_exported_interface_member_hints(
             text,
@@ -465,7 +500,9 @@ def infer_signals(
             if token and token[:1].isupper():
                 imported_type_names.add(token)
         for name in sorted(imported_type_names):
-            source_owned = imported_ets_symbol_matches_source_focus(name, source_focus, source_families)
+            source_owned = imported_ets_symbol_matches_source_focus(
+                name, source_focus, source_families
+            )
             used_in_body = imported_ets_symbol_used_in_body(
                 name,
                 body_identifier_calls,
@@ -474,11 +511,15 @@ def infer_signals(
             )
             if source_owned:
                 _add_ets_type_signal(name, "strong")
-            elif used_in_body and should_keep_ets_signal_name(name, source_families, allow_source_family_fallback=False):
+            elif used_in_body and should_keep_ets_signal_name(
+                name, source_families, allow_source_family_fallback=False
+            ):
                 _add_ets_type_signal(name, "weak")
 
         public_methods: list[str] = []
-        public_method_line_offsets = build_line_start_offsets(text) if normalized_changed_ranges else []
+        public_method_line_offsets = (
+            build_line_start_offsets(text) if normalized_changed_ranges else []
+        )
         for public_method_match in PUBLIC_METHOD_RE.finditer(text):
             method_name = public_method_match.group(1)
             if compact_token(method_name) in GENERIC_PUBLIC_METHOD_HINTS:
@@ -535,17 +576,24 @@ def infer_signals(
     if is_ts or is_dts:
         text = read_text(changed_file)
         normalized_ts_ranges = merge_changed_ranges(changed_ranges)
-        source_families = {FAMILY_TOKEN_ALIAS_INDEX.get(family, family) for family in signals["family_tokens"]}
+        source_families = {
+            FAMILY_TOKEN_ALIAS_INDEX.get(family, family)
+            for family in signals["family_tokens"]
+        }
         source_focus = ets_source_focus_tokens(source_families)
 
         # Extract @ohos.* module references
         for match in OHOS_MODULE_RE.findall(text):
             module_names = {match}
-            normalized_module = normalize_ohos_module(match, sdk_index.top_level_modules)
+            normalized_module = normalize_ohos_module(
+                match, sdk_index.top_level_modules
+            )
             if normalized_module:
                 module_names.add(normalized_module)
             for module_name in module_names:
-                strength = classify_ohos_module_signal_strength(module_name, source_focus, source_families)
+                strength = classify_ohos_module_signal_strength(
+                    module_name, source_focus, source_families
+                )
                 if strength == "strong":
                     signals["modules"].add(module_name)
                 elif strength == "weak":
@@ -559,7 +607,9 @@ def infer_signals(
                     signals["type_hints"].add(name)
                     signals["symbols"].add(name)
                     family_token = related_signal_family_token(name)
-                    mapped_family = coverage_family_key(family_token) or coverage_family_key(related_signal_base_token(name))
+                    mapped_family = coverage_family_key(
+                        family_token
+                    ) or coverage_family_key(related_signal_base_token(name))
                     if mapped_family:
                         signals["family_tokens"].add(mapped_family)
                         signals["project_hints"].add(mapped_family)
@@ -578,7 +628,11 @@ def infer_signals(
                 signals["symbols"].add(owner)
 
         # Extract declare function signatures → method_hints
-        scan_text = extract_text_in_changed_ranges(text, normalized_ts_ranges) if normalized_ts_ranges else text
+        scan_text = (
+            extract_text_in_changed_ranges(text, normalized_ts_ranges)
+            if normalized_ts_ranges
+            else text
+        )
         for match in DECLARE_FUNCTION_RE.finditer(scan_text):
             func_name = match.group(1)
             if func_name:
@@ -608,7 +662,11 @@ def infer_signals(
         normalized_native_ranges = merge_changed_ranges(changed_ranges)
         # When ranges are provided, scan only the changed lines for identifier-level signals.
         # File-level structural signals (includes, dynamic modules) remain full-file.
-        scan_text = extract_text_in_changed_ranges(text, normalized_native_ranges) if normalized_native_ranges else text
+        scan_text = (
+            extract_text_in_changed_ranges(text, normalized_native_ranges)
+            if normalized_native_ranges
+            else text
+        )
         scan_text_lower = scan_text.lower()
 
         dynamic_modules = {match for match in DYNAMIC_MODULE_RE.findall(text)}
@@ -629,7 +687,9 @@ def infer_signals(
             signals["type_hints"].update(accessor_type_hints)
             signals["symbols"].update(accessor_type_hints)
             signals["project_hints"].update(
-                compact_token(hint) for hint in accessor_type_hints if compact_token(hint)
+                compact_token(hint)
+                for hint in accessor_type_hints
+                if compact_token(hint)
             )
 
         for include_family in INCLUDE_PATTERN_COMPONENT_RE.findall(scan_text):
@@ -660,7 +720,11 @@ def infer_signals(
             if family:
                 signals["family_tokens"].add(family)
                 signals["project_hints"].add(family)
-            signals["symbols"].update(dynamic_module_symbols(module_name, sdk_index, content_index, mapping_config))
+            signals["symbols"].update(
+                dynamic_module_symbols(
+                    module_name, sdk_index, content_index, mapping_config
+                )
+            )
 
         uses_content_modifier = (
             "contentmodifier" in compact_token(changed_file.stem)
@@ -681,7 +745,9 @@ def infer_signals(
                 if family:
                     signals["project_hints"].add(family)
                     signals["family_tokens"].add(family)
-                    signals["symbols"].update(content_index.family_to_symbols.get(family, set()))
+                    signals["symbols"].update(
+                        content_index.family_to_symbols.get(family, set())
+                    )
 
         # When changed_ranges are provided, extract function names from changed lines
         # and add them as method hints to narrow matching for wide-scope files like
@@ -749,27 +815,41 @@ def infer_signals(
                 # one method match to avoid false positives from broad signals.
                 signals["method_hint_required"] = True
 
-    apply_composite_mapping(changed_file, rel_lower, signals, content_index, mapping_config)
+    apply_composite_mapping(
+        changed_file, rel_lower, signals, content_index, mapping_config
+    )
 
     signals["modules"] = {item for item in signals["modules"] if item}
-    signals["weak_modules"] = {item for item in signals.get("weak_modules", set()) if item and item not in signals["modules"]}
+    signals["weak_modules"] = {
+        item
+        for item in signals.get("weak_modules", set())
+        if item and item not in signals["modules"]
+    }
     signals["symbols"] = {item for item in signals["symbols"] if item}
     signals["weak_symbols"] = {
-        item for item in signals.get("weak_symbols", set())
+        item
+        for item in signals.get("weak_symbols", set())
         if item and item not in signals["symbols"]
     }
     signals["project_hints"] = {
         compact_token(item)
         for item in signals["project_hints"]
-        if item and compact_token(item) not in _rr.GENERIC_PATH_TOKENS and compact_token(item) not in CONTENT_MODIFIER_NOISE
+        if item
+        and compact_token(item) not in _rr.GENERIC_PATH_TOKENS
+        and compact_token(item) not in CONTENT_MODIFIER_NOISE
     }
     signals["family_tokens"] = {
-        item for item in signals["family_tokens"]
+        item
+        for item in signals["family_tokens"]
         if item not in _rr.GENERIC_PATH_TOKENS and item not in CONTENT_MODIFIER_NOISE
     }
     signals["method_hints"] = {item for item in signals["method_hints"] if item}
     signals["type_hints"] = {item for item in signals["type_hints"] if item}
-    signals["member_hints"] = {item for item in signals.get("member_hints", set()) if normalize_member_hint(str(item))}
+    signals["member_hints"] = {
+        item
+        for item in signals.get("member_hints", set())
+        if normalize_member_hint(str(item))
+    }
     return signals
 
 
@@ -797,19 +877,27 @@ def apply_api_lineage_signals(
     if api_lineage_map is None:
         return [], [], []
 
-    file_level_affected_api_entities = api_lineage_map.apis_for_source(changed_file, repo_root=repo_root)
-    derived_source_symbols = [str(item).strip() for item in (changed_symbols or []) if str(item).strip()]
+    file_level_affected_api_entities = api_lineage_map.apis_for_source(
+        changed_file, repo_root=repo_root
+    )
+    derived_source_symbols = [
+        str(item).strip() for item in (changed_symbols or []) if str(item).strip()
+    ]
     if not derived_source_symbols and changed_ranges:
         derived_source_symbols = api_lineage_map.symbols_for_source_ranges(
             changed_file,
             changed_ranges,
             repo_root=repo_root,
         )
-    narrowed_api_entities = api_lineage_map.apis_for_source_symbols(
-        changed_file,
-        derived_source_symbols,
-        repo_root=repo_root,
-    ) if derived_source_symbols else []
+    narrowed_api_entities = (
+        api_lineage_map.apis_for_source_symbols(
+            changed_file,
+            derived_source_symbols,
+            repo_root=repo_root,
+        )
+        if derived_source_symbols
+        else []
+    )
     affected_api_entities = narrowed_api_entities or file_level_affected_api_entities
     lineage_symbols: set[str] = set()
     lineage_project_hints: set[str] = set()
@@ -850,7 +938,11 @@ def apply_api_lineage_signals(
         signals["member_hints"].update(lineage_member_hints)
     if exact_api_prefilter_entities:
         signals["exact_api_prefilter_entities"] = exact_api_prefilter_entities
-    return affected_api_entities, file_level_affected_api_entities, derived_source_symbols
+    return (
+        affected_api_entities,
+        file_level_affected_api_entities,
+        derived_source_symbols,
+    )
 
 
 def collect_source_only_consumers(
@@ -877,7 +969,9 @@ def collect_source_only_consumers(
     affected_set = set(affected_api_entities)
     project_entries: dict[str, dict[str, object]] = {}
     for api_entity in affected_api_entities:
-        for consumer_project in api_lineage_map.consumer_projects_for_api(api_entity, kind="source_only"):
+        for consumer_project in api_lineage_map.consumer_projects_for_api(
+            api_entity, kind="source_only"
+        ):
             entry = project_entries.setdefault(
                 consumer_project,
                 {
@@ -891,8 +985,13 @@ def collect_source_only_consumers(
 
     for consumer_project, entry in project_entries.items():
         matched_files: list[dict[str, object]] = []
-        for consumer_file in api_lineage_map.consumer_files_for_project(consumer_project):
-            matched_file_apis = sorted(api_lineage_map.consumer_file_to_apis.get(consumer_file, set()) & affected_set)
+        for consumer_file in api_lineage_map.consumer_files_for_project(
+            consumer_project
+        ):
+            matched_file_apis = sorted(
+                api_lineage_map.consumer_file_to_apis.get(consumer_file, set())
+                & affected_set
+            )
             if not matched_file_apis:
                 continue
             matched_files.append(
@@ -901,7 +1000,12 @@ def collect_source_only_consumers(
                     "matched_api_entities": matched_file_apis,
                 }
             )
-        matched_files.sort(key=lambda item: (-len(item.get("matched_api_entities", [])), str(item.get("file", ""))))
+        matched_files.sort(
+            key=lambda item: (
+                -len(item.get("matched_api_entities", [])),
+                str(item.get("file", "")),
+            )
+        )
         entry["matched_api_entities"] = sorted(entry["matched_api_entities"])
         entry["files"] = matched_files[:top_files]
         entry["matched_file_count"] = len(matched_files)
@@ -958,11 +1062,11 @@ def variant_matches(project_variant: str, variants_mode: str) -> bool:
     Returns:
         True if the variant matches the mode
     """
-    if variants_mode in {'auto', 'both'}:
+    if variants_mode in {"auto", "both"}:
         return True
-    if project_variant == 'both':
+    if project_variant == "both":
         return True
-    if project_variant == 'unknown':
+    if project_variant == "unknown":
         return False
     return project_variant == variants_mode
 
@@ -977,10 +1081,10 @@ def resolve_variants_mode(variants_mode: str, changed_file: Path | None = None) 
     Returns:
         Resolved variants mode
     """
-    if variants_mode != 'auto':
+    if variants_mode != "auto":
         return variants_mode
     if changed_file is None:
-        return 'both'
+        return "both"
     profile = classify_ace_engine_surface(changed_file, read_text(changed_file))
     return surface_to_variants_mode(profile.surface)
 
@@ -1039,10 +1143,14 @@ def _build_selection_signals(candidate: dict, target: dict) -> list[dict[str, ob
     if covered_families:
         signals.append({"match_type": "family", "matched_keys": covered_families})
     if covered_capabilities:
-        signals.append({"match_type": "capability", "matched_keys": covered_capabilities})
+        signals.append(
+            {"match_type": "capability", "matched_keys": covered_capabilities}
+        )
     if covered_type_hints:
         signals.append({"match_type": "type_hint", "matched_keys": covered_type_hints})
     if covered_member_hints:
-        signals.append({"match_type": "member_hint", "matched_keys": covered_member_hints})
+        signals.append(
+            {"match_type": "member_hint", "matched_keys": covered_member_hints}
+        )
 
     return signals

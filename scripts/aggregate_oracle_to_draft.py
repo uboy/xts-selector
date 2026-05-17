@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Aggregate per-PR oracle outputs into draft golden fixture."""
+
 from __future__ import annotations
 
 import json
@@ -76,13 +77,19 @@ def main() -> None:
             "url": f"https://gitcode.com/openharmony/arkui_ace_engine/merge_requests/{pr_num}",
             "expected_apis": {
                 "high_confidence": [
-                    {"canonical_id": item, "rationale": "AST oracle: signature/added/removed",
-                     "evidence_files": []}
+                    {
+                        "canonical_id": item,
+                        "rationale": "AST oracle: signature/added/removed",
+                        "evidence_files": [],
+                    }
                     for item in (oracle or {}).get("high_confidence", [])
                 ],
                 "medium_confidence": [
-                    {"canonical_id": item, "rationale": "AST oracle: body modified",
-                     "evidence_files": []}
+                    {
+                        "canonical_id": item,
+                        "rationale": "AST oracle: body modified",
+                        "evidence_files": [],
+                    }
                     for item in (oracle or {}).get("medium_confidence", [])
                 ],
                 "low_confidence_or_unsure": [],

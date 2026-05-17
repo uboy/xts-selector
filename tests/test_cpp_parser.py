@@ -7,13 +7,18 @@ Tests verify:
 - Native node accessor methods are found
 - JS button methods are found
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 
-from arkui_xts_selector.indexing.cpp_parser import CppClass, CppMethod, CppParseResult, parse_cpp_file
+from arkui_xts_selector.indexing.cpp_parser import (
+    CppClass,
+    CppMethod,
+    CppParseResult,
+    parse_cpp_file,
+)
 
 
 class TestParseButtonPattern:
@@ -21,7 +26,9 @@ class TestParseButtonPattern:
 
     def test_parse_button_pattern_h(self):
         """Button pattern header finds ButtonPattern class with methods."""
-        fixture_path = Path("tests/fixtures/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.h")
+        fixture_path = Path(
+            "tests/fixtures/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.h"
+        )
         result = parse_cpp_file(fixture_path)
 
         assert result.file_path.endswith("button_pattern.h")
@@ -50,7 +57,9 @@ class TestParseButtonModelStatic:
 
     def test_parse_button_model_static(self):
         """Button model static finds methods like SetRole, SetType."""
-        fixture_path = Path("tests/fixtures/ace_engine/frameworks/core/components_ng/pattern/button/button_model_static.cpp")
+        fixture_path = Path(
+            "tests/fixtures/ace_engine/frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        )
         result = parse_cpp_file(fixture_path)
 
         assert result.file_path.endswith("button_model_static.cpp")
@@ -78,7 +87,9 @@ class TestParseButtonModifierImpl:
 
     def test_parse_button_modifier_impl(self):
         """Button modifier implementation finds SetRole, ResetRole."""
-        fixture_path = Path("tests/fixtures/ace_engine/frameworks/core/interfaces/native/implementation/button_modifier.cpp")
+        fixture_path = Path(
+            "tests/fixtures/ace_engine/frameworks/core/interfaces/native/implementation/button_modifier.cpp"
+        )
         result = parse_cpp_file(fixture_path)
 
         assert result.file_path.endswith("button_modifier.cpp")
@@ -104,7 +115,9 @@ class TestParseButtonModifierNode:
 
     def test_parse_button_modifier_node(self):
         """Button modifier node accessor finds GetRole, SetRole."""
-        fixture_path = Path("tests/fixtures/ace_engine/frameworks/core/interfaces/native/node/button_modifier.cpp")
+        fixture_path = Path(
+            "tests/fixtures/ace_engine/frameworks/core/interfaces/native/node/button_modifier.cpp"
+        )
         result = parse_cpp_file(fixture_path)
 
         assert result.file_path.endswith("button_modifier.cpp")
@@ -130,7 +143,9 @@ class TestParseJsButton:
 
     def test_parse_js_button(self):
         """JS button finds JsButton class with Create, JsType, JsButtonStyle."""
-        fixture_path = Path("tests/fixtures/ace_engine/frameworks/bridge/declarative_frontend/jsview/js_button.cpp")
+        fixture_path = Path(
+            "tests/fixtures/ace_engine/frameworks/bridge/declarative_frontend/jsview/js_button.cpp"
+        )
         result = parse_cpp_file(fixture_path)
 
         assert result.file_path.endswith("js_button.cpp")
@@ -222,9 +237,7 @@ class TestCppParseResultDataclass:
 
     def test_cpp_parse_result_creation(self):
         """CppParseResult can be created with all fields."""
-        classes = (
-            CppClass(name="ButtonPattern"),
-        )
+        classes = (CppClass(name="ButtonPattern"),)
         result = CppParseResult(
             file_path="/path/to/file.cpp",
             parser_level=3,

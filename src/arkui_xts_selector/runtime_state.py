@@ -19,7 +19,9 @@ _LOCK_POLL_INTERVAL_S = 0.2
 
 
 class InterprocessLockTimeout(RuntimeError):
-    def __init__(self, path: Path, timeout_s: float, holder: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, path: Path, timeout_s: float, holder: dict[str, Any] | None = None
+    ) -> None:
         self.path = path
         self.timeout_s = timeout_s
         self.holder = dict(holder or {})
@@ -31,7 +33,9 @@ class InterprocessLockTimeout(RuntimeError):
                 f" pid={self.holder.get('pid', '?')}"
                 f" since={self.holder.get('acquired_at', '?')}"
             )
-        super().__init__(f"timed out waiting {timeout_s:.1f}s for lock {path}{holder_text}")
+        super().__init__(
+            f"timed out waiting {timeout_s:.1f}s for lock {path}{holder_text}"
+        )
 
 
 @dataclass

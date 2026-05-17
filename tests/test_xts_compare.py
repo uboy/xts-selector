@@ -30,9 +30,7 @@ sys.path.insert(0, str(ROOT / "src"))
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "xts_compare"
 
 from arkui_xts_selector.xts_compare.models import (
-    ComparisonSummary,
     CrashInfo,
-    FilterConfig,
     ModuleInfo,
     ModuleComparison,
     PerformanceChange,
@@ -50,7 +48,6 @@ from arkui_xts_selector.xts_compare.parse import (
     load_run,
     open_archive,
     parse_data_js,
-    parse_summary_ini,
     parse_summary_xml,
     parse_task_info,
 )
@@ -89,7 +86,10 @@ from arkui_xts_selector.xts_compare.selector_integration import (
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_result(module: str, suite: str, case: str, outcome: TestOutcome, msg: str = "") -> TestResult:
+
+def _make_result(
+    module: str, suite: str, case: str, outcome: TestOutcome, msg: str = ""
+) -> TestResult:
     return TestResult(
         identity=TestIdentity(module=module, suite=suite, case=case),
         outcome=outcome,
@@ -97,7 +97,9 @@ def _make_result(module: str, suite: str, case: str, outcome: TestOutcome, msg: 
     )
 
 
-def _make_run(results: list[TestResult]) -> tuple[RunMetadata, dict[TestIdentity, TestResult]]:
+def _make_run(
+    results: list[TestResult],
+) -> tuple[RunMetadata, dict[TestIdentity, TestResult]]:
     d = {r.identity: r for r in results}
     pass_count = sum(1 for r in d.values() if r.outcome == TestOutcome.PASS)
     fail_count = sum(1 for r in d.values() if r.outcome == TestOutcome.FAIL)
@@ -115,6 +117,7 @@ def _make_run(results: list[TestResult]) -> tuple[RunMetadata, dict[TestIdentity
 # ---------------------------------------------------------------------------
 # classify_outcome
 # ---------------------------------------------------------------------------
+
 
 class TestClassifyOutcome(unittest.TestCase):
     def test_pass(self):
@@ -142,6 +145,7 @@ class TestClassifyOutcome(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # parse_summary_xml
 # ---------------------------------------------------------------------------
+
 
 class TestParseSummaryXml(unittest.TestCase):
     def _parse_fixture(self, name: str) -> list[TestResult]:
@@ -205,6 +209,7 @@ class TestParseSummaryXml(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # open_archive / find_summary_xml
 # ---------------------------------------------------------------------------
+
 
 class TestOpenArchive(unittest.TestCase):
     def test_directory_is_not_temporary(self):
@@ -280,6 +285,7 @@ class TestFindSummaryXml(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # load_run (integration against fixture files)
 # ---------------------------------------------------------------------------
+
 
 class TestLoadRun(unittest.TestCase):
     def _make_dir_with_xml(self, xml_name: str) -> str:
@@ -391,7 +397,9 @@ Reason: Signal:SIGSEGV(SEGV_MAPERR)@0x0069fffc
             self.assertEqual(module_info.error, "App died")
             self.assertIsNotNone(module_info.crash_info)
             self.assertEqual(module_info.crash_info.signal, "SIGSEGV(SEGV_MAPERR)")
-            self.assertEqual(module_info.crash_info.crash_file, "log/cppcrash-ActsCrashTest.log")
+            self.assertEqual(
+                module_info.crash_info.crash_file, "log/cppcrash-ActsCrashTest.log"
+            )
             result = results[TestIdentity("ActsCrashTest", "CrashSuite", "testCrash")]
             self.assertEqual(result.failure_type, FailureType.CRASH)
         finally:
@@ -401,6 +409,7 @@ Reason: Signal:SIGSEGV(SEGV_MAPERR)@0x0069fffc
 # ---------------------------------------------------------------------------
 # parse_summary_ini with real content
 # ---------------------------------------------------------------------------
+
 
 class TestParseSummaryIniWithContent(unittest.TestCase):
     def test_device_and_duration_from_ini(self):
@@ -417,7 +426,7 @@ class TestParseSummaryIniWithContent(unittest.TestCase):
             )
             # Write a minimal summary_report.xml alongside it.
             xml_path = Path(tmp) / "summary_report.xml"
-            xml_path.write_text("<testsuites name=\"DummyModule\"/>", encoding="utf-8")
+            xml_path.write_text('<testsuites name="DummyModule"/>', encoding="utf-8")
 
             meta, _ = load_run(tmp)
 
@@ -495,6 +504,7 @@ class TestParseDataJs(unittest.TestCase):
 # classify_transition
 # ---------------------------------------------------------------------------
 
+
 class TestClassifyTransition(unittest.TestCase):
     def _r(self, outcome: TestOutcome, msg: str = "") -> TestResult:
         return _make_result("M", "S", "C", outcome, msg)
@@ -549,19 +559,25 @@ class TestClassifyTransition(unittest.TestCase):
 
     def test_unblocked_to_pass(self):
         self.assertEqual(
-            classify_transition(self._r(TestOutcome.BLOCKED), self._r(TestOutcome.PASS)),
+            classify_transition(
+                self._r(TestOutcome.BLOCKED), self._r(TestOutcome.PASS)
+            ),
             TransitionKind.UNBLOCKED,
         )
 
     def test_fail_to_blocked_is_new_blocked(self):
         self.assertEqual(
-            classify_transition(self._r(TestOutcome.FAIL), self._r(TestOutcome.BLOCKED)),
+            classify_transition(
+                self._r(TestOutcome.FAIL), self._r(TestOutcome.BLOCKED)
+            ),
             TransitionKind.NEW_BLOCKED,
         )
 
     def test_pass_to_blocked_is_status_change(self):
         self.assertEqual(
-            classify_transition(self._r(TestOutcome.PASS), self._r(TestOutcome.BLOCKED)),
+            classify_transition(
+                self._r(TestOutcome.PASS), self._r(TestOutcome.BLOCKED)
+            ),
             TransitionKind.STATUS_CHANGE,
         )
 
@@ -576,6 +592,7 @@ class TestClassifyTransition(unittest.TestCase):
 # compare_runs (integration)
 # ---------------------------------------------------------------------------
 
+
 class TestCompareRuns(unittest.TestCase):
     def _fixture_run(self, xml_name: str, label: str) -> tuple:
         tmp = tempfile.mkdtemp()
@@ -588,11 +605,17 @@ class TestCompareRuns(unittest.TestCase):
             shutil.rmtree(tmp, ignore_errors=True)
 
     def setUp(self):
-        self.base_meta, self.base_results = self._fixture_run("base_summary.xml", "base")
-        self.target_meta, self.target_results = self._fixture_run("target_summary.xml", "target")
+        self.base_meta, self.base_results = self._fixture_run(
+            "base_summary.xml", "base"
+        )
+        self.target_meta, self.target_results = self._fixture_run(
+            "target_summary.xml", "target"
+        )
         self.report = compare_runs(
-            self.base_meta, self.base_results,
-            self.target_meta, self.target_results,
+            self.base_meta,
+            self.base_results,
+            self.target_meta,
+            self.target_results,
         )
 
     def test_regression_count(self):
@@ -623,7 +646,9 @@ class TestCompareRuns(unittest.TestCase):
         self.assertIn("testOnClick", case_names)
 
     def test_regression_messages(self):
-        r = next(t for t in self.report.regressions if t.identity.case == "testButtonRadius")
+        r = next(
+            t for t in self.report.regressions if t.identity.case == "testButtonRadius"
+        )
         self.assertIn("expected 16 but got 0", r.target_message)
 
     def test_improvements_list(self):
@@ -646,12 +671,18 @@ class TestPerformanceAndHealth(unittest.TestCase):
     def test_detect_performance_regressions_slowdown(self):
         identity = TestIdentity("M", "S", "slow")
         base = {
-            identity: TestResult(identity=identity, outcome=TestOutcome.PASS, time_ms=100.0),
+            identity: TestResult(
+                identity=identity, outcome=TestOutcome.PASS, time_ms=100.0
+            ),
         }
         target = {
-            identity: TestResult(identity=identity, outcome=TestOutcome.PASS, time_ms=5000.0),
+            identity: TestResult(
+                identity=identity, outcome=TestOutcome.PASS, time_ms=5000.0
+            ),
         }
-        changes = detect_performance_regressions(base, target, min_delta_ms=1000.0, min_ratio=3.0)
+        changes = detect_performance_regressions(
+            base, target, min_delta_ms=1000.0, min_ratio=3.0
+        )
         self.assertEqual(len(changes), 1)
         self.assertAlmostEqual(changes[0].ratio, 50.0, places=1)
         self.assertTrue(changes[0].outcome_stable)
@@ -659,22 +690,32 @@ class TestPerformanceAndHealth(unittest.TestCase):
     def test_detect_performance_regressions_speedup(self):
         identity = TestIdentity("M", "S", "fast")
         base = {
-            identity: TestResult(identity=identity, outcome=TestOutcome.PASS, time_ms=5000.0),
+            identity: TestResult(
+                identity=identity, outcome=TestOutcome.PASS, time_ms=5000.0
+            ),
         }
         target = {
-            identity: TestResult(identity=identity, outcome=TestOutcome.PASS, time_ms=200.0),
+            identity: TestResult(
+                identity=identity, outcome=TestOutcome.PASS, time_ms=200.0
+            ),
         }
-        changes = detect_performance_regressions(base, target, min_delta_ms=1000.0, min_ratio=3.0)
+        changes = detect_performance_regressions(
+            base, target, min_delta_ms=1000.0, min_ratio=3.0
+        )
         self.assertEqual(len(changes), 1)
         self.assertLess(changes[0].ratio, 1.0)
 
     def test_compare_runs_populates_performance_changes(self):
         identity = TestIdentity("M", "S", "slow")
         base_results = {
-            identity: TestResult(identity=identity, outcome=TestOutcome.PASS, time_ms=100.0),
+            identity: TestResult(
+                identity=identity, outcome=TestOutcome.PASS, time_ms=100.0
+            ),
         }
         target_results = {
-            identity: TestResult(identity=identity, outcome=TestOutcome.PASS, time_ms=5000.0),
+            identity: TestResult(
+                identity=identity, outcome=TestOutcome.PASS, time_ms=5000.0
+            ),
         }
         base_meta = RunMetadata(label="base", total_tests=1, pass_count=1)
         target_meta = RunMetadata(label="target", total_tests=1, pass_count=1)
@@ -722,12 +763,18 @@ class TestSelectorIntegration(unittest.TestCase):
 
     def _make_report(self):
         base_results = [
-            _make_result("ActsButtonTest", "ButtonSuite", "testButtonRadius", TestOutcome.PASS),
-            _make_result("ActsFormTest", "FormSuite", "testFormButton", TestOutcome.PASS),
+            _make_result(
+                "ActsButtonTest", "ButtonSuite", "testButtonRadius", TestOutcome.PASS
+            ),
+            _make_result(
+                "ActsFormTest", "FormSuite", "testFormButton", TestOutcome.PASS
+            ),
         ]
         target_results = [
             TestResult(
-                identity=TestIdentity("ActsButtonTest", "ButtonSuite", "testButtonRadius"),
+                identity=TestIdentity(
+                    "ActsButtonTest", "ButtonSuite", "testButtonRadius"
+                ),
                 outcome=TestOutcome.FAIL,
                 message="App died",
                 failure_type=FailureType.CRASH,
@@ -750,7 +797,10 @@ class TestSelectorIntegration(unittest.TestCase):
             path.write_text(json.dumps(self._make_selector_report()), encoding="utf-8")
             loaded = load_selector_report(str(path))
             self.assertIn("results", loaded)
-            self.assertEqual(loaded["results"][0]["changed_file"], "frameworks/core/components/button/button_pattern.cpp")
+            self.assertEqual(
+                loaded["results"][0]["changed_file"],
+                "frameworks/core/components/button/button_pattern.cpp",
+            )
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
@@ -759,9 +809,15 @@ class TestSelectorIntegration(unittest.TestCase):
         correlations = correlate_with_selector(report, self._make_selector_report())
         self.assertEqual(len(correlations), 1)
         entry = correlations[0]
-        self.assertEqual(entry.changed_file, "frameworks/core/components/button/button_pattern.cpp")
-        self.assertEqual(entry.predicted_projects[0].matched_modules, ["ActsButtonTest"])
-        self.assertEqual(entry.predicted_projects[0].regressions[0].case, "testButtonRadius")
+        self.assertEqual(
+            entry.changed_file, "frameworks/core/components/button/button_pattern.cpp"
+        )
+        self.assertEqual(
+            entry.predicted_projects[0].matched_modules, ["ActsButtonTest"]
+        )
+        self.assertEqual(
+            entry.predicted_projects[0].regressions[0].case, "testButtonRadius"
+        )
         self.assertEqual(entry.regression_not_predicted[0].module, "ActsFormTest")
 
 
@@ -769,12 +825,10 @@ class TestSelectorIntegration(unittest.TestCase):
 # build_timeline + _compute_trend
 # ---------------------------------------------------------------------------
 
+
 class TestBuildTimeline(unittest.TestCase):
     def _run_with(self, outcomes: list[TestOutcome], label: str) -> tuple:
-        results = [
-            _make_result("M", "S", "C", o)
-            for o in outcomes
-        ]
+        results = [_make_result("M", "S", "C", o) for o in outcomes]
         return _make_run(results)
 
     def test_empty_runs_returns_empty_report(self):
@@ -813,14 +867,18 @@ class TestBuildTimeline(unittest.TestCase):
         self.assertEqual(trend, "flaky")
 
     def test_interesting_rows_excludes_stable_pass(self):
-        run1 = _make_run([
-            _make_result("M", "S", "always_pass", TestOutcome.PASS),
-            _make_result("M", "S", "flaky", TestOutcome.PASS),
-        ])
-        run2 = _make_run([
-            _make_result("M", "S", "always_pass", TestOutcome.PASS),
-            _make_result("M", "S", "flaky", TestOutcome.FAIL),
-        ])
+        run1 = _make_run(
+            [
+                _make_result("M", "S", "always_pass", TestOutcome.PASS),
+                _make_result("M", "S", "flaky", TestOutcome.PASS),
+            ]
+        )
+        run2 = _make_run(
+            [
+                _make_result("M", "S", "always_pass", TestOutcome.PASS),
+                _make_result("M", "S", "flaky", TestOutcome.FAIL),
+            ]
+        )
         report = build_timeline([run1, run2])
         # always_pass should be excluded from interesting_rows.
         interesting_cases = {r.identity.case for r in report.interesting_rows}
@@ -840,6 +898,7 @@ class TestBuildTimeline(unittest.TestCase):
 # format_report (smoke)
 # ---------------------------------------------------------------------------
 
+
 class TestFormatReport(unittest.TestCase):
     def setUp(self):
         base_results = [
@@ -855,6 +914,7 @@ class TestFormatReport(unittest.TestCase):
         target_meta, target_d = _make_run(target_results)
         target_meta.label = "target"
         from arkui_xts_selector.xts_compare.compare import compare_runs
+
         self.report = compare_runs(base_meta, base_d, target_meta, target_d)
 
     def test_format_report_contains_header(self):
@@ -977,7 +1037,9 @@ class TestFormatReportAdvancedFeatures(unittest.TestCase):
                 }
             ]
         }
-        self.report.selector_correlations = correlate_with_selector(self.report, selector_report)
+        self.report.selector_correlations = correlate_with_selector(
+            self.report, selector_report
+        )
         text = format_report(self.report)
         self.assertIn("Selector Correlation", text)
         self.assertIn("button_pattern.cpp", text)
@@ -988,9 +1050,11 @@ class TestFormatReportAdvancedFeatures(unittest.TestCase):
 # format_timeline (smoke)
 # ---------------------------------------------------------------------------
 
+
 class TestFormatTimeline(unittest.TestCase):
     def test_format_empty_timeline(self):
         from arkui_xts_selector.xts_compare.models import TimelineReport
+
         report = TimelineReport()
         text = format_timeline(report)
         self.assertIn("empty", text.lower())
@@ -999,6 +1063,7 @@ class TestFormatTimeline(unittest.TestCase):
         run1 = _make_run([_make_result("M", "S", "C", TestOutcome.PASS)])
         run2 = _make_run([_make_result("M", "S", "C", TestOutcome.FAIL)])
         from arkui_xts_selector.xts_compare.compare import build_timeline
+
         report = build_timeline([run1, run2])
         text = format_timeline(report)
         self.assertIn("M::S::C", text)
@@ -1010,6 +1075,7 @@ class TestFormatTimeline(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # format_html (smoke)
 # ---------------------------------------------------------------------------
+
 
 class TestFormatHtml(unittest.TestCase):
     def setUp(self):
@@ -1070,7 +1136,9 @@ class TestFormatHtml(unittest.TestCase):
                 }
             ]
         }
-        self.report.selector_correlations = correlate_with_selector(self.report, selector_report)
+        self.report.selector_correlations = correlate_with_selector(
+            self.report, selector_report
+        )
 
     def test_format_html_contains_document_shell(self):
         text = format_html(self.report)
@@ -1095,7 +1163,7 @@ class TestFormatHtml(unittest.TestCase):
                 kind=TransitionKind.REGRESSION,
                 base_outcome=TestOutcome.PASS,
                 target_outcome=TestOutcome.FAIL,
-                target_message='</script><b>boom</b>',
+                target_message="</script><b>boom</b>",
                 target_failure_type=FailureType.CRASH,
             )
         )
@@ -1107,6 +1175,7 @@ class TestFormatHtml(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # JSON round-trip
 # ---------------------------------------------------------------------------
+
 
 class TestJsonSerialization(unittest.TestCase):
     def _make_report(self):
@@ -1123,6 +1192,7 @@ class TestJsonSerialization(unittest.TestCase):
         target_meta, target_d = _make_run(target_results)
         target_meta.label = "target"
         from arkui_xts_selector.xts_compare.compare import compare_runs
+
         return compare_runs(base_meta, base_d, target_meta, target_d)
 
     def test_report_to_dict_is_json_serializable(self):
@@ -1167,6 +1237,7 @@ class TestJsonSerialization(unittest.TestCase):
         run1 = _make_run([_make_result("M", "S", "C", TestOutcome.PASS)])
         run2 = _make_run([_make_result("M", "S", "C", TestOutcome.FAIL)])
         from arkui_xts_selector.xts_compare.compare import build_timeline
+
         timeline = build_timeline([run1, run2])
         d = timeline_to_dict(timeline)
         text = json.dumps(d)  # must not raise
@@ -1260,6 +1331,7 @@ class TestJsonSerialization(unittest.TestCase):
 # CLI argument parsing
 # ---------------------------------------------------------------------------
 
+
 class TestCliParser(unittest.TestCase):
     def setUp(self):
         self.parser = build_parser()
@@ -1286,47 +1358,69 @@ class TestCliParser(unittest.TestCase):
         self.assertTrue(args.show_stable)
 
     def test_show_persistent_flag(self):
-        args = self.parser.parse_args(["--base", "a", "--target", "b", "--show-persistent"])
+        args = self.parser.parse_args(
+            ["--base", "a", "--target", "b", "--show-persistent"]
+        )
         self.assertTrue(args.show_persistent)
 
     def test_module_filter(self):
-        args = self.parser.parse_args(["--base", "a", "--target", "b", "--module-filter", "ActsButton*"])
+        args = self.parser.parse_args(
+            ["--base", "a", "--target", "b", "--module-filter", "ActsButton*"]
+        )
         self.assertEqual(args.module_filter, "ActsButton*")
 
     def test_suite_filter(self):
-        args = self.parser.parse_args(["--base", "a", "--target", "b", "--suite-filter", "ButtonStyle*"])
+        args = self.parser.parse_args(
+            ["--base", "a", "--target", "b", "--suite-filter", "ButtonStyle*"]
+        )
         self.assertEqual(args.suite_filter, "ButtonStyle*")
 
     def test_case_filter(self):
-        args = self.parser.parse_args(["--base", "a", "--target", "b", "--case-filter", "*modifier*"])
+        args = self.parser.parse_args(
+            ["--base", "a", "--target", "b", "--case-filter", "*modifier*"]
+        )
         self.assertEqual(args.case_filter, "*modifier*")
 
     def test_failure_type_filter(self):
-        args = self.parser.parse_args(["--base", "a", "--target", "b", "--failure-type", "crash,timeout"])
+        args = self.parser.parse_args(
+            ["--base", "a", "--target", "b", "--failure-type", "crash,timeout"]
+        )
         self.assertEqual(args.failure_type, "crash,timeout")
 
     def test_sort_key(self):
-        args = self.parser.parse_args(["--base", "a", "--target", "b", "--sort", "severity"])
+        args = self.parser.parse_args(
+            ["--base", "a", "--target", "b", "--sort", "severity"]
+        )
         self.assertEqual(args.sort_key, "severity")
 
     def test_min_time_delta(self):
-        args = self.parser.parse_args(["--base", "a", "--target", "b", "--min-time-delta", "250"])
+        args = self.parser.parse_args(
+            ["--base", "a", "--target", "b", "--min-time-delta", "250"]
+        )
         self.assertEqual(args.min_time_delta, 250.0)
 
     def test_min_time_ratio(self):
-        args = self.parser.parse_args(["--base", "a", "--target", "b", "--min-time-ratio", "4.5"])
+        args = self.parser.parse_args(
+            ["--base", "a", "--target", "b", "--min-time-ratio", "4.5"]
+        )
         self.assertEqual(args.min_time_ratio, 4.5)
 
     def test_labels(self):
-        args = self.parser.parse_args(["--base", "a", "--target", "b", "--labels", "base,fix1"])
+        args = self.parser.parse_args(
+            ["--base", "a", "--target", "b", "--labels", "base,fix1"]
+        )
         self.assertEqual(args.labels, "base,fix1")
 
     def test_output(self):
-        args = self.parser.parse_args(["--base", "a", "--target", "b", "--output", "out.json"])
+        args = self.parser.parse_args(
+            ["--base", "a", "--target", "b", "--output", "out.json"]
+        )
         self.assertEqual(args.output, "out.json")
 
     def test_selector_report_flag(self):
-        args = self.parser.parse_args(["--base", "a", "--target", "b", "--selector-report", "selector.json"])
+        args = self.parser.parse_args(
+            ["--base", "a", "--target", "b", "--selector-report", "selector.json"]
+        )
         self.assertEqual(args.selector_report, "selector.json")
 
     def test_base_and_timeline_mutually_exclusive(self):
@@ -1362,23 +1456,31 @@ class TestCliParser(unittest.TestCase):
             _parse_failure_types("bogus")
 
     def test_run_compare_rejects_json_and_html_together(self):
-        args = self.parser.parse_args(["--base", "a", "--target", "b", "--json", "--html"])
+        args = self.parser.parse_args(
+            ["--base", "a", "--target", "b", "--json", "--html"]
+        )
         with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
             code = _run_compare(args)
         self.assertEqual(code, 2)
-        self.assertIn("--json, --html, and --markdown are mutually exclusive", stderr.getvalue())
+        self.assertIn(
+            "--json, --html, and --markdown are mutually exclusive", stderr.getvalue()
+        )
 
     def test_run_timeline_rejects_html(self):
         args = self.parser.parse_args(["--timeline", "a", "b", "--html"])
         with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
             code = _run_timeline(args)
         self.assertEqual(code, 2)
-        self.assertIn("--html and --markdown are only supported in compare or single-run mode", stderr.getvalue())
+        self.assertIn(
+            "--html and --markdown are only supported in compare or single-run mode",
+            stderr.getvalue(),
+        )
 
 
 # ---------------------------------------------------------------------------
 # TestIdentity
 # ---------------------------------------------------------------------------
+
 
 class TestTestIdentity(unittest.TestCase):
     def test_str_representation(self):
@@ -1406,7 +1508,7 @@ class TestTestIdentity(unittest.TestCase):
 # XC-1: FailureType classification tests
 # ---------------------------------------------------------------------------
 
-from arkui_xts_selector.xts_compare.models import FailureType, RootCauseCluster
+from arkui_xts_selector.xts_compare.models import FailureType
 from arkui_xts_selector.xts_compare.error_analysis import (
     classify_failure,
     normalize_failure_message,
@@ -1439,7 +1541,9 @@ class ClassifyFailureTests(unittest.TestCase):
         )
 
     def test_process_died_is_crash(self):
-        self.assertEqual(classify_failure("Process died unexpectedly"), FailureType.CRASH)
+        self.assertEqual(
+            classify_failure("Process died unexpectedly"), FailureType.CRASH
+        )
 
     def test_shell_unresponsive_is_timeout(self):
         self.assertEqual(
@@ -1448,7 +1552,9 @@ class ClassifyFailureTests(unittest.TestCase):
         )
 
     def test_timed_out_is_timeout(self):
-        self.assertEqual(classify_failure("Test timed out after 5000ms"), FailureType.TIMEOUT)
+        self.assertEqual(
+            classify_failure("Test timed out after 5000ms"), FailureType.TIMEOUT
+        )
 
     def test_waited_ms_is_timeout(self):
         self.assertEqual(classify_failure("waited 5000 ms"), FailureType.TIMEOUT)
@@ -1517,7 +1623,6 @@ class ClassifyFailureTests(unittest.TestCase):
 
 
 class NormalizeFailureMessageTests(unittest.TestCase):
-
     def test_empty(self):
         short, detail = normalize_failure_message("")
         self.assertEqual(short, "")
@@ -1533,7 +1638,9 @@ class NormalizeFailureMessageTests(unittest.TestCase):
         self.assertEqual(short, "something failed")
 
     def test_multiline_splits(self):
-        short, detail = normalize_failure_message("main error\n  at line 5\n  at line 10")
+        short, detail = normalize_failure_message(
+            "main error\n  at line 5\n  at line 10"
+        )
         self.assertEqual(short, "main error")
         self.assertIn("at line 5", detail)
 
@@ -1627,8 +1734,8 @@ class TransitionFailureTypeTests(unittest.TestCase):
 # XC-2: Root Cause clustering tests
 # ---------------------------------------------------------------------------
 
-class NormalizeForClusteringTests(unittest.TestCase):
 
+class NormalizeForClusteringTests(unittest.TestCase):
     def test_hex_addresses_replaced(self):
         result = _normalize_for_clustering("crash at 0x0069fffc")
         self.assertIn("0xADDR", result)
@@ -1654,7 +1761,6 @@ class NormalizeForClusteringTests(unittest.TestCase):
 
 
 class FingerprintTests(unittest.TestCase):
-
     def test_deterministic(self):
         a = _fingerprint("hello")
         b = _fingerprint("hello")
@@ -1670,7 +1776,9 @@ class FingerprintTests(unittest.TestCase):
 
 
 def _make_failed_transition(
-    module: str, suite: str, case: str,
+    module: str,
+    suite: str,
+    case: str,
     msg: str,
     failure_type: FailureType = FailureType.UNKNOWN_FAIL,
 ) -> TestTransition:
@@ -1685,7 +1793,6 @@ def _make_failed_transition(
 
 
 class ClusterFailuresTests(unittest.TestCase):
-
     def test_identical_messages_cluster_together(self):
         t1 = _make_failed_transition("M1", "S", "c1", "App died", FailureType.CRASH)
         t2 = _make_failed_transition("M2", "S", "c2", "App died", FailureType.CRASH)
@@ -1697,13 +1804,19 @@ class ClusterFailuresTests(unittest.TestCase):
 
     def test_different_messages_different_clusters(self):
         t1 = _make_failed_transition("M", "S", "c1", "App died", FailureType.CRASH)
-        t2 = _make_failed_transition("M", "S", "c2", "expected 16 but got 0", FailureType.ASSERTION)
+        t2 = _make_failed_transition(
+            "M", "S", "c2", "expected 16 but got 0", FailureType.ASSERTION
+        )
         clusters = cluster_failures([t1, t2])
         self.assertEqual(len(clusters), 2)
 
     def test_variable_parts_normalized(self):
-        t1 = _make_failed_transition("M", "S", "c1", "crash at 0x0069fffc pid 9163", FailureType.CRASH)
-        t2 = _make_failed_transition("M", "S", "c2", "crash at 0x00abcdef pid 1234", FailureType.CRASH)
+        t1 = _make_failed_transition(
+            "M", "S", "c1", "crash at 0x0069fffc pid 9163", FailureType.CRASH
+        )
+        t2 = _make_failed_transition(
+            "M", "S", "c2", "crash at 0x00abcdef pid 1234", FailureType.CRASH
+        )
         clusters = cluster_failures([t1, t2])
         self.assertEqual(len(clusters), 1)
 
@@ -1738,7 +1851,9 @@ class ClusterFailuresTests(unittest.TestCase):
 
     def test_example_messages_capped_at_3(self):
         transitions = [
-            _make_failed_transition("M", "S", f"c{i}", f"crash at 0x{i:04x}", FailureType.CRASH)
+            _make_failed_transition(
+                "M", "S", f"c{i}", f"crash at 0x{i:04x}", FailureType.CRASH
+            )
             for i in range(10)
         ]
         clusters = cluster_failures(transitions)
@@ -1747,7 +1862,6 @@ class ClusterFailuresTests(unittest.TestCase):
 
 
 class CompareRunsRootCausesTests(unittest.TestCase):
-
     def test_compare_runs_populates_root_causes(self):
         base_results = [
             _make_result("M", "S", "c1", TestOutcome.PASS),
@@ -1776,7 +1890,6 @@ class CompareRunsRootCausesTests(unittest.TestCase):
 
 
 class FormatTerminalFailureTypeTests(unittest.TestCase):
-
     def test_report_contains_crash_badge(self):
         base = [_make_result("M", "S", "c1", TestOutcome.PASS)]
         target = [
@@ -1822,7 +1935,6 @@ class FormatTerminalFailureTypeTests(unittest.TestCase):
 
 
 class FormatJsonFailureTypeTests(unittest.TestCase):
-
     def test_json_contains_failure_type(self):
         base = [_make_result("M", "S", "c1", TestOutcome.PASS)]
         target = [

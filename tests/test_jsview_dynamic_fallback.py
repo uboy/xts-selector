@@ -1,4 +1,5 @@
 """Tests for jsview_dynamic Get/Set/JS prefix fallback."""
+
 from __future__ import annotations
 
 from arkui_xts_selector.indexing.cpp_parser import CppMethod
@@ -7,7 +8,13 @@ from arkui_xts_selector.indexing.source_to_api import _map_jsview_dynamic
 
 def _map(method_name: str, family: str = "button") -> dict | None:
     method = CppMethod(name=method_name)
-    result = _map_jsview_dynamic(method_name, f"{family}::{method_name}", "jsview_dynamic", f"view/{family}.cpp", family)
+    result = _map_jsview_dynamic(
+        method_name,
+        f"{family}::{method_name}",
+        "jsview_dynamic",
+        f"view/{family}.cpp",
+        family,
+    )
     if result is None:
         return None
     return {

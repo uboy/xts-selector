@@ -3,6 +3,7 @@
 Each test case represents a canonical input from the accuracy audit
 and validates expected behavior constraints.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -30,7 +31,10 @@ class TestBenchmarkButtonEventHubHeader:
     """button_event_hub.h → component_family:button, not exact_api."""
 
     def test_family_candidate(self):
-        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        from arkui_xts_selector.indexing.cpp_naming_resolver import (
+            resolve_cpp_family_candidate,
+        )
+
         c = resolve_cpp_family_candidate(
             "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_event_hub.h"
         )
@@ -40,7 +44,10 @@ class TestBenchmarkButtonEventHubHeader:
         assert c.false_negative_risk != "low"
 
     def test_must_not_select_exact_api(self):
-        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        from arkui_xts_selector.indexing.cpp_naming_resolver import (
+            resolve_cpp_family_candidate,
+        )
+
         c = resolve_cpp_family_candidate(
             "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_event_hub.h"
         )
@@ -52,7 +59,10 @@ class TestBenchmarkMenuPatternHeader:
     """menu_pattern.h → component_family:menu."""
 
     def test_family_candidate(self):
-        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        from arkui_xts_selector.indexing.cpp_naming_resolver import (
+            resolve_cpp_family_candidate,
+        )
+
         c = resolve_cpp_family_candidate(
             "frameworks/core/components_ng/pattern/menu/menu_pattern.h"
         )
@@ -65,7 +75,10 @@ class TestBenchmarkSelectOverlayManager:
     """select_overlay_manager.cpp → subsystem (manager dir)."""
 
     def test_subsystem_impact(self):
-        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        from arkui_xts_selector.indexing.cpp_naming_resolver import (
+            resolve_cpp_family_candidate,
+        )
+
         c = resolve_cpp_family_candidate(
             "frameworks/core/components_ng/manager/select_overlay/select_overlay_manager.cpp"
         )
@@ -78,17 +91,20 @@ class TestBenchmarkAnimationAnimator:
     """animation/animator.cpp → unresolved (not under components_ng/pattern/)."""
 
     def test_returns_none(self):
-        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
-        c = resolve_cpp_family_candidate(
-            "frameworks/core/animation/animator.cpp"
+        from arkui_xts_selector.indexing.cpp_naming_resolver import (
+            resolve_cpp_family_candidate,
         )
+
+        c = resolve_cpp_family_candidate("frameworks/core/animation/animator.cpp")
         assert c is None
 
     def test_pr_resolver_reports_unresolved(self, empty_indices):
         ace, sdk, inv = empty_indices
         result = resolve_pr(
             ["frameworks/core/animation/animator.cpp"],
-            ace, sdk, inv,
+            ace,
+            sdk,
+            inv,
         )
         assert len(result.entries) == 1
         assert result.entries[0].unresolved_reason is not None
@@ -99,10 +115,11 @@ class TestBenchmarkGestureRecognizer:
     """gesture_recognizer.cpp → unresolved (core/event/ is not pattern/)."""
 
     def test_returns_none(self):
-        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
-        c = resolve_cpp_family_candidate(
-            "frameworks/core/event/gesture_event.cpp"
+        from arkui_xts_selector.indexing.cpp_naming_resolver import (
+            resolve_cpp_family_candidate,
         )
+
+        c = resolve_cpp_family_candidate("frameworks/core/event/gesture_event.cpp")
         assert c is None
 
 
@@ -110,7 +127,10 @@ class TestBenchmarkKoalaDynamicComponent:
     """koala dynamicComponent → authored_bridge or broad_infrastructure."""
 
     def test_authored_bridge(self):
-        from arkui_xts_selector.indexing.arkts_bridge_resolver import resolve_arkts_bridge_candidate
+        from arkui_xts_selector.indexing.arkts_bridge_resolver import (
+            resolve_arkts_bridge_candidate,
+        )
+
         # Path must match _AUTHORED_COMPONENT_RE: arkts_frontend/koala_projects/<pkg>/<sub>/src/component/<name>.ets
         c = resolve_arkts_bridge_candidate(
             "frameworks/bridge/arkts_frontend/koala_projects/arkui-arkts/arkui_for_system/src/component/dynamicComponent.ets"
@@ -123,7 +143,10 @@ class TestBenchmarkKoalaGeneratedButton:
     """koala generated button → generated_bridge."""
 
     def test_generated_bridge(self):
-        from arkui_xts_selector.indexing.arkts_bridge_resolver import resolve_arkts_bridge_candidate
+        from arkui_xts_selector.indexing.arkts_bridge_resolver import (
+            resolve_arkts_bridge_candidate,
+        )
+
         # Path must match _GENERATED_COMPONENT_RE: arkts_frontend/koala_projects/<pkg>/<sub>/generated/component/<name>.ets
         c = resolve_arkts_bridge_candidate(
             "frameworks/bridge/arkts_frontend/koala_projects/arkui-arkts/arkui_for_system/generated/component/button.ets"
@@ -137,13 +160,16 @@ class TestBenchmarkBroadInfraNoUncapped:
     """Broad infra critical should not produce uncapped target list."""
 
     def test_fanout_bounded(self):
-        from arkui_xts_selector.indexing.fanout_resolver import load_fanout_config, resolve_fanout
+        from arkui_xts_selector.indexing.fanout_resolver import load_fanout_config
+
         config = load_fanout_config()
         if not config:
             pytest.skip("fanout_targets.json not found")
         # Each fanout target should have a max_targets cap
         for tid, target in config.items():
-            assert target.max_targets <= 60, f"{tid} has uncapped targets: {target.max_targets}"
+            assert target.max_targets <= 60, (
+                f"{tid} has uncapped targets: {target.max_targets}"
+            )
 
 
 class TestBenchmarkCriticalBroadManualReview:
@@ -152,8 +178,13 @@ class TestBenchmarkCriticalBroadManualReview:
     def test_manual_review(self, empty_indices, broad_rules):
         ace, sdk, inv = empty_indices
         result = resolve_pr(
-            ["foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp"],
-            ace, sdk, inv, broad_rules,
+            [
+                "foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp"
+            ],
+            ace,
+            sdk,
+            inv,
+            broad_rules,
         )
         assert result.ci_policy_recommendation == "manual_review"
 

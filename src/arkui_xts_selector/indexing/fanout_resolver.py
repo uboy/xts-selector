@@ -3,6 +3,7 @@
 Instead of returning all 800+ XTS test directories for critical broad matches,
 this resolver uses bounded fanout configuration to cap target expansion.
 """
+
 from __future__ import annotations
 
 import json
@@ -103,16 +104,15 @@ def resolve_fanout(
         dirname = d.rsplit("/", 1)[-1] if "/" in d else d
         # Remove ace_ets_module_ prefix for matching
         if dirname.startswith("ace_ets_module_"):
-            suffix = dirname[len("ace_ets_module_"):]
+            suffix = dirname[len("ace_ets_module_") :]
         else:
             continue
 
         for family in target.families:
             family_lower = family.lower()
-            if (
-                suffix.lower().startswith(family_lower)
-                or family_lower in suffix.lower().split("_")
-            ):
+            if suffix.lower().startswith(
+                family_lower
+            ) or family_lower in suffix.lower().split("_"):
                 selected.add(d)
                 break
 

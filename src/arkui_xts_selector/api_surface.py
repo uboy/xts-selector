@@ -93,10 +93,14 @@ def classify_xts_file_surface(path: Path, text: str) -> XtsFileSurfaceProfile:
     if dynamic_reasons:
         return XtsFileSurfaceProfile(surface=DYNAMIC, reasons=dynamic_reasons)
 
-    return XtsFileSurfaceProfile(surface=UTILITY, reasons=["no surface-specific markers"])
+    return XtsFileSurfaceProfile(
+        surface=UTILITY, reasons=["no surface-specific markers"]
+    )
 
 
-def classify_xts_project_surface(file_surfaces: Iterable[str]) -> XtsProjectSurfaceProfile:
+def classify_xts_project_surface(
+    file_surfaces: Iterable[str],
+) -> XtsProjectSurfaceProfile:
     static_count = 0
     dynamic_count = 0
     utility_count = 0
@@ -147,14 +151,30 @@ def classify_xts_project_surface(file_surfaces: Iterable[str]) -> XtsProjectSurf
 
 def classify_ace_engine_surface(path: Path, text: str = "") -> AceEngineSurfaceProfile:
     rel = str(path).replace("\\", "/").lower()
-    path_tokens = {compact_token(part) for part in tokenize_surface_text(rel) if compact_token(part)}
+    path_tokens = {
+        compact_token(part)
+        for part in tokenize_surface_text(rel)
+        if compact_token(part)
+    }
 
     if "/frameworks/bridge/" in rel:
-        if "koala_projects/" in rel or "/arkoala-arkts/" in rel or "/generated/component/" in rel:
-            return AceEngineSurfaceProfile(surface=STATIC, layer="koala_generated_component", reasons=["koala-generated component"])
-        return AceEngineSurfaceProfile(surface=DYNAMIC, layer="bridge", reasons=["frameworks/bridge layer"])
+        if (
+            "koala_projects/" in rel
+            or "/arkoala-arkts/" in rel
+            or "/generated/component/" in rel
+        ):
+            return AceEngineSurfaceProfile(
+                surface=STATIC,
+                layer="koala_generated_component",
+                reasons=["koala-generated component"],
+            )
+        return AceEngineSurfaceProfile(
+            surface=DYNAMIC, layer="bridge", reasons=["frameworks/bridge layer"]
+        )
     if "/interfaces/ets/ani/" in rel:
-        return AceEngineSurfaceProfile(surface=DYNAMIC, layer="ani", reasons=["interfaces/ets/ani layer"])
+        return AceEngineSurfaceProfile(
+            surface=DYNAMIC, layer="ani", reasons=["interfaces/ets/ani layer"]
+        )
 
     layer = "other"
     if "/frameworks/core/interfaces/native/" in rel:
@@ -165,7 +185,9 @@ def classify_ace_engine_surface(path: Path, text: str = "") -> AceEngineSurfaceP
         layer = "components_ng_backend"
 
     if layer == "components_ng_backend":
-        return AceEngineSurfaceProfile(surface=COMMON, layer=layer, reasons=["components_ng backend layer"])
+        return AceEngineSurfaceProfile(
+            surface=COMMON, layer=layer, reasons=["components_ng backend layer"]
+        )
 
     static_score = 0
     dynamic_score = 0
@@ -217,7 +239,11 @@ def surface_to_variants_mode(surface: str) -> str:
 
 def parse_query_surface_intent(query: str) -> QuerySurfaceIntent:
     lowered = query.lower()
-    tokens = {compact_token(part) for part in tokenize_surface_text(lowered) if compact_token(part)}
+    tokens = {
+        compact_token(part)
+        for part in tokenize_surface_text(lowered)
+        if compact_token(part)
+    }
     reasons: list[str] = []
     if "dynamic" in tokens or re.search(r"""\b1\.1\b""", lowered):
         reasons.append("explicit dynamic/1.1 query hint")

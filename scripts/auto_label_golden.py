@@ -13,6 +13,7 @@ Usage:
         [--repo-root /path/to/ohos_master] \\
         [--mode suggestions]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -21,7 +22,6 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Literal
 
 
 def parse_args() -> argparse.Namespace:
@@ -30,40 +30,29 @@ def parse_args() -> argparse.Namespace:
         description="Auto-label golden PR set based on category and selector output"
     )
     parser.add_argument(
-        "--candidates",
-        type=Path,
-        required=True,
-        help="Path to candidates JSON file"
+        "--candidates", type=Path, required=True, help="Path to candidates JSON file"
     )
     parser.add_argument(
-        "--batch-results",
-        type=Path,
-        required=True,
-        help="Path to batch_results.json"
+        "--batch-results", type=Path, required=True, help="Path to batch_results.json"
     )
     parser.add_argument(
         "--pr-cache-dir",
         type=Path,
         required=True,
-        help="Path to pr_api_cache directory"
+        help="Path to pr_api_cache directory",
     )
     parser.add_argument(
-        "--output",
-        type=Path,
-        required=True,
-        help="Output path for golden_pr_set.json"
+        "--output", type=Path, required=True, help="Output path for golden_pr_set.json"
     )
     parser.add_argument(
-        "--repo-root",
-        type=Path,
-        help="Repository root for path normalization"
+        "--repo-root", type=Path, help="Repository root for path normalization"
     )
     parser.add_argument(
         "--mode",
         type=str,
         default="suggestions",
         choices=["suggestions"],
-        help="Mode of operation (default: suggestions)"
+        help="Mode of operation (default: suggestions)",
     )
     return parser.parse_args()
 
@@ -89,10 +78,10 @@ def load_candidates(candidates_path: Path) -> dict[int, dict]:
                         "size": item.get("size", ""),
                         "selector_status": item.get("selector_status", ""),
                         "num_files": item.get("num_files", 0),
-                        "num_targets": item.get("num_targets", 0)
+                        "num_targets": item.get("num_targets", 0),
                     }
     else:
-        print(f"Unexpected candidates format", file=sys.stderr)
+        print("Unexpected candidates format", file=sys.stderr)
         sys.exit(1)
 
     return candidates
@@ -110,7 +99,11 @@ def load_batch_results(batch_results_path: Path) -> dict[int, dict]:
 
 def load_pr_cache(pr_cache_dir: Path, pr_number: int) -> dict | None:
     """Load PR metadata from cache."""
-    cache_path = pr_cache_dir / "gitcode_com/openharmony/arkui_ace_engine" / f"PR_{pr_number}.json"
+    cache_path = (
+        pr_cache_dir
+        / "gitcode_com/openharmony/arkui_ace_engine"
+        / f"PR_{pr_number}.json"
+    )
     if cache_path.exists():
         return json.loads(cache_path.read_text(encoding="utf-8"))
     return None
@@ -128,7 +121,7 @@ def _normalize_path(path: str, repo_root: Path | None) -> str:
 
     for prefix in prefixes:
         if path.startswith(prefix):
-            return path[len(prefix):]
+            return path[len(prefix) :]
 
     return path
 
@@ -156,7 +149,15 @@ def extract_family_from_path(file_path: str) -> str | None:
     if match:
         family = match.group(1)
         # Exclude common directories that are not component families
-        if family not in ["pattern", "render", "base", "manager", "properties", "transition", "scroll"]:
+        if family not in [
+            "pattern",
+            "render",
+            "base",
+            "manager",
+            "properties",
+            "transition",
+            "scroll",
+        ]:
             return family
 
     return None
@@ -254,10 +255,14 @@ def extract_selector_suggestions(batch_entry: dict, repo_root: Path | None) -> d
 
     # Extract fallback extra targets
     fallback_extra_targets = graph_selection.get("fallback_extra_targets", [])
-    fallback_extra_targets = [_normalize_path(t, repo_root) for t in fallback_extra_targets]
+    fallback_extra_targets = [
+        _normalize_path(t, repo_root) for t in fallback_extra_targets
+    ]
 
     # Extract CI policy recommendation
-    ci_policy_recommendation = graph_selection.get("ci_policy_recommendation", "unknown")
+    ci_policy_recommendation = graph_selection.get(
+        "ci_policy_recommendation", "unknown"
+    )
 
     # Extract unresolved reasons
     unresolved_reasons = []
@@ -283,12 +288,16 @@ def extract_selector_suggestions(batch_entry: dict, repo_root: Path | None) -> d
         "ci_policy_recommendation": ci_policy_recommendation,
         "unresolved_reasons": unresolved_reasons,
         "affected_apis": sorted(affected_apis),
-        "canonical_affected_apis": sorted(canonical_affected_apis)
+        "canonical_affected_apis": sorted(canonical_affected_apis),
     }
 
 
-def extract_expected_impact(batch_entry: dict, families: list[str], native_topics: list[str],
-                            bridge_domains: list[str]) -> dict:
+def extract_expected_impact(
+    batch_entry: dict,
+    families: list[str],
+    native_topics: list[str],
+    bridge_domains: list[str],
+) -> dict:
     """Extract expected impact from batch results."""
     graph_selection = batch_entry.get("graph_selection", {})
 
@@ -301,12 +310,18 @@ def extract_expected_impact(batch_entry: dict, families: list[str], native_topic
         "apis": sorted(affected_apis),
         "families": families,
         "native_topics": native_topics,
-        "bridge_domains": bridge_domains
+        "bridge_domains": bridge_domains,
     }
 
 
-def auto_label_pr(pr_number: int, category: str, candidate: dict, batch_entry: dict,
-                  pr_cache: dict | None, repo_root: Path | None) -> dict:
+def auto_label_pr(
+    pr_number: int,
+    category: str,
+    candidate: dict,
+    batch_entry: dict,
+    pr_cache: dict | None,
+    repo_root: Path | None,
+) -> dict:
     """Auto-label a single PR based on category and batch results."""
     # Extract changed files
     changed_files = []
@@ -362,21 +377,25 @@ def auto_label_pr(pr_number: int, category: str, candidate: dict, batch_entry: d
             "must_not_run": [],
             "allowed_extra_targets": [],
             "expected_policy": "",
-            "notes": ""
+            "notes": "",
         },
-        "expected_impact": expected_impact
+        "expected_impact": expected_impact,
     }
 
 
 def print_summary(golden_prs: list[dict], candidates: dict[int, dict]):
     """Print summary statistics."""
     total_prs = len(golden_prs)
-    prs_with_suggestions = sum(1 for pr in golden_prs if pr["selector_suggestions"]["consumer_projects"])
+    prs_with_suggestions = sum(
+        1 for pr in golden_prs if pr["selector_suggestions"]["consumer_projects"]
+    )
     prs_without_suggestions = total_prs - prs_with_suggestions
-    prs_manual_review = sum(1 for pr in golden_prs
-                            if pr["selector_suggestions"]["unresolved_reasons"])
-    total_fallback = sum(1 for pr in golden_prs
-                        if pr["selector_suggestions"]["fallback_extra_targets"])
+    prs_manual_review = sum(
+        1 for pr in golden_prs if pr["selector_suggestions"]["unresolved_reasons"]
+    )
+    total_fallback = sum(
+        1 for pr in golden_prs if pr["selector_suggestions"]["fallback_extra_targets"]
+    )
 
     # Categories breakdown
     categories = defaultdict(int)
@@ -431,8 +450,12 @@ def main():
         golden_prs.append(golden_entry)
 
         consumer_count = len(golden_entry["selector_suggestions"]["consumer_projects"])
-        fallback_count = len(golden_entry["selector_suggestions"]["fallback_extra_targets"])
-        print(f"  PR {pr_number} ({category}): {consumer_count} consumer projects, {fallback_count} fallback targets")
+        fallback_count = len(
+            golden_entry["selector_suggestions"]["fallback_extra_targets"]
+        )
+        print(
+            f"  PR {pr_number} ({category}): {consumer_count} consumer projects, {fallback_count} fallback targets"
+        )
 
     print(f"\nTotal PRs labeled: {len(golden_prs)}")
 
@@ -440,12 +463,14 @@ def main():
     output = {
         "schema_version": "golden-pr-set-v2",
         "annotation_status": "auto_labeled",
-        "golden_prs": golden_prs
+        "golden_prs": golden_prs,
     }
 
     print(f"Writing output to {args.output}...")
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(output, indent=2, ensure_ascii=False), encoding="utf-8")
+    args.output.write_text(
+        json.dumps(output, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
     # Print summary
     print_summary(golden_prs, candidates)

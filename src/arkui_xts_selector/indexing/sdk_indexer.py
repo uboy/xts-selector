@@ -5,6 +5,7 @@ This module builds a complete registry of public API entities by parsing
 
 Import boundary: standard library + arkui_xts_selector.model only.
 """
+
 from __future__ import annotations
 
 import time
@@ -22,13 +23,19 @@ from ..model.api import ApiEntityId, ApiDeclarationRef
 # Module constants
 # ---------------------------------------------------------------------------
 
-_COMMON_PARENTS = ("CommonMethod", "CommonAttribute", "CommonShapeMethod",
-                   "CommonTransition", "ContainerCommonMethod")
+_COMMON_PARENTS = (
+    "CommonMethod",
+    "CommonAttribute",
+    "CommonShapeMethod",
+    "CommonTransition",
+    "ContainerCommonMethod",
+)
 
 
 # ---------------------------------------------------------------------------
 # SdkIndexEntry – a single SDK declaration entry
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class SdkIndexEntry:
@@ -38,9 +45,13 @@ class SdkIndexEntry:
     declaration: ApiDeclarationRef
     parent_api_id: ApiEntityId | None = None
     member_name: str | None = None
-    api_version: str | None = None        # from ApiDeclarationRef.since_api
-    declaration_kind: str | None = None   # "component", "attribute", "method", "event", "enum", "interface", "namespace", "function"
-    dispatch_kind: str | None = None      # "static", "instance", "dynamic", "generated_bridge", "common_inherited", "direct"
+    api_version: str | None = None  # from ApiDeclarationRef.since_api
+    declaration_kind: str | None = (
+        None  # "component", "attribute", "method", "event", "enum", "interface", "namespace", "function"
+    )
+    dispatch_kind: str | None = (
+        None  # "static", "instance", "dynamic", "generated_bridge", "common_inherited", "direct"
+    )
 
     def to_dict(self) -> dict:
         """Return a JSON-compatible dict."""
@@ -65,9 +76,15 @@ class SdkIndexEntry:
         """Reconstruct from a dict produced by :meth:`to_dict`."""
         parent_id_data = data.get("parent_api_id")
         return cls(
-            api_id=ApiEntityId.from_dict(data["api_id"]) if "api_id" in data else ApiEntityId(),
-            declaration=ApiDeclarationRef.from_dict(data["declaration"]) if "declaration" in data else ApiDeclarationRef(),
-            parent_api_id=ApiEntityId.from_dict(parent_id_data) if parent_id_data else None,
+            api_id=ApiEntityId.from_dict(data["api_id"])
+            if "api_id" in data
+            else ApiEntityId(),
+            declaration=ApiDeclarationRef.from_dict(data["declaration"])
+            if "declaration" in data
+            else ApiDeclarationRef(),
+            parent_api_id=ApiEntityId.from_dict(parent_id_data)
+            if parent_id_data
+            else None,
             member_name=data.get("member_name"),
             api_version=data.get("api_version"),
             declaration_kind=data.get("declaration_kind"),
@@ -79,6 +96,7 @@ class SdkIndexEntry:
 # SdkIndexResult – result of indexing SDK declarations
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class SdkIndexResult:
     """Result of indexing SDK declarations."""
@@ -88,14 +106,20 @@ class SdkIndexResult:
     files_scanned: int = 0
     index_time_ms: float = 0.0
     source: str = "tree-sitter-typescript"
-    extends_graph: dict[str, list[str]] = field(default_factory=dict, repr=False, compare=False)
-    alias_graph: dict[str, list[str]] = field(default_factory=dict, repr=False, compare=False)
+    extends_graph: dict[str, list[str]] = field(
+        default_factory=dict, repr=False, compare=False
+    )
+    alias_graph: dict[str, list[str]] = field(
+        default_factory=dict, repr=False, compare=False
+    )
 
     def __post_init__(self) -> None:
         # Build O(1) lookup indexes (frozen=True requires object.__setattr__)
         by_public: dict[str, SdkIndexEntry] = {}
         by_parent_member: dict[tuple[str, str], SdkIndexEntry] = {}
-        by_parent_lower_member: dict[tuple[str, str], list[tuple[str, SdkIndexEntry]]] = {}
+        by_parent_lower_member: dict[
+            tuple[str, str], list[tuple[str, SdkIndexEntry]]
+        ] = {}
         by_member_only: dict[str, list[SdkIndexEntry]] = {}
         for entry in self.entries:
             pn = entry.api_id.public_name
@@ -116,7 +140,9 @@ class SdkIndexResult:
                         by_parent_member[pk] = entry
                     # Case-insensitive index: group by (parent.lower(), member)
                     lk = (parent_name.lower(), mn)
-                    by_parent_lower_member.setdefault(lk, []).append((parent_name, entry))
+                    by_parent_lower_member.setdefault(lk, []).append(
+                        (parent_name, entry)
+                    )
                 by_member_only.setdefault(mn, []).append(entry)
         object.__setattr__(self, "_by_public", by_public)
         object.__setattr__(self, "_by_parent_member", by_parent_member)
@@ -209,7 +235,9 @@ class SdkIndexResult:
             "source": self.source,
         }
 
-    def find_member(self, member_name: str, parent_name: str | None = None) -> SdkIndexEntry | None:
+    def find_member(
+        self, member_name: str, parent_name: str | None = None
+    ) -> SdkIndexEntry | None:
         """Find a member by name, optionally disambiguated by parent."""
         if parent_name:
             # O(1) lookup: (parent, member)
@@ -233,9 +261,12 @@ class SdkIndexResult:
             return None  # ambiguous
         return None
 
-    def find_attribute_member(self, member_name: str, family: str) -> SdkIndexEntry | None:
+    def find_attribute_member(
+        self, member_name: str, family: str
+    ) -> SdkIndexEntry | None:
         """Find a member in <Family>Attribute or <Family>Interface."""
         from .family_alias import normalize_family
+
         family_norm = normalize_family(family)
         for parent_suffix in ("Attribute", "Interface"):
             parent = f"{family_norm}{parent_suffix}"
@@ -254,8 +285,11 @@ class SdkIndexResult:
 
     def find_all_member(self, member_name: str) -> list[SdkIndexEntry]:
         """Find all entries matching a bare member name across all parents."""
-        return [e for e in self.entries
-                if e.member_name == member_name or e.api_id.member_name == member_name]
+        return [
+            e
+            for e in self.entries
+            if e.member_name == member_name or e.api_id.member_name == member_name
+        ]
 
     def find_by_dispatch_kind(self, kind: str) -> list[SdkIndexEntry]:
         """Filter entries by dispatch_kind."""
@@ -263,6 +297,7 @@ class SdkIndexResult:
 
     def find_by_version(self, min_version: str) -> list[SdkIndexEntry]:
         """Filter entries by api_version >= min_version."""
+
         def _version_key(v: str) -> tuple:
             parts = []
             for p in v.split("."):
@@ -271,9 +306,13 @@ class SdkIndexResult:
                 except ValueError:
                     parts.append(0)
             return tuple(parts)
+
         min_key = _version_key(min_version)
-        return [e for e in self.entries
-                if e.api_version and _version_key(e.api_version) >= min_key]
+        return [
+            e
+            for e in self.entries
+            if e.api_version and _version_key(e.api_version) >= min_key
+        ]
 
     @classmethod
     def from_dict(cls, data: dict) -> SdkIndexResult:
@@ -292,6 +331,7 @@ class SdkIndexResult:
 # Helper functions
 # ---------------------------------------------------------------------------
 
+
 def _infer_dispatch_kind(symbol_kind: str, parent_name: str | None) -> str | None:
     """Infer dispatch kind from symbol kind and parent name."""
     if parent_name is None:
@@ -306,6 +346,7 @@ def _infer_dispatch_kind(symbol_kind: str, parent_name: str | None) -> str | Non
 # ---------------------------------------------------------------------------
 # build_sdk_index – main indexing function
 # ---------------------------------------------------------------------------
+
 
 def build_sdk_index(
     sdk_root: Path,
@@ -323,7 +364,6 @@ def build_sdk_index(
         SdkIndexResult containing all indexed entries and any parse errors.
     """
     from .sdk_parser import parse_dts_file
-    from .parser_contracts import SymbolDiscovery
 
     start_time = time.time()
     entries: list[SdkIndexEntry] = []
@@ -387,6 +427,7 @@ def build_sdk_index(
 # ---------------------------------------------------------------------------
 # _symbol_to_entry – convert SymbolDiscovery to SdkIndexEntry
 # ---------------------------------------------------------------------------
+
 
 def _symbol_to_entry(
     symbol: "SymbolDiscovery",
@@ -458,6 +499,7 @@ def _symbol_to_entry(
 # ---------------------------------------------------------------------------
 # _module_from_path – derive module name from file path
 # ---------------------------------------------------------------------------
+
 
 def _module_from_path(file_path: str) -> str:
     """Derive a stable module name from a file path.

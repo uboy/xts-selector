@@ -80,7 +80,9 @@ def _semantic_tokens(text: str) -> set[str]:
     return tokens
 
 
-def _score_module_match(project_tokens: set[str], module_name: str) -> tuple[int, set[str]]:
+def _score_module_match(
+    project_tokens: set[str], module_name: str
+) -> tuple[int, set[str]]:
     module_tokens = _semantic_tokens(module_name)
     overlap = project_tokens & module_tokens
     return len(overlap), overlap
@@ -132,14 +134,20 @@ def correlate_with_selector(
     improvements_by_module: dict[str, list[TestIdentity]] = {}
     unblocked_by_module: dict[str, list[TestIdentity]] = {}
     for transition in comparison.regressions:
-        regressions_by_module.setdefault(transition.identity.module, []).append(transition.identity)
+        regressions_by_module.setdefault(transition.identity.module, []).append(
+            transition.identity
+        )
     for transition in comparison.improvements:
-        improvements_by_module.setdefault(transition.identity.module, []).append(transition.identity)
+        improvements_by_module.setdefault(transition.identity.module, []).append(
+            transition.identity
+        )
     for module in comparison.modules:
         for transitions in module.suites.values():
             for transition in transitions:
                 if transition.kind == TransitionKind.UNBLOCKED:
-                    unblocked_by_module.setdefault(transition.identity.module, []).append(transition.identity)
+                    unblocked_by_module.setdefault(
+                        transition.identity.module, []
+                    ).append(transition.identity)
 
     correlations: list[SelectorChangedFileCorrelation] = []
     for item in result_items:
@@ -174,8 +182,22 @@ def correlate_with_selector(
                     bucket=str(project_entry.get("bucket", "")),
                     variant=str(project_entry.get("variant", "")),
                     matched_modules=matched_modules,
-                    regressions=sorted(regressions, key=lambda identity: (identity.module, identity.suite, identity.case)),
-                    improvements=sorted(improvements, key=lambda identity: (identity.module, identity.suite, identity.case)),
+                    regressions=sorted(
+                        regressions,
+                        key=lambda identity: (
+                            identity.module,
+                            identity.suite,
+                            identity.case,
+                        ),
+                    ),
+                    improvements=sorted(
+                        improvements,
+                        key=lambda identity: (
+                            identity.module,
+                            identity.suite,
+                            identity.case,
+                        ),
+                    ),
                     predicted_but_no_change=bool(matched_modules)
                     and not regressions
                     and not improvements

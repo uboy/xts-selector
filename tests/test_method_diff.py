@@ -7,9 +7,9 @@ Tests verify:
 - Unknown file extensions default to body changes
 - Heuristic fallback works when tree-sitter unavailable
 """
+
 from __future__ import annotations
 
-import pytest
 
 from arkui_xts_selector.indexing.method_diff import (
     HunkImpact,

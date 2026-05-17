@@ -1,4 +1,5 @@
 """Tests for area-based fallback (C.4)."""
+
 from __future__ import annotations
 
 import json
@@ -26,10 +27,16 @@ def _write_config(tmp: Path, areas: list[dict]) -> Path:
 
 class TestLoadAreaOwners:
     def test_loads_valid(self, tmp_path: Path) -> None:
-        p = _write_config(tmp_path, [
-            {"path_pattern": "pattern/button/", "owner_team": "arkui-button",
-             "default_targets": ["ace_ets_module_button_static"]},
-        ])
+        p = _write_config(
+            tmp_path,
+            [
+                {
+                    "path_pattern": "pattern/button/",
+                    "owner_team": "arkui-button",
+                    "default_targets": ["ace_ets_module_button_static"],
+                },
+            ],
+        )
         rules = load_area_owners(p)
         assert len(rules) == 1
         assert rules[0].owner_team == "arkui-button"
@@ -46,12 +53,21 @@ class TestLoadAreaOwners:
         assert rules == []
 
     def test_loads_multiple_rules(self, tmp_path: Path) -> None:
-        p = _write_config(tmp_path, [
-            {"path_pattern": "components_ng/pattern/", "owner_team": "arkui-components",
-             "default_targets": []},
-            {"path_pattern": "bridge/declarative_frontend/", "owner_team": "arkui-bridge",
-             "default_targets": ["ace_ets_module_bridge"]},
-        ])
+        p = _write_config(
+            tmp_path,
+            [
+                {
+                    "path_pattern": "components_ng/pattern/",
+                    "owner_team": "arkui-components",
+                    "default_targets": [],
+                },
+                {
+                    "path_pattern": "bridge/declarative_frontend/",
+                    "owner_team": "arkui-bridge",
+                    "default_targets": ["ace_ets_module_bridge"],
+                },
+            ],
+        )
         rules = load_area_owners(p)
         assert len(rules) == 2
         assert rules[0].owner_team == "arkui-components"
@@ -61,7 +77,9 @@ class TestLoadAreaOwners:
 class TestMatchArea:
     def test_match_found(self) -> None:
         rules = [
-            AreaRule("pattern/button/", "arkui-button", ("ace_ets_module_button_static",)),
+            AreaRule(
+                "pattern/button/", "arkui-button", ("ace_ets_module_button_static",)
+            ),
         ]
         result = match_area("frameworks/pattern/button/button_pattern.cpp", rules)
         assert result is not None
@@ -89,14 +107,19 @@ class TestMatchArea:
             AreaRule("components_ng/pattern/button/", "arkui-button", ()),
             AreaRule("components_ng/pattern/", "arkui-components", ()),
         ]
-        result = match_area("frameworks/core/components_ng/pattern/button/file.cpp", rules)
+        result = match_area(
+            "frameworks/core/components_ng/pattern/button/file.cpp", rules
+        )
         assert result is not None
         assert result.owner_team == "arkui-button"
 
     def test_pattern_with_default_targets(self) -> None:
         rules = [
-            AreaRule("components_ng/render/", "arkui-render",
-                     ("ace_ets_module_render_static", "ace_ets_module_render_common")),
+            AreaRule(
+                "components_ng/render/",
+                "arkui-render",
+                ("ace_ets_module_render_static", "ace_ets_module_render_common"),
+            ),
         ]
         result = match_area("frameworks/core/components_ng/render/canvas.cpp", rules)
         assert result is not None
@@ -106,7 +129,9 @@ class TestMatchArea:
 
 class TestAreaOwnersSchema:
     def test_config_file_is_valid_json(self) -> None:
-        config_path = Path(__file__).resolve().parents[2] / "config" / "area_owners.json"
+        config_path = (
+            Path(__file__).resolve().parents[2] / "config" / "area_owners.json"
+        )
         if not config_path.exists():
             return
 
@@ -116,7 +141,9 @@ class TestAreaOwnersSchema:
         assert isinstance(data["areas"], list)
 
     def test_all_patterns_valid(self) -> None:
-        config_path = Path(__file__).resolve().parents[2] / "config" / "area_owners.json"
+        config_path = (
+            Path(__file__).resolve().parents[2] / "config" / "area_owners.json"
+        )
         if not config_path.exists():
             return
 
@@ -129,7 +156,9 @@ class TestAreaOwnersSchema:
             assert isinstance(area["owner_team"], str)
 
     def test_patterns_do_not_overlap_incorrectly(self) -> None:
-        config_path = Path(__file__).resolve().parents[2] / "config" / "area_owners.json"
+        config_path = (
+            Path(__file__).resolve().parents[2] / "config" / "area_owners.json"
+        )
         if not config_path.exists():
             return
 
@@ -143,12 +172,16 @@ class TestAreaOwnersSchema:
                 assert p1 != p2, f"Duplicate pattern: {p1}"
 
     def test_at_least_15_rules(self) -> None:
-        config_path = Path(__file__).resolve().parents[2] / "config" / "area_owners.json"
+        config_path = (
+            Path(__file__).resolve().parents[2] / "config" / "area_owners.json"
+        )
         if not config_path.exists():
             return
 
         data = json.loads(config_path.read_text(encoding="utf-8"))
-        assert len(data["areas"]) >= 15, f"Expected at least 15 rules, got {len(data['areas'])}"
+        assert len(data["areas"]) >= 15, (
+            f"Expected at least 15 rules, got {len(data['areas'])}"
+        )
 
 
 class TestClusterUnresolvedPaths:

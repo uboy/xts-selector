@@ -11,10 +11,8 @@ from .daily_prebuilt import (
     DEFAULT_DAILY_CACHE_ROOT,
     PreparedDailyArtifact,
     PreparedDailyPrebuilt,
-    daily_component_candidates,
     discover_image_bundle_roots,
     derive_date_from_tag,
-    is_placeholder_metadata,
     list_daily_tags,
     prepare_daily_prebuilt,
     prepare_daily_firmware,
@@ -23,7 +21,6 @@ from .daily_prebuilt import (
 )
 from .execution import collect_unique_run_targets
 from .models import AppConfig
-from .run_store import RunSession
 
 
 def emit_progress(enabled: bool, message: str) -> None:
@@ -38,8 +35,13 @@ def emit_subprogress(enabled: bool, prefix: str, message: str) -> None:
     print(f"{prefix}: {message}", file=sys.stderr, flush=True)
 
 
-def build_progress_callback(enabled: bool, changed_file_count: int = 0) -> Callable[[str], None] | None:
-    from .constants import PROGRESS_AGGREGATE_CHANGED_FILE_THRESHOLD, PROGRESS_AGGREGATE_CHANGED_FILE_STEP
+def build_progress_callback(
+    enabled: bool, changed_file_count: int = 0
+) -> Callable[[str], None] | None:
+    from .constants import (
+        PROGRESS_AGGREGATE_CHANGED_FILE_THRESHOLD,
+        PROGRESS_AGGREGATE_CHANGED_FILE_STEP,
+    )
 
     if not enabled:
         return None
@@ -55,18 +57,23 @@ def build_progress_callback(enabled: bool, changed_file_count: int = 0) -> Calla
             should_emit = (
                 current == 1
                 or current == changed_file_count
-                or (current - state["last_emitted_changed_file"]) >= PROGRESS_AGGREGATE_CHANGED_FILE_STEP
+                or (current - state["last_emitted_changed_file"])
+                >= PROGRESS_AGGREGATE_CHANGED_FILE_STEP
             )
             if should_emit:
                 state["last_emitted_changed_file"] = current
-                emit_progress(True, f"scoring changed files {current}/{changed_file_count}")
+                emit_progress(
+                    True, f"scoring changed files {current}/{changed_file_count}"
+                )
             return
         emit_progress(True, message)
 
     return _callback
 
 
-def build_execution_progress_callback(enabled: bool) -> Callable[[dict[str, object]], None] | None:
+def build_execution_progress_callback(
+    enabled: bool,
+) -> Callable[[dict[str, object]], None] | None:
     if not enabled:
         return None
 
@@ -78,7 +85,9 @@ def build_execution_progress_callback(enabled: bool) -> Callable[[dict[str, obje
         device = str(event.get("device") or "default")
         tool = str(event.get("tool") or "-")
         estimated_duration = _format_duration_seconds(event.get("estimated_duration_s"))
-        remaining_estimate = _format_duration_seconds(event.get("remaining_estimated_duration_s"))
+        remaining_estimate = _format_duration_seconds(
+            event.get("remaining_estimated_duration_s")
+        )
         estimate_part = ""
         if estimated_duration != "-":
             estimate_part = f" est={estimated_duration}"
@@ -96,8 +105,14 @@ def build_execution_progress_callback(enabled: bool) -> Callable[[dict[str, obje
             status = str(event.get("status") or "-")
             duration = _format_duration_seconds(event.get("duration_s"))
             duration_part = f" {duration}" if duration != "-" else ""
-            summary = event.get("summary") if isinstance(event.get("summary"), dict) else {}
-            case_summary = event.get("case_summary") if isinstance(event.get("case_summary"), dict) else {}
+            summary = (
+                event.get("summary") if isinstance(event.get("summary"), dict) else {}
+            )
+            case_summary = (
+                event.get("case_summary")
+                if isinstance(event.get("case_summary"), dict)
+                else {}
+            )
             counters = (
                 f"passed={summary.get('passed', 0)} "
                 f"failed={summary.get('failed', 0)} "
@@ -190,7 +205,9 @@ def _execution_artifact_rows(report: dict) -> list[list[str]]:
     for group in collect_unique_run_targets(report):
         target = group.get("representative", {})
         suite = _suite_label(target)
-        candidates = list(target.get("execution_results") or []) or list(target.get("execution_plan") or [])
+        candidates = list(target.get("execution_results") or []) or list(
+            target.get("execution_plan") or []
+        )
         for item in candidates:
             tool = str(item.get("selected_tool") or "-")
             device = str(item.get("device_label") or item.get("device") or "default")
@@ -198,17 +215,39 @@ def _execution_artifact_rows(report: dict) -> list[list[str]]:
             result_path = str(item.get("result_path") or "").strip()
             if result_path:
                 rows.append([suite, device, tool, status, "result_path", result_path])
-                summary_xml = Path(result_path).expanduser().resolve() / "summary_report.xml"
+                summary_xml = (
+                    Path(result_path).expanduser().resolve() / "summary_report.xml"
+                )
                 if summary_xml.is_file():
-                    rows.append([suite, device, tool, status, "summary_report_xml", str(summary_xml)])
+                    rows.append(
+                        [
+                            suite,
+                            device,
+                            tool,
+                            status,
+                            "summary_report_xml",
+                            str(summary_xml),
+                        ]
+                    )
                 log_root = Path(result_path).expanduser().resolve() / "log"
                 if log_root.is_dir():
                     for module_log in sorted(log_root.glob("**/module_run.log")):
-                        rows.append([suite, device, tool, status, "module_run_log", str(module_log)])
+                        rows.append(
+                            [
+                                suite,
+                                device,
+                                tool,
+                                status,
+                                "module_run_log",
+                                str(module_log),
+                            ]
+                        )
     return rows
 
 
-def write_execution_artifact_index(report: dict, output_dir: Path | None) -> Path | None:
+def write_execution_artifact_index(
+    report: dict, output_dir: Path | None
+) -> Path | None:
     if output_dir is None:
         return None
     rows = _execution_artifact_rows(report)
@@ -234,7 +273,9 @@ def _has_local_acts_artifacts(acts_out_root: Path | None) -> bool:
     testcases_dir = root / "testcases"
     if not testcases_dir.is_dir():
         return False
-    return (testcases_dir / "module_info.list").is_file() or any(testcases_dir.glob("*.json"))
+    return (testcases_dir / "module_info.list").is_file() or any(
+        testcases_dir.glob("*.json")
+    )
 
 
 def _sync_prebuilt_acts_to_local_root(
@@ -264,12 +305,16 @@ def _sync_prebuilt_acts_to_local_root(
 
     extracted_root = prepared.extracted_root.expanduser().absolute()
     if extracted_root.exists() and extracted_root != destination:
-        emit_progress(progress_enabled, f"cleaning extracted daily cache {extracted_root}")
+        emit_progress(
+            progress_enabled, f"cleaning extracted daily cache {extracted_root}"
+        )
         shutil.rmtree(extracted_root)
     return destination
 
 
-def prepare_daily_prebuilt_from_config(app_config: AppConfig) -> PreparedDailyPrebuilt | None:
+def prepare_daily_prebuilt_from_config(
+    app_config: AppConfig,
+) -> PreparedDailyPrebuilt | None:
     if not app_config.daily_build_tag and not app_config.daily_date:
         return None
     build = resolve_daily_build(
@@ -306,7 +351,9 @@ def prepare_daily_prebuilt_from_config(app_config: AppConfig) -> PreparedDailyPr
 
 def prepare_daily_sdk_from_config(app_config: AppConfig) -> PreparedDailyArtifact:
     if not app_config.sdk_build_tag and not app_config.sdk_date:
-        raise ValueError("sdk build tag or sdk date is required; provide --sdk-build-tag or --sdk-date")
+        raise ValueError(
+            "sdk build tag or sdk date is required; provide --sdk-build-tag or --sdk-date"
+        )
     build = resolve_daily_build(
         component=app_config.sdk_component,
         build_tag=app_config.sdk_build_tag,
@@ -322,7 +369,9 @@ def prepare_daily_sdk_from_config(app_config: AppConfig) -> PreparedDailyArtifac
 
 def prepare_daily_firmware_from_config(app_config: AppConfig) -> PreparedDailyArtifact:
     if not app_config.firmware_build_tag and not app_config.firmware_date:
-        raise ValueError("firmware build tag or firmware date is required; provide --firmware-build-tag or --firmware-date")
+        raise ValueError(
+            "firmware build tag or firmware date is required; provide --firmware-build-tag or --firmware-date"
+        )
     try:
         build = resolve_daily_build(
             component=app_config.firmware_component,
@@ -332,10 +381,12 @@ def prepare_daily_firmware_from_config(app_config: AppConfig) -> PreparedDailyAr
             component_role="generic",
         )
     except FileNotFoundError as exc:
-        build_date = app_config.firmware_date or derive_date_from_tag(app_config.firmware_build_tag)
+        build_date = app_config.firmware_date or derive_date_from_tag(
+            app_config.firmware_build_tag
+        )
         hint = (
-            f"Run `ohos download firmware` to list recent firmware tags, or "
-            f"`ohos download list-tags firmware --list-tags-count 20` for a longer list."
+            "Run `ohos download firmware` to list recent firmware tags, or "
+            "`ohos download list-tags firmware --list-tags-count 20` for a longer list."
         )
         try:
             recent = list_daily_tags(
@@ -349,7 +400,9 @@ def prepare_daily_firmware_from_config(app_config: AppConfig) -> PreparedDailyAr
             recent = []
         if recent:
             recent_tags = ", ".join(build.tag for build in recent)
-            raise FileNotFoundError(f"{exc}. Recent firmware tags: {recent_tags}. {hint}") from exc
+            raise FileNotFoundError(
+                f"{exc}. Recent firmware tags: {recent_tags}. {hint}"
+            ) from exc
         raise FileNotFoundError(f"{exc}. {hint}") from exc
     return prepare_daily_firmware(
         build=build,

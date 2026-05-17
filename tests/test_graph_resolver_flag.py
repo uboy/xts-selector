@@ -3,7 +3,7 @@
 Tests use direct function calls instead of subprocess to avoid network
 dependencies and daily prebuilt downloads that hang in CI.
 """
-import json
+
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -12,6 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 # Ensure src is importable
 import sys
+
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 
@@ -57,7 +58,10 @@ class GraphResolverFlagUnitTests(unittest.TestCase):
 
     def test_graph_selection_schema(self):
         """Verify graph_selection output schema matches expectations."""
-        from arkui_xts_selector.indexing.pr_resolver import resolve_pr, PrResolveEntry, PrResolveResult
+        from arkui_xts_selector.indexing.pr_resolver import (
+            PrResolveEntry,
+            PrResolveResult,
+        )
 
         entry = PrResolveEntry(
             changed_file="test.cpp",

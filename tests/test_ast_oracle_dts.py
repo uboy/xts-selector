@@ -1,4 +1,5 @@
 """Tests for AST oracle d.ts/idl/ets extensions."""
+
 from __future__ import annotations
 
 from arkui_xts_selector.validation.ast_oracle import (
@@ -43,14 +44,18 @@ class TestParseTextSignatures:
 class TestDiffDts:
     def test_added_method(self):
         pre = b"declare interface Attr { role(value: number): Attr; }\n"
-        post = b"declare interface Attr { role(value: number): Attr; onClick(): Attr; }\n"
+        post = (
+            b"declare interface Attr { role(value: number): Attr; onClick(): Attr; }\n"
+        )
         changes = _diff_dts("test.d.ts", pre, post)
         assert len(changes) == 1
         assert changes[0].change_kind == "added_method"
         assert changes[0].method_name == "onClick"
 
     def test_removed_method(self):
-        pre = b"declare interface Attr { role(value: number): Attr; onClick(): Attr; }\n"
+        pre = (
+            b"declare interface Attr { role(value: number): Attr; onClick(): Attr; }\n"
+        )
         post = b"declare interface Attr { role(value: number): Attr; }\n"
         changes = _diff_dts("test.d.ts", pre, post)
         assert len(changes) == 1
@@ -82,7 +87,9 @@ class TestDiffDts:
 class TestDiffIdl:
     def test_added_method(self):
         pre = b"interface Slider { value(v: number): Slider; }\n"
-        post = b"interface Slider { value(v: number): Slider; min(v: number): Slider; }\n"
+        post = (
+            b"interface Slider { value(v: number): Slider; min(v: number): Slider; }\n"
+        )
         changes = _diff_idl("test.idl", pre, post)
         assert len(changes) == 1
         assert changes[0].change_kind == "added_method"

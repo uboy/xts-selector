@@ -1,4 +1,5 @@
 """Slider changed-file benchmark coverage for arkui-xts-selector."""
+
 from __future__ import annotations
 
 from test_benchmark_contract import (
@@ -23,46 +24,52 @@ class SliderChangedFileBenchmarkTests(WorkspaceAwareTestCase):
     VARIANT: effective_variants_mode must resolve to 'both'.
     """
 
-    FIXTURE_DIR = FIXTURES / 'slider_changed_file'
+    FIXTURE_DIR = FIXTURES / "slider_changed_file"
     CHANGED_FILE = (
-        'foundation/arkui/ace_engine/frameworks/core/'
-        'components_ng/pattern/slider/slider_pattern.cpp'
+        "foundation/arkui/ace_engine/frameworks/core/"
+        "components_ng/pattern/slider/slider_pattern.cpp"
     )
     TOP_N = 300
 
     def _get_changed_file_path(self) -> str:
-        full = self.ws['repo_root'].parent / self.CHANGED_FILE
+        full = self.ws["repo_root"].parent / self.CHANGED_FILE
         if full.exists():
             return str(full)
-        from_git = self.ws['git_root'].parent.parent / self.CHANGED_FILE
+        from_git = self.ws["git_root"].parent.parent / self.CHANGED_FILE
         if from_git.exists():
             return str(from_git)
         return self.CHANGED_FILE
 
     def _get_report(self) -> dict:
-        return _run_selector(self.ws, [
-            '--changed-file', self._get_changed_file_path(),
-            '--variants', 'auto',
-            '--top-projects', str(self.TOP_N),
-        ])
+        return _run_selector(
+            self.ws,
+            [
+                "--changed-file",
+                self._get_changed_file_path(),
+                "--variants",
+                "auto",
+                "--top-projects",
+                str(self.TOP_N),
+            ],
+        )
 
     def test_does_not_crash(self) -> None:
         report = self._get_report()
-        self.assertIn('results', report)
+        self.assertIn("results", report)
 
     def test_effective_variants_mode_is_both(self) -> None:
         report = self._get_report()
-        for result in report.get('results', []):
+        for result in report.get("results", []):
             self.assertEqual(
-                result.get('effective_variants_mode'),
-                'both',
+                result.get("effective_variants_mode"),
+                "both",
                 f"Expected both variants for slider pattern backend file, got {result.get('effective_variants_mode')!r}",
             )
 
     def test_recall_must_have(self) -> None:
-        must_have = _load_fixture_lines(self.FIXTURE_DIR, 'must_have.txt')
+        must_have = _load_fixture_lines(self.FIXTURE_DIR, "must_have.txt")
         if not must_have:
-            self.skipTest('must_have.txt is empty or missing')
+            self.skipTest("must_have.txt is empty or missing")
 
         report = self._get_report()
         output_paths = _all_project_paths(report)
@@ -74,26 +81,26 @@ class SliderChangedFileBenchmarkTests(WorkspaceAwareTestCase):
 
         if missing:
             self.fail(
-                f'Recall failure for slider_pattern.cpp: {len(missing)}/{len(must_have)} expected suites missing.\n\n'
-                + 'Missing:\n'
-                + '\n'.join(f'  - {m}' for m in missing)
+                f"Recall failure for slider_pattern.cpp: {len(missing)}/{len(must_have)} expected suites missing.\n\n"
+                + "Missing:\n"
+                + "\n".join(f"  - {m}" for m in missing)
             )
 
     def test_core_slider_suites_are_prioritized(self) -> None:
         report = self._get_report()
-        projects = report.get('results', [{}])[0].get('projects', [])
+        projects = report.get("results", [{}])[0].get("projects", [])
         required = {
-            'ace_ets_module_picker_api11_static',
-            'ace_ets_module_picker_api12_static',
-            'ace_ets_module_picker_api16_static',
-            'ace_ets_module_dialog_slider',
-            'ace_ets_module_dialog_slider_static',
-            'ace_ets_module_modifier_static',
+            "ace_ets_module_picker_api11_static",
+            "ace_ets_module_picker_api12_static",
+            "ace_ets_module_picker_api16_static",
+            "ace_ets_module_dialog_slider",
+            "ace_ets_module_dialog_slider_static",
+            "ace_ets_module_modifier_static",
         }
         found = set()
-        strong_buckets = {'must-run', 'high-confidence related'}
+        strong_buckets = {"must-run", "high-confidence related"}
         for rank, project in enumerate(projects, 1):
-            project_name = project['project'].lower().rsplit('/', 1)[-1]
+            project_name = project["project"].lower().rsplit("/", 1)[-1]
             if project_name in required:
                 found.add(project_name)
                 self.assertLessEqual(
@@ -102,10 +109,10 @@ class SliderChangedFileBenchmarkTests(WorkspaceAwareTestCase):
                     f"{project['project']} should stay within top-150 but ranked {rank}",
                 )
                 self.assertIn(
-                    project['bucket'],
+                    project["bucket"],
                     strong_buckets,
                     f"{project['project']} should stay in a strong bucket but got {project['bucket']!r}",
                 )
         missing = required - found
         if missing:
-            self.fail(f'Core Slider suites missing from output: {sorted(missing)}')
+            self.fail(f"Core Slider suites missing from output: {sorted(missing)}")

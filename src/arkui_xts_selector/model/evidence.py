@@ -49,7 +49,7 @@ class Evidence:
     symbol: str | None = None
     confidence: float = 0.0
     confidence_level: ConfidenceLevel = "unknown"
-    surface: str = "unknown"         # static, dynamic, shared, unknown
+    surface: str = "unknown"  # static, dynamic, shared, unknown
     generic: bool = False
     family_specific: bool = False
     parser_level: int = 0

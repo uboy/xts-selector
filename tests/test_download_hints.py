@@ -11,7 +11,9 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from arkui_xts_selector.cli import AppConfig, prepare_daily_firmware_from_config, write_and_render_utility_report
+from arkui_xts_selector.cli import AppConfig
+from arkui_xts_selector.progress import prepare_daily_firmware_from_config
+from arkui_xts_selector.utility_modes import write_and_render_utility_report
 from arkui_xts_selector.daily_prebuilt import DailyBuildInfo
 
 
@@ -57,7 +59,10 @@ class DownloadHintTests(unittest.TestCase):
                 "Daily build tag '20260408_180752' was not found for component 'dayu200' on 20260408"
             ),
         ):
-            with mock.patch("arkui_xts_selector.progress.list_daily_tags", return_value=recent_builds):
+            with mock.patch(
+                "arkui_xts_selector.progress.list_daily_tags",
+                return_value=recent_builds,
+            ):
                 with self.assertRaises(FileNotFoundError) as raised:
                     prepare_daily_firmware_from_config(app_config)
 
@@ -79,7 +84,9 @@ class DownloadHintTests(unittest.TestCase):
         with TemporaryDirectory() as tmpdir:
             json_path = Path(tmpdir) / "report.json"
             with redirect_stdout(io.StringIO()) as stdout:
-                write_and_render_utility_report(report, json_to_stdout=False, json_output_path=json_path)
+                write_and_render_utility_report(
+                    report, json_to_stdout=False, json_output_path=json_path
+                )
 
         output = stdout.getvalue()
         self.assertIn("download_daily_firmware: failed", output)

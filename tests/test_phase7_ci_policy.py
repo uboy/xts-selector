@@ -1,11 +1,10 @@
 """Tests for Phase 7: unresolved tracking and CI policy recommendation."""
+
 from __future__ import annotations
 
-import pytest
 
 from arkui_xts_selector.indexing.pr_resolver import (
     PrResolveEntry,
-    PrResolveResult,
     _determine_unresolved_reason,
     _compute_ci_policy,
     resolve_pr,
@@ -20,19 +19,36 @@ class TestUnresolvedReason:
     """Test _determine_unresolved_reason for known subsystem patterns."""
 
     def test_animation_subsystem(self):
-        assert _determine_unresolved_reason("core/animation/animator.cpp") == "unsupported_subsystem_no_fanout"
+        assert (
+            _determine_unresolved_reason("core/animation/animator.cpp")
+            == "unsupported_subsystem_no_fanout"
+        )
 
     def test_render_service_subsystem(self):
-        assert _determine_unresolved_reason("render_service/rs_render_node.cpp") == "unsupported_subsystem_no_fanout"
+        assert (
+            _determine_unresolved_reason("render_service/rs_render_node.cpp")
+            == "unsupported_subsystem_no_fanout"
+        )
 
     def test_manager_subsystem(self):
-        assert _determine_unresolved_reason("components_ng/manager/select_overlay/select_overlay_manager.cpp") == "manager_subsystem_no_fanout"
+        assert (
+            _determine_unresolved_reason(
+                "components_ng/manager/select_overlay/select_overlay_manager.cpp"
+            )
+            == "manager_subsystem_no_fanout"
+        )
 
     def test_pipeline_infrastructure(self):
-        assert _determine_unresolved_reason("pipeline/pipeline_context.cpp") == "pipeline_infrastructure_no_fanout"
+        assert (
+            _determine_unresolved_reason("pipeline/pipeline_context.cpp")
+            == "pipeline_infrastructure_no_fanout"
+        )
 
     def test_base_infrastructure(self):
-        assert _determine_unresolved_reason("components_ng/base/frame_node.cpp") == "base_infrastructure_no_fanout"
+        assert (
+            _determine_unresolved_reason("components_ng/base/frame_node.cpp")
+            == "base_infrastructure_no_fanout"
+        )
 
     def test_non_source_file(self):
         assert _determine_unresolved_reason("BUILD.gn") == "non_source_file"
@@ -50,6 +66,7 @@ class TestComputeCiPolicy:
 
     def test_manual_review_critical_broad(self):
         from arkui_xts_selector.indexing.broad_infra import BroadInfraMatch
+
         entry = PrResolveEntry(
             changed_file="frame_node.cpp",
             affected_apis=(),
@@ -110,9 +127,13 @@ class TestComputeCiPolicy:
 
     def test_manual_review_many_unresolved(self):
         entries = [
-            PrResolveEntry(changed_file=f"f{i}.cpp", affected_apis=(),
-                           consumer_projects=(), false_negative_risk="high",
-                           unresolved_reason="no_matching_pattern")
+            PrResolveEntry(
+                changed_file=f"f{i}.cpp",
+                affected_apis=(),
+                consumer_projects=(),
+                false_negative_risk="high",
+                unresolved_reason="no_matching_pattern",
+            )
             for i in range(5)
         ]
         unresolved = [f"f{i}.cpp" for i in range(4)]
@@ -126,7 +147,9 @@ class TestPrResultNewFields:
     def test_unresolved_files_populated(self):
         result = resolve_pr(
             ["unknown/random_file.cpp"],
-            AceIndexResult(), SdkIndexResult(), InvertedIndex(),
+            AceIndexResult(),
+            SdkIndexResult(),
+            InvertedIndex(),
         )
         assert len(result.unresolved_files) == 1
         assert result.unresolved_files[0] == "unknown/random_file.cpp"
@@ -134,22 +157,35 @@ class TestPrResultNewFields:
     def test_ci_policy_recommendation_set(self):
         result = resolve_pr(
             ["unknown/random_file.cpp"],
-            AceIndexResult(), SdkIndexResult(), InvertedIndex(),
+            AceIndexResult(),
+            SdkIndexResult(),
+            InvertedIndex(),
         )
-        assert result.ci_policy_recommendation in ("ok", "warn", "require_broader_suite", "manual_review")
+        assert result.ci_policy_recommendation in (
+            "ok",
+            "warn",
+            "require_broader_suite",
+            "manual_review",
+        )
         assert isinstance(result.ci_policy_reason, str)
 
     def test_semantic_source_unknown_for_no_mapping(self):
         result = resolve_pr(
             ["unknown/random_file.cpp"],
-            AceIndexResult(), SdkIndexResult(), InvertedIndex(),
+            AceIndexResult(),
+            SdkIndexResult(),
+            InvertedIndex(),
         )
         assert result.semantic_source == "unknown"
 
     def test_semantic_source_broad_for_broad_infra(self):
         result = resolve_pr(
-            ["foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp"],
-            AceIndexResult(), SdkIndexResult(), InvertedIndex(),
+            [
+                "foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp"
+            ],
+            AceIndexResult(),
+            SdkIndexResult(),
+            InvertedIndex(),
             Path("config/broad_infrastructure_files.json"),
         )
         assert result.semantic_source == "broad"
@@ -157,16 +193,25 @@ class TestPrResultNewFields:
     def test_entry_unresolved_reason_set(self):
         result = resolve_pr(
             ["animation/animator.cpp"],
-            AceIndexResult(), SdkIndexResult(), InvertedIndex(),
+            AceIndexResult(),
+            SdkIndexResult(),
+            InvertedIndex(),
         )
         assert len(result.entries) == 1
         assert result.entries[0].unresolved_reason is not None
-        assert "unsupported" in result.entries[0].unresolved_reason or "no_fanout" in result.entries[0].unresolved_reason
+        assert (
+            "unsupported" in result.entries[0].unresolved_reason
+            or "no_fanout" in result.entries[0].unresolved_reason
+        )
 
     def test_entry_unresolved_reason_none_when_resolved(self):
         result = resolve_pr(
-            ["foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp"],
-            AceIndexResult(), SdkIndexResult(), InvertedIndex(),
+            [
+                "foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp"
+            ],
+            AceIndexResult(),
+            SdkIndexResult(),
+            InvertedIndex(),
             Path("config/broad_infrastructure_files.json"),
         )
         assert len(result.entries) == 1

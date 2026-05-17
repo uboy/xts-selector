@@ -65,7 +65,7 @@ class ApiUsageSignature:
     """
 
     api_entity_id: ApiEntityId
-    language: str = "unknown"        # ArkTS, TS, JS, ETS, unknown
+    language: str = "unknown"  # ArkTS, TS, JS, ETS, unknown
     usage_kind: UsageKind = "unknown"
     argument_shape: ArgumentShape = "unknown"
     receiver_type: str | None = None
@@ -119,7 +119,9 @@ class ApiUsageSignature:
     def from_dict(cls, data: dict) -> ApiUsageSignature:
         span = data.get("span")
         return cls(
-            api_entity_id=ApiEntityId.from_dict(data["api_entity_id"]) if "api_entity_id" in data else ApiEntityId(),
+            api_entity_id=ApiEntityId.from_dict(data["api_entity_id"])
+            if "api_entity_id" in data
+            else ApiEntityId(),
             language=data.get("language", "unknown"),
             usage_kind=data.get("usage_kind", "unknown"),
             argument_shape=data.get("argument_shape", "unknown"),

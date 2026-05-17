@@ -1,4 +1,5 @@
 """Tests for coverage_eval.py."""
+
 from __future__ import annotations
 
 import json
@@ -8,8 +9,6 @@ from pathlib import Path
 
 from arkui_xts_selector.coverage_eval import (
     CoverageEvaluator,
-    CoverageReport,
-    PrMetrics,
     GoldenFixtureEntry,
     load_golden_fixtures,
     load_baseline_metrics,
@@ -25,11 +24,13 @@ def _make_batch_result(
     gs: dict = {"entries": []}
 
     if consumer_projects:
-        gs["entries"].append({
-            "changed_file": "file.cpp",
-            "affected_apis": ["api1"],
-            "consumer_projects": consumer_projects,
-        })
+        gs["entries"].append(
+            {
+                "changed_file": "file.cpp",
+                "affected_apis": ["api1"],
+                "consumer_projects": consumer_projects,
+            }
+        )
 
     if fallback:
         gs["fallback_applied"] = True
@@ -58,6 +59,7 @@ class TestCoverageEvaluator(unittest.TestCase):
 
     def tearDown(self) -> None:
         import shutil
+
         if self.tmp.exists():
             shutil.rmtree(self.tmp)
 
@@ -83,7 +85,7 @@ class TestCoverageEvaluator(unittest.TestCase):
         report = evaluator.evaluate()
 
         m = report.pr_metrics[1]
-        self.assertEqual(m.recall_relaxed, 2/3)
+        self.assertEqual(m.recall_relaxed, 2 / 3)
         self.assertEqual(m.precision, 1.0)
 
     def test_no_match(self) -> None:
@@ -111,7 +113,7 @@ class TestCoverageEvaluator(unittest.TestCase):
         report = evaluator.evaluate()
 
         m = report.pr_metrics[1]
-        self.assertEqual(m.must_run_recall, 2/3)
+        self.assertEqual(m.must_run_recall, 2 / 3)
 
     def test_fallback_targets_included(self) -> None:
         batch = [
@@ -220,6 +222,7 @@ class TestLoadGoldenFixtures(unittest.TestCase):
 
     def tearDown(self) -> None:
         import shutil
+
         if self.tmp.exists():
             shutil.rmtree(self.tmp)
 
@@ -263,6 +266,7 @@ class TestLoadBaselineMetrics(unittest.TestCase):
 
     def tearDown(self) -> None:
         import shutil
+
         if self.tmp.exists():
             shutil.rmtree(self.tmp)
 

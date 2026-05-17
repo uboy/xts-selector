@@ -28,13 +28,13 @@ from arkui_xts_selector.graph.schema import (
 )
 from arkui_xts_selector.model.api import ApiEntityId
 from arkui_xts_selector.model.evidence import Evidence
-from arkui_xts_selector.model.selection import SemanticBucket
 from arkui_xts_selector.model.usage import ApiUsageSignature
 
 
 # ---------------------------------------------------------------------------
 # Helper functions for building minimal test graphs
 # ---------------------------------------------------------------------------
+
 
 def _build_slider_api_id() -> ApiEntityId:
     """Build canonical Slider API entity ID."""
@@ -131,66 +131,76 @@ class SliderDoesNotSelectArcSliderTests(unittest.TestCase):
         slider_canonical = slider_id.canonical()
 
         # Add Slider API node
-        g.add_node(GraphNode(
-            node_id=slider_canonical,
-            node_type=NodeType.API_ENTITY.value,
-            label="Slider",
-            data={
-                "public_name": "Slider",
-                "kind": "component",
-                "surface": "static",
-                "family": "Slider",
-                "module": "@ohos.arkui.component",
-            },
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=slider_canonical,
+                node_type=NodeType.API_ENTITY.value,
+                label="Slider",
+                data={
+                    "public_name": "Slider",
+                    "kind": "component",
+                    "surface": "static",
+                    "family": "Slider",
+                    "module": "@ohos.arkui.component",
+                },
+            )
+        )
 
         # Add ArcSlider consumer file (this consumer uses ArcSlider, NOT Slider)
-        arc_slider_consumer = "consumer_file:test/xts/acts/arkui/arc_slider/ArcSliderTest.ets"
-        g.add_node(GraphNode(
-            node_id=arc_slider_consumer,
-            node_type=NodeType.CONSUMER_FILE.value,
-            label="ArcSliderTest.ets",
-        ))
+        arc_slider_consumer = (
+            "consumer_file:test/xts/acts/arkui/arc_slider/ArcSliderTest.ets"
+        )
+        g.add_node(
+            GraphNode(
+                node_id=arc_slider_consumer,
+                node_type=NodeType.CONSUMER_FILE.value,
+                label="ArcSliderTest.ets",
+            )
+        )
 
         # Add ArcSlider API node
         arc_slider_id = _build_arc_slider_api_id()
         arc_slider_canonical = arc_slider_id.canonical()
-        g.add_node(GraphNode(
-            node_id=arc_slider_canonical,
-            node_type=NodeType.API_ENTITY.value,
-            label="ArcSlider",
-            data={
-                "public_name": "ArcSlider",
-                "kind": "component",
-                "surface": "static",
-                "family": "ArcSlider",
-                "module": "@ohos.arkui.component",
-            },
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=arc_slider_canonical,
+                node_type=NodeType.API_ENTITY.value,
+                label="ArcSlider",
+                data={
+                    "public_name": "ArcSlider",
+                    "kind": "component",
+                    "surface": "static",
+                    "family": "ArcSlider",
+                    "module": "@ohos.arkui.component",
+                },
+            )
+        )
 
         # Add uses_api edge from consumer to ArcSlider (NOT Slider)
-        g.add_edge(GraphEdge(
-            edge_id="edge:uses_api:ArcSlider",
-            edge_type=EdgeType.USES_API.value,
-            from_node=arc_slider_consumer,
-            to_node=arc_slider_canonical,
-            evidence=Evidence(
-                source="ets_consumer_parser",
-                file_path="test/xts/acts/arkui/arc_slider/ArcSliderTest.ets",
-                line=10,
-                function="ArcSlider",
-                symbol="ArcSlider",
-                confidence=0.9,
-                confidence_level="strong",
-                surface="static",
-                generic=False,
-                family_specific=True,
-                parser_level=2,
-                provenance="parser",
-            ),
-            consumer_usage_confidence="strong",
-            source_file="test/xts/acts/arkui/arc_slider/ArcSliderTest.ets",
-        ))
+        g.add_edge(
+            GraphEdge(
+                edge_id="edge:uses_api:ArcSlider",
+                edge_type=EdgeType.USES_API.value,
+                from_node=arc_slider_consumer,
+                to_node=arc_slider_canonical,
+                evidence=Evidence(
+                    source="ets_consumer_parser",
+                    file_path="test/xts/acts/arkui/arc_slider/ArcSliderTest.ets",
+                    line=10,
+                    function="ArcSlider",
+                    symbol="ArcSlider",
+                    confidence=0.9,
+                    confidence_level="strong",
+                    surface="static",
+                    generic=False,
+                    family_specific=True,
+                    parser_level=2,
+                    provenance="parser",
+                ),
+                consumer_usage_confidence="strong",
+                source_file="test/xts/acts/arkui/arc_slider/ArcSliderTest.ets",
+            )
+        )
 
         # Resolve coverage for Slider - should find NO relations
         # because ArcSlider consumer uses ArcSlider, not Slider
@@ -215,66 +225,76 @@ class NavigationDoesNotSelectNavDestinationUnrelatedTests(unittest.TestCase):
         nav_canonical = nav_id.canonical()
 
         # Add Navigation API node
-        g.add_node(GraphNode(
-            node_id=nav_canonical,
-            node_type=NodeType.API_ENTITY.value,
-            label="Navigation",
-            data={
-                "public_name": "Navigation",
-                "kind": "component",
-                "surface": "static",
-                "family": "Navigation",
-                "module": "@ohos.arkui.component",
-            },
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=nav_canonical,
+                node_type=NodeType.API_ENTITY.value,
+                label="Navigation",
+                data={
+                    "public_name": "Navigation",
+                    "kind": "component",
+                    "surface": "static",
+                    "family": "Navigation",
+                    "module": "@ohos.arkui.component",
+                },
+            )
+        )
 
         # Add NavDestination consumer file
-        nav_dest_consumer = "consumer_file:test/xts/acts/arkui/navigation/NavDestinationTest.ets"
-        g.add_node(GraphNode(
-            node_id=nav_dest_consumer,
-            node_type=NodeType.CONSUMER_FILE.value,
-            label="NavDestinationTest.ets",
-        ))
+        nav_dest_consumer = (
+            "consumer_file:test/xts/acts/arkui/navigation/NavDestinationTest.ets"
+        )
+        g.add_node(
+            GraphNode(
+                node_id=nav_dest_consumer,
+                node_type=NodeType.CONSUMER_FILE.value,
+                label="NavDestinationTest.ets",
+            )
+        )
 
         # Add NavDestination API node
         nav_dest_id = _build_nav_destination_api_id()
         nav_dest_canonical = nav_dest_id.canonical()
-        g.add_node(GraphNode(
-            node_id=nav_dest_canonical,
-            node_type=NodeType.API_ENTITY.value,
-            label="NavDestination",
-            data={
-                "public_name": "NavDestination",
-                "kind": "component",
-                "surface": "static",
-                "family": "NavDestination",
-                "module": "@ohos.arkui.component",
-            },
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=nav_dest_canonical,
+                node_type=NodeType.API_ENTITY.value,
+                label="NavDestination",
+                data={
+                    "public_name": "NavDestination",
+                    "kind": "component",
+                    "surface": "static",
+                    "family": "NavDestination",
+                    "module": "@ohos.arkui.component",
+                },
+            )
+        )
 
         # Add uses_api edge from consumer to NavDestination (NOT Navigation)
-        g.add_edge(GraphEdge(
-            edge_id="edge:uses_api:NavDestination",
-            edge_type=EdgeType.USES_API.value,
-            from_node=nav_dest_consumer,
-            to_node=nav_dest_canonical,
-            evidence=Evidence(
-                source="ets_consumer_parser",
-                file_path="test/xts/acts/arkui/navigation/NavDestinationTest.ets",
-                line=15,
-                function="NavDestination",
-                symbol="NavDestination",
-                confidence=0.9,
-                confidence_level="strong",
-                surface="static",
-                generic=False,
-                family_specific=True,
-                parser_level=2,
-                provenance="parser",
-            ),
-            consumer_usage_confidence="strong",
-            source_file="test/xts/acts/arkui/navigation/NavDestinationTest.ets",
-        ))
+        g.add_edge(
+            GraphEdge(
+                edge_id="edge:uses_api:NavDestination",
+                edge_type=EdgeType.USES_API.value,
+                from_node=nav_dest_consumer,
+                to_node=nav_dest_canonical,
+                evidence=Evidence(
+                    source="ets_consumer_parser",
+                    file_path="test/xts/acts/arkui/navigation/NavDestinationTest.ets",
+                    line=15,
+                    function="NavDestination",
+                    symbol="NavDestination",
+                    confidence=0.9,
+                    confidence_level="strong",
+                    surface="static",
+                    generic=False,
+                    family_specific=True,
+                    parser_level=2,
+                    provenance="parser",
+                ),
+                consumer_usage_confidence="strong",
+                source_file="test/xts/acts/arkui/navigation/NavDestinationTest.ets",
+            )
+        )
 
         # Resolve coverage for Navigation - should find NO relations
         relations = resolve_coverage_relations(g, nav_id)
@@ -297,53 +317,58 @@ class ButtonHarnessOnlyTests(unittest.TestCase):
         button_canonical = button_id.canonical()
 
         # Add Button API node
-        g.add_node(GraphNode(
-            node_id=button_canonical,
-            node_type=NodeType.API_ENTITY.value,
-            label="Button",
-            data={
-                "public_name": "Button",
-                "kind": "component",
-                "surface": "static",
-                "family": "Button",
-                "module": "@ohos.arkui.component",
-            },
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=button_canonical,
+                node_type=NodeType.API_ENTITY.value,
+                label="Button",
+                data={
+                    "public_name": "Button",
+                    "kind": "component",
+                    "surface": "static",
+                    "family": "Button",
+                    "module": "@ohos.arkui.component",
+                },
+            )
+        )
 
         # Add consumer file
         consumer = "consumer_file:test/xts/acts/arkui/harness/ButtonHarnessTest.ets"
-        g.add_node(GraphNode(
-            node_id=consumer,
-            node_type=NodeType.CONSUMER_FILE.value,
-            label="ButtonHarnessTest.ets",
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=consumer,
+                node_type=NodeType.CONSUMER_FILE.value,
+                label="ButtonHarnessTest.ets",
+            )
+        )
 
         # Add uses_api edge with harness_only usage
         # Simulate by using a custom evidence that indicates harness usage
-        g.add_edge(GraphEdge(
-            edge_id="edge:uses_api:ButtonHarness",
-            edge_type=EdgeType.USES_API.value,
-            from_node=consumer,
-            to_node=button_canonical,
-            evidence=Evidence(
-                source="ets_consumer_parser",
-                file_path="test/xts/acts/arkui/harness/ButtonHarnessTest.ets",
-                line=5,
-                symbol="Button",
-                confidence=0.7,
-                confidence_level="medium",
-                surface="static",
-                generic=False,
-                family_specific=True,
-                parser_level=2,
-                provenance="parser",
-            ),
-            consumer_usage_confidence="medium",
-            source_file="test/xts/acts/arkui/harness/ButtonHarnessTest.ets",
-        ))
+        g.add_edge(
+            GraphEdge(
+                edge_id="edge:uses_api:ButtonHarness",
+                edge_type=EdgeType.USES_API.value,
+                from_node=consumer,
+                to_node=button_canonical,
+                evidence=Evidence(
+                    source="ets_consumer_parser",
+                    file_path="test/xts/acts/arkui/harness/ButtonHarnessTest.ets",
+                    line=5,
+                    symbol="Button",
+                    confidence=0.7,
+                    confidence_level="medium",
+                    surface="static",
+                    generic=False,
+                    family_specific=True,
+                    parser_level=2,
+                    provenance="parser",
+                ),
+                consumer_usage_confidence="medium",
+                source_file="test/xts/acts/arkui/harness/ButtonHarnessTest.ets",
+            )
+        )
 
         # Build a manual CoverageRelation with harness_only usage
-        from arkui_xts_selector.model.usage import ApiUsageSignature, UsageKind
 
         usage_sig = ApiUsageSignature(
             api_entity_id=button_id,
@@ -396,66 +421,76 @@ class MenuItemUnrelatedSuitesTests(unittest.TestCase):
         menu_canonical = menu_id.canonical()
 
         # Add MenuItem API node
-        g.add_node(GraphNode(
-            node_id=menu_canonical,
-            node_type=NodeType.API_ENTITY.value,
-            label="MenuItem",
-            data={
-                "public_name": "MenuItem",
-                "kind": "component",
-                "surface": "static",
-                "family": "MenuItem",
-                "module": "@ohos.arkui.component",
-            },
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=menu_canonical,
+                node_type=NodeType.API_ENTITY.value,
+                label="MenuItem",
+                data={
+                    "public_name": "MenuItem",
+                    "kind": "component",
+                    "surface": "static",
+                    "family": "MenuItem",
+                    "module": "@ohos.arkui.component",
+                },
+            )
+        )
 
         # Add TextInput consumer file (unrelated to MenuItem)
-        textinput_consumer = "consumer_file:test/xts/acts/arkui/text_input/TextInputTest.ets"
-        g.add_node(GraphNode(
-            node_id=textinput_consumer,
-            node_type=NodeType.CONSUMER_FILE.value,
-            label="TextInputTest.ets",
-        ))
+        textinput_consumer = (
+            "consumer_file:test/xts/acts/arkui/text_input/TextInputTest.ets"
+        )
+        g.add_node(
+            GraphNode(
+                node_id=textinput_consumer,
+                node_type=NodeType.CONSUMER_FILE.value,
+                label="TextInputTest.ets",
+            )
+        )
 
         # Add TextInput API node
         textinput_id = _build_textinput_api_id()
         textinput_canonical = textinput_id.canonical()
-        g.add_node(GraphNode(
-            node_id=textinput_canonical,
-            node_type=NodeType.API_ENTITY.value,
-            label="TextInput",
-            data={
-                "public_name": "TextInput",
-                "kind": "component",
-                "surface": "static",
-                "family": "TextInput",
-                "module": "@ohos.arkui.component",
-            },
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=textinput_canonical,
+                node_type=NodeType.API_ENTITY.value,
+                label="TextInput",
+                data={
+                    "public_name": "TextInput",
+                    "kind": "component",
+                    "surface": "static",
+                    "family": "TextInput",
+                    "module": "@ohos.arkui.component",
+                },
+            )
+        )
 
         # Add uses_api edge from consumer to TextInput (NOT MenuItem)
-        g.add_edge(GraphEdge(
-            edge_id="edge:uses_api:TextInput",
-            edge_type=EdgeType.USES_API.value,
-            from_node=textinput_consumer,
-            to_node=textinput_canonical,
-            evidence=Evidence(
-                source="ets_consumer_parser",
-                file_path="test/xts/acts/arkui/text_input/TextInputTest.ets",
-                line=20,
-                function="TextInput",
-                symbol="TextInput",
-                confidence=0.9,
-                confidence_level="strong",
-                surface="static",
-                generic=False,
-                family_specific=True,
-                parser_level=2,
-                provenance="parser",
-            ),
-            consumer_usage_confidence="strong",
-            source_file="test/xts/acts/arkui/text_input/TextInputTest.ets",
-        ))
+        g.add_edge(
+            GraphEdge(
+                edge_id="edge:uses_api:TextInput",
+                edge_type=EdgeType.USES_API.value,
+                from_node=textinput_consumer,
+                to_node=textinput_canonical,
+                evidence=Evidence(
+                    source="ets_consumer_parser",
+                    file_path="test/xts/acts/arkui/text_input/TextInputTest.ets",
+                    line=20,
+                    function="TextInput",
+                    symbol="TextInput",
+                    confidence=0.9,
+                    confidence_level="strong",
+                    surface="static",
+                    generic=False,
+                    family_specific=True,
+                    parser_level=2,
+                    provenance="parser",
+                ),
+                consumer_usage_confidence="strong",
+                source_file="test/xts/acts/arkui/text_input/TextInputTest.ets",
+            )
+        )
 
         # Resolve coverage for MenuItem - should find NO relations
         relations = resolve_coverage_relations(g, menu_id)
@@ -478,42 +513,50 @@ class ArtifactSimilarityTests(unittest.TestCase):
         button_canonical = button_id.canonical()
 
         # Add Button API node
-        g.add_node(GraphNode(
-            node_id=button_canonical,
-            node_type=NodeType.API_ENTITY.value,
-            label="Button",
-            data={
-                "public_name": "Button",
-                "kind": "component",
-                "surface": "static",
-                "family": "Button",
-                "module": "@ohos.arkui.component",
-            },
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=button_canonical,
+                node_type=NodeType.API_ENTITY.value,
+                label="Button",
+                data={
+                    "public_name": "Button",
+                    "kind": "component",
+                    "surface": "static",
+                    "family": "Button",
+                    "module": "@ohos.arkui.component",
+                },
+            )
+        )
 
         # Add consumer file
         consumer = "consumer_file:test/xts/acts/arkui/button/ButtonTest.ets"
-        g.add_node(GraphNode(
-            node_id=consumer,
-            node_type=NodeType.CONSUMER_FILE.value,
-            label="ButtonTest.ets",
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=consumer,
+                node_type=NodeType.CONSUMER_FILE.value,
+                label="ButtonTest.ets",
+            )
+        )
 
         # Add target
         target = "target:acts:ace_ets_module_button"
-        g.add_node(GraphNode(
-            node_id=target,
-            node_type=NodeType.RUNNABLE_TARGET.value,
-            label="ace_ets_module_button",
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=target,
+                node_type=NodeType.RUNNABLE_TARGET.value,
+                label="ace_ets_module_button",
+            )
+        )
 
         # Add artifact
         artifact = "artifact:hap:AceEtsModuleButton.hap"
-        g.add_node(GraphNode(
-            node_id=artifact,
-            node_type=NodeType.BUILD_ARTIFACT.value,
-            label="AceEtsModuleButton.hap",
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=artifact,
+                node_type=NodeType.BUILD_ARTIFACT.value,
+                label="AceEtsModuleButton.hap",
+            )
+        )
 
         # Add produces_artifact edge with provenance="artifact"
         artifact_edge = GraphEdge(
@@ -570,48 +613,54 @@ class LexicalOnlyButtonMatchTests(unittest.TestCase):
         button_canonical = button_id.canonical()
 
         # Add Button API node
-        g.add_node(GraphNode(
-            node_id=button_canonical,
-            node_type=NodeType.API_ENTITY.value,
-            label="Button",
-            data={
-                "public_name": "Button",
-                "kind": "component",
-                "surface": "static",
-                "family": "Button",
-                "module": "@ohos.arkui.component",
-            },
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=button_canonical,
+                node_type=NodeType.API_ENTITY.value,
+                label="Button",
+                data={
+                    "public_name": "Button",
+                    "kind": "component",
+                    "surface": "static",
+                    "family": "Button",
+                    "module": "@ohos.arkui.component",
+                },
+            )
+        )
 
         # Add consumer file with "Button" in path but only path-level evidence
         consumer = "consumer_file:test/xts/acts/arkui/button_other/ButtonPathTest.ets"
-        g.add_node(GraphNode(
-            node_id=consumer,
-            node_type=NodeType.CONSUMER_FILE.value,
-            label="ButtonPathTest.ets",
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=consumer,
+                node_type=NodeType.CONSUMER_FILE.value,
+                label="ButtonPathTest.ets",
+            )
+        )
 
         # Add uses_api edge with path_rule provenance (lexical only, no actual API usage)
-        g.add_edge(GraphEdge(
-            edge_id="edge:uses_api:ButtonPath",
-            edge_type=EdgeType.USES_API.value,
-            from_node=consumer,
-            to_node=button_canonical,
-            evidence=Evidence(
-                source="path_rule_matcher",
-                file_path="test/xts/acts/arkui/button_other/ButtonPathTest.ets",
-                confidence=0.3,
-                confidence_level="weak",
-                surface="static",
-                generic=True,
-                family_specific=False,
-                parser_level=0,
-                provenance="path_rule",  # This is the key - provenance is "path_rule"
-                note="Matched by path pattern only, no actual API usage detected",
-            ),
-            consumer_usage_confidence="weak",  # Weak because only path-based
-            source_file="test/xts/acts/arkui/button_other/ButtonPathTest.ets",
-        ))
+        g.add_edge(
+            GraphEdge(
+                edge_id="edge:uses_api:ButtonPath",
+                edge_type=EdgeType.USES_API.value,
+                from_node=consumer,
+                to_node=button_canonical,
+                evidence=Evidence(
+                    source="path_rule_matcher",
+                    file_path="test/xts/acts/arkui/button_other/ButtonPathTest.ets",
+                    confidence=0.3,
+                    confidence_level="weak",
+                    surface="static",
+                    generic=True,
+                    family_specific=False,
+                    parser_level=0,
+                    provenance="path_rule",  # This is the key - provenance is "path_rule"
+                    note="Matched by path pattern only, no actual API usage detected",
+                ),
+                consumer_usage_confidence="weak",  # Weak because only path-based
+                source_file="test/xts/acts/arkui/button_other/ButtonPathTest.ets",
+            )
+        )
 
         # Resolve coverage
         relations = resolve_coverage_relations(g, button_id)
@@ -646,49 +695,55 @@ class ImportOnlyEvidenceTests(unittest.TestCase):
         button_canonical = button_id.canonical()
 
         # Add Button API node
-        g.add_node(GraphNode(
-            node_id=button_canonical,
-            node_type=NodeType.API_ENTITY.value,
-            label="Button",
-            data={
-                "public_name": "Button",
-                "kind": "component",
-                "surface": "static",
-                "family": "Button",
-                "module": "@ohos.arkui.component",
-            },
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=button_canonical,
+                node_type=NodeType.API_ENTITY.value,
+                label="Button",
+                data={
+                    "public_name": "Button",
+                    "kind": "component",
+                    "surface": "static",
+                    "family": "Button",
+                    "module": "@ohos.arkui.component",
+                },
+            )
+        )
 
         # Add consumer file
         consumer = "consumer_file:test/xts/acts/arkui/button/ButtonImportTest.ets"
-        g.add_node(GraphNode(
-            node_id=consumer,
-            node_type=NodeType.CONSUMER_FILE.value,
-            label="ButtonImportTest.ets",
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=consumer,
+                node_type=NodeType.CONSUMER_FILE.value,
+                label="ButtonImportTest.ets",
+            )
+        )
 
         # Add uses_api edge with import provenance (import only, no actual call site)
-        g.add_edge(GraphEdge(
-            edge_id="edge:uses_api:ButtonImport",
-            edge_type=EdgeType.USES_API.value,
-            from_node=consumer,
-            to_node=button_canonical,
-            evidence=Evidence(
-                source="ets_consumer_parser",
-                file_path="test/xts/acts/arkui/button/ButtonImportTest.ets",
-                line=1,
-                symbol="Button",
-                confidence=0.5,
-                confidence_level="medium",
-                surface="static",
-                generic=False,
-                family_specific=True,
-                parser_level=2,
-                provenance="import",  # This is the key - provenance is "import"
-            ),
-            consumer_usage_confidence="medium",
-            source_file="test/xts/acts/arkui/button/ButtonImportTest.ets",
-        ))
+        g.add_edge(
+            GraphEdge(
+                edge_id="edge:uses_api:ButtonImport",
+                edge_type=EdgeType.USES_API.value,
+                from_node=consumer,
+                to_node=button_canonical,
+                evidence=Evidence(
+                    source="ets_consumer_parser",
+                    file_path="test/xts/acts/arkui/button/ButtonImportTest.ets",
+                    line=1,
+                    symbol="Button",
+                    confidence=0.5,
+                    confidence_level="medium",
+                    surface="static",
+                    generic=False,
+                    family_specific=True,
+                    parser_level=2,
+                    provenance="import",  # This is the key - provenance is "import"
+                ),
+                consumer_usage_confidence="medium",
+                source_file="test/xts/acts/arkui/button/ButtonImportTest.ets",
+            )
+        )
 
         # Resolve coverage
         relations = resolve_coverage_relations(g, button_id)
@@ -720,11 +775,13 @@ class CoverageEquivalenceTests(unittest.TestCase):
         slider_canonical = slider_id.canonical()
 
         # Add Slider API
-        g.add_node(GraphNode(
-            node_id=slider_canonical,
-            node_type=NodeType.API_ENTITY.value,
-            label="Slider",
-        ))
+        g.add_node(
+            GraphNode(
+                node_id=slider_canonical,
+                node_type=NodeType.API_ENTITY.value,
+                label="Slider",
+            )
+        )
 
         # No consumer edges at all - should find no relations
         relations = resolve_coverage_relations(g, slider_id)
@@ -732,7 +789,9 @@ class CoverageEquivalenceTests(unittest.TestCase):
 
     def test_path_rule_evidence_produces_unresolved(self) -> None:
         """Path-rule evidence should produce unresolved_coverage or broad_fallback."""
-        from arkui_xts_selector.graph.coverage_relation import _determine_coverage_equivalence
+        from arkui_xts_selector.graph.coverage_relation import (
+            _determine_coverage_equivalence,
+        )
 
         # Path-rule evidence implies unknown usage_kind and weak/unknown confidence
         ce = _determine_coverage_equivalence(

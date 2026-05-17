@@ -1,13 +1,12 @@
 """Tests for PrCacheEntry v2 with SHA/reference fields."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from pathlib import Path
 import json
 
-import pytest
 
-from arkui_xts_selector.pr_cache import PrCacheEntry, PrApiCache, CacheSchemaMismatchError
+from arkui_xts_selector.pr_cache import PrCacheEntry, PrApiCache
 
 
 class TestPrCacheEntryShaFields:

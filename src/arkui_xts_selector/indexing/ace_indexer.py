@@ -13,13 +13,12 @@ and parse them to extract classes, methods, and includes.
 Import boundary: standard library + arkui_xts_selector.indexing.file_role,
 arkui_xts_selector.indexing.cpp_parser, arkui_xts_selector.indexing.cpp_macro_patterns only.
 """
+
 from __future__ import annotations
 
-import re
 import time
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Literal
 
 from .cpp_macro_patterns import (
     MacroPattern,
@@ -27,13 +26,14 @@ from .cpp_macro_patterns import (
     load_macro_patterns,
     match_macro_in_source,
 )
-from .cpp_parser import CppClass, CppMethod, CppParseResult, parse_cpp_file
+from .cpp_parser import CppClass, CppMethod, parse_cpp_file
 from .file_role import FileRole, classify
 
 
 @dataclass(frozen=True)
 class AceIndexEntry:
     """An AceEngine source file entry with parsed C++ information."""
+
     file_path: str
     role: FileRole
     family: str | None = None
@@ -79,6 +79,7 @@ class AceIndexEntry:
 @dataclass(frozen=True)
 class AceIndexResult:
     """Result of indexing AceEngine source files."""
+
     entries: tuple[AceIndexEntry, ...] = ()
     errors: tuple[str, ...] = ()  # Error messages for files that couldn't be parsed
     index_time_ms: float = 0.0
@@ -134,6 +135,7 @@ def _method_from_dict(data: dict) -> CppMethod:
 @dataclass(frozen=True)
 class AceSourceEntry:
     """An AceEngine source file entry (legacy, deprecated)."""
+
     file_path: str
     family: str | None = None
     surface: str = "static"
@@ -172,6 +174,7 @@ class AceSourceEntry:
 @dataclass(frozen=True)
 class _LegacyAceIndexResult:
     """Result of indexing AceEngine source files (legacy, deprecated)."""
+
     entries: tuple[AceSourceEntry, ...] = ()
     index_time_ms: float = 0.0
     source: str = "ace_source_parser"
@@ -295,7 +298,9 @@ def build_ace_index(
     ]
 
     # Phase 6.3: koala_projects root — skip node_modules
-    _KOALA_ROOT = ace_root / "frameworks" / "bridge" / "arkts_frontend" / "koala_projects"
+    _KOALA_ROOT = (
+        ace_root / "frameworks" / "bridge" / "arkts_frontend" / "koala_projects"
+    )
 
     # Collect all file paths first for header pairing (Phase 6.2)
     all_file_paths: list[tuple[Path, str, FileRole, str | None]] = []
@@ -340,7 +345,10 @@ def build_ace_index(
                 # Classify as "jsview_dynamic" for bridge files
                 role: FileRole = "unknown"
                 family: str | None = None
-                if "generated/component/" in rel_path_str or "src/component/" in rel_path_str:
+                if (
+                    "generated/component/" in rel_path_str
+                    or "src/component/" in rel_path_str
+                ):
                     role = "jsview_dynamic"
                 all_file_paths.append((file_path, rel_path_str, role, family))
 
@@ -372,7 +380,9 @@ def build_ace_index(
             if macro_patterns:
                 try:
                     # Read source content for macro matching
-                    source_content = file_path.read_text(encoding="utf-8", errors="replace")
+                    source_content = file_path.read_text(
+                        encoding="utf-8", errors="replace"
+                    )
                     for cpp_class in parse_result.classes:
                         # Only apply to pattern classes (not infrastructure)
                         if role == "pattern" and cpp_class.name:

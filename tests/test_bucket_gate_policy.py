@@ -36,39 +36,43 @@ def _inputs(**overrides) -> BucketGateInputs:
 
 
 class AssignBucketHappyPath(unittest.TestCase):
-
     def test_strong_strong_exact_same_is_must_run(self) -> None:
         self.assertEqual(assign_bucket(_inputs()), "must_run")
 
     def test_diff_args_with_no_better_is_must_run(self) -> None:
         self.assertEqual(
-            assign_bucket(_inputs(
-                coverage_equivalence="exact_api_different_arguments",
-                no_better_exact_same_shape_test_exists=True,
-            )),
+            assign_bucket(
+                _inputs(
+                    coverage_equivalence="exact_api_different_arguments",
+                    no_better_exact_same_shape_test_exists=True,
+                )
+            ),
             "must_run",
         )
 
     def test_diff_args_without_no_better_is_recommended(self) -> None:
         self.assertEqual(
-            assign_bucket(_inputs(
-                coverage_equivalence="exact_api_different_arguments",
-                no_better_exact_same_shape_test_exists=False,
-            )),
+            assign_bucket(
+                _inputs(
+                    coverage_equivalence="exact_api_different_arguments",
+                    no_better_exact_same_shape_test_exists=False,
+                )
+            ),
             "recommended",
         )
 
     def test_diff_call_style_is_recommended(self) -> None:
         self.assertEqual(
-            assign_bucket(_inputs(
-                coverage_equivalence="exact_api_different_call_style",
-            )),
+            assign_bucket(
+                _inputs(
+                    coverage_equivalence="exact_api_different_call_style",
+                )
+            ),
             "recommended",
         )
 
 
 class AssignBucketRejectsMustRun(unittest.TestCase):
-
     def test_harness_only_is_possible(self) -> None:
         self.assertEqual(
             assign_bucket(_inputs(coverage_equivalence="harness_only_usage")),
@@ -89,9 +93,11 @@ class AssignBucketRejectsMustRun(unittest.TestCase):
 
     def test_unknown_usage_shape_with_strong_strong_not_must_run(self) -> None:
         self.assertNotEqual(
-            assign_bucket(_inputs(
-                coverage_equivalence="exact_api_unknown_usage_shape",
-            )),
+            assign_bucket(
+                _inputs(
+                    coverage_equivalence="exact_api_unknown_usage_shape",
+                )
+            ),
             "must_run",
         )
 
@@ -109,10 +115,12 @@ class AssignBucketRejectsMustRun(unittest.TestCase):
 
     def test_generic_fanout_without_strong_consumer_is_possible(self) -> None:
         self.assertEqual(
-            assign_bucket(_inputs(
-                generic_fanout=True,
-                consumer_usage_confidence="medium",
-            )),
+            assign_bucket(
+                _inputs(
+                    generic_fanout=True,
+                    consumer_usage_confidence="medium",
+                )
+            ),
             "possible",
         )
 
@@ -124,26 +132,33 @@ class AssignBucketRejectsMustRun(unittest.TestCase):
 
 
 class ViolatesMustRunGate(unittest.TestCase):
-
     def test_happy_path_returns_empty(self) -> None:
         self.assertEqual(violates_must_run_gate(_inputs()), ())
 
     def test_import_only_non_module_violation(self) -> None:
-        rules = violates_must_run_gate(_inputs(
-            usage_kind="import", api_kind="modifier",
-        ))
+        rules = violates_must_run_gate(
+            _inputs(
+                usage_kind="import",
+                api_kind="modifier",
+            )
+        )
         self.assertIn("must_run_import_only_non_module", rules)
 
     def test_weak_consumer_violation(self) -> None:
-        rules = violates_must_run_gate(_inputs(
-            consumer_usage_confidence="weak",
-        ))
+        rules = violates_must_run_gate(
+            _inputs(
+                consumer_usage_confidence="weak",
+            )
+        )
         self.assertIn("must_run_consumer_not_strong", rules)
 
     def test_module_api_import_is_allowed(self) -> None:
-        rules = violates_must_run_gate(_inputs(
-            usage_kind="import", api_kind="module",
-        ))
+        rules = violates_must_run_gate(
+            _inputs(
+                usage_kind="import",
+                api_kind="module",
+            )
+        )
         self.assertNotIn("must_run_import_only_non_module", rules)
 
 
@@ -155,23 +170,29 @@ class CoverageEquivalenceUnsupportedTests(unittest.TestCase):
     """
 
     def test_same_family_with_strong_strong_emits_unsupported(self) -> None:
-        rules = violates_must_run_gate(_inputs(
-            coverage_equivalence="same_family_related_api",
-        ))
+        rules = violates_must_run_gate(
+            _inputs(
+                coverage_equivalence="same_family_related_api",
+            )
+        )
         # _inputs default has source/consumer = strong/strong; no
         # must_run_*_not_strong rule fires; the unsupported rule MUST fire.
         self.assertIn("must_run_unsupported_coverage_equivalence", rules)
 
     def test_shared_helper_with_strong_strong_emits_unsupported(self) -> None:
-        rules = violates_must_run_gate(_inputs(
-            coverage_equivalence="shared_helper_related_api",
-        ))
+        rules = violates_must_run_gate(
+            _inputs(
+                coverage_equivalence="shared_helper_related_api",
+            )
+        )
         self.assertIn("must_run_unsupported_coverage_equivalence", rules)
 
     def test_exact_same_with_strong_strong_does_not_emit_unsupported(self) -> None:
-        rules = violates_must_run_gate(_inputs(
-            coverage_equivalence="exact_api_same_usage_shape",
-        ))
+        rules = violates_must_run_gate(
+            _inputs(
+                coverage_equivalence="exact_api_same_usage_shape",
+            )
+        )
         self.assertNotIn("must_run_unsupported_coverage_equivalence", rules)
 
 

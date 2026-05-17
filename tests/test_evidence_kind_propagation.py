@@ -7,13 +7,13 @@ and are preserved in to_dict/from_dict round-trip.
 Run:
     python3 -m unittest tests.test_evidence_kind_propagation -v
 """
+
 from __future__ import annotations
 
 import unittest
-from pathlib import Path
-from tempfile import TemporaryDirectory
 
-from arkui_xts_selector.cli import TestFileIndex, TestProjectIndex, ensure_project_search_summary
+from arkui_xts_selector.models import TestFileIndex, TestProjectIndex
+from arkui_xts_selector.project_index import ensure_project_search_summary
 from arkui_xts_selector.consumer_semantics import extract_consumer_semantics
 
 
@@ -22,7 +22,9 @@ class EvidenceKindPropagationTests(unittest.TestCase):
 
     def test_import_evidence_kind_in_test_file_index(self) -> None:
         """Import evidence kind should be preserved."""
-        semantics = extract_consumer_semantics("import { Button } from '@ohos.arkui.component'")
+        semantics = extract_consumer_semantics(
+            "import { Button } from '@ohos.arkui.component'"
+        )
         index = TestFileIndex(
             relative_path="test.ts",
             surface="static",
@@ -54,7 +56,9 @@ class EvidenceKindPropagationTests(unittest.TestCase):
             words=semantics.words,
             evidence_kinds=semantics.evidence_kinds,
         )
-        self.assertEqual(index.evidence_kinds.get("ButtonAttribute.role"), "type_member_call")
+        self.assertEqual(
+            index.evidence_kinds.get("ButtonAttribute.role"), "type_member_call"
+        )
 
     def test_field_read_evidence_kind_in_test_file_index(self) -> None:
         """Field read evidence kind should be preserved."""
@@ -90,7 +94,9 @@ class EvidenceKindPropagationTests(unittest.TestCase):
             words=semantics.words,
             evidence_kinds=semantics.evidence_kinds,
         )
-        self.assertEqual(index.evidence_kinds.get("ClickEvent.globalX"), "event_type_field")
+        self.assertEqual(
+            index.evidence_kinds.get("ClickEvent.globalX"), "event_type_field"
+        )
 
     def test_empty_evidence_kinds_for_empty_text(self) -> None:
         """Empty text should produce empty evidence_kinds."""
@@ -112,7 +118,9 @@ class EvidenceKindPropagationTests(unittest.TestCase):
 
     def test_to_dict_preserves_evidence_kinds(self) -> None:
         """to_dict should include evidence_kinds."""
-        semantics = extract_consumer_semantics("import { Button } from '@ohos.arkui.component'")
+        semantics = extract_consumer_semantics(
+            "import { Button } from '@ohos.arkui.component'"
+        )
         index = TestFileIndex(
             relative_path="test.ts",
             surface="static",
@@ -148,7 +156,9 @@ class EvidenceKindPropagationTests(unittest.TestCase):
         )
         d = index.to_dict()
         restored = TestFileIndex.from_dict(d)
-        self.assertEqual(restored.evidence_kinds.get("ButtonAttribute.role"), "type_member_call")
+        self.assertEqual(
+            restored.evidence_kinds.get("ButtonAttribute.role"), "type_member_call"
+        )
 
     def test_round_trip_preserves_evidence_kinds(self) -> None:
         """Full round-trip should preserve evidence_kinds."""
@@ -171,7 +181,9 @@ class EvidenceKindPropagationTests(unittest.TestCase):
         d = index.to_dict()
         restored = TestFileIndex.from_dict(d)
         self.assertEqual(restored.evidence_kinds.get("Button"), "import")
-        self.assertEqual(restored.evidence_kinds.get("ButtonAttribute.role"), "type_member_call")
+        self.assertEqual(
+            restored.evidence_kinds.get("ButtonAttribute.role"), "type_member_call"
+        )
 
 
 class EvidenceKindProjectAggregationTests(unittest.TestCase):
@@ -195,7 +207,9 @@ class EvidenceKindProjectAggregationTests(unittest.TestCase):
 
     def test_project_aggregates_evidence_kinds_from_files(self) -> None:
         """ensure_project_search_summary must merge evidence_kinds from all files."""
-        f1 = self._make_file_index("import { Button } from '@ohos.arkui.component'", "f1.ts")
+        f1 = self._make_file_index(
+            "import { Button } from '@ohos.arkui.component'", "f1.ts"
+        )
         f2 = self._make_file_index("ButtonAttribute.role()", "f2.ts")
         project = TestProjectIndex(
             relative_root="test/xts/acts/arkui/button_static",
@@ -206,7 +220,10 @@ class EvidenceKindProjectAggregationTests(unittest.TestCase):
         )
         ensure_project_search_summary(project)
         self.assertEqual(project.search_evidence_kinds.get("Button"), "import")
-        self.assertEqual(project.search_evidence_kinds.get("ButtonAttribute.role"), "type_member_call")
+        self.assertEqual(
+            project.search_evidence_kinds.get("ButtonAttribute.role"),
+            "type_member_call",
+        )
 
     def test_project_evidence_kinds_round_trip(self) -> None:
         """Project evidence_kinds survive to_dict/from_dict round-trip."""
@@ -221,7 +238,10 @@ class EvidenceKindProjectAggregationTests(unittest.TestCase):
         ensure_project_search_summary(project)
         d = project.to_dict()
         restored = TestProjectIndex.from_dict(d)
-        self.assertEqual(restored.search_evidence_kinds.get("ButtonAttribute.role"), "type_member_call")
+        self.assertEqual(
+            restored.search_evidence_kinds.get("ButtonAttribute.role"),
+            "type_member_call",
+        )
 
     def test_project_evidence_kinds_empty_when_no_files(self) -> None:
         """Project with no files should have empty search_evidence_kinds."""

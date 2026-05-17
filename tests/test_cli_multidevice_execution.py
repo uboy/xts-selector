@@ -4,7 +4,6 @@ import io
 import json
 import re
 import sys
-import tempfile
 import unittest
 from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
@@ -20,12 +19,11 @@ from arkui_xts_selector.cli import (
     ContentModifierIndex,
     MappingConfig,
     SdkIndex,
-    TestFileIndex,
-    TestProjectIndex,
     format_report,
     main,
     print_human,
 )
+from arkui_xts_selector.models import TestFileIndex, TestProjectIndex
 from arkui_xts_selector.execution import (
     attach_execution_plan,
     build_run_target_entry,
@@ -128,7 +126,9 @@ class RunTargetPlanningTests(unittest.TestCase):
 
         target = report["symbol_queries"][0]["run_targets"][0]
         self.assertIn("hdc -t SER1 shell", target["aa_test_command"])
-        self.assertEqual(target["target_key"], "test/xts/acts/arkui/button_static/Test.json")
+        self.assertEqual(
+            target["target_key"], "test/xts/acts/arkui/button_static/Test.json"
+        )
 
     def test_attach_execution_plan_dedupes_shared_targets(self) -> None:
         repo_root = Path("/tmp/repo")
@@ -152,7 +152,9 @@ class RunTargetPlanningTests(unittest.TestCase):
         )
         report = {
             "results": [{"changed_file": "a.cpp", "run_targets": [dict(target)]}],
-            "symbol_queries": [{"query": "ButtonModifier", "run_targets": [dict(target)]}],
+            "symbol_queries": [
+                {"query": "ButtonModifier", "run_targets": [dict(target)]}
+            ],
         }
 
         attach_execution_plan(
@@ -169,9 +171,13 @@ class RunTargetPlanningTests(unittest.TestCase):
         self.assertEqual(report["execution_overview"]["unique_target_count"], 1)
         self.assertTrue(changed_target["selected_for_execution"])
         self.assertEqual(len(changed_target["execution_plan"]), 2)
-        self.assertEqual(changed_target["execution_sources"], symbol_target["execution_sources"])
+        self.assertEqual(
+            changed_target["execution_sources"], symbol_target["execution_sources"]
+        )
 
-    def test_attach_execution_plan_prefers_recommended_targets_over_duplicate_only(self) -> None:
+    def test_attach_execution_plan_prefers_recommended_targets_over_duplicate_only(
+        self,
+    ) -> None:
         repo_root = Path("/tmp/repo")
         recommended_target = build_run_target_entry(
             {
@@ -193,7 +199,9 @@ class RunTargetPlanningTests(unittest.TestCase):
             acts_out_root=repo_root / "out/release/suites/acts",
             device="SER1",
         )
-        recommended_target["covered_sources"] = [{"type": "changed_file", "value": "a.cpp"}]
+        recommended_target["covered_sources"] = [
+            {"type": "changed_file", "value": "a.cpp"}
+        ]
         duplicate_target = build_run_target_entry(
             {
                 "project": "test/xts/acts/arkui/duplicate",
@@ -214,10 +222,15 @@ class RunTargetPlanningTests(unittest.TestCase):
             acts_out_root=repo_root / "out/release/suites/acts",
             device="SER1",
         )
-        duplicate_target["covered_sources"] = [{"type": "changed_file", "value": "a.cpp"}]
+        duplicate_target["covered_sources"] = [
+            {"type": "changed_file", "value": "a.cpp"}
+        ]
         report = {
             "results": [
-                {"changed_file": "a.cpp", "run_targets": [dict(recommended_target), dict(duplicate_target)]}
+                {
+                    "changed_file": "a.cpp",
+                    "run_targets": [dict(recommended_target), dict(duplicate_target)],
+                }
             ],
             "symbol_queries": [],
             "coverage_recommendations": {
@@ -226,7 +239,10 @@ class RunTargetPlanningTests(unittest.TestCase):
                 "recommended_target_keys": [recommended_target["target_key"]],
                 "recommended_additional_target_keys": [],
                 "optional_target_keys": [duplicate_target["target_key"]],
-                "ordered_target_keys": [recommended_target["target_key"], duplicate_target["target_key"]],
+                "ordered_target_keys": [
+                    recommended_target["target_key"],
+                    duplicate_target["target_key"],
+                ],
             },
         }
 
@@ -247,7 +263,9 @@ class RunTargetPlanningTests(unittest.TestCase):
         self.assertEqual(report["execution_overview"]["recommended_target_count"], 1)
         self.assertEqual(report["execution_overview"]["optional_target_count"], 1)
 
-    def test_attach_execution_plan_does_not_fallback_to_results_when_coverage_plan_is_explicitly_empty(self) -> None:
+    def test_attach_execution_plan_does_not_fallback_to_results_when_coverage_plan_is_explicitly_empty(
+        self,
+    ) -> None:
         repo_root = Path("/tmp/repo")
         target = build_run_target_entry(
             {
@@ -289,12 +307,16 @@ class RunTargetPlanningTests(unittest.TestCase):
             run_top_targets=0,
         )
 
-        self.assertFalse(report["results"][0]["run_targets"][0]["selected_for_execution"])
+        self.assertFalse(
+            report["results"][0]["run_targets"][0]["selected_for_execution"]
+        )
         self.assertEqual(report["execution_overview"]["selected_target_count"], 0)
         self.assertEqual(report["execution_overview"]["recommended_target_count"], 0)
         self.assertEqual(report["execution_overview"]["selected_target_keys"], [])
 
-    def test_select_target_keys_for_priority_splits_required_recommended_and_all(self) -> None:
+    def test_select_target_keys_for_priority_splits_required_recommended_and_all(
+        self,
+    ) -> None:
         coverage = {
             "required_target_keys": ["req"],
             "recommended_target_keys": ["req", "rec"],
@@ -303,8 +325,12 @@ class RunTargetPlanningTests(unittest.TestCase):
             "ordered_target_keys": ["req", "rec", "opt"],
         }
         self.assertEqual(select_target_keys_for_priority(coverage, "required"), ["req"])
-        self.assertEqual(select_target_keys_for_priority(coverage, "recommended"), ["req", "rec"])
-        self.assertEqual(select_target_keys_for_priority(coverage, "all"), ["req", "rec", "opt"])
+        self.assertEqual(
+            select_target_keys_for_priority(coverage, "recommended"), ["req", "rec"]
+        )
+        self.assertEqual(
+            select_target_keys_for_priority(coverage, "all"), ["req", "rec", "opt"]
+        )
 
     def test_execute_planned_targets_records_pass_and_fail(self) -> None:
         repo_root = Path("/tmp/repo")
@@ -336,7 +362,9 @@ class RunTargetPlanningTests(unittest.TestCase):
                 return SimpleNamespace(returncode=0, stdout="tests run: 1\n", stderr="")
             return SimpleNamespace(returncode=3, stdout="", stderr="boom\n")
 
-        with mock.patch("arkui_xts_selector.execution.subprocess.run", side_effect=fake_run):
+        with mock.patch(
+            "arkui_xts_selector.execution.subprocess.run", side_effect=fake_run
+        ):
             summary = execute_planned_targets(
                 report,
                 repo_root=repo_root,
@@ -351,7 +379,9 @@ class RunTargetPlanningTests(unittest.TestCase):
         results = report["results"][0]["run_targets"][0]["execution_results"]
         self.assertEqual([item["status"] for item in results], ["passed", "failed"])
 
-    def test_execute_planned_targets_parallelizes_across_device_queues_only(self) -> None:
+    def test_execute_planned_targets_parallelizes_across_device_queues_only(
+        self,
+    ) -> None:
         repo_root = Path("/tmp/repo")
         target_a = build_run_target_entry(
             {
@@ -392,8 +422,14 @@ class RunTargetPlanningTests(unittest.TestCase):
             "symbol_queries": [],
             "coverage_recommendations": {
                 "ordered_targets": [dict(target_a), dict(target_b)],
-                "required_target_keys": [target_a["target_key"], target_b["target_key"]],
-                "recommended_target_keys": [target_a["target_key"], target_b["target_key"]],
+                "required_target_keys": [
+                    target_a["target_key"],
+                    target_b["target_key"],
+                ],
+                "recommended_target_keys": [
+                    target_a["target_key"],
+                    target_b["target_key"],
+                ],
                 "recommended_additional_target_keys": [],
                 "optional_target_keys": [],
                 "ordered_target_keys": [target_a["target_key"], target_b["target_key"]],
@@ -406,7 +442,9 @@ class RunTargetPlanningTests(unittest.TestCase):
             calls.append(command)
             return SimpleNamespace(returncode=0, stdout="tests run: 1\n", stderr="")
 
-        with mock.patch("arkui_xts_selector.execution.subprocess.run", side_effect=fake_run):
+        with mock.patch(
+            "arkui_xts_selector.execution.subprocess.run", side_effect=fake_run
+        ):
             summary = execute_planned_targets(
                 report,
                 repo_root=repo_root,
@@ -420,7 +458,9 @@ class RunTargetPlanningTests(unittest.TestCase):
         self.assertEqual(summary["passed"], 2)
         self.assertEqual(len(calls), 2)
 
-    def test_execute_planned_targets_marks_queue_blocked_when_device_lock_is_busy(self) -> None:
+    def test_execute_planned_targets_marks_queue_blocked_when_device_lock_is_busy(
+        self,
+    ) -> None:
         repo_root = Path("/tmp/repo")
         target = build_run_target_entry(
             {
@@ -446,7 +486,9 @@ class RunTargetPlanningTests(unittest.TestCase):
 
         with mock.patch(
             "arkui_xts_selector.execution.acquire_device_lock",
-            side_effect=InterprocessLockTimeout(Path("/tmp/device.lock"), 1.0, {"owner": "other"}),
+            side_effect=InterprocessLockTimeout(
+                Path("/tmp/device.lock"), 1.0, {"owner": "other"}
+            ),
         ):
             summary = execute_planned_targets(
                 report,
@@ -463,7 +505,9 @@ class RunTargetPlanningTests(unittest.TestCase):
         self.assertEqual(results[0]["status"], "blocked")
         self.assertIn("timed out waiting", results[0]["reason"])
 
-    def test_execute_planned_targets_marks_xdevice_case_failures_as_failed(self) -> None:
+    def test_execute_planned_targets_marks_xdevice_case_failures_as_failed(
+        self,
+    ) -> None:
         with TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir) / "repo"
             acts_out_root = repo_root / "out/release/suites/acts"
@@ -509,7 +553,9 @@ class RunTargetPlanningTests(unittest.TestCase):
                 )
                 return SimpleNamespace(returncode=0, stdout="ok\n", stderr="")
 
-            with mock.patch("arkui_xts_selector.execution.subprocess.run", side_effect=fake_run):
+            with mock.patch(
+                "arkui_xts_selector.execution.subprocess.run", side_effect=fake_run
+            ):
                 summary = execute_planned_targets(
                     report,
                     repo_root=repo_root,
@@ -527,7 +573,9 @@ class RunTargetPlanningTests(unittest.TestCase):
         self.assertEqual(result["case_summary"]["total_tests"], 2)
         self.assertEqual(result["case_summary"]["fail_count"], 1)
 
-    def test_execute_planned_targets_marks_xdevice_unavailable_zero_tests_as_failed(self) -> None:
+    def test_execute_planned_targets_marks_xdevice_unavailable_zero_tests_as_failed(
+        self,
+    ) -> None:
         with TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir) / "repo"
             acts_out_root = repo_root / "out/release/suites/acts"
@@ -571,7 +619,9 @@ class RunTargetPlanningTests(unittest.TestCase):
                 )
                 return SimpleNamespace(returncode=0, stdout="ok\n", stderr="")
 
-            with mock.patch("arkui_xts_selector.execution.subprocess.run", side_effect=fake_run):
+            with mock.patch(
+                "arkui_xts_selector.execution.subprocess.run", side_effect=fake_run
+            ):
                 summary = execute_planned_targets(
                     report,
                     repo_root=repo_root,
@@ -597,8 +647,19 @@ class MainExecutionExitTests(unittest.TestCase):
             "sdk_api_root": "/tmp/repo/sdk",
             "git_repo_root": "/tmp/repo/foundation/arkui/ace_engine",
             "acts_out_root": "/tmp/repo/out/release/suites/acts",
-            "product_build": {"status": "present", "out_dir_exists": True, "build_log_exists": True, "error_log_exists": False, "error_log_size": 0},
-            "built_artifacts": {"status": "present", "testcases_dir_exists": True, "module_info_exists": True, "testcase_json_count": 1},
+            "product_build": {
+                "status": "present",
+                "out_dir_exists": True,
+                "build_log_exists": True,
+                "error_log_exists": False,
+                "error_log_size": 0,
+            },
+            "built_artifacts": {
+                "status": "present",
+                "testcases_dir_exists": True,
+                "module_info_exists": True,
+                "testcase_json_count": 1,
+            },
             "built_artifact_index": {},
             "cache_used": False,
             "variants_mode": "auto",
@@ -619,15 +680,37 @@ class MainExecutionExitTests(unittest.TestCase):
             "SER1,SER2",
         ]
         with mock.patch.object(sys, "argv", argv):
-            with mock.patch("arkui_xts_selector.cli.load_or_build_projects", return_value=([], False)), \
-                 mock.patch("arkui_xts_selector.cli.load_sdk_index", return_value=SdkIndex()), \
-                 mock.patch("arkui_xts_selector.cli.build_content_modifier_index", return_value=ContentModifierIndex()), \
-                 mock.patch("arkui_xts_selector.cli.load_mapping_config", return_value=MappingConfig()), \
-                 mock.patch("arkui_xts_selector.cli.format_report", return_value=minimal_report), \
-                 mock.patch("arkui_xts_selector.cli.write_json_report", return_value=Path("/tmp/report.json")), \
-                 mock.patch("arkui_xts_selector.cli.attach_execution_plan"), \
-                 mock.patch("arkui_xts_selector.cli.execute_planned_targets", return_value={"has_failures": True}), \
-                 redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            with (
+                mock.patch(
+                    "arkui_xts_selector.cli.load_or_build_projects",
+                    return_value=([], False),
+                ),
+                mock.patch(
+                    "arkui_xts_selector.cli.load_sdk_index", return_value=SdkIndex()
+                ),
+                mock.patch(
+                    "arkui_xts_selector.cli.build_content_modifier_index",
+                    return_value=ContentModifierIndex(),
+                ),
+                mock.patch(
+                    "arkui_xts_selector.cli.load_mapping_config",
+                    return_value=MappingConfig(),
+                ),
+                mock.patch(
+                    "arkui_xts_selector.cli.format_report", return_value=minimal_report
+                ),
+                mock.patch(
+                    "arkui_xts_selector.cli.write_json_report",
+                    return_value=Path("/tmp/report.json"),
+                ),
+                mock.patch("arkui_xts_selector.cli.attach_execution_plan"),
+                mock.patch(
+                    "arkui_xts_selector.cli.execute_planned_targets",
+                    return_value={"has_failures": True},
+                ),
+                redirect_stdout(io.StringIO()),
+                redirect_stderr(io.StringIO()),
+            ):
                 code = main()
 
         self.assertEqual(code, 1)
@@ -639,14 +722,36 @@ class MainExecutionExitTests(unittest.TestCase):
             "sdk_api_root": "/tmp/repo/sdk",
             "git_repo_root": "/tmp/repo/foundation/arkui/ace_engine",
             "acts_out_root": "/tmp/repo/out/release/suites/acts",
-            "product_build": {"status": "present", "out_dir_exists": True, "build_log_exists": True, "error_log_exists": False, "error_log_size": 0},
-            "built_artifacts": {"status": "present", "testcases_dir_exists": True, "module_info_exists": True, "testcase_json_count": 1},
+            "product_build": {
+                "status": "present",
+                "out_dir_exists": True,
+                "build_log_exists": True,
+                "error_log_exists": False,
+                "error_log_size": 0,
+            },
+            "built_artifacts": {
+                "status": "present",
+                "testcases_dir_exists": True,
+                "module_info_exists": True,
+                "testcase_json_count": 1,
+            },
             "built_artifact_index": {},
             "cache_used": False,
             "variants_mode": "auto",
             "requested_devices": ["SER1", "SER2"],
-            "execution_overview": {"run_tool": "auto", "unique_target_count": 2, "selected_target_count": 1, "executed": True},
-            "execution_summary": {"planned_run_count": 2, "passed": 1, "failed": 1, "timeout": 0, "unavailable": 0},
+            "execution_overview": {
+                "run_tool": "auto",
+                "unique_target_count": 2,
+                "selected_target_count": 1,
+                "executed": True,
+            },
+            "execution_summary": {
+                "planned_run_count": 2,
+                "passed": 1,
+                "failed": 1,
+                "timeout": 0,
+                "unavailable": 0,
+            },
             "excluded_inputs": [],
             "results": [],
             "symbol_queries": [],
@@ -673,14 +778,36 @@ class MainExecutionExitTests(unittest.TestCase):
             "sdk_api_root": "/tmp/repo/sdk",
             "git_repo_root": "/tmp/repo/foundation/arkui/ace_engine",
             "acts_out_root": "/tmp/repo/out/release/suites/acts",
-            "product_build": {"status": "present", "out_dir_exists": True, "build_log_exists": True, "error_log_exists": False, "error_log_size": 0},
-            "built_artifacts": {"status": "present", "testcases_dir_exists": True, "module_info_exists": True, "testcase_json_count": 1},
+            "product_build": {
+                "status": "present",
+                "out_dir_exists": True,
+                "build_log_exists": True,
+                "error_log_exists": False,
+                "error_log_size": 0,
+            },
+            "built_artifacts": {
+                "status": "present",
+                "testcases_dir_exists": True,
+                "module_info_exists": True,
+                "testcase_json_count": 1,
+            },
             "built_artifact_index": {},
             "cache_used": False,
             "variants_mode": "auto",
             "requested_devices": ["SER1"],
-            "execution_overview": {"run_tool": "xdevice", "unique_target_count": 1, "selected_target_count": 1, "executed": True},
-            "execution_summary": {"planned_run_count": 1, "passed": 0, "failed": 1, "timeout": 0, "unavailable": 0},
+            "execution_overview": {
+                "run_tool": "xdevice",
+                "unique_target_count": 1,
+                "selected_target_count": 1,
+                "executed": True,
+            },
+            "execution_summary": {
+                "planned_run_count": 1,
+                "passed": 0,
+                "failed": 1,
+                "timeout": 0,
+                "unavailable": 0,
+            },
             "excluded_inputs": [],
             "results": [
                 {

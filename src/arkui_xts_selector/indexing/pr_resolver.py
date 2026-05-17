@@ -5,11 +5,12 @@ Production-wiring entry point that ties Phase 1-5 together:
                                                       → inverted index
                                                       → consumer projects
 """
+
 from __future__ import annotations
 
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 from .ace_indexer import AceIndexResult
@@ -30,20 +31,30 @@ except ImportError:
     _classify_file = None  # type: ignore[assignment]
 
 try:
-    from .native_interface_resolver import resolve_native_interface as _resolve_native_interface
-    from .native_interface_resolver import resolve_native_interface_targets as _resolve_native_targets
+    from .native_interface_resolver import (
+        resolve_native_interface as _resolve_native_interface,
+    )
+    from .native_interface_resolver import (
+        resolve_native_interface_targets as _resolve_native_targets,
+    )
 except ImportError:
     _resolve_native_interface = None  # type: ignore[assignment]
     _resolve_native_targets = None  # type: ignore[assignment]
 
 try:
-    from .generated_files_resolver import should_skip_generated as _should_skip_generated
+    from .generated_files_resolver import (
+        should_skip_generated as _should_skip_generated,
+    )
 except ImportError:
     _should_skip_generated = None  # type: ignore[assignment]
 
 # Lazy import to avoid circular dependency on xts_root at module level
 try:
-    from .idl_parser import parse_idl_file, resolve_idl_to_family, map_idl_methods_to_api as _map_idl_methods_to_api
+    from .idl_parser import (
+        parse_idl_file,
+        resolve_idl_to_family,
+        map_idl_methods_to_api as _map_idl_methods_to_api,
+    )
 except ImportError:
     parse_idl_file = None  # type: ignore[assignment]
     resolve_idl_to_family = None  # type: ignore[assignment]
@@ -57,7 +68,9 @@ except ImportError:
     _resolve_cpp_family = None  # type: ignore[assignment]
 
 try:
-    from .arkts_bridge_resolver import resolve_arkts_bridge_candidate as _resolve_arkts_bridge
+    from .arkts_bridge_resolver import (
+        resolve_arkts_bridge_candidate as _resolve_arkts_bridge,
+    )
 except ImportError:
     _resolve_arkts_bridge = None  # type: ignore[assignment]
 
@@ -69,7 +82,11 @@ except ImportError:
     _resolve_fanout = None  # type: ignore[assignment]
 
 try:
-    from .target_index import TargetIndexResult, build_target_index, targets_for_family as _targets_for_family
+    from .target_index import (
+        TargetIndexResult,
+        build_target_index,
+        targets_for_family as _targets_for_family,
+    )
 except ImportError:
     _targets_for_family = None  # type: ignore[assignment]
     TargetIndexResult = None  # type: ignore[assignment,misc]
@@ -81,12 +98,15 @@ FalseNegativeRisk = str  # Literal["low", "medium", "high", "critical"]
 def _extract_family_from_path(file_path: str) -> str | None:
     """Extract component family from a C++ source path."""
     import re
+
     # pattern/<family>/ pattern
-    m = re.search(r'pattern/(\w+?)(?:_model|_pattern|_modifier|_node)?/', file_path)
+    m = re.search(r"pattern/(\w+?)(?:_model|_pattern|_modifier|_node)?/", file_path)
     if m:
         return m.group(1)
     # native/implementation/<family>_modifier
-    m = re.search(r'implementation/(\w+?)_(?:modifier|accessor|extender|peer)', file_path)
+    m = re.search(
+        r"implementation/(\w+?)_(?:modifier|accessor|extender|peer)", file_path
+    )
     if m:
         return m.group(1)
     return None
@@ -95,6 +115,7 @@ def _extract_family_from_path(file_path: str) -> str | None:
 @dataclass(frozen=True)
 class SelectionReason:
     """Why a consumer project was selected."""
+
     project_path: str
     matched_apis: tuple[str, ...]  # API names that linked this project
     usage_kinds: tuple[str, ...]  # e.g. ("component_construction", "attribute_method")
@@ -116,6 +137,7 @@ class SelectionReason:
 @dataclass(frozen=True)
 class PrResolveEntry:
     """One changed file with its resolved API entities and consumer tests."""
+
     changed_file: str
     affected_apis: tuple[str, ...]  # API public names (e.g. "role", "buttonStyle")
     consumer_projects: tuple[str, ...]  # XTS project paths
@@ -123,15 +145,22 @@ class PrResolveEntry:
     broad_infra_match: BroadInfraMatch | None = None
     false_negative_risk: FalseNegativeRisk = "low"
     parser_level: int = 0  # max parser_level used (0-3)
-    impact_candidates: tuple[dict, ...] = ()  # Phase 7: serialized ImpactCandidate dicts
-    unresolved_reason: str | None = None  # Phase 7: reason if file could not be resolved
-    canonical_affected_apis: tuple[str, ...] = ()  # Canonical API IDs (e.g. "api:v1:...")
+    impact_candidates: tuple[
+        dict, ...
+    ] = ()  # Phase 7: serialized ImpactCandidate dicts
+    unresolved_reason: str | None = (
+        None  # Phase 7: reason if file could not be resolved
+    )
+    canonical_affected_apis: tuple[
+        str, ...
+    ] = ()  # Canonical API IDs (e.g. "api:v1:...")
     diagnostic_suggestions: dict | None = None  # Phase 11b: hints for unresolved files
 
 
 @dataclass(frozen=True)
 class PrResolveResult:
     """Result of resolving all changed files in a PR."""
+
     entries: tuple[PrResolveEntry, ...] = ()
     overall_false_negative_risk: FalseNegativeRisk = "low"
     coverage_gap: tuple[str, ...] = ()  # T9.6: affected APIs with no consumer tests
@@ -140,10 +169,14 @@ class PrResolveResult:
     fallback_level: str = "none"  # "rescue" | "safety_net" | "none"
     fallback_extra_targets: tuple[str, ...] = ()  # additional targets from fallback
     # Phase 7: CI policy recommendation fields
-    ci_policy_recommendation: str = "ok"  # "ok" | "warn" | "require_broader_suite" | "manual_review"
+    ci_policy_recommendation: str = (
+        "ok"  # "ok" | "warn" | "require_broader_suite" | "manual_review"
+    )
     ci_policy_reason: str = ""
     unresolved_files: tuple[str, ...] = ()  # files with no mapping at all
-    low_confidence_resolved_files: tuple[str, ...] = ()  # files resolved only via weak signals (last_resort, area_fallback)
+    low_confidence_resolved_files: tuple[
+        str, ...
+    ] = ()  # files resolved only via weak signals (last_resort, area_fallback)
     semantic_source: str = "unknown"  # "api" | "family" | "broad" | "unknown"
     dropped_count: int = 0  # targets dropped due to caps
     provenance: tuple[dict, ...] = ()  # per-file resolution trace for debugging
@@ -152,6 +185,7 @@ class PrResolveResult:
 @dataclass(frozen=True)
 class FallbackDecision:
     """Conservative fallback decision for a PR resolution result."""
+
     apply: bool
     reason: str
     level: str  # "rescue" | "safety_net" | "none"
@@ -166,7 +200,8 @@ def _compute_aae_rate(result: PrResolveResult) -> float:
     if not result.entries:
         return 0.0
     covered = sum(
-        1 for e in result.entries
+        1
+        for e in result.entries
         if e.affected_apis or e.consumer_projects or e.broad_infra_match
     )
     return covered / len(result.entries)
@@ -230,13 +265,15 @@ def _expand_to_family_coverage(
 
     for entry in result.entries:
         if entry.broad_infra_match is not None:
-            fanout_id = getattr(entry.broad_infra_match, 'fan_out_target', None)
+            fanout_id = getattr(entry.broad_infra_match, "fan_out_target", None)
             if fanout_id:
                 broad_fanout_ids.add(fanout_id)
             continue
 
         for proj in entry.consumer_projects:
-            basename = Path(proj).name if "/" not in proj else proj.rstrip("/").split("/")[-1]
+            basename = (
+                Path(proj).name if "/" not in proj else proj.rstrip("/").split("/")[-1]
+            )
             m = re.match(r"ace_ets_module_(.+?)(?:_nowear_api\d+_static)?$", basename)
             if m:
                 raw = m.group(1)
@@ -252,7 +289,9 @@ def _expand_to_family_coverage(
         if config:
             # Use TargetIndex if available, else collect dirs via os.walk
             if target_index is not None and _targets_for_family is not None:
-                all_dirs = {e.module_name for e in target_index.entries if e.module_name}
+                all_dirs = {
+                    e.module_name for e in target_index.entries if e.module_name
+                }
             else:
                 all_dirs: set[str] = set()
                 xts_root_str = str(xts_root)
@@ -298,7 +337,7 @@ def _expand_to_family_coverage(
             if dirpath.count("/") - base_depth >= 4:
                 dirnames.clear()
             continue
-        suffix = dirname[len("ace_ets_module_"):]
+        suffix = dirname[len("ace_ets_module_") :]
         for prefix in family_prefixes:
             if suffix.startswith(prefix) or suffix.startswith(prefix.lower()):
                 expanded.add(dirname)
@@ -364,20 +403,23 @@ def apply_target_ranking(result: PrResolveResult) -> PrResolveResult:
     # Convert entries to dicts for rank_targets
     entry_dicts = []
     for entry in result.entries:
-        entry_dicts.append({
-            "changed_file": entry.changed_file,
-            "consumer_projects": list(entry.consumer_projects),
-            "affected_apis": list(entry.affected_apis),
-            "canonical_affected_apis": list(entry.canonical_affected_apis),
-            "selection_reasons": [r.to_dict() for r in entry.selection_reasons],
-            "impact_candidates": list(entry.impact_candidates),
-        })
+        entry_dicts.append(
+            {
+                "changed_file": entry.changed_file,
+                "consumer_projects": list(entry.consumer_projects),
+                "affected_apis": list(entry.affected_apis),
+                "canonical_affected_apis": list(entry.canonical_affected_apis),
+                "selection_reasons": [r.to_dict() for r in entry.selection_reasons],
+                "impact_candidates": list(entry.impact_candidates),
+            }
+        )
 
     ranking = rank_targets(entry_dicts)
     ranked_ids = set(t.project_id for t in ranking.all_targets)
 
     # Filter consumer_projects to only ranked targets
     from dataclasses import replace as _dc_replace
+
     filtered: list[PrResolveEntry] = []
     for entry in result.entries:
         kept = tuple(p for p in entry.consumer_projects if p in ranked_ids)
@@ -397,7 +439,8 @@ def apply_target_ranking(result: PrResolveResult) -> PrResolveResult:
         low_confidence_resolved_files=result.low_confidence_resolved_files,
         semantic_source=result.semantic_source,
         dropped_count=ranking.dropped_count,
-        provenance=result.provenance + ({"action": "target_ranking", "ranking": ranking.to_dict()},),
+        provenance=result.provenance
+        + ({"action": "target_ranking", "ranking": ranking.to_dict()},),
     )
 
 
@@ -578,17 +621,19 @@ def _resolve_pr_core(
         if _classify_file is not None:
             cat = _classify_file(cf_relative)
             if cat == "build_config":
-                entries.append(PrResolveEntry(
-                    changed_file=cf,
-                    affected_apis=(),
-                    consumer_projects=(),
-                    selection_reasons=(),
-                    broad_infra_match=None,
-                    false_negative_risk="low",
-                    parser_level=0,
-                    impact_candidates=(),
-                    unresolved_reason="build_config_no_test_impact",
-                ))
+                entries.append(
+                    PrResolveEntry(
+                        changed_file=cf,
+                        affected_apis=(),
+                        consumer_projects=(),
+                        selection_reasons=(),
+                        broad_infra_match=None,
+                        false_negative_risk="low",
+                        parser_level=0,
+                        impact_candidates=(),
+                        unresolved_reason="build_config_no_test_impact",
+                    )
+                )
                 continue
             if cat == "test_only":
                 # Only skip test files that are actual test implementations,
@@ -601,7 +646,23 @@ def _resolve_pr_core(
                     or cf_relative.startswith("xts/")
                 )
                 if _is_real_test:
-                    entries.append(PrResolveEntry(
+                    entries.append(
+                        PrResolveEntry(
+                            changed_file=cf,
+                            affected_apis=(),
+                            consumer_projects=(),
+                            selection_reasons=(),
+                            broad_infra_match=None,
+                            false_negative_risk="low",
+                            parser_level=0,
+                            impact_candidates=(),
+                            unresolved_reason="test_file_no_cross_impact",
+                        )
+                    )
+                    continue
+            if cat == "documentation":
+                entries.append(
+                    PrResolveEntry(
                         changed_file=cf,
                         affected_apis=(),
                         consumer_projects=(),
@@ -610,11 +671,15 @@ def _resolve_pr_core(
                         false_negative_risk="low",
                         parser_level=0,
                         impact_candidates=(),
-                        unresolved_reason="test_file_no_cross_impact",
-                    ))
-                    continue
-            if cat == "documentation":
-                entries.append(PrResolveEntry(
+                        unresolved_reason="documentation_no_test_impact",
+                    )
+                )
+                continue
+
+        # Generated file skip
+        if _should_skip_generated is not None and _should_skip_generated(cf_relative):
+            entries.append(
+                PrResolveEntry(
                     changed_file=cf,
                     affected_apis=(),
                     consumer_projects=(),
@@ -623,23 +688,9 @@ def _resolve_pr_core(
                     false_negative_risk="low",
                     parser_level=0,
                     impact_candidates=(),
-                    unresolved_reason="documentation_no_test_impact",
-                ))
-                continue
-
-        # Generated file skip
-        if _should_skip_generated is not None and _should_skip_generated(cf_relative):
-            entries.append(PrResolveEntry(
-                changed_file=cf,
-                affected_apis=(),
-                consumer_projects=(),
-                selection_reasons=(),
-                broad_infra_match=None,
-                false_negative_risk="low",
-                parser_level=0,
-                impact_candidates=(),
-                unresolved_reason="generated_file_skipped",
-            ))
+                    unresolved_reason="generated_file_skipped",
+                )
+            )
             continue
 
         # Native interface resolution (before broad infra / source-to-api).
@@ -663,9 +714,14 @@ def _resolve_pr_core(
                                 for c in consumers:
                                     if c.project_path not in seen:
                                         seen.add(c.project_path)
-                                        target_families_dict.setdefault(family_native, []).append(c.project_path)
-                    native_projects_list = list(_resolve_native_targets(
-                        cf_relative, target_families=target_families_dict or None))
+                                        target_families_dict.setdefault(
+                                            family_native, []
+                                        ).append(c.project_path)
+                    native_projects_list = list(
+                        _resolve_native_targets(
+                            cf_relative, target_families=target_families_dict or None
+                        )
+                    )
 
                 # Inline source_to_api: look up mappings for this file and harvest
                 # affected_apis / canonical_affected_apis.
@@ -675,8 +731,7 @@ def _resolve_pr_core(
                 for m in native_mappings:
                     native_affected_apis.append(m.api_public_name)
                     all_affected_apis.add(m.api_public_name)
-                    if (m.sdk_confirmed and m.api_id
-                            and m.api_id.startswith("api:v1:")):
+                    if m.sdk_confirmed and m.api_id and m.api_id.startswith("api:v1:"):
                         native_canonical.append(m.api_id)
                 if native_affected_apis:
                     has_api = True
@@ -686,19 +741,22 @@ def _resolve_pr_core(
                 project_reasons_native: dict[str, dict] = {}
                 for p in native_projects_list:
                     project_reasons_native[p] = {
-                        "apis": set(), "kinds": {"native_interface"},
-                        "confidence": "medium", "provenance": "native_typed",
+                        "apis": set(),
+                        "kinds": {"native_interface"},
+                        "confidence": "medium",
+                        "provenance": "native_typed",
                     }
                 for m in native_mappings:
                     consumer_provenance = ""
                     consumers = []
-                    if (m.sdk_confirmed and m.api_id
-                            and m.api_id.startswith("api:v1:")):
+                    if m.sdk_confirmed and m.api_id and m.api_id.startswith("api:v1:"):
                         consumers = inverted.consumers_for_api_id(m.api_id)
                         if consumers:
                             consumer_provenance = "strict_canonical"
                     if not consumers:
-                        consumers = inverted.consumers_for_member_name(m.api_public_name, parent_filter=m.api_member_of)
+                        consumers = inverted.consumers_for_member_name(
+                            m.api_public_name, parent_filter=m.api_member_of
+                        )
                         if consumers:
                             consumer_provenance = "member_parent"
                     if not consumers:
@@ -707,10 +765,15 @@ def _resolve_pr_core(
                             consumer_provenance = "safety_fallback"
                     for c in consumers:
                         proj = c.project_path
-                        info = project_reasons_native.setdefault(proj, {
-                            "apis": set(), "kinds": set(),
-                            "confidence": "weak", "provenance": consumer_provenance,
-                        })
+                        info = project_reasons_native.setdefault(
+                            proj,
+                            {
+                                "apis": set(),
+                                "kinds": set(),
+                                "confidence": "weak",
+                                "provenance": consumer_provenance,
+                            },
+                        )
                         info["apis"].add(m.api_public_name)
                         info["kinds"].add(c.usage_kind)
                         all_covered_apis.add(m.api_public_name)
@@ -727,23 +790,27 @@ def _resolve_pr_core(
                     for proj, info in sorted(project_reasons_native.items())
                 )
 
-                entries.append(PrResolveEntry(
-                    changed_file=cf,
-                    affected_apis=tuple(native_affected_apis),
-                    consumer_projects=tuple(consumer_list),
-                    selection_reasons=selection_reasons_native,
-                    broad_infra_match=None,
-                    false_negative_risk="medium",
-                    parser_level=2 if native_canonical else 1,
-                    canonical_affected_apis=tuple(native_canonical),
-                    impact_candidates=({
-                        "changed_file": cf,
-                        "impact_kind": impact_kind,
-                        "family": family_native,
-                        "source_confidence": "medium",
-                        "provenance": "native_interface_resolver",
-                    },),
-                ))
+                entries.append(
+                    PrResolveEntry(
+                        changed_file=cf,
+                        affected_apis=tuple(native_affected_apis),
+                        consumer_projects=tuple(consumer_list),
+                        selection_reasons=selection_reasons_native,
+                        broad_infra_match=None,
+                        false_negative_risk="medium",
+                        parser_level=2 if native_canonical else 1,
+                        canonical_affected_apis=tuple(native_canonical),
+                        impact_candidates=(
+                            {
+                                "changed_file": cf,
+                                "impact_kind": impact_kind,
+                                "family": family_native,
+                                "source_confidence": "medium",
+                                "provenance": "native_interface_resolver",
+                            },
+                        ),
+                    )
+                )
                 if risk_order.get("medium", 0) > risk_order.get(overall_risk, 0):
                     overall_risk = "medium"
                 continue
@@ -754,30 +821,38 @@ def _resolve_pr_core(
         # 0. Manual overrides (highest priority — operator-configured)
         if override_rules:
             from .manual_overrides import match_override
+
             override = match_override(cf, override_rules)
             if override is not None:
-                entries.append(PrResolveEntry(
-                    changed_file=cf,
-                    affected_apis=(),
-                    consumer_projects=override.must_run_targets,
-                    selection_reasons=tuple(
-                        SelectionReason(
-                            project_path=t,
-                            matched_apis=(),
-                            usage_kinds=("manual_override",),
-                            confidence="strong",
-                            provenance="manual_override",
-                        ) for t in override.must_run_targets
-                    ),
-                    broad_infra_match=None,
-                    false_negative_risk="low",
-                    parser_level=0,
-                    impact_candidates=(),
-                ))
+                entries.append(
+                    PrResolveEntry(
+                        changed_file=cf,
+                        affected_apis=(),
+                        consumer_projects=override.must_run_targets,
+                        selection_reasons=tuple(
+                            SelectionReason(
+                                project_path=t,
+                                matched_apis=(),
+                                usage_kinds=("manual_override",),
+                                confidence="strong",
+                                provenance="manual_override",
+                            )
+                            for t in override.must_run_targets
+                        ),
+                        broad_infra_match=None,
+                        false_negative_risk="low",
+                        parser_level=0,
+                        impact_candidates=(),
+                    )
+                )
                 continue
 
         # 0.5. IDL files — parse and map methods to API names
-        if parse_idl_file is not None and resolve_idl_to_family is not None and _map_idl_methods_to_api is not None:
+        if (
+            parse_idl_file is not None
+            and resolve_idl_to_family is not None
+            and _map_idl_methods_to_api is not None
+        ):
             if cf_normalized.endswith(".idl"):
                 try:
                     idl_path = Path(cf)
@@ -805,9 +880,15 @@ def _resolve_pr_core(
                             for consumer in consumers:
                                 proj = consumer.project_path
                                 if proj not in project_reasons:
-                                    project_reasons[proj] = {"apis": set(), "kinds": set(), "confidence": "medium"}
+                                    project_reasons[proj] = {
+                                        "apis": set(),
+                                        "kinds": set(),
+                                        "confidence": "medium",
+                                    }
                                 project_reasons[proj]["apis"].add(api_name)
-                                project_reasons[proj]["kinds"].add("idl_attribute_method")
+                                project_reasons[proj]["kinds"].add(
+                                    "idl_attribute_method"
+                                )
                                 all_covered_apis.add(api_name)
 
                         # Deduplicate consumers
@@ -834,18 +915,22 @@ def _resolve_pr_core(
                         else:
                             idl_risk = "high"  # No APIs extracted
 
-                        entries.append(PrResolveEntry(
-                            changed_file=cf,
-                            affected_apis=affected_apis_idl,
-                            consumer_projects=tuple(unique_consumers_idl),
-                            selection_reasons=selection_reasons_idl,
-                            broad_infra_match=None,
-                            false_negative_risk=idl_risk,
-                            parser_level=2,
-                            canonical_affected_apis=canonical_affected_apis_idl,
-                        ))
+                        entries.append(
+                            PrResolveEntry(
+                                changed_file=cf,
+                                affected_apis=affected_apis_idl,
+                                consumer_projects=tuple(unique_consumers_idl),
+                                selection_reasons=selection_reasons_idl,
+                                broad_infra_match=None,
+                                false_negative_risk=idl_risk,
+                                parser_level=2,
+                                canonical_affected_apis=canonical_affected_apis_idl,
+                            )
+                        )
 
-                        if risk_order.get(idl_risk, 0) > risk_order.get(overall_risk, 0):
+                        if risk_order.get(idl_risk, 0) > risk_order.get(
+                            overall_risk, 0
+                        ):
                             overall_risk = idl_risk
 
                         file_handled = True
@@ -858,12 +943,15 @@ def _resolve_pr_core(
         if _resolve_arkts_bridge is not None:
             bridge_candidate = _resolve_arkts_bridge(cf)
             if bridge_candidate is not None:
-                has_family = bridge_candidate.impact_kind in ("generated_bridge", "authored_bridge",
-                                                               "koala_component_bridge",
-                                                               "koala_generated_bridge",
-                                                               "koala_interface_bridge")
+                has_family = bridge_candidate.impact_kind in (
+                    "generated_bridge",
+                    "authored_bridge",
+                    "koala_component_bridge",
+                    "koala_generated_bridge",
+                    "koala_interface_bridge",
+                )
                 bridge_risk: FalseNegativeRisk = bridge_candidate.false_negative_risk
-                bridge_family = getattr(bridge_candidate, 'family', None)
+                bridge_family = getattr(bridge_candidate, "family", None)
 
                 # PX-08: Resolve bounded targets for family-bearing bridge candidates
                 bridge_consumers: list[str] = []
@@ -882,26 +970,31 @@ def _resolve_pr_core(
                                     bridge_consumers.append(c.project_path)
 
                     if bridge_consumers:
-                        bridge_reasons = [SelectionReason(
-                            project_path=p,
-                            matched_apis=(),
-                            usage_kinds=("bridge_component",),
-                            confidence="medium",
-                            provenance="bridge_specific",
-                        ) for p in bridge_consumers]
+                        bridge_reasons = [
+                            SelectionReason(
+                                project_path=p,
+                                matched_apis=(),
+                                usage_kinds=("bridge_component",),
+                                confidence="medium",
+                                provenance="bridge_specific",
+                            )
+                            for p in bridge_consumers
+                        ]
                         bridge_unresolved = None  # Resolved!
 
-                entries.append(PrResolveEntry(
-                    changed_file=cf,
-                    affected_apis=(),
-                    consumer_projects=tuple(bridge_consumers),
-                    selection_reasons=tuple(bridge_reasons),
-                    broad_infra_match=None,
-                    false_negative_risk=bridge_risk,
-                    parser_level=1,
-                    impact_candidates=(bridge_candidate.to_dict(),),
-                    unresolved_reason=bridge_unresolved,
-                ))
+                entries.append(
+                    PrResolveEntry(
+                        changed_file=cf,
+                        affected_apis=(),
+                        consumer_projects=tuple(bridge_consumers),
+                        selection_reasons=tuple(bridge_reasons),
+                        broad_infra_match=None,
+                        false_negative_risk=bridge_risk,
+                        parser_level=1,
+                        impact_candidates=(bridge_candidate.to_dict(),),
+                        unresolved_reason=bridge_unresolved,
+                    )
+                )
                 if risk_order.get(bridge_risk, 0) > risk_order.get(overall_risk, 0):
                     overall_risk = bridge_risk
                 file_handled = True
@@ -913,21 +1006,25 @@ def _resolve_pr_core(
             infra = match_changed_file(cf, rules)
             if infra is not None:
                 # Defer broad infra: let C++ naming and source-to-API try first
-                allow_overtake = getattr(infra, 'allow_overtake', False)
+                allow_overtake = getattr(infra, "allow_overtake", False)
                 if allow_overtake:
                     # Overtake enabled: apply immediately (high-priority infra)
                     has_broad = True
-                    entries.append(PrResolveEntry(
-                        changed_file=cf,
-                        affected_apis=(),
-                        consumer_projects=(),
-                        selection_reasons=(),
-                        broad_infra_match=infra,
-                        false_negative_risk=infra.false_negative_risk,
-                        parser_level=1,
-                        impact_candidates=(),
-                    ))
-                    if risk_order.get(infra.false_negative_risk, 0) > risk_order.get(overall_risk, 0):
+                    entries.append(
+                        PrResolveEntry(
+                            changed_file=cf,
+                            affected_apis=(),
+                            consumer_projects=(),
+                            selection_reasons=(),
+                            broad_infra_match=infra,
+                            false_negative_risk=infra.false_negative_risk,
+                            parser_level=1,
+                            impact_candidates=(),
+                        )
+                    )
+                    if risk_order.get(infra.false_negative_risk, 0) > risk_order.get(
+                        overall_risk, 0
+                    ):
                         overall_risk = infra.false_negative_risk
                     file_handled = True
                     continue
@@ -938,8 +1035,13 @@ def _resolve_pr_core(
         # Only use typed candidate for files that look like ACE engine paths.
         # For bare filenames without path context, fall through to legacy naming.
         cf_normalized = cf.replace("\\", "/")
-        _ACE_PATH_MARKERS = ("frameworks/", "components_ng/", "ace_engine/",
-                             "foundation/arkui/", "interfaces/native/")
+        _ACE_PATH_MARKERS = (
+            "frameworks/",
+            "components_ng/",
+            "ace_engine/",
+            "foundation/arkui/",
+            "interfaces/native/",
+        )
         _looks_like_ace_path = any(m in cf_normalized for m in _ACE_PATH_MARKERS)
 
         if _looks_like_ace_path and _resolve_cpp_family is not None:
@@ -960,18 +1062,26 @@ def _resolve_pr_core(
                 for m in cpp_naming_mappings:
                     cpp_naming_affected.append(m.api_public_name)
                     all_affected_apis.add(m.api_public_name)
-                    if (m.sdk_confirmed and m.api_id
-                            and m.api_id.startswith("api:v1:")):
+                    if m.sdk_confirmed and m.api_id and m.api_id.startswith("api:v1:"):
                         cpp_naming_canonical.append(m.api_id)
-                    cpp_naming_level = max(cpp_naming_level,
-                                           3 if m.confidence == "strong" else
-                                           2 if m.confidence == "medium" else 1)
+                    cpp_naming_level = max(
+                        cpp_naming_level,
+                        3
+                        if m.confidence == "strong"
+                        else 2
+                        if m.confidence == "medium"
+                        else 1,
+                    )
 
                 # Also resolve consumers from inverted index for mapped APIs
                 cpp_naming_projects: dict[str, dict] = {}
                 for d in naming_dirs:
-                    cpp_naming_projects[d] = {"apis": set(), "kinds": {"cpp_naming_convention"},
-                                              "confidence": "medium", "provenance": "cpp_naming"}
+                    cpp_naming_projects[d] = {
+                        "apis": set(),
+                        "kinds": {"cpp_naming_convention"},
+                        "confidence": "medium",
+                        "provenance": "cpp_naming",
+                    }
                 for m in cpp_naming_mappings:
                     consumer_provenance = ""
                     consumers = []
@@ -980,7 +1090,9 @@ def _resolve_pr_core(
                         if consumers:
                             consumer_provenance = "strict_canonical"
                     if not consumers:
-                        consumers = inverted.consumers_for_member_name(m.api_public_name, parent_filter=m.api_member_of)
+                        consumers = inverted.consumers_for_member_name(
+                            m.api_public_name, parent_filter=m.api_member_of
+                        )
                         if consumers:
                             consumer_provenance = "member_parent"
                     if not consumers:
@@ -988,10 +1100,15 @@ def _resolve_pr_core(
                         if consumers:
                             consumer_provenance = "safety_fallback"
                     for c in consumers:
-                        info = cpp_naming_projects.setdefault(c.project_path, {
-                            "apis": set(), "kinds": set(),
-                            "confidence": "weak", "provenance": consumer_provenance,
-                        })
+                        info = cpp_naming_projects.setdefault(
+                            c.project_path,
+                            {
+                                "apis": set(),
+                                "kinds": set(),
+                                "confidence": "weak",
+                                "provenance": consumer_provenance,
+                            },
+                        )
                         info["apis"].add(m.api_public_name)
                         info["kinds"].add(c.usage_kind)
                         all_covered_apis.add(m.api_public_name)
@@ -1008,17 +1125,19 @@ def _resolve_pr_core(
                     for proj, info in sorted(cpp_naming_projects.items())
                 )
 
-                entries.append(PrResolveEntry(
-                    changed_file=cf,
-                    affected_apis=tuple(cpp_naming_affected),
-                    consumer_projects=tuple(cpp_naming_all_consumers),
-                    selection_reasons=cpp_naming_reasons,
-                    broad_infra_match=None,
-                    false_negative_risk=naming_risk,
-                    parser_level=cpp_naming_level if cpp_naming_canonical else 2,
-                    canonical_affected_apis=tuple(cpp_naming_canonical),
-                    impact_candidates=(candidate.to_dict(),),
-                ))
+                entries.append(
+                    PrResolveEntry(
+                        changed_file=cf,
+                        affected_apis=tuple(cpp_naming_affected),
+                        consumer_projects=tuple(cpp_naming_all_consumers),
+                        selection_reasons=cpp_naming_reasons,
+                        broad_infra_match=None,
+                        false_negative_risk=naming_risk,
+                        parser_level=cpp_naming_level if cpp_naming_canonical else 2,
+                        canonical_affected_apis=tuple(cpp_naming_canonical),
+                        impact_candidates=(candidate.to_dict(),),
+                    )
+                )
                 if risk_order.get(naming_risk, 0) > risk_order.get(overall_risk, 0):
                     overall_risk = naming_risk
                 file_handled = True
@@ -1031,13 +1150,16 @@ def _resolve_pr_core(
                 has_family = True
                 # Build a lightweight ImpactCandidate for bare filename matches
                 import os as _os
+
                 _basename = _os.path.basename(cf)
                 _family = None
                 # Try to extract family from the naming dirs
                 if naming_dirs:
                     first = naming_dirs[0]
                     _dirname = first.rsplit("/", 1)[-1] if "/" in first else first
-                    _m = re.match(r"ace_ets_module_(.+?)(?:_nowear_api\d+_static)?$", _dirname)
+                    _m = re.match(
+                        r"ace_ets_module_(.+?)(?:_nowear_api\d+_static)?$", _dirname
+                    )
                     if _m:
                         _parts = _m.group(1).split("_")
                         _family = _parts[0] if len(_parts) > 1 else _m.group(1)
@@ -1052,25 +1174,27 @@ def _resolve_pr_core(
                     "relation_scope": "family",
                     "false_negative_risk": "medium",
                 }
-                entries.append(PrResolveEntry(
-                    changed_file=cf,
-                    affected_apis=(),
-                    consumer_projects=tuple(naming_dirs),
-                    selection_reasons=tuple(
-                        SelectionReason(
-                            project_path=d,
-                            matched_apis=(),
-                            usage_kinds=("cpp_naming_convention",),
-                            confidence="medium",
-                            provenance="cpp_naming",
-                        )
-                        for d in naming_dirs
-                    ),
-                    broad_infra_match=None,
-                    false_negative_risk="medium",
-                    parser_level=2,
-                    impact_candidates=(_legacy_candidate_dict,),
-                ))
+                entries.append(
+                    PrResolveEntry(
+                        changed_file=cf,
+                        affected_apis=(),
+                        consumer_projects=tuple(naming_dirs),
+                        selection_reasons=tuple(
+                            SelectionReason(
+                                project_path=d,
+                                matched_apis=(),
+                                usage_kinds=("cpp_naming_convention",),
+                                confidence="medium",
+                                provenance="cpp_naming",
+                            )
+                            for d in naming_dirs
+                        ),
+                        broad_infra_match=None,
+                        false_negative_risk="medium",
+                        parser_level=2,
+                        impact_candidates=(_legacy_candidate_dict,),
+                    )
+                )
                 if risk_order.get("medium", 0) > risk_order.get(overall_risk, 0):
                     overall_risk = "medium"
                 file_handled = True
@@ -1085,7 +1209,8 @@ def _resolve_pr_core(
         if changed_ranges and cf in changed_ranges:
             ranges = changed_ranges[cf]
             file_mappings = [
-                m for m in file_mappings
+                m
+                for m in file_mappings
                 if any(m.overlaps_range(start, end) for start, end in ranges)
             ]
 
@@ -1096,6 +1221,7 @@ def _resolve_pr_core(
         if file_mappings and raw_patch_hunks and cf in raw_patch_hunks:
             try:
                 from .method_diff import classify_hunk_impact
+
                 # Read file content using repo_root for AST-based classification
                 file_content: bytes | None = None
                 if repo_root:
@@ -1136,20 +1262,29 @@ def _resolve_pr_core(
         canonical_affected_apis: list[str] = []
         max_parser_level = 0
         # Track per-project: matched APIs and usage kinds
-        project_reasons: dict[str, dict] = {}  # project_path -> {apis: set, kinds: set, confidence: str}
+        project_reasons: dict[
+            str, dict
+        ] = {}  # project_path -> {apis: set, kinds: set, confidence: str}
 
         for mapping in file_mappings:
             api_name = mapping.api_public_name
             affected_apis.append(api_name)
             all_affected_apis.add(api_name)
             # Only include canonical IDs that were SDK-verified (double gate)
-            if (mapping.sdk_confirmed
-                    and mapping.api_id
-                    and mapping.api_id.startswith("api:v1:")):
+            if (
+                mapping.sdk_confirmed
+                and mapping.api_id
+                and mapping.api_id.startswith("api:v1:")
+            ):
                 canonical_affected_apis.append(mapping.api_id)
-            max_parser_level = max(max_parser_level,
-                                   3 if mapping.confidence == "strong" else
-                                   2 if mapping.confidence == "medium" else 1)
+            max_parser_level = max(
+                max_parser_level,
+                3
+                if mapping.confidence == "strong"
+                else 2
+                if mapping.confidence == "medium"
+                else 1,
+            )
 
             # Look up consumers: prefer exact canonical, fallback to fuzzy
             consumer_provenance = ""
@@ -1159,7 +1294,9 @@ def _resolve_pr_core(
                 if consumers:
                     consumer_provenance = "strict_canonical"
             if not consumers:
-                consumers = inverted.consumers_for_member_name(api_name, parent_filter=mapping.api_member_of)
+                consumers = inverted.consumers_for_member_name(
+                    api_name, parent_filter=mapping.api_member_of
+                )
                 if consumers:
                     consumer_provenance = "member_parent"
             if not consumers:
@@ -1172,7 +1309,11 @@ def _resolve_pr_core(
                 # Try to narrow to family-specific consumers
                 family_from_path = _extract_family_from_path(cf)
                 if family_from_path:
-                    family_consumers = [c for c in consumers if family_from_path in c.project_path.lower()]
+                    family_consumers = [
+                        c
+                        for c in consumers
+                        if family_from_path in c.project_path.lower()
+                    ]
                     if family_consumers:
                         consumers = family_consumers
                         consumer_provenance = "common_inherited"
@@ -1180,12 +1321,19 @@ def _resolve_pr_core(
             for consumer in consumers:
                 proj = consumer.project_path
                 if proj not in project_reasons:
-                    project_reasons[proj] = {"apis": set(), "kinds": set(), "confidence": "weak", "provenance": consumer_provenance}
+                    project_reasons[proj] = {
+                        "apis": set(),
+                        "kinds": set(),
+                        "confidence": "weak",
+                        "provenance": consumer_provenance,
+                    }
                 project_reasons[proj]["apis"].add(api_name)
                 project_reasons[proj]["kinds"].add(consumer.usage_kind)
                 # Upgrade confidence if higher
                 conf_order = {"weak": 0, "medium": 1, "strong": 2}
-                if conf_order.get(consumer.confidence, 0) > conf_order.get(project_reasons[proj]["confidence"], 0):
+                if conf_order.get(consumer.confidence, 0) > conf_order.get(
+                    project_reasons[proj]["confidence"], 0
+                ):
                     project_reasons[proj]["confidence"] = consumer.confidence
                 # Set provenance if not already set (prioritize higher-confidence provenance)
                 if consumer_provenance and not project_reasons[proj].get("provenance"):
@@ -1197,12 +1345,18 @@ def _resolve_pr_core(
         unique_consumers = sorted(set(project_reasons.keys()))
 
         # 4.3. ETS import graph expansion — only for .ets files
-        if cf_normalized.endswith(".ets") and ets_index is not None and ets_index.imported_by:
+        if (
+            cf_normalized.endswith(".ets")
+            and ets_index is not None
+            and ets_index.imported_by
+        ):
             importers = ets_index.find_importers(cf)
             for importer in importers:
                 if importer not in project_reasons:
                     project_reasons[importer] = {
-                        "apis": set(), "kinds": {"import_graph"}, "confidence": "weak",
+                        "apis": set(),
+                        "kinds": {"import_graph"},
+                        "confidence": "weak",
                     }
             unique_consumers = sorted(set(project_reasons.keys()))
 
@@ -1229,55 +1383,67 @@ def _resolve_pr_core(
             # 4.4. Area-based fallback (before last-resort tokens)
             if unresolved_reason is not None and area_rules:
                 from .area_owners import match_area
+
                 area = match_area(cf, area_rules)
                 if area and area.default_targets:
                     unresolved_reason = None
                     capped_targets = area.default_targets[:10]
-                    entries.append(PrResolveEntry(
-                        changed_file=cf,
-                        affected_apis=(),
-                        consumer_projects=capped_targets,
-                        selection_reasons=tuple(
-                            SelectionReason(
-                                project_path=t,
-                                matched_apis=(),
-                                usage_kinds=("area_fallback",),
-                                confidence="weak",
-                                provenance="area_fallback",
-                            ) for t in capped_targets
-                        ),
-                        broad_infra_match=None,
-                        false_negative_risk="low",
-                        parser_level=0,
-                        impact_candidates=(),
-                    ))
+                    entries.append(
+                        PrResolveEntry(
+                            changed_file=cf,
+                            affected_apis=(),
+                            consumer_projects=capped_targets,
+                            selection_reasons=tuple(
+                                SelectionReason(
+                                    project_path=t,
+                                    matched_apis=(),
+                                    usage_kinds=("area_fallback",),
+                                    confidence="weak",
+                                    provenance="area_fallback",
+                                )
+                                for t in capped_targets
+                            ),
+                            broad_infra_match=None,
+                            false_negative_risk="low",
+                            parser_level=0,
+                            impact_candidates=(),
+                        )
+                    )
                     low_confidence_resolved.append(cf)
                     continue
 
             # 4.5. Last-resort path-token matching (before marking as unresolved)
             if unresolved_reason is not None and target_index is not None:
                 from .last_resort import last_resort_targets
-                resort_matches = last_resort_targets(cf, target_index, min_jaccard=0.5, top_k=5)
+
+                resort_matches = last_resort_targets(
+                    cf, target_index, min_jaccard=0.5, top_k=5
+                )
                 if resort_matches:
                     unresolved_reason = None
-                    entries.append(PrResolveEntry(
-                        changed_file=cf,
-                        affected_apis=(),
-                        consumer_projects=tuple(m.module_name for m in resort_matches),
-                        selection_reasons=tuple(
-                            SelectionReason(
-                                project_path=m.module_name,
-                                matched_apis=(),
-                                usage_kinds=("last_resort_token_match",),
-                                confidence="weak",
-                                provenance="last_resort_token_match",
-                            ) for m in resort_matches
-                        ),
-                        broad_infra_match=None,
-                        false_negative_risk="low",
-                        parser_level=0,
-                        impact_candidates=(),
-                    ))
+                    entries.append(
+                        PrResolveEntry(
+                            changed_file=cf,
+                            affected_apis=(),
+                            consumer_projects=tuple(
+                                m.module_name for m in resort_matches
+                            ),
+                            selection_reasons=tuple(
+                                SelectionReason(
+                                    project_path=m.module_name,
+                                    matched_apis=(),
+                                    usage_kinds=("last_resort_token_match",),
+                                    confidence="weak",
+                                    provenance="last_resort_token_match",
+                                )
+                                for m in resort_matches
+                            ),
+                            broad_infra_match=None,
+                            false_negative_risk="low",
+                            parser_level=0,
+                            impact_candidates=(),
+                        )
+                    )
                     low_confidence_resolved.append(cf)
                     continue
 
@@ -1291,40 +1457,49 @@ def _resolve_pr_core(
         suggestions: dict | None = None
         if unresolved_reason is not None:
             suggestions = _build_diagnostic_suggestions(
-                cf, target_index, coupling_index, rules,
+                cf,
+                target_index,
+                coupling_index,
+                rules,
             )
 
         # PX-09: Check if we should apply deferred broad infra instead of unresolved entry
         if unresolved_reason is not None and deferred_infra is not None:
             # Apply deferred broad infra instead of creating unresolved entry
             has_broad = True
-            entries.append(PrResolveEntry(
-                changed_file=cf,
-                affected_apis=(),
-                consumer_projects=(),
-                selection_reasons=(),
-                broad_infra_match=deferred_infra,
-                false_negative_risk=deferred_infra.false_negative_risk,
-                parser_level=1,
-                impact_candidates=(),
-            ))
-            if risk_order.get(deferred_infra.false_negative_risk, 0) > risk_order.get(overall_risk, 0):
+            entries.append(
+                PrResolveEntry(
+                    changed_file=cf,
+                    affected_apis=(),
+                    consumer_projects=(),
+                    selection_reasons=(),
+                    broad_infra_match=deferred_infra,
+                    false_negative_risk=deferred_infra.false_negative_risk,
+                    parser_level=1,
+                    impact_candidates=(),
+                )
+            )
+            if risk_order.get(deferred_infra.false_negative_risk, 0) > risk_order.get(
+                overall_risk, 0
+            ):
                 overall_risk = deferred_infra.false_negative_risk
             continue
 
         # Otherwise, create the source-to-API entry (resolved or unresolved)
-        entries.append(PrResolveEntry(
-            changed_file=cf,
-            affected_apis=tuple(affected_apis),
-            consumer_projects=tuple(unique_consumers),
-            selection_reasons=selection_reasons,
-            broad_infra_match=None,
-            false_negative_risk=risk,
-            parser_level=max_parser_level,
-            unresolved_reason=unresolved_reason,
-            canonical_affected_apis=tuple(canonical_affected_apis),
-            diagnostic_suggestions=suggestions,
-        ))
+        entries.append(
+            PrResolveEntry(
+                changed_file=cf,
+                affected_apis=tuple(affected_apis),
+                consumer_projects=tuple(unique_consumers),
+                selection_reasons=selection_reasons,
+                broad_infra_match=None,
+                false_negative_risk=risk,
+                parser_level=max_parser_level,
+                unresolved_reason=unresolved_reason,
+                canonical_affected_apis=tuple(canonical_affected_apis),
+                diagnostic_suggestions=suggestions,
+            )
+        )
 
         if risk_order.get(risk, 0) > risk_order.get(overall_risk, 0):
             overall_risk = risk
@@ -1333,6 +1508,7 @@ def _resolve_pr_core(
     # (moved from inline 4.3b/4.3c so broad_infra/cpp_naming/arkts_bridge entries also benefit)
     if coverage_index is not None or coupling_index is not None:
         from dataclasses import replace as _dc_replace
+
         enriched_entries: list[PrResolveEntry] = []
         for entry in entries:
             cf_post = entry.changed_file
@@ -1343,31 +1519,40 @@ def _resolve_pr_core(
                 for ce in coverage_index.lookup_coverage(cf_post):
                     if ce.is_significant and ce.test_id not in new_consumers:
                         new_consumers.add(ce.test_id)
-                        new_reasons.append(SelectionReason(
-                            project_path=ce.test_id,
-                            matched_apis=(),
-                            usage_kinds=("coverage_replay",),
-                            confidence="medium" if ce.coverage_ratio >= 0.3 else "weak",
-                            provenance="coverage_replay",
-                        ))
+                        new_reasons.append(
+                            SelectionReason(
+                                project_path=ce.test_id,
+                                matched_apis=(),
+                                usage_kinds=("coverage_replay",),
+                                confidence="medium"
+                                if ce.coverage_ratio >= 0.3
+                                else "weak",
+                                provenance="coverage_replay",
+                            )
+                        )
 
             if coupling_index is not None:
                 for c in coupling_index.lookup_coupling(cf_post):
                     if c.test_file not in new_consumers:
                         new_consumers.add(c.test_file)
-                        new_reasons.append(SelectionReason(
-                            project_path=c.test_file,
-                            matched_apis=(),
-                            usage_kinds=("git_coupling",),
-                            confidence="medium" if c.confidence >= 0.5 else "weak",
-                            provenance="git_coupling",
-                        ))
+                        new_reasons.append(
+                            SelectionReason(
+                                project_path=c.test_file,
+                                matched_apis=(),
+                                usage_kinds=("git_coupling",),
+                                confidence="medium" if c.confidence >= 0.5 else "weak",
+                                provenance="git_coupling",
+                            )
+                        )
 
             if new_consumers != set(entry.consumer_projects):
-                enriched_entries.append(_dc_replace(entry,
-                    consumer_projects=tuple(sorted(new_consumers)),
-                    selection_reasons=tuple(new_reasons),
-                ))
+                enriched_entries.append(
+                    _dc_replace(
+                        entry,
+                        consumer_projects=tuple(sorted(new_consumers)),
+                        selection_reasons=tuple(new_reasons),
+                    )
+                )
             else:
                 enriched_entries.append(entry)
         entries = enriched_entries
@@ -1430,8 +1615,13 @@ def _find_mappings_for_file(
             if fp_norm == cf_norm:
                 return mappings
             # Auto-strip absolute prefix if path contains the marker
-            if file_path.replace("\\", "/").startswith("/") and "/foundation/arkui/ace_engine/" in file_path:
-                idx = file_path.replace("\\", "/").index("/foundation/arkui/ace_engine/")
+            if (
+                file_path.replace("\\", "/").startswith("/")
+                and "/foundation/arkui/ace_engine/" in file_path
+            ):
+                idx = file_path.replace("\\", "/").index(
+                    "/foundation/arkui/ace_engine/"
+                )
                 detected_root = file_path.replace("\\", "/")[:idx]
                 rel = _normalize_path(file_path, detected_root)
                 if rel == cf_norm:
@@ -1439,6 +1629,7 @@ def _find_mappings_for_file(
 
     # Try matching by basename or suffix
     import os
+
     basename = os.path.basename(changed_file)
 
     for file_path, mappings in by_file.items():
@@ -1498,7 +1689,10 @@ def _build_diagnostic_suggestions(
     # 1. Nearest XTS modules by token matching (lower threshold)
     if target_index is not None:
         from .last_resort import last_resort_targets
-        near = last_resort_targets(changed_file, target_index, min_jaccard=0.3, top_k=10)
+
+        near = last_resort_targets(
+            changed_file, target_index, min_jaccard=0.3, top_k=10
+        )
         if near:
             suggestions["nearest_xts_modules_by_token"] = [
                 {"module": m.module_name, "score": round(m.score, 3)} for m in near
@@ -1509,16 +1703,22 @@ def _build_diagnostic_suggestions(
         coupled = coupling_index.lookup_coupling(changed_file)
         if coupled:
             suggestions["co_changed_with_in_history"] = [
-                {"test": c.test_file, "confidence": round(c.confidence, 3), "support": c.support}
+                {
+                    "test": c.test_file,
+                    "confidence": round(c.confidence, 3),
+                    "support": c.support,
+                }
                 for c in coupled[:5]
             ]
 
     # 3. Similar basenames in target index
     if target_index is not None:
         import os
+
         basename = os.path.splitext(os.path.basename(changed_file))[0].lower()
         similar = [
-            e.module_name for e in target_index.entries
+            e.module_name
+            for e in target_index.entries
             if e.module_name and basename in e.module_name.lower()
         ][:5]
         if similar:
@@ -1565,19 +1765,31 @@ def _compute_ci_policy(
         for e in entries
     )
     if has_critical_broad:
-        return "manual_review", "critical broad infrastructure change requires manual review"
+        return (
+            "manual_review",
+            "critical broad infrastructure change requires manual review",
+        )
 
     # High ratio of unresolved files → manual_review
     if unresolved_ratio > 0.5 and total > 2:
-        return "manual_review", f"{len(unresolved_files)}/{total} files unresolved ({unresolved_ratio:.0%})"
+        return (
+            "manual_review",
+            f"{len(unresolved_files)}/{total} files unresolved ({unresolved_ratio:.0%})",
+        )
 
     if overall_risk == "critical":
         return "manual_review", "overall risk is critical"
 
     if overall_risk == "high":
         if unresolved_ratio > 0.3:
-            return "require_broader_suite", f"high risk + {len(unresolved_files)} unresolved files"
-        return "require_broader_suite", "high overall risk, recommend broader test suite"
+            return (
+                "require_broader_suite",
+                f"high risk + {len(unresolved_files)} unresolved files",
+            )
+        return (
+            "require_broader_suite",
+            "high overall risk, recommend broader test suite",
+        )
 
     if overall_risk == "medium":
         return "warn", "medium risk, some coverage gaps possible"
@@ -1586,7 +1798,10 @@ def _compute_ci_policy(
     if low_confidence_files and total > 2:
         low_conf_ratio = len(low_confidence_files) / total
         if low_conf_ratio > 0.5:
-            return "warn", f"{len(low_confidence_files)} files resolved only via weak fallback"
+            return (
+                "warn",
+                f"{len(low_confidence_files)} files resolved only via weak fallback",
+            )
 
     # Low risk with some unresolved — warn if any
     if unresolved_files:

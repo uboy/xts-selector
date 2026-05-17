@@ -1,8 +1,8 @@
 """Coverage evaluation metrics and regression gating."""
+
 from __future__ import annotations
 
 import json
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypedDict
@@ -70,8 +70,12 @@ class CoverageReport:
             lines.append(f"- **{metric}**: {value:.2%}")
 
         lines.append("\n## Per-PR Metrics\n")
-        lines.append("| PR | Recall (strict) | Recall (relaxed) | Precision | F1 | Must-Run Recall |")
-        lines.append("|----|-----------------|------------------|-----------|----|-----------------|")
+        lines.append(
+            "| PR | Recall (strict) | Recall (relaxed) | Precision | F1 | Must-Run Recall |"
+        )
+        lines.append(
+            "|----|-----------------|------------------|-----------|----|-----------------|"
+        )
 
         for pr in sorted(self.pr_metrics.keys()):
             m = self.pr_metrics[pr]
@@ -138,7 +142,9 @@ class CoverageEvaluator:
         else:
             f1 = 2 * (precision * recall_relaxed) / (precision + recall_relaxed)
 
-        must_run_recall = len(must_run_intersection) / len(must_run) if must_run else 0.0
+        must_run_recall = (
+            len(must_run_intersection) / len(must_run) if must_run else 0.0
+        )
 
         return PrMetrics(
             pr_number=pr_number,
@@ -164,11 +170,15 @@ class CoverageEvaluator:
             return CoverageReport()
 
         aggregated: dict[str, float] = {
-            "recall_strict": sum(m.recall_strict for m in pr_metrics.values()) / len(pr_metrics),
-            "recall_relaxed": sum(m.recall_relaxed for m in pr_metrics.values()) / len(pr_metrics),
-            "precision": sum(m.precision for m in pr_metrics.values()) / len(pr_metrics),
+            "recall_strict": sum(m.recall_strict for m in pr_metrics.values())
+            / len(pr_metrics),
+            "recall_relaxed": sum(m.recall_relaxed for m in pr_metrics.values())
+            / len(pr_metrics),
+            "precision": sum(m.precision for m in pr_metrics.values())
+            / len(pr_metrics),
             "f1": sum(m.f1 for m in pr_metrics.values()) / len(pr_metrics),
-            "must_run_recall": sum(m.must_run_recall for m in pr_metrics.values()) / len(pr_metrics),
+            "must_run_recall": sum(m.must_run_recall for m in pr_metrics.values())
+            / len(pr_metrics),
         }
 
         regression_detected = False

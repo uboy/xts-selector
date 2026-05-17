@@ -14,14 +14,15 @@ from arkui_xts_selector.cli import (
     ContentModifierIndex,
     MappingConfig,
     SdkIndex,
-    TestFileIndex,
-    TestProjectIndex,
     format_report,
 )
+from arkui_xts_selector.models import TestFileIndex, TestProjectIndex
 
 
 class ApiLineageTests(unittest.TestCase):
-    def _build_fixture_workspace(self, tmpdir: str) -> tuple[Path, Path, Path, Path, Path, list[TestProjectIndex]]:
+    def _build_fixture_workspace(
+        self, tmpdir: str
+    ) -> tuple[Path, Path, Path, Path, Path, list[TestProjectIndex]]:
         repo_root = Path(tmpdir) / "repo"
         ace_engine_root = repo_root / "foundation/arkui/ace_engine"
         sdk_api_root = repo_root / "interface/sdk-js/api"
@@ -31,14 +32,24 @@ class ApiLineageTests(unittest.TestCase):
 
         (sdk_api_root / "arkui").mkdir(parents=True, exist_ok=True)
         (sdk_api_root / "arkui/component").mkdir(parents=True, exist_ok=True)
-        (ace_engine_root / "frameworks/bridge/declarative_frontend/ark_modifier/src").mkdir(parents=True, exist_ok=True)
-        (ace_engine_root / "frameworks/core/interfaces/native/node").mkdir(parents=True, exist_ok=True)
-        (ace_engine_root / "frameworks/core/components_ng/pattern/button").mkdir(parents=True, exist_ok=True)
+        (
+            ace_engine_root / "frameworks/bridge/declarative_frontend/ark_modifier/src"
+        ).mkdir(parents=True, exist_ok=True)
+        (ace_engine_root / "frameworks/core/interfaces/native/node").mkdir(
+            parents=True, exist_ok=True
+        )
+        (ace_engine_root / "frameworks/core/components_ng/pattern/button").mkdir(
+            parents=True, exist_ok=True
+        )
         xts_root.mkdir(parents=True, exist_ok=True)
         examples_root.mkdir(parents=True, exist_ok=True)
 
-        (sdk_api_root / "arkui/ButtonModifier.d.ts").write_text("export interface ButtonModifier {}\n", encoding="utf-8")
-        (sdk_api_root / "arkui/ButtonModifier.static.d.ets").write_text("export interface ButtonModifier {}\n", encoding="utf-8")
+        (sdk_api_root / "arkui/ButtonModifier.d.ts").write_text(
+            "export interface ButtonModifier {}\n", encoding="utf-8"
+        )
+        (sdk_api_root / "arkui/ButtonModifier.static.d.ets").write_text(
+            "export interface ButtonModifier {}\n", encoding="utf-8"
+        )
         (sdk_api_root / "arkui/component/button.static.d.ets").write_text(
             """
 export declare interface ButtonAttribute extends CommonMethod {
@@ -85,15 +96,25 @@ export declare interface CommonMethod {
             encoding="utf-8",
         )
 
-        (ace_engine_root / "frameworks/bridge/declarative_frontend/ark_modifier/src/button_modifier.ts").write_text(
+        (
+            ace_engine_root
+            / "frameworks/bridge/declarative_frontend/ark_modifier/src/button_modifier.ts"
+        ).write_text(
             "export function applyButtonModifier() {}\n",
             encoding="utf-8",
         )
-        button_native = ace_engine_root / "frameworks/core/interfaces/native/node/button_modifier.cpp"
+        button_native = (
+            ace_engine_root
+            / "frameworks/core/interfaces/native/node/button_modifier.cpp"
+        )
         button_native.write_text("void ApplyButtonModifier() {}\n", encoding="utf-8")
-        implementation_root = ace_engine_root / "frameworks/core/interfaces/native/implementation"
+        implementation_root = (
+            ace_engine_root / "frameworks/core/interfaces/native/implementation"
+        )
         implementation_root.mkdir(parents=True, exist_ok=True)
-        content_modifier_helper = implementation_root / "content_modifier_helper_accessor.cpp"
+        content_modifier_helper = (
+            implementation_root / "content_modifier_helper_accessor.cpp"
+        )
         content_modifier_helper.write_text(
             """
 void ContentModifierButtonImpl()
@@ -118,9 +139,15 @@ void ResetContentModifierMenuItemImpl()
             + "\n",
             encoding="utf-8",
         )
-        button_pattern = ace_engine_root / "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        button_pattern = (
+            ace_engine_root
+            / "frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+        )
         button_pattern.write_text("void BuildButtonPattern() {}\n", encoding="utf-8")
-        button_model_static = ace_engine_root / "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        button_model_static = (
+            ace_engine_root
+            / "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        )
         button_model_static.write_text(
             """
 void ButtonModelStatic::SetRole() {}
@@ -134,7 +161,9 @@ void ButtonModelStatic::RefreshPadding()
             + "\n",
             encoding="utf-8",
         )
-        example_page = examples_root / "ButtonGallery/entry/src/main/ets/pages/index.ets"
+        example_page = (
+            examples_root / "ButtonGallery/entry/src/main/ets/pages/index.ets"
+        )
         example_page.parent.mkdir(parents=True, exist_ok=True)
         example_page.write_text(
             """
@@ -201,7 +230,13 @@ struct Index {
                         surface="static",
                         imported_symbols={"ButtonModifier", "ButtonAttribute"},
                         identifier_calls={"Button"},
-                        member_calls={"role", "buttonStyle", "contentModifier", "controlSize", "padding"},
+                        member_calls={
+                            "role",
+                            "buttonStyle",
+                            "contentModifier",
+                            "controlSize",
+                            "padding",
+                        },
                         type_member_calls={"ButtonAttribute.role"},
                         typed_modifier_bases={"button"},
                     )
@@ -243,11 +278,27 @@ struct Index {
                 supported_surfaces={"static"},
             ),
         ]
-        return repo_root, ace_engine_root, sdk_api_root, xts_root, runtime_state_root, projects
+        return (
+            repo_root,
+            ace_engine_root,
+            sdk_api_root,
+            xts_root,
+            runtime_state_root,
+            projects,
+        )
 
-    def test_build_api_lineage_map_tracks_button_source_and_consumer_edges(self) -> None:
+    def test_build_api_lineage_map_tracks_button_source_and_consumer_edges(
+        self,
+    ) -> None:
         with TemporaryDirectory() as tmpdir:
-            repo_root, ace_engine_root, sdk_api_root, _, runtime_state_root, projects = self._build_fixture_workspace(tmpdir)
+            (
+                repo_root,
+                ace_engine_root,
+                sdk_api_root,
+                _,
+                runtime_state_root,
+                projects,
+            ) = self._build_fixture_workspace(tmpdir)
             lineage_map, target_path = build_api_lineage_map(
                 repo_root=repo_root,
                 ace_engine_root=ace_engine_root,
@@ -260,7 +311,8 @@ struct Index {
             self.assertEqual(
                 set(
                     lineage_map.apis_for_source(
-                        ace_engine_root / "frameworks/core/interfaces/native/node/button_modifier.cpp",
+                        ace_engine_root
+                        / "frameworks/core/interfaces/native/node/button_modifier.cpp",
                         repo_root=repo_root,
                     )
                 ),
@@ -269,7 +321,8 @@ struct Index {
             self.assertEqual(
                 set(
                     lineage_map.apis_for_source(
-                        ace_engine_root / "frameworks/core/components_ng/pattern/button/button_pattern.cpp",
+                        ace_engine_root
+                        / "frameworks/core/components_ng/pattern/button/button_pattern.cpp",
                         repo_root=repo_root,
                     )
                 ),
@@ -278,7 +331,8 @@ struct Index {
             self.assertEqual(
                 set(
                     lineage_map.apis_for_source(
-                        ace_engine_root / "frameworks/core/components_ng/pattern/button/button_model_static.cpp",
+                        ace_engine_root
+                        / "frameworks/core/components_ng/pattern/button/button_model_static.cpp",
                         repo_root=repo_root,
                     )
                 ),
@@ -294,7 +348,8 @@ struct Index {
             self.assertEqual(
                 set(
                     lineage_map.apis_for_source_symbols(
-                        ace_engine_root / "frameworks/core/components_ng/pattern/button/button_model_static.cpp",
+                        ace_engine_root
+                        / "frameworks/core/components_ng/pattern/button/button_model_static.cpp",
                         ["ButtonModelStatic::SetRole"],
                         repo_root=repo_root,
                     )
@@ -304,7 +359,8 @@ struct Index {
             self.assertEqual(
                 set(
                     lineage_map.apis_for_source_symbols(
-                        ace_engine_root / "frameworks/core/components_ng/pattern/button/button_model_static.cpp",
+                        ace_engine_root
+                        / "frameworks/core/components_ng/pattern/button/button_model_static.cpp",
                         ["RefreshPadding"],
                         repo_root=repo_root,
                     )
@@ -313,7 +369,8 @@ struct Index {
             )
             self.assertEqual(
                 lineage_map.symbols_for_source_ranges(
-                    ace_engine_root / "frameworks/core/components_ng/pattern/button/button_model_static.cpp",
+                    ace_engine_root
+                    / "frameworks/core/components_ng/pattern/button/button_model_static.cpp",
                     [(1, 1)],
                     repo_root=repo_root,
                 ),
@@ -321,7 +378,8 @@ struct Index {
             )
             self.assertEqual(
                 lineage_map.symbols_for_source_ranges(
-                    ace_engine_root / "frameworks/core/components_ng/pattern/button/button_model_static.cpp",
+                    ace_engine_root
+                    / "frameworks/core/components_ng/pattern/button/button_model_static.cpp",
                     [(4, 6)],
                     repo_root=repo_root,
                 ),
@@ -329,11 +387,15 @@ struct Index {
             )
             self.assertIn(
                 "ButtonModifier",
-                lineage_map.consumer_project_to_apis["test/xts/acts/arkui/button_static"],
+                lineage_map.consumer_project_to_apis[
+                    "test/xts/acts/arkui/button_static"
+                ],
             )
             self.assertIn(
                 "Button",
-                lineage_map.consumer_file_to_apis["test/xts/acts/arkui/button_static/pages/index.ets"],
+                lineage_map.consumer_file_to_apis[
+                    "test/xts/acts/arkui/button_static/pages/index.ets"
+                ],
             )
             self.assertTrue(
                 {
@@ -341,10 +403,16 @@ struct Index {
                     "ButtonAttribute.controlSize",
                     "ButtonAttribute.padding",
                     "ButtonAttribute.role",
-                }.issubset(lineage_map.consumer_project_to_apis["test/xts/acts/arkui/button_static"])
+                }.issubset(
+                    lineage_map.consumer_project_to_apis[
+                        "test/xts/acts/arkui/button_static"
+                    ]
+                )
             )
             self.assertEqual(
-                lineage_map.consumer_project_kinds["foundation/arkui/ace_engine/examples/ButtonGallery"],
+                lineage_map.consumer_project_kinds[
+                    "foundation/arkui/ace_engine/examples/ButtonGallery"
+                ],
                 "source_only",
             )
             self.assertTrue(
@@ -354,7 +422,11 @@ struct Index {
                     "ButtonAttribute.controlSize",
                     "ButtonAttribute.padding",
                     "ButtonAttribute.role",
-                }.issubset(lineage_map.consumer_project_to_apis["foundation/arkui/ace_engine/examples/ButtonGallery"])
+                }.issubset(
+                    lineage_map.consumer_project_to_apis[
+                        "foundation/arkui/ace_engine/examples/ButtonGallery"
+                    ]
+                )
             )
             self.assertEqual(
                 lineage_map.consumer_file_to_project[
@@ -365,7 +437,14 @@ struct Index {
 
     def test_api_lineage_map_persistence_round_trip_keeps_edges(self) -> None:
         with TemporaryDirectory() as tmpdir:
-            repo_root, ace_engine_root, sdk_api_root, _, runtime_state_root, projects = self._build_fixture_workspace(tmpdir)
+            (
+                repo_root,
+                ace_engine_root,
+                sdk_api_root,
+                _,
+                runtime_state_root,
+                projects,
+            ) = self._build_fixture_workspace(tmpdir)
             _, target_path = build_api_lineage_map(
                 repo_root=repo_root,
                 ace_engine_root=ace_engine_root,
@@ -384,7 +463,11 @@ struct Index {
                 {"Button", "ButtonModifier"},
             )
             self.assertEqual(
-                set(restored.consumer_project_to_apis["test/xts/acts/arkui/button_static"]),
+                set(
+                    restored.consumer_project_to_apis[
+                        "test/xts/acts/arkui/button_static"
+                    ]
+                ),
                 {
                     "Button",
                     "ButtonModifier",
@@ -396,7 +479,9 @@ struct Index {
                 },
             )
             self.assertEqual(
-                restored.consumer_project_kinds["foundation/arkui/ace_engine/examples/ButtonGallery"],
+                restored.consumer_project_kinds[
+                    "foundation/arkui/ace_engine/examples/ButtonGallery"
+                ],
                 "source_only",
             )
             self.assertEqual(
@@ -417,12 +502,21 @@ struct Index {
             )
             self.assertIn(
                 "foundation/arkui/ace_engine/examples/ButtonGallery/entry/src/main/ets/pages/index.ets",
-                restored.consumer_files_for_project("foundation/arkui/ace_engine/examples/ButtonGallery"),
+                restored.consumer_files_for_project(
+                    "foundation/arkui/ace_engine/examples/ButtonGallery"
+                ),
             )
 
     def test_format_report_exposes_affected_api_entities_from_lineage_map(self) -> None:
         with TemporaryDirectory() as tmpdir:
-            repo_root, ace_engine_root, sdk_api_root, xts_root, runtime_state_root, projects = self._build_fixture_workspace(tmpdir)
+            (
+                repo_root,
+                ace_engine_root,
+                sdk_api_root,
+                xts_root,
+                runtime_state_root,
+                projects,
+            ) = self._build_fixture_workspace(tmpdir)
             lineage_map, target_path = build_api_lineage_map(
                 repo_root=repo_root,
                 ace_engine_root=ace_engine_root,
@@ -432,7 +526,10 @@ struct Index {
             )
             acts_out_root = repo_root / "out/release/suites/acts"
             acts_out_root.mkdir(parents=True, exist_ok=True)
-            changed_file = ace_engine_root / "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+            changed_file = (
+                ace_engine_root
+                / "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+            )
 
             report = format_report(
                 changed_files=[changed_file],
@@ -484,7 +581,9 @@ struct Index {
             ],
         )
         self.assertEqual(result["changed_symbols"], ["ButtonModelStatic::SetRole"])
-        self.assertEqual(result["projects"][0]["project"], "test/xts/acts/arkui/button_static")
+        self.assertEqual(
+            result["projects"][0]["project"], "test/xts/acts/arkui/button_static"
+        )
         # P5-002: api_coverage must be present in result item
         self.assertIn("api_coverage", result)
         api_cov = result["api_coverage"]
@@ -495,12 +594,18 @@ struct Index {
         # ButtonAttribute.role should be covered or indirectly_covered (button_static covers it)
         all_classified = api_cov["covered"] + api_cov["indirectly_covered"]
         self.assertIn(
-            "ButtonAttribute.role", all_classified,
+            "ButtonAttribute.role",
+            all_classified,
             f"Expected ButtonAttribute.role in covered/indirectly_covered; got api_coverage={api_cov}",
         )
         self.assertTrue(result["function_coverage"])
-        self.assertEqual(result["function_coverage"][0]["symbol"], "ButtonModelStatic::SetRole")
-        self.assertEqual(result["function_coverage"][0]["mapped_api_entities"], ["ButtonAttribute.role"])
+        self.assertEqual(
+            result["function_coverage"][0]["symbol"], "ButtonModelStatic::SetRole"
+        )
+        self.assertEqual(
+            result["function_coverage"][0]["mapped_api_entities"],
+            ["ButtonAttribute.role"],
+        )
         self.assertIn(
             result["function_coverage"][0]["status"],
             {"covered", "indirectly_covered"},
@@ -514,7 +619,10 @@ struct Index {
             ["ButtonAttribute.role"],
         )
         # lineage_hops must be populated for files with API entity mappings
-        self.assertTrue(report["lineage_hops"], "lineage_hops should be non-empty when entities are resolved")
+        self.assertTrue(
+            report["lineage_hops"],
+            "lineage_hops should be non-empty when entities are resolved",
+        )
         self.assertTrue(
             any("-> ButtonAttribute.role" in hop for hop in report["lineage_hops"]),
             f"Expected a hop to ButtonAttribute.role; got: {report['lineage_hops']}",
@@ -523,11 +631,20 @@ struct Index {
         self.assertIn("ButtonAttribute.role", report["affected_api_entities"])
         # top-level source_only_consumers must aggregate across changed files
         top_level_projects = [c["project"] for c in report["source_only_consumers"]]
-        self.assertIn("foundation/arkui/ace_engine/examples/ButtonGallery", top_level_projects)
+        self.assertIn(
+            "foundation/arkui/ace_engine/examples/ButtonGallery", top_level_projects
+        )
 
     def test_format_report_exposes_derived_symbols_from_changed_ranges(self) -> None:
         with TemporaryDirectory() as tmpdir:
-            repo_root, ace_engine_root, sdk_api_root, xts_root, runtime_state_root, projects = self._build_fixture_workspace(tmpdir)
+            (
+                repo_root,
+                ace_engine_root,
+                sdk_api_root,
+                xts_root,
+                runtime_state_root,
+                projects,
+            ) = self._build_fixture_workspace(tmpdir)
             lineage_map, target_path = build_api_lineage_map(
                 repo_root=repo_root,
                 ace_engine_root=ace_engine_root,
@@ -537,7 +654,10 @@ struct Index {
             )
             acts_out_root = repo_root / "out/release/suites/acts"
             acts_out_root.mkdir(parents=True, exist_ok=True)
-            changed_file = ace_engine_root / "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+            changed_file = (
+                ace_engine_root
+                / "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+            )
 
             report = format_report(
                 changed_files=[changed_file],
@@ -573,8 +693,12 @@ struct Index {
 
         result = report["results"][0]
         self.assertEqual(result["changed_ranges"], ["2:2"])
-        self.assertEqual(result["derived_source_symbols"], ["ButtonModelStatic::SetButtonStyle"])
-        self.assertEqual(result["affected_api_entities"], ["ButtonAttribute.buttonStyle"])
+        self.assertEqual(
+            result["derived_source_symbols"], ["ButtonModelStatic::SetButtonStyle"]
+        )
+        self.assertEqual(
+            result["affected_api_entities"], ["ButtonAttribute.buttonStyle"]
+        )
         self.assertTrue(result["function_coverage"])
         self.assertEqual(
             result["function_coverage"][0]["symbol"],
@@ -587,7 +711,14 @@ struct Index {
 
     def test_build_api_lineage_map_tracks_explicit_shared_helper_fanout(self) -> None:
         with TemporaryDirectory() as tmpdir:
-            repo_root, ace_engine_root, sdk_api_root, _, runtime_state_root, projects = self._build_fixture_workspace(tmpdir)
+            (
+                repo_root,
+                ace_engine_root,
+                sdk_api_root,
+                _,
+                runtime_state_root,
+                projects,
+            ) = self._build_fixture_workspace(tmpdir)
             lineage_map, _target_path = build_api_lineage_map(
                 repo_root=repo_root,
                 ace_engine_root=ace_engine_root,
@@ -595,7 +726,10 @@ struct Index {
                 projects=projects,
                 runtime_state_root=runtime_state_root,
             )
-            helper_path = ace_engine_root / "frameworks/core/interfaces/native/implementation/content_modifier_helper_accessor.cpp"
+            helper_path = (
+                ace_engine_root
+                / "frameworks/core/interfaces/native/implementation/content_modifier_helper_accessor.cpp"
+            )
 
             self.assertEqual(
                 set(lineage_map.apis_for_source(helper_path, repo_root=repo_root)),
@@ -626,21 +760,34 @@ struct Index {
                 {"SelectAttribute.menuItemContentModifier"},
             )
             self.assertEqual(
-                lineage_map.symbols_for_source_ranges(helper_path, [(13, 15)], repo_root=repo_root),
+                lineage_map.symbols_for_source_ranges(
+                    helper_path, [(13, 15)], repo_root=repo_root
+                ),
                 ["ContentModifierMenuItemImpl"],
             )
             self.assertIn(
                 "GaugeAttribute.contentModifier",
-                lineage_map.consumer_project_to_apis["test/xts/acts/arkui/gauge_static"],
+                lineage_map.consumer_project_to_apis[
+                    "test/xts/acts/arkui/gauge_static"
+                ],
             )
             self.assertIn(
                 "SelectAttribute.menuItemContentModifier",
-                lineage_map.consumer_project_to_apis["test/xts/acts/arkui/select_static"],
+                lineage_map.consumer_project_to_apis[
+                    "test/xts/acts/arkui/select_static"
+                ],
             )
 
     def test_format_report_narrows_shared_helper_fanout_by_changed_symbol(self) -> None:
         with TemporaryDirectory() as tmpdir:
-            repo_root, ace_engine_root, sdk_api_root, xts_root, runtime_state_root, projects = self._build_fixture_workspace(tmpdir)
+            (
+                repo_root,
+                ace_engine_root,
+                sdk_api_root,
+                xts_root,
+                runtime_state_root,
+                projects,
+            ) = self._build_fixture_workspace(tmpdir)
             lineage_map, target_path = build_api_lineage_map(
                 repo_root=repo_root,
                 ace_engine_root=ace_engine_root,
@@ -650,7 +797,10 @@ struct Index {
             )
             acts_out_root = repo_root / "out/release/suites/acts"
             acts_out_root.mkdir(parents=True, exist_ok=True)
-            changed_file = ace_engine_root / "frameworks/core/interfaces/native/implementation/content_modifier_helper_accessor.cpp"
+            changed_file = (
+                ace_engine_root
+                / "frameworks/core/interfaces/native/implementation/content_modifier_helper_accessor.cpp"
+            )
 
             report = format_report(
                 changed_files=[changed_file],
@@ -686,7 +836,9 @@ struct Index {
 
         result = report["results"][0]
         self.assertEqual(result["changed_symbols"], ["ContentModifierMenuItemImpl"])
-        self.assertEqual(result["affected_api_entities"], ["SelectAttribute.menuItemContentModifier"])
+        self.assertEqual(
+            result["affected_api_entities"], ["SelectAttribute.menuItemContentModifier"]
+        )
         self.assertEqual(
             result["file_level_affected_api_entities"],
             [
@@ -702,9 +854,18 @@ struct Index {
         self.assertEqual(result["signals"]["family_tokens"], ["select"])
         self.assertEqual(result["signals"]["method_hints"], ["menuItemContentModifier"])
 
-    def test_build_api_lineage_map_reuses_persisted_cache_when_inputs_unchanged(self) -> None:
+    def test_build_api_lineage_map_reuses_persisted_cache_when_inputs_unchanged(
+        self,
+    ) -> None:
         with TemporaryDirectory() as tmpdir:
-            repo_root, ace_engine_root, sdk_api_root, _, runtime_state_root, projects = self._build_fixture_workspace(tmpdir)
+            (
+                repo_root,
+                ace_engine_root,
+                sdk_api_root,
+                _,
+                runtime_state_root,
+                projects,
+            ) = self._build_fixture_workspace(tmpdir)
             project_cache_file = runtime_state_root / "projects-cache.json"
             project_cache_file.parent.mkdir(parents=True, exist_ok=True)
             project_cache_file.write_text("{}", encoding="utf-8")
@@ -717,8 +878,16 @@ struct Index {
                 project_cache_file=project_cache_file,
             )
 
-            with mock.patch("arkui_xts_selector.api_lineage._build_source_edges", side_effect=AssertionError("should reuse cached map")), \
-                    mock.patch("arkui_xts_selector.api_lineage._build_consumer_edges", side_effect=AssertionError("should reuse cached map")):
+            with (
+                mock.patch(
+                    "arkui_xts_selector.api_lineage._build_source_edges",
+                    side_effect=AssertionError("should reuse cached map"),
+                ),
+                mock.patch(
+                    "arkui_xts_selector.api_lineage._build_consumer_edges",
+                    side_effect=AssertionError("should reuse cached map"),
+                ),
+            ):
                 cached_map, cached_path = build_api_lineage_map(
                     repo_root=repo_root,
                     ace_engine_root=ace_engine_root,
@@ -734,7 +903,14 @@ struct Index {
     def test_format_report_populates_lineage_gaps_for_unmapped_files(self) -> None:
         """Files with no API entity mapping must appear in lineage_gaps."""
         with TemporaryDirectory() as tmpdir:
-            repo_root, ace_engine_root, sdk_api_root, xts_root, runtime_state_root, projects = self._build_fixture_workspace(tmpdir)
+            (
+                repo_root,
+                ace_engine_root,
+                sdk_api_root,
+                xts_root,
+                runtime_state_root,
+                projects,
+            ) = self._build_fixture_workspace(tmpdir)
             lineage_map, target_path = build_api_lineage_map(
                 repo_root=repo_root,
                 ace_engine_root=ace_engine_root,
@@ -799,7 +975,9 @@ struct Index {
         self.assertEqual(api_cov["not_covered"], [])
         self.assertEqual(api_cov["unresolved"], [])
 
-    def test_build_coverage_gap_report_classifies_entity_as_unresolved_when_no_consumer(self) -> None:
+    def test_build_coverage_gap_report_classifies_entity_as_unresolved_when_no_consumer(
+        self,
+    ) -> None:
         """An API entity with no consumer evidence must appear in api_coverage['unresolved']."""
         from arkui_xts_selector.cli import _build_coverage_gap_report
         from arkui_xts_selector.api_lineage import ApiLineageMap
@@ -819,7 +997,9 @@ struct Index {
         entity_keys = [entry["api_entity"] for entry in result["unresolved"]]
         self.assertIn("OrphanEntity.method", entity_keys)
 
-    def test_build_coverage_gap_report_classifies_entity_as_not_covered_when_projects_miss_it(self) -> None:
+    def test_build_coverage_gap_report_classifies_entity_as_not_covered_when_projects_miss_it(
+        self,
+    ) -> None:
         """An entity that has consumer projects in the lineage map but none in project_results
         must appear in api_coverage['not_covered'] (not 'unresolved')."""
         from arkui_xts_selector.cli import _build_coverage_gap_report

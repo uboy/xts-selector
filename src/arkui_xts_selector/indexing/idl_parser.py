@@ -15,6 +15,7 @@ Uses regex-based parsing (no tree-sitter needed) since IDL files are rare.
 
 Import boundary: standard library only.
 """
+
 from __future__ import annotations
 
 import re
@@ -25,6 +26,7 @@ from pathlib import Path
 @dataclass(frozen=True)
 class IdlInterface:
     """An interface declaration extracted from an IDL file."""
+
     name: str  # Interface name (e.g., ButtonAttribute)
     methods: tuple[str, ...]  # Method names (e.g., ("role", "buttonStyle"))
     file_path: str  # Path to the IDL file
@@ -41,6 +43,7 @@ class IdlInterface:
 @dataclass(frozen=True)
 class IdlParseResult:
     """Result of parsing an IDL file."""
+
     interfaces: tuple[IdlInterface, ...]  # All interfaces found
     parse_errors: tuple[str, ...]  # Any parsing errors encountered
 

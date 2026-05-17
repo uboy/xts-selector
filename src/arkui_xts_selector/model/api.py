@@ -18,8 +18,10 @@ from typing import Literal
 # Enumerations
 # ---------------------------------------------------------------------------
 
+
 class ApiEntityKind(enum.Enum):
     """Kind of an API entity within the SDK surface."""
+
     COMPONENT = "component"
     MODIFIER = "modifier"
     ATTRIBUTE = "attribute"
@@ -31,6 +33,7 @@ class ApiEntityKind(enum.Enum):
 
 class ApiSurfaceKind(enum.Enum):
     """Binding surface of an API entity."""
+
     STATIC = "static"
     DYNAMIC = "dynamic"
     SHARED = "shared"
@@ -41,13 +44,15 @@ class ApiSurfaceKind(enum.Enum):
 # Helpers – deterministic percent-encoding
 # ---------------------------------------------------------------------------
 
-_RESERVED_MAP = str.maketrans({
-    "#": "%23",
-    ":": "%3A",
-    "/": "%2F",
-    ".": "%2E",
-    " ": "%20",
-})
+_RESERVED_MAP = str.maketrans(
+    {
+        "#": "%23",
+        ":": "%3A",
+        "/": "%2F",
+        ".": "%2E",
+        " ": "%20",
+    }
+)
 
 
 def _encode(value: str) -> str:
@@ -58,6 +63,7 @@ def _encode(value: str) -> str:
 # ---------------------------------------------------------------------------
 # ApiEntityId – the stable identity of a public SDK API
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class ApiEntityId:
@@ -73,8 +79,8 @@ class ApiEntityId:
 
     schema_version: Literal["v1"] = "v1"
     namespace: str = ""
-    surface: str = "unknown"        # ApiSurfaceKind value
-    kind: str = ""                  # ApiEntityKind value
+    surface: str = "unknown"  # ApiSurfaceKind value
+    kind: str = ""  # ApiEntityKind value
     module: str = ""
     public_name: str = ""
     member_of: str | None = None
@@ -125,7 +131,9 @@ class ApiEntityId:
         else:
             name_enc = _encode(self.public_name)
 
-        return f"api:{self.schema_version}:{ns_surface}:{kind_enc}:{module_enc}#{name_enc}"
+        return (
+            f"api:{self.schema_version}:{ns_surface}:{kind_enc}:{module_enc}#{name_enc}"
+        )
 
     # -- serialization -------------------------------------------------------
 
@@ -184,6 +192,7 @@ class ApiEntityId:
 # ApiDeclarationRef – where an API entity is declared
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class ApiDeclarationRef:
     """Reference to the declaration site of an API entity in source or SDK."""
@@ -238,14 +247,15 @@ class ApiDeclarationRef:
 # ApiEntity – full representation of a declared API
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class ApiEntity:
     """Complete representation of a declared SDK API entity."""
 
     id: ApiEntityId
     public_name: str = ""
-    kind: str = ""                   # ApiEntityKind value
-    surface: str = "unknown"         # ApiSurfaceKind value
+    kind: str = ""  # ApiEntityKind value
+    surface: str = "unknown"  # ApiSurfaceKind value
     family: str | None = None
     member_of: str | None = None
     member_name: str | None = None
@@ -254,8 +264,8 @@ class ApiEntity:
     since_api: str | None = None
     deprecated_since: str | None = None
     declaration: ApiDeclarationRef | None = None
-    stability: str = "unknown"       # stable, deprecated, experimental, internal, unknown
-    ambiguity: str = "unambiguous"   # unambiguous, ambiguous, unresolved
+    stability: str = "unknown"  # stable, deprecated, experimental, internal, unknown
+    ambiguity: str = "unambiguous"  # unambiguous, ambiguous, unresolved
 
     def to_dict(self) -> dict:
         d: dict[str, object] = {
@@ -309,6 +319,7 @@ class ApiEntity:
 # EvidenceRef – lightweight evidence provenance reference
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class EvidenceRef:
     """Lightweight reference to the provenance of a piece of evidence."""
@@ -348,7 +359,13 @@ class EvidenceRef:
 # ApiAlias – an alternative name that resolves to a canonical ApiEntityId
 # ---------------------------------------------------------------------------
 
-_ALIAS_KINDS = ("import_alias", "sdk_alias", "config_alias", "legacy_name", "generated_name")
+_ALIAS_KINDS = (
+    "import_alias",
+    "sdk_alias",
+    "config_alias",
+    "legacy_name",
+    "generated_name",
+)
 _CONFIDENCE_LEVELS = ("strong", "medium", "weak", "unknown")
 
 
@@ -361,8 +378,8 @@ class ApiAlias:
 
     alias: str = ""
     target: ApiEntityId = field(default_factory=ApiEntityId)
-    alias_kind: str = "unknown"       # one of _ALIAS_KINDS
-    confidence: str = "unknown"       # one of _CONFIDENCE_LEVELS
+    alias_kind: str = "unknown"  # one of _ALIAS_KINDS
+    confidence: str = "unknown"  # one of _CONFIDENCE_LEVELS
     evidence: EvidenceRef | None = None
 
     def to_dict(self) -> dict:
@@ -381,7 +398,9 @@ class ApiAlias:
         ev = data.get("evidence")
         return cls(
             alias=data.get("alias", ""),
-            target=ApiEntityId.from_dict(data["target"]) if "target" in data else ApiEntityId(),
+            target=ApiEntityId.from_dict(data["target"])
+            if "target" in data
+            else ApiEntityId(),
             alias_kind=data.get("alias_kind", "unknown"),
             confidence=data.get("confidence", "unknown"),
             evidence=EvidenceRef.from_dict(ev) if ev else None,

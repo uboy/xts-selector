@@ -1,4 +1,5 @@
 """NavigationModifier symbol-query benchmark coverage for arkui-xts-selector."""
+
 from __future__ import annotations
 
 from test_benchmark_contract import (
@@ -24,11 +25,17 @@ class NavigationModifierBenchmarkTests(WorkspaceAwareTestCase):
     TOP_N = 300
 
     def _get_report(self) -> dict:
-        return _run_selector(self.ws, [
-            "--symbol-query", self.QUERY,
-            "--variants", "static",
-            "--top-projects", str(self.TOP_N),
-        ])
+        return _run_selector(
+            self.ws,
+            [
+                "--symbol-query",
+                self.QUERY,
+                "--variants",
+                "static",
+                "--top-projects",
+                str(self.TOP_N),
+            ],
+        )
 
     def test_does_not_crash(self) -> None:
         report = self._get_report()
@@ -86,4 +93,6 @@ class NavigationModifierBenchmarkTests(WorkspaceAwareTestCase):
                 )
         missing = required - found
         if missing:
-            self.fail(f"Navigation suites missing from prioritized output: {sorted(missing)}")
+            self.fail(
+                f"Navigation suites missing from prioritized output: {sorted(missing)}"
+            )

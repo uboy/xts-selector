@@ -3,10 +3,10 @@
 Resolves changed files in frameworks/core/interfaces/native/ to relevant
 test targets based on the component family extracted from the path.
 """
+
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
 _NATIVE_INTERFACE_RE = re.compile(
     r"frameworks/core/interfaces/native/"
@@ -15,9 +15,7 @@ _NATIVE_INTERFACE_RE = re.compile(
     r"|([^/]+)/([^/]+)\.(?:cpp|h)$)"
 )
 
-_NATIVE_NODE_API_RE = re.compile(
-    r"interfaces/native/node/([^/]+)/"
-)
+_NATIVE_NODE_API_RE = re.compile(r"interfaces/native/node/([^/]+)/")
 
 _NATIVE_IMPL_RE = re.compile(
     r"frameworks/core/interfaces/native/implementation/(.+?)_(?:modifier|accessor|extender|peer|dialog|context|modifiers)\.(?:cpp|h)$"

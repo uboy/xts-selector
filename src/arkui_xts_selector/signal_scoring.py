@@ -46,10 +46,14 @@ def ets_source_focus_tokens(source_families: set[str]) -> set[str]:
         family = coverage_family_key(canonical) or coverage_family_key(token)
         if family:
             variants.add(compact_token(family))
-        capability = coverage_capability_key(canonical) or coverage_capability_key(token)
+        capability = coverage_capability_key(canonical) or coverage_capability_key(
+            token
+        )
         if capability:
             variants.update(
-                compact_token(part) for part in str(capability).split(".") if compact_token(part)
+                compact_token(part)
+                for part in str(capability).split(".")
+                if compact_token(part)
             )
         for variant in variants:
             normalized = compact_token(variant)
@@ -67,7 +71,9 @@ def ets_name_matches_source_focus(base_token: str, source_focus: set[str]) -> bo
     if not base_token:
         return False
     return any(
-        base_token == token or base_token.startswith(token) or token.startswith(base_token)
+        base_token == token
+        or base_token.startswith(token)
+        or token.startswith(base_token)
         for token in source_focus
     )
 
@@ -108,7 +114,9 @@ def imported_ets_symbol_matches_source_focus(
     if source_token_matches_source_focus(base_token, source_focus, source_families):
         return True
     family_token = related_signal_family_token(name)
-    return source_token_matches_source_focus(family_token, source_focus, source_families)
+    return source_token_matches_source_focus(
+        family_token, source_focus, source_families
+    )
 
 
 def strip_ets_import_statements(text: str) -> str:
@@ -157,7 +165,10 @@ def classify_ohos_module_signal_strength(
     tokens = ohos_module_signal_tokens(module_name)
     if not tokens:
         return ""
-    if any(source_token_matches_source_focus(token, source_focus, source_families) for token in tokens):
+    if any(
+        source_token_matches_source_focus(token, source_focus, source_families)
+        for token in tokens
+    ):
         return "strong"
     return "weak"
 
@@ -176,7 +187,9 @@ def should_keep_ets_signal_name(
     if coverage_capability_key(family_token) or coverage_capability_key(base_token):
         return True
     source_focus = ets_source_focus_tokens(source_families)
-    if allow_source_family_fallback and ets_name_matches_source_focus(base_token, source_focus):
+    if allow_source_family_fallback and ets_name_matches_source_focus(
+        base_token, source_focus
+    ):
         return True
     return allow_source_family_fallback and len(source_focus) == 1
 
@@ -191,10 +204,16 @@ def suite_source_family_gains(
     if not source_families:
         return {}
 
-    scope_multiplier = _rr.SCOPE_GAIN_MULTIPLIER.get(str(project_entry.get("scope_tier", "focused")), 1.0)
-    bucket_multiplier = _rr.BUCKET_GAIN_MULTIPLIER.get(str(project_entry.get("bucket", "possible related")), 0.65)
+    scope_multiplier = _rr.SCOPE_GAIN_MULTIPLIER.get(
+        str(project_entry.get("scope_tier", "focused")), 1.0
+    )
+    bucket_multiplier = _rr.BUCKET_GAIN_MULTIPLIER.get(
+        str(project_entry.get("bucket", "possible related")), 0.65
+    )
     umbrella_penalty = float(project_entry.get("umbrella_penalty", 0.0) or 0.0)
-    umbrella_factor = max(_rr.ACTIVE_RANKING_RULES.umbrella_min_factor, 1.0 - umbrella_penalty)
+    umbrella_factor = max(
+        _rr.ACTIVE_RANKING_RULES.umbrella_min_factor, 1.0 - umbrella_penalty
+    )
     family_quality = {
         str(key): float(value)
         for key, value in dict(project_entry.get("family_quality") or {}).items()
@@ -204,7 +223,10 @@ def suite_source_family_gains(
     direct_overlap = source_families & direct_suite_families
     related_overlap = (source_families & suite_families) - direct_overlap
     for family in direct_overlap:
-        quality_factor = max(_rr.ACTIVE_RANKING_RULES.family_gain_min_direct_quality, family_quality.get(family, 1.0))
+        quality_factor = max(
+            _rr.ACTIVE_RANKING_RULES.family_gain_min_direct_quality,
+            family_quality.get(family, 1.0),
+        )
         gains[family] = round(
             _rr.ACTIVE_RANKING_RULES.family_gain_direct_base
             * scope_multiplier
@@ -214,7 +236,10 @@ def suite_source_family_gains(
             6,
         )
     for family in related_overlap:
-        quality_factor = max(_rr.ACTIVE_RANKING_RULES.family_gain_min_related_quality, family_quality.get(family, 1.0))
+        quality_factor = max(
+            _rr.ACTIVE_RANKING_RULES.family_gain_min_related_quality,
+            family_quality.get(family, 1.0),
+        )
         gains[family] = round(
             _rr.ACTIVE_RANKING_RULES.family_gain_related_base
             * scope_multiplier
@@ -236,7 +261,9 @@ def suite_source_family_representative_scores(
     direct_suite_families = set(project_entry.get("direct_family_keys", []))
     representative_quality = {
         str(key): float(value)
-        for key, value in dict(project_entry.get("family_representative_quality") or {}).items()
+        for key, value in dict(
+            project_entry.get("family_representative_quality") or {}
+        ).items()
     }
     focus_token_counts = {
         str(key): int(value)
@@ -248,17 +275,24 @@ def suite_source_family_representative_scores(
     scores: dict[str, float] = {}
     direct_overlap = source_families & direct_suite_families
     related_overlap = (source_families & suite_families) - direct_overlap
-    token_overlap = sum(focus_token_counts.get(token, 0) for token in source_focus_tokens)
+    token_overlap = sum(
+        focus_token_counts.get(token, 0) for token in source_focus_tokens
+    )
     overlap_bonus = min(
         _rr.ACTIVE_RANKING_RULES.representative_source_token_overlap_cap,
-        token_overlap * _rr.ACTIVE_RANKING_RULES.representative_source_token_overlap_weight,
+        token_overlap
+        * _rr.ACTIVE_RANKING_RULES.representative_source_token_overlap_weight,
     )
     for family in direct_overlap:
         base = representative_quality.get(family, 1.0) + overlap_bonus
-        scores[family] = round(base * _rr.ACTIVE_RANKING_RULES.representative_direct_overlap_multiplier, 6)
+        scores[family] = round(
+            base * _rr.ACTIVE_RANKING_RULES.representative_direct_overlap_multiplier, 6
+        )
     for family in related_overlap:
         base = representative_quality.get(family, 1.0) + overlap_bonus
-        scores[family] = round(base * _rr.ACTIVE_RANKING_RULES.representative_related_overlap_multiplier, 6)
+        scores[family] = round(
+            base * _rr.ACTIVE_RANKING_RULES.representative_related_overlap_multiplier, 6
+        )
     return scores
 
 
@@ -272,10 +306,16 @@ def suite_source_capability_gains(
     if not source_capabilities:
         return {}
 
-    scope_multiplier = _rr.SCOPE_GAIN_MULTIPLIER.get(str(project_entry.get("scope_tier", "focused")), 1.0)
-    bucket_multiplier = _rr.BUCKET_GAIN_MULTIPLIER.get(str(project_entry.get("bucket", "possible related")), 0.65)
+    scope_multiplier = _rr.SCOPE_GAIN_MULTIPLIER.get(
+        str(project_entry.get("scope_tier", "focused")), 1.0
+    )
+    bucket_multiplier = _rr.BUCKET_GAIN_MULTIPLIER.get(
+        str(project_entry.get("bucket", "possible related")), 0.65
+    )
     umbrella_penalty = float(project_entry.get("umbrella_penalty", 0.0) or 0.0)
-    umbrella_factor = max(_rr.ACTIVE_RANKING_RULES.umbrella_min_factor, 1.0 - umbrella_penalty)
+    umbrella_factor = max(
+        _rr.ACTIVE_RANKING_RULES.umbrella_min_factor, 1.0 - umbrella_penalty
+    )
     capability_quality = {
         str(key): float(value)
         for key, value in dict(project_entry.get("capability_quality") or {}).items()
@@ -285,7 +325,10 @@ def suite_source_capability_gains(
     direct_overlap = source_capabilities & direct_suite_capabilities
     related_overlap = (source_capabilities & suite_capabilities) - direct_overlap
     for capability in direct_overlap:
-        quality_factor = max(_rr.ACTIVE_RANKING_RULES.family_gain_min_direct_quality, capability_quality.get(capability, 1.0))
+        quality_factor = max(
+            _rr.ACTIVE_RANKING_RULES.family_gain_min_direct_quality,
+            capability_quality.get(capability, 1.0),
+        )
         gains[capability] = round(
             _rr.ACTIVE_RANKING_RULES.family_gain_direct_base
             * scope_multiplier
@@ -295,7 +338,10 @@ def suite_source_capability_gains(
             6,
         )
     for capability in related_overlap:
-        quality_factor = max(_rr.ACTIVE_RANKING_RULES.family_gain_min_related_quality, capability_quality.get(capability, 1.0))
+        quality_factor = max(
+            _rr.ACTIVE_RANKING_RULES.family_gain_min_related_quality,
+            capability_quality.get(capability, 1.0),
+        )
         gains[capability] = round(
             _rr.ACTIVE_RANKING_RULES.family_gain_related_base
             * scope_multiplier
@@ -317,7 +363,9 @@ def suite_source_capability_representative_scores(
     direct_suite_capabilities = set(project_entry.get("direct_capability_keys", []))
     representative_quality = {
         str(key): float(value)
-        for key, value in dict(project_entry.get("capability_representative_quality") or {}).items()
+        for key, value in dict(
+            project_entry.get("capability_representative_quality") or {}
+        ).items()
     }
     focus_token_counts = {
         str(key): int(value)
@@ -329,17 +377,24 @@ def suite_source_capability_representative_scores(
     scores: dict[str, float] = {}
     direct_overlap = source_capabilities & direct_suite_capabilities
     related_overlap = (source_capabilities & suite_capabilities) - direct_overlap
-    token_overlap = sum(focus_token_counts.get(token, 0) for token in source_focus_tokens)
+    token_overlap = sum(
+        focus_token_counts.get(token, 0) for token in source_focus_tokens
+    )
     overlap_bonus = min(
         _rr.ACTIVE_RANKING_RULES.representative_source_token_overlap_cap,
-        token_overlap * _rr.ACTIVE_RANKING_RULES.representative_source_token_overlap_weight,
+        token_overlap
+        * _rr.ACTIVE_RANKING_RULES.representative_source_token_overlap_weight,
     )
     for capability in direct_overlap:
         base = representative_quality.get(capability, 1.0) + overlap_bonus
-        scores[capability] = round(base * _rr.ACTIVE_RANKING_RULES.representative_direct_overlap_multiplier, 6)
+        scores[capability] = round(
+            base * _rr.ACTIVE_RANKING_RULES.representative_direct_overlap_multiplier, 6
+        )
     for capability in related_overlap:
         base = representative_quality.get(capability, 1.0) + overlap_bonus
-        scores[capability] = round(base * _rr.ACTIVE_RANKING_RULES.representative_related_overlap_multiplier, 6)
+        scores[capability] = round(
+            base * _rr.ACTIVE_RANKING_RULES.representative_related_overlap_multiplier, 6
+        )
     return scores
 
 
@@ -353,20 +408,30 @@ def suite_source_type_hint_gains(
     if not source_type_hints:
         return {}
 
-    scope_multiplier = _rr.SCOPE_GAIN_MULTIPLIER.get(str(project_entry.get("scope_tier", "focused")), 1.0)
-    bucket_multiplier = _rr.BUCKET_GAIN_MULTIPLIER.get(str(project_entry.get("bucket", "possible related")), 0.65)
+    scope_multiplier = _rr.SCOPE_GAIN_MULTIPLIER.get(
+        str(project_entry.get("scope_tier", "focused")), 1.0
+    )
+    bucket_multiplier = _rr.BUCKET_GAIN_MULTIPLIER.get(
+        str(project_entry.get("bucket", "possible related")), 0.65
+    )
     direct_overlap = source_type_hints & direct_suite_type_hints
     related_overlap = (source_type_hints & suite_type_hints) - direct_overlap
 
     gains: dict[str, float] = {}
     for type_hint_key in direct_overlap:
         gains[type_hint_key] = round(
-            _rr.ACTIVE_RANKING_RULES.family_gain_direct_base * 1.15 * scope_multiplier * bucket_multiplier,
+            _rr.ACTIVE_RANKING_RULES.family_gain_direct_base
+            * 1.15
+            * scope_multiplier
+            * bucket_multiplier,
             6,
         )
     for type_hint_key in related_overlap:
         gains[type_hint_key] = round(
-            _rr.ACTIVE_RANKING_RULES.family_gain_related_base * 0.95 * scope_multiplier * bucket_multiplier,
+            _rr.ACTIVE_RANKING_RULES.family_gain_related_base
+            * 0.95
+            * scope_multiplier
+            * bucket_multiplier,
             6,
         )
     return gains
@@ -382,20 +447,30 @@ def suite_source_member_hint_gains(
     if not source_member_hints:
         return {}
 
-    scope_multiplier = _rr.SCOPE_GAIN_MULTIPLIER.get(str(project_entry.get("scope_tier", "focused")), 1.0)
-    bucket_multiplier = _rr.BUCKET_GAIN_MULTIPLIER.get(str(project_entry.get("bucket", "possible related")), 0.65)
+    scope_multiplier = _rr.SCOPE_GAIN_MULTIPLIER.get(
+        str(project_entry.get("scope_tier", "focused")), 1.0
+    )
+    bucket_multiplier = _rr.BUCKET_GAIN_MULTIPLIER.get(
+        str(project_entry.get("bucket", "possible related")), 0.65
+    )
     direct_overlap = source_member_hints & direct_suite_member_hints
     related_overlap = (source_member_hints & suite_member_hints) - direct_overlap
 
     gains: dict[str, float] = {}
     for member_hint_key in direct_overlap:
         gains[member_hint_key] = round(
-            _rr.ACTIVE_RANKING_RULES.family_gain_direct_base * 1.35 * scope_multiplier * bucket_multiplier,
+            _rr.ACTIVE_RANKING_RULES.family_gain_direct_base
+            * 1.35
+            * scope_multiplier
+            * bucket_multiplier,
             6,
         )
     for member_hint_key in related_overlap:
         gains[member_hint_key] = round(
-            _rr.ACTIVE_RANKING_RULES.family_gain_related_base * 1.15 * scope_multiplier * bucket_multiplier,
+            _rr.ACTIVE_RANKING_RULES.family_gain_related_base
+            * 1.15
+            * scope_multiplier
+            * bucket_multiplier,
             6,
         )
     return gains
@@ -410,7 +485,9 @@ def suite_source_member_hint_representative_scores(
     direct_suite_member_hints = set(project_entry.get("direct_member_hint_keys", []))
     focus_token_counts = {
         str(key): int(value)
-        for key, value in dict(project_entry.get("member_hint_focus_counts") or {}).items()
+        for key, value in dict(
+            project_entry.get("member_hint_focus_counts") or {}
+        ).items()
     }
     if not source_member_hints:
         return {}
@@ -440,7 +517,9 @@ def suite_source_type_hint_representative_scores(
     direct_suite_type_hints = set(project_entry.get("direct_type_hint_keys", []))
     focus_token_counts = {
         str(key): int(value)
-        for key, value in dict(project_entry.get("type_hint_focus_counts") or {}).items()
+        for key, value in dict(
+            project_entry.get("type_hint_focus_counts") or {}
+        ).items()
     }
     if not source_type_hints:
         return {}

@@ -20,7 +20,9 @@ def resolve_json_output_path(path_value: str | None) -> Path:
     return path.resolve()
 
 
-def write_json_report(report: dict, json_to_stdout: bool, json_output_path: Path | None) -> Path | None:
+def write_json_report(
+    report: dict, json_to_stdout: bool, json_output_path: Path | None
+) -> Path | None:
     payload = json.dumps(report, ensure_ascii=False, indent=2)
     if json_to_stdout:
         print(payload)
@@ -31,7 +33,9 @@ def write_json_report(report: dict, json_to_stdout: bool, json_output_path: Path
     return target
 
 
-def resolve_selected_tests_output_path(selector_report_path: Path | None) -> Path | None:
+def resolve_selected_tests_output_path(
+    selector_report_path: Path | None,
+) -> Path | None:
     if selector_report_path is None:
         return None
     return selector_report_path.resolve().with_name(SELECTED_TESTS_FILE_NAME)
@@ -75,10 +79,16 @@ def _selected_test_aliases(entry: dict[str, object]) -> list[str]:
     return aliases
 
 
-def build_selected_tests_payload(report: dict, selector_report_path: Path | None) -> dict[str, object]:
+def build_selected_tests_payload(
+    report: dict, selector_report_path: Path | None
+) -> dict[str, object]:
     groups = collect_unique_run_targets(report)
-    selected_keys = set(report.get("execution_overview", {}).get("selected_target_keys", []))
-    requested_test_names = list(report.get("execution_overview", {}).get("requested_test_names", []))
+    selected_keys = set(
+        report.get("execution_overview", {}).get("selected_target_keys", [])
+    )
+    requested_test_names = list(
+        report.get("execution_overview", {}).get("requested_test_names", [])
+    )
     tests: list[dict[str, object]] = []
     for group in groups:
         representative = dict(group.get("representative", {}))
@@ -100,7 +110,9 @@ def build_selected_tests_payload(report: dict, selector_report_path: Path | None
             }
         )
     return {
-        "selector_report_path": str(selector_report_path) if selector_report_path is not None else "",
+        "selector_report_path": str(selector_report_path)
+        if selector_report_path is not None
+        else "",
         "available_target_count": len(groups),
         "selected_target_count": len(selected_keys),
         "requested_test_names": requested_test_names,
@@ -108,13 +120,17 @@ def build_selected_tests_payload(report: dict, selector_report_path: Path | None
     }
 
 
-def write_selected_tests_report(report: dict, selector_report_path: Path | None) -> Path | None:
+def write_selected_tests_report(
+    report: dict, selector_report_path: Path | None
+) -> Path | None:
     target = resolve_selected_tests_output_path(selector_report_path)
     if target is None:
         return None
     payload = build_selected_tests_payload(report, selector_report_path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    target.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     return target
 
 
@@ -143,7 +159,12 @@ def resolve_selector_report_input(
         return Path(str(candidate)).expanduser().resolve()
     manifest_path = manifest.get("_manifest_path")
     if manifest_path:
-        return Path(str(manifest_path)).expanduser().resolve().with_name("selector_report.json")
+        return (
+            Path(str(manifest_path))
+            .expanduser()
+            .resolve()
+            .with_name("selector_report.json")
+        )
     raise FileNotFoundError(f"No selector report path was recorded in {run_store_root}")
 
 
@@ -161,8 +182,16 @@ def run_session_from_report(report: dict, report_path: Path) -> RunSession | Non
     run_dir_value = selector_run.get("run_dir")
     report_value = selector_run.get("selector_report_path")
     manifest_value = selector_run.get("manifest_path")
-    run_dir = Path(str(run_dir_value)).expanduser().resolve() if run_dir_value else report_path.parent.resolve()
-    selector_report_path = Path(str(report_value)).expanduser().resolve() if report_value else report_path.resolve()
+    run_dir = (
+        Path(str(run_dir_value)).expanduser().resolve()
+        if run_dir_value
+        else report_path.parent.resolve()
+    )
+    selector_report_path = (
+        Path(str(report_value)).expanduser().resolve()
+        if report_value
+        else report_path.resolve()
+    )
     manifest_path = (
         Path(str(manifest_value)).expanduser().resolve()
         if manifest_value

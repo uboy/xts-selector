@@ -14,28 +14,18 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from arkui_xts_selector.graph.adapters import build_button_modifier_static_graph
 from arkui_xts_selector.graph.coverage_relation import (
-    CoverageRelation,
     build_selection_result,
     resolve_coverage_relations,
 )
-from arkui_xts_selector.graph.schema import EdgeType, Graph
 from arkui_xts_selector.graph.validation import (
-    validate_graph,
     validate_must_run_candidate,
 )
 from arkui_xts_selector.model.api import ApiEntityId
-from arkui_xts_selector.model.evidence import Evidence
 from arkui_xts_selector.model.selection import (
-    RunnabilityState,
-    SelectionCandidate,
     SelectionResult,
-    SemanticBucket,
 )
 from arkui_xts_selector.model.usage import (
     ApiUsageSignature,
-    ArgumentShape,
-    CoverageEquivalenceClass,
-    UsageKind,
 )
 
 
@@ -65,8 +55,7 @@ class SliceAMustRunTests(unittest.TestCase):
     def test_reaches_must_run(self) -> None:
         """Slice A graph path reaches semantic must_run candidate."""
         buckets = {r.semantic_bucket for r in self.results}
-        self.assertIn("must_run", buckets,
-                       f"Expected must_run in {buckets}")
+        self.assertIn("must_run", buckets, f"Expected must_run in {buckets}")
 
     def test_must_run_result_has_confirmed_runnability(self) -> None:
         """The must_run result should have confirmed runnability."""
@@ -94,7 +83,8 @@ class SliceAMustRunTests(unittest.TestCase):
             )
             error_rules = [f.rule for f in findings if f.severity == "error"]
             self.assertEqual(
-                error_rules, [],
+                error_rules,
+                [],
                 f"must_run candidate validation errors: {error_rules}",
             )
 
@@ -119,8 +109,14 @@ class ApiUsageSignatureTests(unittest.TestCase):
         for rel in self.relations:
             self.assertIn(
                 rel.usage_signature.usage_kind,
-                ("method_call", "static_modifier", "chained_modifier",
-                 "member_access", "component_instantiation", "event_handler"),
+                (
+                    "method_call",
+                    "static_modifier",
+                    "chained_modifier",
+                    "member_access",
+                    "component_instantiation",
+                    "event_handler",
+                ),
                 f"unexpected usage_kind: {rel.usage_signature.usage_kind}",
             )
 
@@ -159,6 +155,7 @@ class CoverageEquivalenceTests(unittest.TestCase):
         self.assertEqual(sig.usage_kind, "harness_only")
         # Must not produce must_run via bucket gate
         from arkui_xts_selector.graph.coverage_relation import _assign_bucket
+
         bucket = _assign_bucket(
             source_impact_confidence="strong",
             consumer_usage_confidence="strong",
@@ -169,7 +166,10 @@ class CoverageEquivalenceTests(unittest.TestCase):
 
     def test_unknown_argument_shape_not_exact_same(self) -> None:
         """unknown argument_shape should not produce exact_api_same_usage_shape."""
-        from arkui_xts_selector.graph.coverage_relation import _determine_coverage_equivalence
+        from arkui_xts_selector.graph.coverage_relation import (
+            _determine_coverage_equivalence,
+        )
+
         eq = _determine_coverage_equivalence(
             usage_kind="import",
             argument_shape="unknown",
@@ -179,7 +179,10 @@ class CoverageEquivalenceTests(unittest.TestCase):
         self.assertNotEqual(eq, "exact_api_same_usage_shape")
 
     def test_no_args_strong_confidence_direct_usage_is_exact_same(self) -> None:
-        from arkui_xts_selector.graph.coverage_relation import _determine_coverage_equivalence
+        from arkui_xts_selector.graph.coverage_relation import (
+            _determine_coverage_equivalence,
+        )
+
         eq = _determine_coverage_equivalence(
             usage_kind="method_call",
             argument_shape="no_args",
@@ -188,7 +191,10 @@ class CoverageEquivalenceTests(unittest.TestCase):
         self.assertEqual(eq, "exact_api_same_usage_shape")
 
     def test_medium_confidence_is_same_modifier_family(self) -> None:
-        from arkui_xts_selector.graph.coverage_relation import _determine_coverage_equivalence
+        from arkui_xts_selector.graph.coverage_relation import (
+            _determine_coverage_equivalence,
+        )
+
         eq = _determine_coverage_equivalence(
             usage_kind="method_call",
             argument_shape="no_args",
@@ -202,6 +208,7 @@ class BucketGatePolicyTests(unittest.TestCase):
 
     def test_strong_strong_exact_same_is_must_run(self) -> None:
         from arkui_xts_selector.graph.coverage_relation import _assign_bucket
+
         self.assertEqual(
             _assign_bucket(
                 source_impact_confidence="strong",
@@ -213,6 +220,7 @@ class BucketGatePolicyTests(unittest.TestCase):
 
     def test_strong_medium_is_recommended(self) -> None:
         from arkui_xts_selector.graph.coverage_relation import _assign_bucket
+
         self.assertEqual(
             _assign_bucket(
                 source_impact_confidence="strong",
@@ -224,6 +232,7 @@ class BucketGatePolicyTests(unittest.TestCase):
 
     def test_weak_weak_is_possible(self) -> None:
         from arkui_xts_selector.graph.coverage_relation import _assign_bucket
+
         self.assertEqual(
             _assign_bucket(
                 source_impact_confidence="weak",
@@ -235,6 +244,7 @@ class BucketGatePolicyTests(unittest.TestCase):
 
     def test_broad_fallback_is_possible(self) -> None:
         from arkui_xts_selector.graph.coverage_relation import _assign_bucket
+
         self.assertEqual(
             _assign_bucket(
                 source_impact_confidence="strong",
@@ -246,6 +256,7 @@ class BucketGatePolicyTests(unittest.TestCase):
 
     def test_unresolved_coverage_is_unresolved(self) -> None:
         from arkui_xts_selector.graph.coverage_relation import _assign_bucket
+
         self.assertEqual(
             _assign_bucket(
                 source_impact_confidence="strong",
@@ -277,7 +288,8 @@ class BucketGatePolicyTests(unittest.TestCase):
         )
         rules = [f.rule for f in findings if f.severity == "error"]
         self.assertIn(
-            "must_run_import_only_non_module", rules,
+            "must_run_import_only_non_module",
+            rules,
             "Import-only evidence on a non-module API must be rejected; "
             "see docs/TARGET_ARCHITECTURE.md::F.BucketGatePolicy.",
         )
@@ -304,6 +316,7 @@ class ImportOnlyButtonModifierTests(unittest.TestCase):
         from arkui_xts_selector.graph.adapters import (
             build_button_modifier_import_only_graph,
         )
+
         cls.graph = build_button_modifier_import_only_graph()
         cls.modifier_id = _button_modifier_id()
         cls.relations = resolve_coverage_relations(cls.graph, cls.modifier_id)
@@ -320,7 +333,8 @@ class ImportOnlyButtonModifierTests(unittest.TestCase):
         """argument_shape must NOT be synthesized from an import statement."""
         for rel in self.relations:
             self.assertNotEqual(
-                rel.usage_signature.argument_shape, "no_args",
+                rel.usage_signature.argument_shape,
+                "no_args",
                 "argument_shape=no_args was synthesized from an import "
                 "statement; this is the very false-precision blocker we "
                 "are closing.",
@@ -328,8 +342,9 @@ class ImportOnlyButtonModifierTests(unittest.TestCase):
 
     def test_never_reaches_must_run(self) -> None:
         buckets = {r.semantic_bucket for r in self.results}
-        self.assertNotIn("must_run", buckets,
-                         f"Import-only evidence reached must_run: {buckets}")
+        self.assertNotIn(
+            "must_run", buckets, f"Import-only evidence reached must_run: {buckets}"
+        )
 
     def test_lands_in_recommended_or_possible(self) -> None:
         for r in self.results:

@@ -54,7 +54,9 @@ def _candidate_hdc_library_dirs(hdc_path: Path | str | None = None) -> list[Path
 
 
 def resolve_hdc_library_dir(hdc_path: Path | str | None = None) -> str | None:
-    explicit = str(os.environ.get(HDC_LIBRARY_PATH_ENV) or os.environ.get("HDC_LIBRARY_PATH") or "").strip()
+    explicit = str(
+        os.environ.get(HDC_LIBRARY_PATH_ENV) or os.environ.get("HDC_LIBRARY_PATH") or ""
+    ).strip()
     if explicit:
         candidate = Path(explicit).expanduser()
         if candidate.exists():
@@ -173,8 +175,8 @@ def ensure_hdc_wrapper(
                 '  if [ "$arg" = "-s" ] && [ $((i + 1)) -lt ${#args[@]} ]; then',
                 '    next="${args[$((i + 1))]}"',
                 '    case "$next" in',
-                "      *:*) translated+=(\"$arg\" \"$next\") ;;",
-                "      *) translated+=(\"-t\" \"$next\") ;;",
+                '      *:*) translated+=("$arg" "$next") ;;',
+                '      *) translated+=("-t" "$next") ;;',
                 "    esac",
                 "    i=$((i + 2))",
                 "    continue",

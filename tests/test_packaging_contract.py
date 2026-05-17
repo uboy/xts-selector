@@ -20,9 +20,11 @@ class PackagingContractTests(unittest.TestCase):
         self.assertIn("--noconfirm", text)
         self.assertIn("--onefile", text)
         self.assertIn('ARTIFACT_PATH="${DIST_DIR}/arkui-xts-selector"', text)
-        self.assertIn('ENTRY_SCRIPT="${PROJECT_DIR}/scripts/pyinstaller_entry.py"', text)
+        self.assertIn(
+            'ENTRY_SCRIPT="${PROJECT_DIR}/scripts/pyinstaller_entry.py"', text
+        )
         self.assertIn('--paths "${SRC_DIR}"', text)
-        self.assertNotIn('src/arkui_xts_selector/__main__.py', text)
+        self.assertNotIn("src/arkui_xts_selector/__main__.py", text)
         self.assertIn('"${ARTIFACT_PATH}" --help >/dev/null', text)
         self.assertIn("printf 'built: %s", text)
 
@@ -31,13 +33,15 @@ class PackagingContractTests(unittest.TestCase):
         self.assertIn("--clean", text)
         self.assertIn("--noconfirm", text)
         self.assertIn("--onefile", text)
-        self.assertIn('arkui-xts-selector.exe', text)
-        self.assertIn('$EntryScript = Join-Path $ProjectDir "scripts/pyinstaller_entry.py"', text)
-        self.assertIn('--paths $SrcDir', text)
+        self.assertIn("arkui-xts-selector.exe", text)
+        self.assertIn(
+            '$EntryScript = Join-Path $ProjectDir "scripts/pyinstaller_entry.py"', text
+        )
+        self.assertIn("--paths $SrcDir", text)
         self.assertIn('& $Python -c "import PyInstaller" *> $null', text)
-        self.assertNotIn('src/arkui_xts_selector/__main__.py', text)
-        self.assertIn('& $ArtifactPath --help | Out-Null', text)
-        self.assertIn('Test-Path -LiteralPath $ArtifactPath', text)
+        self.assertNotIn("src/arkui_xts_selector/__main__.py", text)
+        self.assertIn("& $ArtifactPath --help | Out-Null", text)
+        self.assertIn("Test-Path -LiteralPath $ArtifactPath", text)
 
     def test_pyinstaller_entry_uses_absolute_package_import(self) -> None:
         text = ENTRY.read_text(encoding="utf-8")

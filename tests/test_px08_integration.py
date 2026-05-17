@@ -1,5 +1,5 @@
 """Integration test for PX-08: Koala bridge bounded targets in pr_resolver."""
-import pytest
+
 from arkui_xts_selector.indexing.pr_resolver import resolve_pr_with_context
 from arkui_xts_selector.indexing.inverted_index import InvertedIndex
 from arkui_xts_selector.indexing.ace_indexer import AceIndexResult
@@ -21,8 +21,16 @@ def test_bridge_with_family_resolves_to_consumers():
     inverted = InvertedIndex()
     inverted.by_api = {
         "api:v1:button": [
-            MockConsumer("test/xts/acts/ace_ets_module_button_nowear_api2_static", "component_construction", "medium"),
-            MockConsumer("test/xts/acts/ace_ets_module_button_nowear_api3_static", "attribute_method", "medium"),
+            MockConsumer(
+                "test/xts/acts/ace_ets_module_button_nowear_api2_static",
+                "component_construction",
+                "medium",
+            ),
+            MockConsumer(
+                "test/xts/acts/ace_ets_module_button_nowear_api3_static",
+                "attribute_method",
+                "medium",
+            ),
         ]
     }
     inverted._name_index = {}  # Empty name index

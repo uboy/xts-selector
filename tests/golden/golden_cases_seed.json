@@ -1,0 +1,2761 @@
+{
+  "schema_version": "golden-test-cases-v3",
+  "generated_at": "2026-05-17",
+  "description": "Expanded golden corpus: 40 manual_verified + 12 needs_review. All manual_verified have >=2 evidence types (not path_layer).",
+  "cases": [
+    {
+      "case_id": "button_pattern_file_001",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Button",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Button",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/button.d.ts",
+              "line": 588,
+              "note": "ButtonInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.h",
+              "line": 38,
+              "note": "ButtonPattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_layout/ace_ets_module_layout_api20_static/entry/src/main/src/test/BoxAlign/ButtonAlignTest.ets",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Button"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_button"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "slider_pattern_file_002",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/slider_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Slider",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Slider",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/slider.d.ts",
+              "line": 945,
+              "note": "SliderInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/slider_pattern.h",
+              "line": 37,
+              "note": "SliderPattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_commonAttrsDialog/ace_ets_module_commonAttrsDialog_api12/entry/src/main/ets/test/slider/sliderInteractionModeTest.test.ets",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Slider"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_slider"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "tabs_pattern_file_005",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/tabs/tabs_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Tabs",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Tabs",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/tabs.d.ts",
+              "line": 632,
+              "note": "TabsInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/tabs/tabs_pattern.h",
+              "line": 41,
+              "note": "TabsPattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_tabs_static/entry/src/main/ets/MainAbility/common/Log.ets",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Tabs"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_tabs"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "swiper_pattern_file_007",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/swiper/swiper_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Swiper",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Swiper",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/swiper.d.ts",
+              "line": 1221,
+              "note": "SwiperInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/swiper/swiper_pattern.h",
+              "line": 67,
+              "note": "SwiperPattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_swiper/ace_ets_module_swiper_api24_static/entry/src/main/ets/MainAbility/common/Log.ets",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Swiper"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_swiper"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "image_pattern_file_008",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/image/image_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Image",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Image",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/image.d.ts",
+              "line": 675,
+              "note": "ImageInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/image/image_pattern.h",
+              "line": 60,
+              "note": "ImagePattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_draw/ace_ets_module_draw_api20_static/entry/src/main/src/test/CanvasRenderingContext2D/StartImageAnalyzerErrorCodeTest.ets",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Image"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_image"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "text_pattern_file_009",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text/text_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Text",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Text",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/text.d.ts",
+              "line": 86,
+              "note": "TextInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text/text_pattern.h",
+              "line": 83,
+              "note": "TextPattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_common_static/entry/src/main/src/test/TextContentControllerBaseTest/TextContentControllerBase.test.ets",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Text"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_text"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "list_pattern_file_026",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/list/list_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "List",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "List",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/list.d.ts",
+              "line": 1297,
+              "note": "ListInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/list/list_pattern.h",
+              "line": 56,
+              "note": "ListPattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_scroll/ace_ets_module_scroll_list/entry/src/main/ets/MainAbility/pages/List_aspectRatio/List_aspectRatio/List_aspectRatio_width.ets",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "List"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_list"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "grid_pattern_file_027",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/grid/grid_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Grid",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Grid",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/grid.d.ts",
+              "line": 238,
+              "note": "GridInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/grid/grid_pattern.h",
+              "line": 34,
+              "note": "GridPattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_grid_static/entry/src/main/ets/MainAbility/pages/Grid/GridIndex.ets",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Grid"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_grid"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "checkbox_pattern_file_028",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/checkbox/checkbox_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Checkbox",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Checkbox",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/checkbox.d.ts",
+              "line": 196,
+              "note": "CheckboxInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/checkbox/checkbox_pattern.h",
+              "line": 34,
+              "note": "CheckboxPattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_ux_five/ace_ets_component_Checkbox_static/entry/src/main/ets/MainAbility/pages/index/Index.ets",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Checkbox"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_checkbox"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "radio_pattern_file_029",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/radio/radio_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Radio",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Radio",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/radio.d.ts",
+              "line": 296,
+              "note": "RadioInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/radio/radio_pattern.h",
+              "line": 40,
+              "note": "RadioPattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_dialog/ace_ets_module_dialog_radio",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Radio"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_radio"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "select_pattern_file_030",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/select/select_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Select",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Select",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/select.d.ts",
+              "line": 127,
+              "note": "SelectInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/select/select_pattern.h",
+              "line": 49,
+              "note": "SelectPattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_select",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Select"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_select"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "progress_pattern_file_031",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/progress/progress_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Progress",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Progress",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/progress.d.ts",
+              "line": 1388,
+              "note": "ProgressInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/progress/progress_pattern.h",
+              "line": 41,
+              "note": "ProgressPattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_loadingProgress/ace_ets_module_loadingProgress_api12_static",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Progress"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_progress"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "search_pattern_file_032",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/search/search_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Search",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Search",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/search.d.ts",
+              "line": 512,
+              "note": "SearchInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/search/search_pattern.h",
+              "line": 37,
+              "note": "SearchPattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_search_api24_static",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Search"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_search"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "scroll_pattern_file_033",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/scroll/scroll_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Scroll",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Scroll",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/scroll.d.ts",
+              "line": 1243,
+              "note": "ScrollInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/scroll/scroll_pattern.h",
+              "line": 44,
+              "note": "ScrollPattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_scroll",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Scroll"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_scroll"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "toggle_pattern_file_034",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/toggle/switch_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Toggle",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Toggle",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/toggle.d.ts",
+              "line": 379,
+              "note": "ToggleInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/toggle/switch_pattern.h",
+              "line": 36,
+              "note": "TogglePattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_dialog/ace_ets_module_dialog_toggle",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Toggle"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_toggle"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "menu_pattern_file_035",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/menu/menu_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Menu",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Menu",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/menu.d.ts",
+              "line": 23,
+              "note": "MenuInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/menu/menu_pattern.h",
+              "line": 76,
+              "note": "MenuPattern class declared in pattern header"
+            },
+            {
+              "type": "xts_usage",
+              "path": "test/xts/acts/arkui/ace_ets_module_ui/ace_ets_module_dialog/ace_ets_module_menu",
+              "note": "Component used in XTS test"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Menu"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_menu"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level pattern change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "button_model_file_036",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Button",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Button",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/button.d.ts",
+              "line": null,
+              "note": "ButtonInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_model_ng.h",
+              "line": 38,
+              "note": "ButtonModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Button"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "slider_model_file_037",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/slider_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Slider",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Slider",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/slider.d.ts",
+              "line": null,
+              "note": "SliderInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/slider_model_ng.h",
+              "line": 38,
+              "note": "SliderModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Slider"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "swiper_model_file_038",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/swiper/swiper_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Swiper",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Swiper",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/swiper.d.ts",
+              "line": null,
+              "note": "SwiperInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/swiper/swiper_model_ng.h",
+              "line": 31,
+              "note": "SwiperModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Swiper"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "image_model_file_039",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/image/image_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Image",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Image",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/image.d.ts",
+              "line": null,
+              "note": "ImageInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/image/image_model_ng.h",
+              "line": 28,
+              "note": "ImageModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Image"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "text_model_file_040",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text/text_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Text",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Text",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/text.d.ts",
+              "line": null,
+              "note": "TextInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text/text_model_ng.h",
+              "line": 29,
+              "note": "TextModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Text"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "list_model_file_041",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/list/list_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "List",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "List",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/list.d.ts",
+              "line": null,
+              "note": "ListInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/list/list_model_ng.h",
+              "line": 25,
+              "note": "ListModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "List"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "grid_model_file_042",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/grid/grid_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Grid",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Grid",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/grid.d.ts",
+              "line": null,
+              "note": "GridInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/grid/grid_model_ng.h",
+              "line": 25,
+              "note": "GridModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Grid"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "checkbox_model_file_043",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/checkbox/checkbox_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Checkbox",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Checkbox",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/checkbox.d.ts",
+              "line": null,
+              "note": "CheckboxInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/checkbox/checkbox_model_ng.h",
+              "line": 37,
+              "note": "CheckboxModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Checkbox"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "button_pattern_symbol_019",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "symbol",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp",
+        "symbol": "ButtonPattern::OnModifyDone",
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Button",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "symbol_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Button",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/button.d.ts",
+              "line": 588,
+              "note": "ButtonInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.h",
+              "line": 38,
+              "note": "ButtonPattern class declared in pattern header"
+            },
+            {
+              "type": "source_symbol",
+              "symbol": "ButtonPattern::OnModifyDone",
+              "note": "Symbol-level change"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Button"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "required",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_button"
+        ]
+      },
+      "negative_expectations": [],
+      "notes": "Symbol-level change in Button pattern. Strong confidence: 3 evidence types."
+    },
+    {
+      "case_id": "native_node_accessor_011",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/base/frame_node.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": null,
+        "layer": "native_node_accessor",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": true
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "broad_infra_must_not_produce_exact_api",
+          "description": "Broad infra should not produce specific component APIs"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "dynamic_jsview_file_012",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/jsview/js_view.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": null,
+        "layer": "dynamic_jsview",
+        "surface": "dynamic",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": true
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "broad_infra_must_not_produce_exact_api",
+          "description": "Broad infra should not produce specific component APIs"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "broad_infra_pipeline_013",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/pipeline/pipeline_context.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": null,
+        "layer": "infra",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": true
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "broad_infra_must_not_produce_exact_api",
+          "description": "Broad infra should not produce specific component APIs"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "broad_infra_render_node_018",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/pipeline/base/render_node.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": null,
+        "layer": "infra",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": true
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "broad_infra_must_not_produce_exact_api",
+          "description": "Broad infra should not produce specific component APIs"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "content_modifier_file_010",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/interfaces/inner_api/ace_kit/src/view/draw/content_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": null,
+        "layer": "native_modifier",
+        "surface": "static",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": true
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "broad_infra_must_not_produce_exact_api",
+          "description": "Broad infra should not produce specific component APIs"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "broad_infra_property_025",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/property/property.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": null,
+        "layer": "infra",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": true
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "broad_infra_must_not_produce_exact_api",
+          "description": "Broad infra should not produce specific component APIs"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "menuitem_model_file_003",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/menu/menu_item/menu_item_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "MenuItem",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "MenuItem",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "type": "path_layer",
+              "path": "frameworks/core/components_ng/pattern/menu/menu_item/menu_item_model.h",
+              "note": "Selector gap: model files not indexed"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "MenuItem"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": "Selector gap: model files not indexed"
+    },
+    {
+      "case_id": "textinput_model_file_006",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text_field/text_field_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "TextInput",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "TextInput",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "type": "path_layer",
+              "path": "frameworks/core/components_ng/pattern/text_field/text_field_model.h",
+              "note": "Selector gap: model files not indexed"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "TextInput"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": "Selector gap: model files not indexed"
+    },
+    {
+      "case_id": "navigation_native_modifier_004",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/node/navigation_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Navigation",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Navigation",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "type": "path_layer",
+              "path": "frameworks/core/interfaces/native/node/navigation_modifier.cpp",
+              "note": "Path+API fixed, needs re-validation"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Navigation"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": "Path+API fixed, needs re-validation"
+    },
+    {
+      "case_id": "navigation_pattern_file_016",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/navigation/navigation_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Navigation",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Navigation",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "type": "path_layer",
+              "path": "frameworks/core/components_ng/pattern/navigation/navigation_pattern.cpp",
+              "note": "Path fixed, needs re-validation"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Navigation"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": "Path fixed, needs re-validation"
+    },
+    {
+      "case_id": "navdestination_pattern_file_017",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/navrouter/navdestination_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "NavDestination",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "NavDestination",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "type": "path_layer",
+              "path": "frameworks/core/components_ng/pattern/navrouter/navdestination_pattern.cpp",
+              "note": "Naming mismatch: Navdestination vs NavDestination"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "NavDestination"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": "Naming mismatch: Navdestination vs NavDestination"
+    },
+    {
+      "case_id": "slider_model_file_020",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/slider_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Slider",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Slider",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "type": "path_layer",
+              "path": "frameworks/core/components_ng/pattern/slider/slider_model.h",
+              "note": "Selector gap: model files not indexed"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Slider"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": "Selector gap: model files not indexed"
+    },
+    {
+      "case_id": "button_modifier_file_014",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/node/button_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Button",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Button",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "type": "path_layer",
+              "path": "frameworks/core/interfaces/native/node/button_modifier.cpp",
+              "note": "Path+API fixed, needs re-validation"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Button"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": "Path+API fixed, needs re-validation"
+    },
+    {
+      "case_id": "slider_modifier_file_015",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/slider_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Slider",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Slider",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "type": "path_layer",
+              "path": "frameworks/core/interfaces/native/implementation/slider_modifier.cpp",
+              "note": "Path+API fixed, needs re-validation"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Slider"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": "Path+API fixed, needs re-validation"
+    },
+    {
+      "case_id": "textinput_modifier_file_021",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/text_input_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "TextInput",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "TextInput",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "type": "path_layer",
+              "path": "frameworks/core/interfaces/native/implementation/text_input_modifier.cpp",
+              "note": "Path+API fixed, needs re-validation"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "TextInput"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": "Path+API fixed, needs re-validation"
+    },
+    {
+      "case_id": "swiper_modifier_file_022",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/swiper_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Swiper",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Swiper",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "type": "path_layer",
+              "path": "frameworks/core/interfaces/native/implementation/swiper_modifier.cpp",
+              "note": "Path+API fixed, needs re-validation"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Swiper"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": "Path+API fixed, needs re-validation"
+    },
+    {
+      "case_id": "image_modifier_file_023",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/image_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Image",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Image",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "type": "path_layer",
+              "path": "frameworks/core/interfaces/native/implementation/image_modifier.cpp",
+              "note": "Path+API fixed, needs re-validation"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Image"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": "Path+API fixed, needs re-validation"
+    },
+    {
+      "case_id": "text_modifier_file_024",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/text_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Text",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Text",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "medium",
+          "evidence": [
+            {
+              "type": "path_layer",
+              "path": "frameworks/core/interfaces/native/implementation/text_modifier.cpp",
+              "note": "Path+API fixed, needs re-validation"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Text"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": "Path+API fixed, needs re-validation"
+    },
+    {
+      "case_id": "radio_model_file_044",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/radio/radio_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Radio",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Radio",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/radio.d.ts",
+              "note": "RadioInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/radio/radio_model_ng.h",
+              "line": 40,
+              "note": "RadioModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Radio"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "select_model_file_045",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/select/select_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Select",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Select",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/select.d.ts",
+              "note": "SelectInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/select/select_model_ng.h",
+              "line": 43,
+              "note": "SelectModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Select"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "progress_model_file_046",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/progress/progress_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Progress",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Progress",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/progress.d.ts",
+              "note": "ProgressInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/progress/progress_model_ng.h",
+              "line": 24,
+              "note": "ProgressModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Progress"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "search_model_file_047",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/search/search_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Search",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Search",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/search.d.ts",
+              "note": "SearchInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/search/search_model_ng.h",
+              "line": 28,
+              "note": "SearchModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Search"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "scroll_model_file_048",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/scroll/scroll_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Scroll",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Scroll",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/scroll.d.ts",
+              "note": "ScrollInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/scroll/scroll_model_ng.h",
+              "line": 24,
+              "note": "ScrollModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Scroll"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "toggle_model_file_049",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/toggle/toggle_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Toggle",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Toggle",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/toggle.d.ts",
+              "note": "ToggleInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/toggle/toggle_model_ng.h",
+              "line": 30,
+              "note": "ToggleModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Toggle"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "menu_model_file_050",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/menu/menu_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Menu",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Menu",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/menu.d.ts",
+              "note": "MenuInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/menu/menu_model_ng.h",
+              "line": 22,
+              "note": "MenuModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Menu"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "slider_model_ng_file_051",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/slider_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Slider",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Slider",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/slider.d.ts",
+              "note": "SliderInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/slider_model_ng.h",
+              "line": 38,
+              "note": "SliderModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Slider"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    },
+    {
+      "case_id": "tabs_model_ng_file_052",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/tabs/tabs_model_ng.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Tabs",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Tabs",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/tabs.d.ts",
+              "note": "TabsInterface declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/tabs/tabs_model_ng.h",
+              "line": null,
+              "note": "TabsModelNG class declared in model header"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Tabs"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [],
+      "notes": ""
+    }
+  ]
+}

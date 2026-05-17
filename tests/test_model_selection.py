@@ -10,13 +10,9 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from arkui_xts_selector.model.api import ApiEntityId
 from arkui_xts_selector.model.selection import (
-    FalseNegativeRisk,
-    RunnabilityState,
     SelectionCandidate,
     SelectionResult,
-    SemanticBucket,
 )
-from arkui_xts_selector.model.usage import ApiUsageSignature
 
 
 class SemanticBucketRunnabilitySeparationTests(unittest.TestCase):
@@ -24,8 +20,11 @@ class SemanticBucketRunnabilitySeparationTests(unittest.TestCase):
 
     def _button_id(self) -> ApiEntityId:
         return ApiEntityId.from_parts(
-            namespace="arkui", surface="static", kind="component",
-            module="@ohos.arkui.component", public_name="Button",
+            namespace="arkui",
+            surface="static",
+            kind="component",
+            module="@ohos.arkui.component",
+            public_name="Button",
         )
 
     def test_must_run_with_unknown_runnability(self) -> None:
@@ -73,8 +72,11 @@ class SemanticBucketRunnabilitySeparationTests(unittest.TestCase):
 class SelectionCandidateTests(unittest.TestCase):
     def _button_id(self) -> ApiEntityId:
         return ApiEntityId.from_parts(
-            namespace="arkui", surface="static", kind="component",
-            module="@ohos.arkui.component", public_name="Button",
+            namespace="arkui",
+            surface="static",
+            kind="component",
+            module="@ohos.arkui.component",
+            public_name="Button",
         )
 
     def test_round_trip(self) -> None:

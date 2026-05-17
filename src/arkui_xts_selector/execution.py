@@ -17,8 +17,16 @@ from .build_state import (
     build_uninstall_bundle_shell_command,
     build_xdevice_command,
 )
-from .built_artifacts import resolve_target_artifact_availability, resolve_test_hap_names_from_artifact_index
-from .hdc_transport import build_hdc_command, build_hdc_env, ensure_hdc_wrapper, resolve_hdc_binary
+from .built_artifacts import (
+    resolve_target_artifact_availability,
+    resolve_test_hap_names_from_artifact_index,
+)
+from .hdc_transport import (
+    build_hdc_command,
+    build_hdc_env,
+    ensure_hdc_wrapper,
+    resolve_hdc_binary,
+)
 from .runtime_state import (
     InterprocessLockTimeout,
     acquire_device_lock,
@@ -93,7 +101,10 @@ def _daily_acts_fetch_recorded_in_report(report: dict[str, Any] | None) -> bool:
     ops = report.get("operations")
     if isinstance(ops, dict):
         dl = ops.get("download_daily_tests")
-        if isinstance(dl, dict) and str(dl.get("status", "")).strip().lower() == "ready":
+        if (
+            isinstance(dl, dict)
+            and str(dl.get("status", "")).strip().lower() == "ready"
+        ):
             return True
     daily = report.get("daily_prebuilt")
     if isinstance(daily, dict) and daily:
@@ -107,7 +118,9 @@ def _daily_acts_fetch_recorded_in_report(report: dict[str, Any] | None) -> bool:
     return False
 
 
-def resolve_local_test_hap_paths(acts_out_root: Path, test_haps: list[Any]) -> list[Path]:
+def resolve_local_test_hap_paths(
+    acts_out_root: Path, test_haps: list[Any]
+) -> list[Path]:
     """Map metadata ``test_haps`` entries to files under the ACTS output tree (usually ``testcases/*.hap``)."""
     root = acts_out_root.expanduser().resolve()
     tc = root / "testcases"
@@ -166,7 +179,11 @@ def resolve_devices(
     config_device: str | None,
 ) -> list[str]:
     explicit = normalize_device_tokens(cli_devices)
-    explicit.extend(device for device in read_devices_from_file(devices_from_path) if device not in explicit)
+    explicit.extend(
+        device
+        for device in read_devices_from_file(devices_from_path)
+        if device not in explicit
+    )
     if cli_device:
         for device in normalize_device_tokens([cli_device]):
             if device not in explicit:
@@ -194,7 +211,9 @@ def build_run_target_entry(
 ) -> dict[str, Any]:
     target_key = item.get("test_json") or item.get("project") or ""
     base_haps = [str(x) for x in (item.get("test_haps") or []) if str(x).strip()]
-    inferred_haps, hap_inference = resolve_test_hap_names_from_artifact_index(item, built_artifact_index)
+    inferred_haps, hap_inference = resolve_test_hap_names_from_artifact_index(
+        item, built_artifact_index
+    )
     test_haps = base_haps if base_haps else list(inferred_haps)
     test_haps_inference = "" if base_haps else hap_inference
     xdevice_module_name = item.get("xdevice_module_name")
@@ -205,7 +224,9 @@ def build_run_target_entry(
         "test_haps": test_haps,
         "xdevice_module_name": xdevice_module_name,
     }
-    availability = resolve_target_artifact_availability(item_for_availability, built_artifact_index)
+    availability = resolve_target_artifact_availability(
+        item_for_availability, built_artifact_index
+    )
     return {
         "target_key": target_key,
         "project": item["project"],
@@ -296,7 +317,9 @@ def _command_map_for_target(
     return {tool: command for tool, command in commands.items() if command}
 
 
-def _select_tool(commands: dict[str, str], run_tool: str) -> tuple[str, str] | tuple[None, None]:
+def _select_tool(
+    commands: dict[str, str], run_tool: str
+) -> tuple[str, str] | tuple[None, None]:
     if run_tool == "auto":
         for tool in _RUN_TOOL_ORDER:
             command = commands.get(tool)
@@ -309,7 +332,9 @@ def _select_tool(commands: dict[str, str], run_tool: str) -> tuple[str, str] | t
     return run_tool, command
 
 
-def _plan_devices_for_group(devices: list[str], group_index: int, shard_mode: str) -> list[str | None]:
+def _plan_devices_for_group(
+    devices: list[str], group_index: int, shard_mode: str
+) -> list[str | None]:
     if not devices:
         return [None]
     if shard_mode == "split":
@@ -351,10 +376,14 @@ def _target_name_aliases(target: dict[str, Any]) -> list[str]:
     return aliases
 
 
-def _group_matches_requested_test_names(group: dict[str, Any], requested_test_names: list[str]) -> bool:
+def _group_matches_requested_test_names(
+    group: dict[str, Any], requested_test_names: list[str]
+) -> bool:
     if not requested_test_names:
         return True
-    aliases = {alias.lower() for alias in _target_name_aliases(group.get("representative", {}))}
+    aliases = {
+        alias.lower() for alias in _target_name_aliases(group.get("representative", {}))
+    }
     if not aliases:
         return False
     for requested in requested_test_names:
@@ -370,7 +399,9 @@ def _matching_requested_names_for_group(
     """Ordered unique requested names that match this group's representative target aliases."""
     if not normalized_requested_test_names:
         return []
-    aliases = {alias.lower() for alias in _target_name_aliases(group.get("representative", {}))}
+    aliases = {
+        alias.lower() for alias in _target_name_aliases(group.get("representative", {}))
+    }
     if not aliases:
         return []
     matched: list[str] = []
@@ -424,7 +455,11 @@ def _planned_xdevice_result_path(
         or target.get("target_key")
     )
     device_fragment = _safe_fragment(device_label)
-    return (xdevice_reports_root / device_fragment / f"{plan_index:04d}_{slot_index:02d}_{name}").resolve()
+    return (
+        xdevice_reports_root
+        / device_fragment
+        / f"{plan_index:04d}_{slot_index:02d}_{name}"
+    ).resolve()
 
 
 def build_execution_plan(
@@ -472,7 +507,8 @@ def build_execution_plan(
         if selected_tool == "aa_test" and not skip_install:
             install_command = build_hdc_install_command(
                 bundle_name=target.get("bundle_name"),
-                module_name=target.get("driver_module_name") or target.get("xdevice_module_name"),
+                module_name=target.get("driver_module_name")
+                or target.get("xdevice_module_name"),
                 acts_out_root=acts_out_root,
                 hdc_path=hdc_path,
                 hdc_endpoint=hdc_endpoint,
@@ -480,7 +516,10 @@ def build_execution_plan(
             )
         if str(target.get("artifact_status") or "") == "missing":
             status = "unavailable"
-            reason = str(target.get("artifact_reason") or "target is absent from the current ACTS artifacts")
+            reason = str(
+                target.get("artifact_reason")
+                or "target is absent from the current ACTS artifacts"
+            )
             selected_tool = None
             command = ""
             install_command = None
@@ -494,7 +533,9 @@ def build_execution_plan(
         acts_root = (acts_out_root or (repo_root / "out/release/suites/acts")).resolve()
         hdc_wrapper_dir = ""
         if selected_tool in ("xdevice", "aa_test"):
-            wrapper = ensure_hdc_wrapper(acts_root, hdc_path=hdc_path, hdc_endpoint=hdc_endpoint)
+            wrapper = ensure_hdc_wrapper(
+                acts_root, hdc_path=hdc_path, hdc_endpoint=hdc_endpoint
+            )
             if wrapper is not None:
                 hdc_wrapper_dir = str(wrapper)
         report_suite_name = str(
@@ -513,7 +554,8 @@ def build_execution_plan(
                 "available_tools": sorted(commands.keys()),
                 "result_path": (
                     str(xdevice_report_path)
-                    if selected_tool in ("xdevice", "aa_test") and xdevice_report_path is not None
+                    if selected_tool in ("xdevice", "aa_test")
+                    and xdevice_report_path is not None
                     else ""
                 ),
                 "report_suite_name": report_suite_name,
@@ -531,7 +573,12 @@ def collect_unique_run_targets(report: dict[str, Any]) -> list[dict[str, Any]]:
     groups: dict[str, dict[str, Any]] = {}
     coverage_recommendations = report.get("coverage_recommendations", {})
     for target in coverage_recommendations.get("ordered_targets", []):
-        key = target.get("target_key") or target.get("test_json") or target.get("project") or ""
+        key = (
+            target.get("target_key")
+            or target.get("test_json")
+            or target.get("project")
+            or ""
+        )
         if not key:
             continue
         groups.setdefault(
@@ -551,7 +598,12 @@ def collect_unique_run_targets(report: dict[str, Any]) -> list[dict[str, Any]]:
         for entry in report.get(section_key, []):
             source_value = entry.get(source_field, "")
             for target in entry.get("run_targets", []):
-                key = target.get("target_key") or target.get("test_json") or target.get("project") or ""
+                key = (
+                    target.get("target_key")
+                    or target.get("test_json")
+                    or target.get("project")
+                    or ""
+                )
                 group = groups.setdefault(
                     key,
                     {
@@ -583,11 +635,33 @@ def select_target_keys_for_priority(
     coverage_recommendations: dict[str, Any],
     run_priority: str,
 ) -> list[str]:
-    required = [str(item) for item in coverage_recommendations.get("required_target_keys", []) if str(item)]
-    recommended = [str(item) for item in coverage_recommendations.get("recommended_target_keys", []) if str(item)]
-    additional = [str(item) for item in coverage_recommendations.get("recommended_additional_target_keys", []) if str(item)]
-    optional = [str(item) for item in coverage_recommendations.get("optional_target_keys", []) if str(item)]
-    ordered = [str(item) for item in coverage_recommendations.get("ordered_target_keys", []) if str(item)]
+    required = [
+        str(item)
+        for item in coverage_recommendations.get("required_target_keys", [])
+        if str(item)
+    ]
+    recommended = [
+        str(item)
+        for item in coverage_recommendations.get("recommended_target_keys", [])
+        if str(item)
+    ]
+    additional = [
+        str(item)
+        for item in coverage_recommendations.get(
+            "recommended_additional_target_keys", []
+        )
+        if str(item)
+    ]
+    optional = [
+        str(item)
+        for item in coverage_recommendations.get("optional_target_keys", [])
+        if str(item)
+    ]
+    ordered = [
+        str(item)
+        for item in coverage_recommendations.get("ordered_target_keys", [])
+        if str(item)
+    ]
     if run_priority == "required":
         return required
     if run_priority == "recommended":
@@ -619,7 +693,9 @@ def attach_execution_plan(
     coverage_recommendations = report.get("coverage_recommendations", {})
     required_keys = set(coverage_recommendations.get("required_target_keys", []))
     recommended_keys = set(coverage_recommendations.get("recommended_target_keys", []))
-    recommended_additional_keys = set(coverage_recommendations.get("recommended_additional_target_keys", []))
+    recommended_additional_keys = set(
+        coverage_recommendations.get("recommended_additional_target_keys", [])
+    )
     optional_keys = set(coverage_recommendations.get("optional_target_keys", []))
     has_explicit_coverage_plan = bool(
         required_keys
@@ -630,19 +706,25 @@ def attach_execution_plan(
         or coverage_recommendations.get("source_count")
         or coverage_recommendations.get("candidate_count")
     )
-    priority_keys = set(select_target_keys_for_priority(coverage_recommendations, run_priority))
+    priority_keys = set(
+        select_target_keys_for_priority(coverage_recommendations, run_priority)
+    )
     if priority_keys:
         default_groups = [group for group in groups if group["key"] in priority_keys]
     elif has_explicit_coverage_plan:
         default_groups = []
     else:
         default_groups = list(groups)
-    normalized_requested_test_names = normalize_requested_test_names(requested_test_names or [])
+    normalized_requested_test_names = normalize_requested_test_names(
+        requested_test_names or []
+    )
     if normalized_requested_test_names:
         default_groups = [
             group
             for group in default_groups
-            if _group_matches_requested_test_names(group, normalized_requested_test_names)
+            if _group_matches_requested_test_names(
+                group, normalized_requested_test_names
+            )
         ]
     if run_top_targets <= 0:
         selected_groups = default_groups
@@ -682,7 +764,9 @@ def attach_execution_plan(
         "requested_devices": list(devices),
         "unique_target_count": len(groups),
         "required_target_count": len(required_keys),
-        "recommended_target_count": len(recommended_keys) if has_explicit_coverage_plan else len(default_groups),
+        "recommended_target_count": len(recommended_keys)
+        if has_explicit_coverage_plan
+        else len(default_groups),
         "recommended_additional_target_count": len(recommended_additional_keys),
         "optional_target_count": len(optional_keys),
         "selected_target_count": len(selected_groups),
@@ -693,16 +777,22 @@ def attach_execution_plan(
 
 
 def collect_selected_execution_plans(report: dict[str, Any]) -> list[dict[str, Any]]:
-    selected_keys = set(report.get("execution_overview", {}).get("selected_target_keys", []))
+    selected_keys = set(
+        report.get("execution_overview", {}).get("selected_target_keys", [])
+    )
     plans: list[dict[str, Any]] = []
     for group in collect_unique_run_targets(report):
         if group["key"] not in selected_keys:
             continue
-        plans.extend(dict(item) for item in group["representative"].get("execution_plan", []))
+        plans.extend(
+            dict(item) for item in group["representative"].get("execution_plan", [])
+        )
     return plans
 
 
-def _tail_text(text: str | bytes | None, line_count: int = 40, char_limit: int = 4000) -> str:
+def _tail_text(
+    text: str | bytes | None, line_count: int = 40, char_limit: int = 4000
+) -> str:
     if text is None:
         return ""
     if isinstance(text, bytes):
@@ -770,9 +860,13 @@ def _aa_test_cleanup_installed_bundle(
         )
     except subprocess.TimeoutExpired:
         return "bm uninstall timed out"
-    combined = "\n".join(part for part in [str(r.stdout or ""), str(r.stderr or "")] if part)
+    combined = "\n".join(
+        part for part in [str(r.stdout or ""), str(r.stderr or "")] if part
+    )
     if r.returncode != 0:
-        return f"bm uninstall exited {r.returncode}: {_tail_text(combined, line_count=12)}"
+        return (
+            f"bm uninstall exited {r.returncode}: {_tail_text(combined, line_count=12)}"
+        )
     return ""
 
 
@@ -886,7 +980,9 @@ def _execute_plan_item(
                 "duration_s": round(time.monotonic() - install_started, 3),
             }
             if install_completed.returncode != 0:
-                install_stderr = _tail_text(install_completed.stderr or install_completed.stdout)
+                install_stderr = _tail_text(
+                    install_completed.stderr or install_completed.stdout
+                )
                 duration_s = round(time.monotonic() - started_monotonic, 3)
                 outcome = {
                     **item,
@@ -988,7 +1084,11 @@ def _execute_plan_item(
                                 },
                                 None,
                             )
-                        sub_t = None if deadline is None else max(0.05, deadline - time.monotonic())
+                        sub_t = (
+                            None
+                            if deadline is None
+                            else max(0.05, deadline - time.monotonic())
+                        )
                         try:
                             inst = subprocess.run(
                                 icmd,
@@ -1001,7 +1101,9 @@ def _execute_plan_item(
                             )
                         except subprocess.TimeoutExpired as exc:
                             duration_s = round(time.monotonic() - started_monotonic, 3)
-                            install_log.extend([str(exc.stdout or ""), str(exc.stderr or "")])
+                            install_log.extend(
+                                [str(exc.stdout or ""), str(exc.stderr or "")]
+                            )
                             return (
                                 {
                                     **item,
@@ -1009,7 +1111,8 @@ def _execute_plan_item(
                                     "returncode": None,
                                     "timed_out": True,
                                     "stdout_tail": _tail_text("\n".join(install_log)),
-                                    "stderr_tail": _tail_text(exc.stderr) or "hap install timed out",
+                                    "stderr_tail": _tail_text(exc.stderr)
+                                    or "hap install timed out",
                                     "case_summary": {},
                                     "started_at": started_at,
                                     "finished_at": _utc_now(),
@@ -1017,10 +1120,14 @@ def _execute_plan_item(
                                 },
                                 None,
                             )
-                        install_log.extend([str(inst.stdout or ""), str(inst.stderr or "")])
+                        install_log.extend(
+                            [str(inst.stdout or ""), str(inst.stderr or "")]
+                        )
                         if inst.returncode != 0:
                             duration_s = round(time.monotonic() - started_monotonic, 3)
-                            combined_install = "\n".join(part for part in install_log if part)
+                            combined_install = "\n".join(
+                                part for part in install_log if part
+                            )
                             return (
                                 {
                                     **item,
@@ -1028,7 +1135,8 @@ def _execute_plan_item(
                                     "returncode": inst.returncode,
                                     "timed_out": False,
                                     "stdout_tail": _tail_text(inst.stdout),
-                                    "stderr_tail": _tail_text(combined_install) or "hap install failed",
+                                    "stderr_tail": _tail_text(combined_install)
+                                    or "hap install failed",
                                     "case_summary": {},
                                     "started_at": started_at,
                                     "finished_at": _utc_now(),
@@ -1038,7 +1146,9 @@ def _execute_plan_item(
                             )
                     hap_installed_for_cleanup = True
 
-        main_timeout = None if deadline is None else max(0.05, deadline - time.monotonic())
+        main_timeout = (
+            None if deadline is None else max(0.05, deadline - time.monotonic())
+        )
         if deadline is not None and main_timeout <= 0.06:
             duration_s = round(time.monotonic() - started_monotonic, 3)
             return (
@@ -1067,10 +1177,16 @@ def _execute_plan_item(
         )
     except subprocess.TimeoutExpired as exc:
         stderr_tail = _tail_text(exc.stderr)
-        if hap_installed_for_cleanup and item.get("selected_tool") == "aa_test" and run_env is not None:
+        if (
+            hap_installed_for_cleanup
+            and item.get("selected_tool") == "aa_test"
+            and run_env is not None
+        ):
             note = _aa_test_cleanup_installed_bundle(item, hdc_path, run_env, deadline)
             if note:
-                stderr_tail = "\n".join(p for p in [stderr_tail, f"[hap cleanup] {note}"] if p).strip()
+                stderr_tail = "\n".join(
+                    p for p in [stderr_tail, f"[hap cleanup] {note}"] if p
+                ).strip()
         duration_s = round(time.monotonic() - started_monotonic, 3)
         outcome = {
             **item,
@@ -1092,14 +1208,19 @@ def _execute_plan_item(
         case_summary = _load_xdevice_case_summary(item.get("result_path"))
     status = "passed" if completed.returncode == 0 else "failed"
     combined_output = "\n".join(
-        part for part in [str(completed.stdout or ""), str(completed.stderr or "")] if part
+        part
+        for part in [str(completed.stdout or ""), str(completed.stderr or "")]
+        if part
     )
     if status == "passed" and case_summary is not None:
         has_case_failures = bool(
-            case_summary["fail_count"] or case_summary["blocked_count"] or case_summary["unknown_count"]
+            case_summary["fail_count"]
+            or case_summary["blocked_count"]
+            or case_summary["unknown_count"]
         )
         has_unavailable_without_tests = bool(
-            case_summary.get("unavailable_count", 0) > 0 and case_summary.get("total_tests", 0) == 0
+            case_summary.get("unavailable_count", 0) > 0
+            and case_summary.get("total_tests", 0) == 0
         )
         if has_case_failures or has_unavailable_without_tests:
             status = "failed"
@@ -1144,14 +1265,20 @@ def _execute_plan_item(
         if _aa_test_has_explicit_failure(combined_output):
             outcome["stderr_tail"] = _tail_text(combined_output)
         else:
-            outcome["stderr_tail"] = "aa_test returned 0 but produced no observable test execution evidence"
+            outcome["stderr_tail"] = (
+                "aa_test returned 0 but produced no observable test execution evidence"
+            )
     if (
         item.get("selected_tool") == "xdevice"
         and outcome["status"] == "failed"
         and completed.returncode == 0
         and not outcome["stderr_tail"]
     ):
-        if case_summary and case_summary.get("unavailable_count", 0) > 0 and case_summary.get("total_tests", 0) == 0:
+        if (
+            case_summary
+            and case_summary.get("unavailable_count", 0) > 0
+            and case_summary.get("total_tests", 0) == 0
+        ):
             message = str(case_summary.get("summary_message") or "").strip()
             outcome["stderr_tail"] = (
                 message
@@ -1162,16 +1289,25 @@ def _execute_plan_item(
         and item.get("selected_tool") == "aa_test"
         and run_env is not None
     ):
-        cleanup_note = _aa_test_cleanup_installed_bundle(item, hdc_path, run_env, deadline)
+        cleanup_note = _aa_test_cleanup_installed_bundle(
+            item, hdc_path, run_env, deadline
+        )
         if cleanup_note:
             outcome["stderr_tail"] = "\n".join(
-                part for part in [str(outcome.get("stderr_tail") or ""), f"[hap cleanup] {cleanup_note}"] if part
+                part
+                for part in [
+                    str(outcome.get("stderr_tail") or ""),
+                    f"[hap cleanup] {cleanup_note}",
+                ]
+                if part
             ).strip()
         outcome["duration_s"] = round(time.monotonic() - started_monotonic, 3)
     return outcome, case_summary
 
 
-def _merge_outcome_into_summary(summary: dict[str, Any], outcome: dict[str, Any]) -> None:
+def _merge_outcome_into_summary(
+    summary: dict[str, Any], outcome: dict[str, Any]
+) -> None:
     status = str(outcome.get("status") or "")
     if status == "passed":
         summary["passed"] += 1
@@ -1208,7 +1344,9 @@ def _load_xdevice_case_summary(result_path: str | None) -> dict[str, Any] | None
             if event == "start" and elem.tag in {"testsuites", "testsuite"}:
                 unavailable_text = str(elem.get("unavailable", "0") or "0")
                 if unavailable_text.isdigit():
-                    counts["unavailable_count"] = max(counts["unavailable_count"], int(unavailable_text))
+                    counts["unavailable_count"] = max(
+                        counts["unavailable_count"], int(unavailable_text)
+                    )
                 message = str(elem.get("message", "") or "").strip()
                 if message and not counts["summary_message"]:
                     counts["summary_message"] = message
@@ -1218,7 +1356,9 @@ def _load_xdevice_case_summary(result_path: str | None) -> dict[str, Any] | None
             if elem.tag != "testcase":
                 continue
             counts["total_tests"] += 1
-            outcome = _classify_xdevice_case(elem.get("status", ""), elem.get("result", ""))
+            outcome = _classify_xdevice_case(
+                elem.get("status", ""), elem.get("result", "")
+            )
             if outcome == "pass":
                 counts["pass_count"] += 1
             elif outcome == "fail":
@@ -1239,7 +1379,12 @@ def _parse_hdc_targets(output: str) -> list[str]:
     for raw_line in output.splitlines():
         line = raw_line.strip()
         lowered = line.lower()
-        if not line or lowered.startswith("list of") or lowered.startswith("[empty]") or lowered.startswith("there is no"):
+        if (
+            not line
+            or lowered.startswith("list of")
+            or lowered.startswith("[empty]")
+            or lowered.startswith("there is no")
+        ):
             continue
         device = line.split()[0]
         if device in seen:
@@ -1279,7 +1424,9 @@ def _query_device_release_line(
     except (OSError, subprocess.TimeoutExpired) as exc:
         return "", str(exc)
     if completed.returncode != 0:
-        return "", _tail_text(completed.stderr or completed.stdout) or str(completed.returncode)
+        return "", _tail_text(completed.stderr or completed.stdout) or str(
+            completed.returncode
+        )
     raw_value = (completed.stdout or "").strip()
     return _release_line_from_text(raw_value), raw_value
 
@@ -1292,8 +1439,12 @@ def preflight_execution(
     hdc_endpoint: str | None = None,
 ) -> dict[str, Any]:
     plans = collect_selected_execution_plans(report)
-    selected_tools = sorted({item.get("selected_tool", "") for item in plans if item.get("selected_tool")})
-    requested_devices = sorted({item.get("device") for item in plans if item.get("device")})
+    selected_tools = sorted(
+        {item.get("selected_tool", "") for item in plans if item.get("selected_tool")}
+    )
+    requested_devices = sorted(
+        {item.get("device") for item in plans if item.get("device")}
+    )
     warnings: list[str] = []
     errors: list[str] = []
 
@@ -1313,7 +1464,9 @@ def preflight_execution(
     }
     for tool in selected_tools:
         if not tool_availability.get(tool, False):
-            errors.append(f"required tool '{tool}' is unavailable in the current environment")
+            errors.append(
+                f"required tool '{tool}' is unavailable in the current environment"
+            )
 
     connected_devices: list[str] = []
     if selected_tools and ({"aa_test", "xdevice"} & set(selected_tools) or devices):
@@ -1339,23 +1492,39 @@ def preflight_execution(
                 if completed.returncode != 0:
                     errors.append(
                         "hdc list targets failed: "
-                        + (_tail_text(completed.stderr or completed.stdout) or str(completed.returncode))
+                        + (
+                            _tail_text(completed.stderr or completed.stdout)
+                            or str(completed.returncode)
+                        )
                     )
                 else:
                     connected_devices = _parse_hdc_targets(completed.stdout)
                     if requested_devices:
-                        missing_devices = [device for device in requested_devices if device not in connected_devices]
+                        missing_devices = [
+                            device
+                            for device in requested_devices
+                            if device not in connected_devices
+                        ]
                         if missing_devices:
                             errors.append(
-                                "requested devices are not connected: " + ", ".join(missing_devices)
+                                "requested devices are not connected: "
+                                + ", ".join(missing_devices)
                             )
                     elif not connected_devices and plans:
                         errors.append("no connected devices were detected via hdc")
 
-    daily_version_name = str(report.get("daily_prebuilt", {}).get("version_name", "")).strip()
+    daily_version_name = str(
+        report.get("daily_prebuilt", {}).get("version_name", "")
+    ).strip()
     expected_release = _release_line_from_text(daily_version_name)
-    devices_to_validate = requested_devices or (connected_devices[:1] if len(connected_devices) == 1 else [])
-    if expected_release and devices_to_validate and ({"aa_test", "xdevice"} & set(selected_tools)):
+    devices_to_validate = requested_devices or (
+        connected_devices[:1] if len(connected_devices) == 1 else []
+    )
+    if (
+        expected_release
+        and devices_to_validate
+        and ({"aa_test", "xdevice"} & set(selected_tools))
+    ):
         for device in devices_to_validate:
             detected_release, raw_value = _query_device_release_line(
                 device,
@@ -1387,6 +1556,7 @@ def preflight_execution(
             if "-tcpath" not in cmd:
                 continue
             import shlex
+
             try:
                 parts = shlex.split(cmd)
             except ValueError:
@@ -1399,7 +1569,9 @@ def preflight_execution(
                     checked_tc_paths.add(tc_path_str)
                     tc_path = Path(tc_path_str)
                     if not tc_path.is_dir():
-                        errors.append(f"ACTS inventory is unavailable: {tc_path} does not exist")
+                        errors.append(
+                            f"ACTS inventory is unavailable: {tc_path} does not exist"
+                        )
                     break
 
     return {
@@ -1453,7 +1625,9 @@ def execute_planned_targets(
         skip_install=skip_install,
     )
     groups = collect_unique_run_targets(report)
-    selected_keys = set(report.get("execution_overview", {}).get("selected_target_keys", []))
+    selected_keys = set(
+        report.get("execution_overview", {}).get("selected_target_keys", [])
+    )
     summary = {
         "selected_target_count": len(selected_keys),
         "planned_run_count": 0,
@@ -1493,7 +1667,9 @@ def execute_planned_targets(
                 _merge_outcome_into_summary(summary, outcome)
                 continue
             queue_key = str(item.get("device_label") or item.get("device") or "default")
-            pending_queues.setdefault(queue_key, []).append((group_key, item_index, dict(item)))
+            pending_queues.setdefault(queue_key, []).append(
+                (group_key, item_index, dict(item))
+            )
 
     run_label = str(report.get("selector_run", {}).get("label") or "")
 
@@ -1529,7 +1705,9 @@ def execute_planned_targets(
             return outcomes
         with lock:
             for group_key, item_index, item in queue_items:
-                outcome, _ = _execute_plan_item(item, timeout_value, hdc_path=hdc_path, report=report)
+                outcome, _ = _execute_plan_item(
+                    item, timeout_value, hdc_path=hdc_path, report=report
+                )
                 outcomes.append((group_key, item_index, outcome))
         return outcomes
 
@@ -1538,15 +1716,24 @@ def execute_planned_targets(
         if parallel_jobs > 1 and len(queue_items) > 1:
             max_workers = max(1, min(parallel_jobs, len(queue_items)))
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = [executor.submit(_run_device_queue, queue_label, items) for queue_label, items in queue_items]
+                futures = [
+                    executor.submit(_run_device_queue, queue_label, items)
+                    for queue_label, items in queue_items
+                ]
                 for future in futures:
                     for group_key, item_index, outcome in future.result():
-                        group_results.setdefault(group_key, []).append((item_index, outcome))
+                        group_results.setdefault(group_key, []).append(
+                            (item_index, outcome)
+                        )
                         _merge_outcome_into_summary(summary, outcome)
         else:
             for queue_label, items in queue_items:
-                for group_key, item_index, outcome in _run_device_queue(queue_label, items):
-                    group_results.setdefault(group_key, []).append((item_index, outcome))
+                for group_key, item_index, outcome in _run_device_queue(
+                    queue_label, items
+                ):
+                    group_results.setdefault(group_key, []).append(
+                        (item_index, outcome)
+                    )
                     _merge_outcome_into_summary(summary, outcome)
 
         for group in groups:
@@ -1555,12 +1742,19 @@ def execute_planned_targets(
                 continue
             ordered_results = [
                 dict(outcome)
-                for _, outcome in sorted(group_results.get(group_key, []), key=lambda item: item[0])
+                for _, outcome in sorted(
+                    group_results.get(group_key, []), key=lambda item: item[0]
+                )
             ]
             for target in group["targets"]:
                 target["execution_results"] = ordered_results
 
-        summary["has_failures"] = bool(summary["failed"] or summary["blocked"] or summary["timeout"] or summary["unavailable"])
+        summary["has_failures"] = bool(
+            summary["failed"]
+            or summary["blocked"]
+            or summary["timeout"]
+            or summary["unavailable"]
+        )
         report["execution_summary"] = summary
         overview = report.get("execution_overview", {})
         overview["executed"] = True

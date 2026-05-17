@@ -23,17 +23,22 @@ Checks:
   - Sufficient precision coverage (>=10% in strict mode, >=20% recommended)
   - Corpus not dominated by weak categories (none_required >60%, manual_review_only >50%)
 """
+
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 
 
 VALID_ANNOTATION_STATUSES = {"candidate", "auto_labeled", "human_reviewed", "approved"}
-VALID_EXPECTED_SELECTIONS = {"required_targets", "none_required", "manual_review_only", "broad_suite_required"}
+VALID_EXPECTED_SELECTIONS = {
+    "required_targets",
+    "none_required",
+    "manual_review_only",
+    "broad_suite_required",
+}
 
 ABSOLUTE_PATH_PREFIXES = [
     "/data/home/dmazur/proj/ohos_master/",
@@ -82,7 +87,9 @@ def validate_no_absolute_paths(pr: dict, index: int) -> list[str]:
     for field in ["must_run", "should_run", "must_not_run", "allowed_extra_targets"]:
         for val in reviewer.get(field, []):
             if _has_absolute_path(val):
-                errors.append(f"PR #{pr['pr_number']}: absolute path in reviewer_decision.{field}: {val}")
+                errors.append(
+                    f"PR #{pr['pr_number']}: absolute path in reviewer_decision.{field}: {val}"
+                )
 
     for f in pr.get("changed_files", []):
         if _has_absolute_path(f):
@@ -110,7 +117,9 @@ def validate_expected_selection(pr: dict) -> list[str]:
 
     sel = pr.get("expected_selection", "")
     # Allow "suggested: ..." prefix from auto-labeler
-    actual_sel = sel.replace("suggested: ", "") if sel.startswith("suggested: ") else sel
+    actual_sel = (
+        sel.replace("suggested: ", "") if sel.startswith("suggested: ") else sel
+    )
     if actual_sel and actual_sel not in VALID_EXPECTED_SELECTIONS:
         errors.append(f"PR #{pr['pr_number']}: invalid expected_selection '{sel}'")
     return errors
@@ -138,12 +147,16 @@ def validate_approved_pr(pr: dict) -> list[str]:
 
     # required_targets must have non-empty must_run
     if expected_selection == "required_targets" and not reviewer.get("must_run"):
-        errors.append(f"PR #{pr['pr_number']}: approved required_targets with empty must_run")
+        errors.append(
+            f"PR #{pr['pr_number']}: approved required_targets with empty must_run"
+        )
 
     # none_required must have notes
     if expected_selection == "none_required":
         if not reviewer.get("notes") and not pr.get("notes"):
-            errors.append(f"PR #{pr['pr_number']}: none_required without rationale in notes")
+            errors.append(
+                f"PR #{pr['pr_number']}: none_required without rationale in notes"
+            )
         changed_files = pr.get("changed_files", [])
         non_test_build = [f for f in changed_files if not _is_test_or_build_file(f)]
         if non_test_build:
@@ -170,10 +183,17 @@ def validate_no_duplicates(golden_prs: list[dict]) -> list[str]:
     # Duplicate targets within a PR
     for pr in golden_prs:
         reviewer = pr.get("reviewer_decision", {})
-        for field in ["must_run", "should_run", "must_not_run", "allowed_extra_targets"]:
+        for field in [
+            "must_run",
+            "should_run",
+            "must_not_run",
+            "allowed_extra_targets",
+        ]:
             values = reviewer.get(field, [])
             if len(values) != len(set(values)):
-                errors.append(f"PR #{pr['pr_number']}: duplicate values in reviewer_decision.{field}")
+                errors.append(
+                    f"PR #{pr['pr_number']}: duplicate values in reviewer_decision.{field}"
+                )
 
     return errors
 
@@ -200,7 +220,9 @@ def validate_cards_match(golden_prs: list[dict], cards_dir: Path) -> list[str]:
         if category and f"**Category**: {category}" not in card_text:
             # Try alternate format
             if f"Category: {category}" not in card_text:
-                errors.append(f"PR #{pr_num}: category mismatch in card (expected '{category}')")
+                errors.append(
+                    f"PR #{pr_num}: category mismatch in card (expected '{category}')"
+                )
 
     return errors
 
@@ -214,14 +236,18 @@ def validate_label_source_approved(pr: dict) -> list[str]:
     label_source = pr.get("label_source", "")
     # Approved must have human or mixed label_source
     if label_source not in {"human", "mixed"}:
-        errors.append(f"PR #{pr['pr_number']}: approved with label_source='{label_source}' — requires human or mixed")
+        errors.append(
+            f"PR #{pr['pr_number']}: approved with label_source='{label_source}' — requires human or mixed"
+        )
 
     # Mixed requires explanatory notes
     if label_source == "mixed":
         reviewer_notes = pr.get("reviewer_decision", {}).get("notes", "")
         pr_notes = pr.get("notes", "")
         if not reviewer_notes and not pr_notes:
-            errors.append(f"PR #{pr['pr_number']}: approved with label_source='mixed' but no explanatory notes")
+            errors.append(
+                f"PR #{pr['pr_number']}: approved with label_source='mixed' but no explanatory notes"
+            )
 
     return errors
 
@@ -243,16 +269,22 @@ def validate_broad_suite_contract(pr: dict) -> list[str]:
 
     # Must have usable contract (non-empty must_run or must_not_run)
     if not has_must_run and not has_must_not_run:
-        errors.append(f"PR #{pr['pr_number']}: approved broad_suite_required without usable contract")
+        errors.append(
+            f"PR #{pr['pr_number']}: approved broad_suite_required without usable contract"
+        )
 
     # Must have notes
     if not has_notes:
-        errors.append(f"PR #{pr['pr_number']}: approved broad_suite_required without notes")
+        errors.append(
+            f"PR #{pr['pr_number']}: approved broad_suite_required without notes"
+        )
 
     return errors
 
 
-def validate_precision_floor(golden_prs: list[dict], *, strict: bool = False) -> list[str]:
+def validate_precision_floor(
+    golden_prs: list[dict], *, strict: bool = False
+) -> list[str]:
     """Check that precision coverage is sufficient."""
     warnings = []
 
@@ -261,8 +293,14 @@ def validate_precision_floor(golden_prs: list[dict], *, strict: bool = False) ->
         return warnings
 
     # Count PRs with precision signals
-    with_must_not_run = sum(1 for p in approved if p.get("reviewer_decision", {}).get("must_not_run"))
-    with_allowed_extra = sum(1 for p in approved if p.get("reviewer_decision", {}).get("allowed_extra_targets"))
+    with_must_not_run = sum(
+        1 for p in approved if p.get("reviewer_decision", {}).get("must_not_run")
+    )
+    with_allowed_extra = sum(
+        1
+        for p in approved
+        if p.get("reviewer_decision", {}).get("allowed_extra_targets")
+    )
     precision_prs = with_must_not_run + with_allowed_extra
 
     approved_count = len(approved)
@@ -270,13 +308,17 @@ def validate_precision_floor(golden_prs: list[dict], *, strict: bool = False) ->
 
     # Strict mode: require at least 10% precision coverage
     if strict and approved_count > 0 and precision_prs > 0 and precision_ratio < 0.10:
-        warnings.append(f"ERROR: Insufficient precision coverage: {precision_prs}/{approved_count} approved PRs "
-                       f"({precision_ratio:.1%}) have must_not_run or allowed_extra_targets — need >=10%")
+        warnings.append(
+            f"ERROR: Insufficient precision coverage: {precision_prs}/{approved_count} approved PRs "
+            f"({precision_ratio:.1%}) have must_not_run or allowed_extra_targets — need >=10%"
+        )
 
     # Warn if below 20%
     if precision_ratio < 0.20 and approved_count > 5:
-        warnings.append(f"WARNING: Low precision coverage: {precision_prs}/{approved_count} approved PRs "
-                       f"({precision_ratio:.1%}) have must_not_run or allowed_extra_targets — recommend >=20%")
+        warnings.append(
+            f"WARNING: Low precision coverage: {precision_prs}/{approved_count} approved PRs "
+            f"({precision_ratio:.1%}) have must_not_run or allowed_extra_targets — recommend >=20%"
+        )
 
     return warnings
 
@@ -290,31 +332,47 @@ def validate_corpus_balance(golden_prs: list[dict]) -> list[str]:
         return warnings
 
     # Check none_required dominance
-    none_required_count = sum(1 for p in approved if p.get("expected_selection") == "none_required")
+    none_required_count = sum(
+        1 for p in approved if p.get("expected_selection") == "none_required"
+    )
     none_required_ratio = none_required_count / len(approved)
 
     if none_required_ratio > 0.60:
-        warnings.append(f"WARNING: Corpus dominated by none_required: {none_required_count}/{len(approved)} "
-                       f"({none_required_ratio:.1%}) — gate may not measure much")
+        warnings.append(
+            f"WARNING: Corpus dominated by none_required: {none_required_count}/{len(approved)} "
+            f"({none_required_ratio:.1%}) — gate may not measure much"
+        )
 
     # Check manual_review_only dominance
-    manual_only_count = sum(1 for p in approved if p.get("expected_selection") == "manual_review_only")
+    manual_only_count = sum(
+        1 for p in approved if p.get("expected_selection") == "manual_review_only"
+    )
     manual_only_ratio = manual_only_count / len(approved)
 
     if manual_only_ratio > 0.50:
-        warnings.append(f"WARNING: Corpus dominated by manual_review_only: {manual_only_count}/{len(approved)} "
-                       f"({manual_only_ratio:.1%}) — recall not well measured")
+        warnings.append(
+            f"WARNING: Corpus dominated by manual_review_only: {manual_only_count}/{len(approved)} "
+            f"({manual_only_ratio:.1%}) — recall not well measured"
+        )
 
     return warnings
 
 
-def validate_must_not_run_coverage(golden_prs: list[dict], *, strict: bool = False) -> list[str]:
+def validate_must_not_run_coverage(
+    golden_prs: list[dict], *, strict: bool = False
+) -> list[str]:
     """Check that some PRs have must_not_run or allowed_extra_targets."""
     warnings = []
 
     approved = [p for p in golden_prs if p.get("annotation_status") == "approved"]
-    with_must_not_run = sum(1 for p in approved if p.get("reviewer_decision", {}).get("must_not_run"))
-    with_allowed_extra = sum(1 for p in approved if p.get("reviewer_decision", {}).get("allowed_extra_targets"))
+    with_must_not_run = sum(
+        1 for p in approved if p.get("reviewer_decision", {}).get("must_not_run")
+    )
+    with_allowed_extra = sum(
+        1
+        for p in approved
+        if p.get("reviewer_decision", {}).get("allowed_extra_targets")
+    )
 
     if approved and with_must_not_run == 0 and with_allowed_extra == 0:
         msg = "No approved PRs have must_not_run or allowed_extra_targets — precision not validated"
@@ -330,7 +388,9 @@ def main():
     parser = argparse.ArgumentParser(description="Validate golden PR set")
     parser.add_argument("--golden", required=True, help="Path to golden_pr_set.json")
     parser.add_argument("--cards-dir", type=Path, help="Path to PR cards directory")
-    parser.add_argument("--strict", action="store_true", help="Treat warnings as errors")
+    parser.add_argument(
+        "--strict", action="store_true", help="Treat warnings as errors"
+    )
     args = parser.parse_args()
 
     with open(args.golden) as f:

@@ -1,12 +1,9 @@
 """Tests for XTS target index (Phase 5, Task 5.1)."""
+
 from __future__ import annotations
 
-import json
-import pytest
 from pathlib import Path
 from arkui_xts_selector.indexing.target_index import (
-    RunnableTargetEntry,
-    TargetIndexResult,
     build_target_index,
     targets_for_family,
     _extract_family_keys,

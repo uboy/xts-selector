@@ -82,14 +82,16 @@ def trace_symbols_to_components(
     tree = parser.parse(code)
 
     # Extract symbols from changed ranges (or full file)
-    _camel_re = re.compile(r"\b([A-Z][a-zA-Z]{3,}(?:Property|Model|Modifier|Pattern|Wrapper|Node|Component|Painter|Manager|Handler|Event|Gesture|Layout|Render|Context|Animation|Thread|Engine|Service))\b")
+    _camel_re = re.compile(
+        r"\b([A-Z][a-zA-Z]{3,}(?:Property|Model|Modifier|Pattern|Wrapper|Node|Component|Painter|Manager|Handler|Event|Gesture|Layout|Render|Context|Animation|Thread|Engine|Service))\b"
+    )
 
     if changed_ranges:
         # Extract text from changed ranges only
         lines = code.decode("utf-8", errors="ignore").split("\n")
         range_texts = []
         for rs, re_ in changed_ranges:
-            range_texts.append("\n".join(lines[max(0, rs - 1):re_]))
+            range_texts.append("\n".join(lines[max(0, rs - 1) : re_]))
         scan_text = "\n".join(range_texts)
     else:
         scan_text = code.decode("utf-8", errors="ignore")
@@ -100,6 +102,7 @@ def trace_symbols_to_components(
     # Method 2: AST function/class names from changed ranges
     ast_symbols = set()
     if changed_ranges:
+
         def visit(node):
             for rs, re_ in changed_ranges:
                 rs0 = rs - 1
@@ -115,10 +118,13 @@ def trace_symbols_to_components(
                     for child in node.children:
                         if child.type == "type_identifier":
                             ast_symbols.add(
-                                code[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                                code[child.start_byte : child.end_byte].decode(
+                                    "utf-8", errors="replace"
+                                )
                             )
             for child in node.children:
                 visit(child)
+
         visit(tree.root_node)
     else:
         # Full file: extract all function/class names
@@ -133,10 +139,13 @@ def trace_symbols_to_components(
                 for child in node.children:
                     if child.type == "type_identifier":
                         ast_symbols.add(
-                            code[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                            code[child.start_byte : child.end_byte].decode(
+                                "utf-8", errors="replace"
+                            )
                         )
             for child in node.children:
                 visit_all(child)
+
         visit_all(tree.root_node)
 
     # Combine and filter noise
@@ -201,8 +210,15 @@ def resolve_ace_engine_components(rel: str) -> list[tuple[str, str]]:
     m = re.search(r"core/components/([^/]+)/", rel_lower)
     if m:
         name = m.group(1)
-        if name not in ("common", "declaration", "display", "coverage",
-                        "foreach", "drag_bar", "box"):
+        if name not in (
+            "common",
+            "declaration",
+            "display",
+            "coverage",
+            "foreach",
+            "drag_bar",
+            "box",
+        ):
             return [(name, "old_component")]
         return []
 
@@ -210,8 +226,15 @@ def resolve_ace_engine_components(rel: str) -> list[tuple[str, str]]:
     m = re.search(r"interfaces/native/implementation/([^/]+)_modifier\.", rel_lower)
     if m:
         name = m.group(1)
-        if name not in ("common", "common_method", "common_shape_method", "component_root",
-                        "base", "base_shape", "ui_state"):
+        if name not in (
+            "common",
+            "common_method",
+            "common_shape_method",
+            "component_root",
+            "base",
+            "base_shape",
+            "ui_state",
+        ):
             return [(name, "implementation")]
         return []
 
@@ -224,7 +247,9 @@ def resolve_ace_engine_components(rel: str) -> list[tuple[str, str]]:
         return []
 
     # 5. interfaces/native/implementation/{name}_extender_accessor.cpp
-    m = re.search(r"interfaces/native/implementation/([^/]+)_extender_accessor\.", rel_lower)
+    m = re.search(
+        r"interfaces/native/implementation/([^/]+)_extender_accessor\.", rel_lower
+    )
     if m:
         name = m.group(1)
         if name not in ("common",):
@@ -246,11 +271,28 @@ def resolve_ace_engine_components(rel: str) -> list[tuple[str, str]]:
     m = re.search(r"generated/component/([^/]+)\.ets", rel_lower)
     if m:
         name = m.group(1)
-        if name not in ("common", "enums", "idlize", "focus", "inspector", "builder",
-                        "contentslot", "units", "withtheme", "screen", "styledstring",
-                        "textcommon", "imagecommon", "securitycomponent",
-                        "embeddedcomponent", "uipickercomponent", "uicomponent",
-                        "lazyforeach", "lazygridlayout", "flowitem"):
+        if name not in (
+            "common",
+            "enums",
+            "idlize",
+            "focus",
+            "inspector",
+            "builder",
+            "contentslot",
+            "units",
+            "withtheme",
+            "screen",
+            "styledstring",
+            "textcommon",
+            "imagecommon",
+            "securitycomponent",
+            "embeddedcomponent",
+            "uipickercomponent",
+            "uicomponent",
+            "lazyforeach",
+            "lazygridlayout",
+            "flowitem",
+        ):
             return [(name, "generated_ets")]
         return []
 

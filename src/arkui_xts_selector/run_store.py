@@ -59,7 +59,9 @@ def create_run_session(
 ) -> RunSession:
     root = (run_store_root or default_run_store_root(selector_repo_root)).resolve()
     label_key = normalize_run_label(label)
-    session_timestamp = timestamp or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    session_timestamp = timestamp or datetime.now(timezone.utc).strftime(
+        "%Y%m%dT%H%M%SZ"
+    )
     hostname = _safe_hostname()
     run_dir = (root / hostname / label_key / session_timestamp).resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -79,7 +81,12 @@ def write_json(path: Path, payload: Any) -> None:
 
 
 def _target_key(target: dict[str, Any]) -> str:
-    return str(target.get("target_key") or target.get("test_json") or target.get("project") or "")
+    return str(
+        target.get("target_key")
+        or target.get("test_json")
+        or target.get("project")
+        or ""
+    )
 
 
 def collect_execution_records(report: dict[str, Any]) -> list[dict[str, Any]]:
@@ -101,13 +108,21 @@ def collect_execution_records(report: dict[str, Any]) -> list[dict[str, Any]]:
                         "execution_results": [],
                     },
                 )
-                record["selected_for_execution"] = record["selected_for_execution"] or bool(target.get("selected_for_execution"))
+                record["selected_for_execution"] = record[
+                    "selected_for_execution"
+                ] or bool(target.get("selected_for_execution"))
                 if target.get("execution_sources") and not record["execution_sources"]:
-                    record["execution_sources"] = [dict(item) for item in target.get("execution_sources", [])]
+                    record["execution_sources"] = [
+                        dict(item) for item in target.get("execution_sources", [])
+                    ]
                 if target.get("execution_plan") and not record["execution_plan"]:
-                    record["execution_plan"] = [dict(item) for item in target.get("execution_plan", [])]
+                    record["execution_plan"] = [
+                        dict(item) for item in target.get("execution_plan", [])
+                    ]
                 if target.get("execution_results") and not record["execution_results"]:
-                    record["execution_results"] = [dict(item) for item in target.get("execution_results", [])]
+                    record["execution_results"] = [
+                        dict(item) for item in target.get("execution_results", [])
+                    ]
     return list(records.values())
 
 
@@ -141,13 +156,15 @@ def build_run_manifest(
         for item in record.get("execution_plan", [])
         if item.get("result_path")
     ]
-    comparable_result_paths = _unique_existing_paths([
-        str(item["result_path"])
-        for record in execution_records
-        if record.get("selected_for_execution")
-        for item in record.get("execution_results", [])
-        if item.get("result_path")
-    ])
+    comparable_result_paths = _unique_existing_paths(
+        [
+            str(item["result_path"])
+            for record in execution_records
+            if record.get("selected_for_execution")
+            for item in record.get("execution_results", [])
+            if item.get("result_path")
+        ]
+    )
     if not comparable_result_paths:
         comparable_result_paths = _unique_existing_paths(planned_result_paths)
 
@@ -171,18 +188,24 @@ def build_run_manifest(
         "shard_mode": shard_mode,
         "execution_overview": dict(report.get("execution_overview", {})),
         "execution_summary": dict(report.get("execution_summary", {})),
-        "execution_preflight": dict(preflight or report.get("execution_preflight") or {}),
+        "execution_preflight": dict(
+            preflight or report.get("execution_preflight") or {}
+        ),
         "runtime_history_update": dict(report.get("runtime_history_update", {})),
         "runtime_state_root": report.get("runtime_state_root", ""),
         "runtime_history_file": report.get("runtime_history_file", ""),
-        "selected_target_keys": list(report.get("execution_overview", {}).get("selected_target_keys", [])),
+        "selected_target_keys": list(
+            report.get("execution_overview", {}).get("selected_target_keys", [])
+        ),
         "planned_result_paths": planned_result_paths,
         "comparable_result_paths": comparable_result_paths,
         "execution_records": execution_records,
     }
 
 
-def write_run_artifacts(session: RunSession, report: dict[str, Any], manifest: dict[str, Any]) -> None:
+def write_run_artifacts(
+    session: RunSession, report: dict[str, Any], manifest: dict[str, Any]
+) -> None:
     write_json(session.selector_report_path, report)
     write_json(session.manifest_path, manifest)
 
@@ -198,7 +221,9 @@ def _load_manifest(path: Path) -> dict[str, Any] | None:
     return payload
 
 
-def list_run_manifests(run_store_root: Path, label: str | None = None) -> list[dict[str, Any]]:
+def list_run_manifests(
+    run_store_root: Path, label: str | None = None
+) -> list[dict[str, Any]]:
     root = run_store_root.expanduser().resolve()
     if not root.exists():
         return []
@@ -208,7 +233,11 @@ def list_run_manifests(run_store_root: Path, label: str | None = None) -> list[d
         payload = _load_manifest(path)
         if not payload:
             continue
-        if label and payload.get("label") != label and payload.get("label_key") != normalized_label:
+        if (
+            label
+            and payload.get("label") != label
+            and payload.get("label_key") != normalized_label
+        ):
             continue
         manifests.append(payload)
     return manifests
@@ -221,14 +250,22 @@ def _manifest_rank_key(manifest: dict[str, Any]) -> tuple[str, str]:
     )
 
 
-def resolve_latest_run(run_store_root: Path, label: str | None = None, completed_only: bool = False) -> dict[str, Any]:
+def resolve_latest_run(
+    run_store_root: Path, label: str | None = None, completed_only: bool = False
+) -> dict[str, Any]:
     manifests = list_run_manifests(run_store_root, label=label)
     if completed_only:
-        manifests = [item for item in manifests if str(item.get("status", "")) in COMPLETED_RUN_STATUSES]
+        manifests = [
+            item
+            for item in manifests
+            if str(item.get("status", "")) in COMPLETED_RUN_STATUSES
+        ]
     if not manifests:
         target = f" for '{label}'" if label else ""
         qualifier = " completed" if completed_only else ""
-        raise FileNotFoundError(f"No{qualifier} selector runs were found{target} in {run_store_root}")
+        raise FileNotFoundError(
+            f"No{qualifier} selector runs were found{target} in {run_store_root}"
+        )
     manifests.sort(key=_manifest_rank_key, reverse=True)
     return manifests[0]
 
@@ -236,14 +273,24 @@ def resolve_latest_run(run_store_root: Path, label: str | None = None, completed
 def resolve_labeled_run(run_store_root: Path, label: str) -> dict[str, Any]:
     manifests = list_run_manifests(run_store_root, label=label)
     if not manifests:
-        raise FileNotFoundError(f"No labeled selector runs were found for '{label}' in {run_store_root}")
+        raise FileNotFoundError(
+            f"No labeled selector runs were found for '{label}' in {run_store_root}"
+        )
 
     ranked: list[tuple[tuple[int, str, str], dict[str, Any]]] = []
     for manifest in manifests:
-        comparable_result_paths = _unique_existing_paths(list(manifest.get("comparable_result_paths", [])))
+        comparable_result_paths = _unique_existing_paths(
+            list(manifest.get("comparable_result_paths", []))
+        )
         manifest["_resolved_result_paths"] = comparable_result_paths
         status = str(manifest.get("status", ""))
-        comparable_score = 2 if comparable_result_paths and status in COMPLETED_RUN_STATUSES else 1 if comparable_result_paths else 0
+        comparable_score = (
+            2
+            if comparable_result_paths and status in COMPLETED_RUN_STATUSES
+            else 1
+            if comparable_result_paths
+            else 0
+        )
         ranked.append(
             (
                 (

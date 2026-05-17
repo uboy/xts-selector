@@ -3,24 +3,37 @@
 Verifies that SdkIndexEntry stores api_version, declaration_kind, dispatch_kind
 and that SdkIndexResult can filter by these fields.
 """
-import pytest
+
 from arkui_xts_selector.indexing.sdk_indexer import SdkIndexEntry, SdkIndexResult
 from arkui_xts_selector.model.api import ApiEntityId, ApiDeclarationRef
 
 
-def _make_entry(public_name="Test", member_name=None, parent=None,
-                api_version=None, declaration_kind=None, dispatch_kind=None):
+def _make_entry(
+    public_name="Test",
+    member_name=None,
+    parent=None,
+    api_version=None,
+    declaration_kind=None,
+    dispatch_kind=None,
+):
     parent_api_id = None
     if parent:
         parent_api_id = ApiEntityId.from_parts(
-            namespace="arkui", surface="static", kind="interface",
-            module="test", public_name=parent,
+            namespace="arkui",
+            surface="static",
+            kind="interface",
+            module="test",
+            public_name=parent,
         )
     return SdkIndexEntry(
         api_id=ApiEntityId.from_parts(
-            namespace="arkui", surface="static", kind="attribute",
-            module="test", public_name=public_name,
-            member_of=parent, member_name=member_name,
+            namespace="arkui",
+            surface="static",
+            kind="attribute",
+            module="test",
+            public_name=public_name,
+            member_of=parent,
+            member_name=member_name,
         ),
         declaration=ApiDeclarationRef(declaration_id="test", file_path="test.d.ts"),
         parent_api_id=parent_api_id,
@@ -44,7 +57,9 @@ def test_new_fields_default_none():
 
 def test_to_dict_includes_new_fields():
     """Serialization includes new fields when set."""
-    entry = _make_entry(api_version="12", declaration_kind="method", dispatch_kind="instance")
+    entry = _make_entry(
+        api_version="12", declaration_kind="method", dispatch_kind="instance"
+    )
     d = entry.to_dict()
     assert d["api_version"] == "12"
     assert d["declaration_kind"] == "method"
@@ -75,7 +90,9 @@ def test_from_dict_backward_compatible():
 
 def test_from_dict_roundtrip():
     """Round-trip preserves new fields."""
-    entry = _make_entry(api_version="9", declaration_kind="property", dispatch_kind="common_inherited")
+    entry = _make_entry(
+        api_version="9", declaration_kind="property", dispatch_kind="common_inherited"
+    )
     d = entry.to_dict()
     restored = SdkIndexEntry.from_dict(d)
     assert restored.api_version == "9"

@@ -3,6 +3,7 @@
 Classifies resolved targets into must_run/recommended/fallback buckets
 with scoring and caps to prevent target explosion.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -58,8 +59,12 @@ class RankingResult:
             "recommended": [t.project_id for t in self.recommended],
             "fallback": [t.project_id for t in self.fallback],
             "dropped": [
-                {"project_id": t.project_id, "bucket": t.bucket,
-                 "score": t.score, "reasons": list(t.reasons)}
+                {
+                    "project_id": t.project_id,
+                    "bucket": t.bucket,
+                    "score": t.score,
+                    "reasons": list(t.reasons),
+                }
                 for t in self.dropped
             ],
             "dropped_count": self.dropped_count,
@@ -73,7 +78,11 @@ def _classify_bucket(
     has_sdk_confirm: bool,
 ) -> TargetBucket:
     for canon, direct, sdk, bucket in _BUCKET_RULES:
-        if has_canonical == canon and has_direct_match == direct and has_sdk_confirm == sdk:
+        if (
+            has_canonical == canon
+            and has_direct_match == direct
+            and has_sdk_confirm == sdk
+        ):
             return bucket
     return "fallback"
 
@@ -95,8 +104,7 @@ def rank_targets(
     for entry in entries:
         has_canonical = bool(entry.get("canonical_affected_apis"))
         has_direct = any(
-            r.get("confidence") == "strong"
-            for r in entry.get("selection_reasons", [])
+            r.get("confidence") == "strong" for r in entry.get("selection_reasons", [])
         )
         has_sdk = any(
             c.get("impact_kind") in ("generated_bridge", "authored_bridge")

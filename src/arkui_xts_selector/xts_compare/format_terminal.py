@@ -20,7 +20,6 @@ from .models import (
     FailureType,
     InputOrderInfo,
     ModuleComparison,
-    PerformanceChange,
     RootCauseCluster,
     RunMetadata,
     SelectorChangedFileCorrelation,
@@ -155,10 +154,18 @@ def _format_summary_table(report: ComparisonReport) -> str:
 
     buf.write("  Summary\n")
     buf.write(f"  {_SINGLE_LINE}\n")
-    buf.write(f"  Total tests:    {s.total_base:>6} \u2192 {s.total_target:>6} ({_delta_str(s.total_base, s.total_target)})\n")
-    buf.write(f"  PASS:           {base.pass_count:>6} \u2192 {target.pass_count:>6} ({_delta_str(base.pass_count, target.pass_count)})\n")
-    buf.write(f"  FAIL:           {base.fail_count:>6} \u2192 {target.fail_count:>6} ({_delta_str(base.fail_count, target.fail_count)})\n")
-    buf.write(f"  BLOCKED:        {base.blocked_count:>6} \u2192 {target.blocked_count:>6} ({_delta_str(base.blocked_count, target.blocked_count)})\n")
+    buf.write(
+        f"  Total tests:    {s.total_base:>6} \u2192 {s.total_target:>6} ({_delta_str(s.total_base, s.total_target)})\n"
+    )
+    buf.write(
+        f"  PASS:           {base.pass_count:>6} \u2192 {target.pass_count:>6} ({_delta_str(base.pass_count, target.pass_count)})\n"
+    )
+    buf.write(
+        f"  FAIL:           {base.fail_count:>6} \u2192 {target.fail_count:>6} ({_delta_str(base.fail_count, target.fail_count)})\n"
+    )
+    buf.write(
+        f"  BLOCKED:        {base.blocked_count:>6} \u2192 {target.blocked_count:>6} ({_delta_str(base.blocked_count, target.blocked_count)})\n"
+    )
     buf.write("\n")
     buf.write(f"  {'Category':<22} {'Count':>6}\n")
     buf.write(f"  {_SINGLE_LINE}\n")
@@ -278,10 +285,7 @@ def _apply_module_filter(
 ) -> list[TestTransition]:
     if not module_filter:
         return transitions
-    return [
-        t for t in transitions
-        if fnmatch.fnmatch(t.identity.module, module_filter)
-    ]
+    return [t for t in transitions if fnmatch.fnmatch(t.identity.module, module_filter)]
 
 
 def _transition_failure_type(transition: TestTransition) -> FailureType:
@@ -309,11 +313,17 @@ def _build_filter_config(
 
 
 def _matches_filters(transition: TestTransition, filters: FilterConfig) -> bool:
-    if filters.module_filter and not fnmatch.fnmatch(transition.identity.module, filters.module_filter):
+    if filters.module_filter and not fnmatch.fnmatch(
+        transition.identity.module, filters.module_filter
+    ):
         return False
-    if filters.suite_filter and not fnmatch.fnmatch(transition.identity.suite, filters.suite_filter):
+    if filters.suite_filter and not fnmatch.fnmatch(
+        transition.identity.suite, filters.suite_filter
+    ):
         return False
-    if filters.case_filter and not fnmatch.fnmatch(transition.identity.case, filters.case_filter):
+    if filters.case_filter and not fnmatch.fnmatch(
+        transition.identity.case, filters.case_filter
+    ):
         return False
     if filters.failure_types is not None:
         if _transition_failure_type(transition) not in filters.failure_types:
@@ -360,7 +370,11 @@ def _filter_and_sort_transitions(
     transitions: list[TestTransition],
     filters: FilterConfig,
 ) -> list[TestTransition]:
-    filtered = [transition for transition in transitions if _matches_filters(transition, filters)]
+    filtered = [
+        transition
+        for transition in transitions
+        if _matches_filters(transition, filters)
+    ]
     return _sort_transitions(filtered, filters)
 
 
@@ -386,19 +400,25 @@ def _format_transition_trees(
             module_map[m][s] = []
         module_map[m][s].append(t)
 
-    modules = sorted(module_map.keys()) if sort_key == "module" else list(module_map.keys())
+    modules = (
+        sorted(module_map.keys()) if sort_key == "module" else list(module_map.keys())
+    )
     for m_idx, module in enumerate(modules):
         buf.write(f"\n  Module: {module}\n")
-        suites = sorted(module_map[module].keys()) if sort_key == "module" else list(module_map[module].keys())
+        suites = (
+            sorted(module_map[module].keys())
+            if sort_key == "module"
+            else list(module_map[module].keys())
+        )
         for s_idx, suite in enumerate(suites):
-            is_last_suite = (s_idx == len(suites) - 1)
-            suite_prefix = "\u2514\u2500" if is_last_suite else "\u251C\u2500"
+            is_last_suite = s_idx == len(suites) - 1
+            suite_prefix = "\u2514\u2500" if is_last_suite else "\u251c\u2500"
             suite_child_prefix = "   " if is_last_suite else "\u2502  "
             buf.write(f"  {suite_prefix} Suite: {suite}\n")
             tests = module_map[module][suite]
             for t_idx, t in enumerate(tests):
-                is_last_test = (t_idx == len(tests) - 1)
-                test_prefix = "\u2514\u2500" if is_last_test else "\u251C\u2500"
+                is_last_test = t_idx == len(tests) - 1
+                test_prefix = "\u2514\u2500" if is_last_test else "\u251c\u2500"
                 msg_prefix = "   " if is_last_test else "\u2502  "
                 base_lbl = _outcome_label(t.base_outcome)
                 target_lbl = _outcome_label(t.target_outcome)
@@ -456,7 +476,7 @@ def _format_root_cause_section(clusters: list[RootCauseCluster]) -> str:
         return ""
 
     buf = StringIO()
-    buf.write(f"\n  Root Cause Analysis\n")
+    buf.write("\n  Root Cause Analysis\n")
     buf.write(f"  {_SINGLE_LINE}\n")
 
     for idx, cluster in enumerate(clusters, 1):
@@ -488,7 +508,8 @@ def _format_module_health_section(
     visible_modules = modules
     if filters.module_filter:
         visible_modules = [
-            module for module in modules
+            module
+            for module in modules
             if fnmatch.fnmatch(module.module, filters.module_filter)
         ]
     if not visible_modules:
@@ -533,15 +554,24 @@ def _format_performance_section(
 
     visible_changes = []
     for change in report.performance_changes:
-        if filters.module_filter and not fnmatch.fnmatch(change.identity.module, filters.module_filter):
+        if filters.module_filter and not fnmatch.fnmatch(
+            change.identity.module, filters.module_filter
+        ):
             continue
-        if filters.suite_filter and not fnmatch.fnmatch(change.identity.suite, filters.suite_filter):
+        if filters.suite_filter and not fnmatch.fnmatch(
+            change.identity.suite, filters.suite_filter
+        ):
             continue
-        if filters.case_filter and not fnmatch.fnmatch(change.identity.case, filters.case_filter):
+        if filters.case_filter and not fnmatch.fnmatch(
+            change.identity.case, filters.case_filter
+        ):
             continue
         if filters.failure_types is not None:
             transition = transitions_by_identity.get(str(change.identity))
-            if transition is None or _transition_failure_type(transition) not in filters.failure_types:
+            if (
+                transition is None
+                or _transition_failure_type(transition) not in filters.failure_types
+            ):
                 continue
         visible_changes.append(change)
 
@@ -580,12 +610,17 @@ def _filter_root_causes(
     filtered = clusters
     if filters.module_filter:
         filtered = [
-            cluster for cluster in filtered
-            if any(fnmatch.fnmatch(module, filters.module_filter) for module in cluster.modules_affected)
+            cluster
+            for cluster in filtered
+            if any(
+                fnmatch.fnmatch(module, filters.module_filter)
+                for module in cluster.modules_affected
+            )
         ]
     if filters.failure_types is not None:
         filtered = [
-            cluster for cluster in filtered
+            cluster
+            for cluster in filtered
             if cluster.failure_type in filters.failure_types
         ]
     return filtered
@@ -606,7 +641,11 @@ def _format_selector_correlation_section(
             buf.write("    No selector predictions\n")
             continue
         for project in entry.predicted_projects:
-            matched = ", ".join(project.matched_modules) if project.matched_modules else "no compared module match"
+            matched = (
+                ", ".join(project.matched_modules)
+                if project.matched_modules
+                else "no compared module match"
+            )
             buf.write(
                 f"    Predicted: {project.project} "
                 f"[score={project.score:.0f}, bucket={project.bucket or '-'}, confidence={project.confidence or '-'}]\n"
@@ -618,14 +657,18 @@ def _format_selector_correlation_section(
                     names += ", ..."
                 buf.write(f"      Regressions: {names}\n")
             if project.improvements:
-                names = ", ".join(identity.case for identity in project.improvements[:4])
+                names = ", ".join(
+                    identity.case for identity in project.improvements[:4]
+                )
                 if len(project.improvements) > 4:
                     names += ", ..."
                 buf.write(f"      Improvements: {names}\n")
             if project.predicted_but_no_change:
                 buf.write("      No changes in matched modules\n")
         if entry.regression_not_predicted:
-            names = ", ".join(str(identity) for identity in entry.regression_not_predicted[:3])
+            names = ", ".join(
+                str(identity) for identity in entry.regression_not_predicted[:3]
+            )
             if len(entry.regression_not_predicted) > 3:
                 names += ", ..."
             buf.write(f"    Not predicted regressions: {names}\n")
@@ -755,7 +798,11 @@ def format_report(
             buf.write(f"\n{_DOUBLE_LINE}\n")
             buf.write(f"  STABLE PASS ({count}) \u2014 Tests that PASS in both runs\n")
             buf.write(f"{_DOUBLE_LINE}\n")
-            buf.write(_format_transition_trees(stable, TransitionKind.STABLE_PASS, filters.sort_key))
+            buf.write(
+                _format_transition_trees(
+                    stable, TransitionKind.STABLE_PASS, filters.sort_key
+                )
+            )
 
     if show_stable_blocked:
         buf.write(_format_section(report, TransitionKind.STABLE_BLOCKED, filters))
@@ -783,6 +830,7 @@ def format_single_run(meta: RunMetadata) -> str:
 # ---------------------------------------------------------------------------
 # Timeline formatter
 # ---------------------------------------------------------------------------
+
 
 def format_timeline(report: TimelineReport) -> str:
     """
@@ -827,7 +875,7 @@ def format_timeline(report: TimelineReport) -> str:
     for row in rows:
         id_str = str(row.identity)
         if len(id_str) > id_width:
-            id_str = id_str[:id_width - 3] + "..."
+            id_str = id_str[: id_width - 3] + "..."
         cols = [f"{id_str:<{id_width}}"]
         for entry, w in zip(row.entries, label_widths):
             sym = _OUTCOME_SYMBOL.get(entry.outcome, "?")

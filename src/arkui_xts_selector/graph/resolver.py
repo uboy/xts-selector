@@ -11,7 +11,10 @@ Import boundary: model, graph schema, graph coverage_relation, standard library 
 
 from __future__ import annotations
 
-from arkui_xts_selector.graph.coverage_relation import build_selection_result, resolve_coverage_relations
+from arkui_xts_selector.graph.coverage_relation import (
+    build_selection_result,
+    resolve_coverage_relations,
+)
 from arkui_xts_selector.graph.schema import EdgeType, Graph, NodeType
 from arkui_xts_selector.model.api import ApiEntityId
 from arkui_xts_selector.model.selection import SelectionResult

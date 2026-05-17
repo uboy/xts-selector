@@ -1,7 +1,7 @@
 """Tests for ArkTS bridge resolver (Phase 4, Task 4.1)."""
+
 from __future__ import annotations
 
-import pytest
 from arkui_xts_selector.indexing.arkts_bridge_resolver import (
     resolve_arkts_bridge_candidate,
     _normalize_family,
@@ -88,9 +88,7 @@ class TestNonBridgeFiles:
         assert c is None
 
     def test_random_ets_returns_none(self):
-        c = resolve_arkts_bridge_candidate(
-            "some/random/file.ets"
-        )
+        c = resolve_arkts_bridge_candidate("some/random/file.ets")
         assert c is None
 
     def test_advanced_component_returns_none(self):

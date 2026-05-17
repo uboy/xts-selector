@@ -9,6 +9,7 @@ Uses tree-sitter-cpp for AST parsing (L3 parser level).
 
 Import boundary: standard library + arkui_xts_selector.tree_sitter_parsers only.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -21,6 +22,7 @@ from ..tree_sitter_parsers import _get_ts_cpp_parser, _ts_extract_func_name
 @dataclass(frozen=True)
 class CppMethod:
     """A C++ method discovered by the parser."""
+
     name: str
     parent_class: str | None = None
     qualified: str | None = None  # Fully qualified name (e.g., ButtonModel::SetRole)
@@ -49,6 +51,7 @@ class CppMethod:
 @dataclass(frozen=True)
 class CppClass:
     """A C++ class discovered by the parser."""
+
     name: str
     base_class: str | None = None
     line: int | None = None
@@ -57,7 +60,10 @@ class CppClass:
 
     def to_dict(self) -> dict:
         """Return a JSON-compatible dict."""
-        d: dict[str, object] = {"name": self.name, "methods": [m.to_dict() for m in self.methods]}
+        d: dict[str, object] = {
+            "name": self.name,
+            "methods": [m.to_dict() for m in self.methods],
+        }
         if self.base_class is not None:
             d["base_class"] = self.base_class
         if self.line is not None:
@@ -70,6 +76,7 @@ class CppClass:
 @dataclass(frozen=True)
 class CppParseResult:
     """Result of parsing a C++ file."""
+
     file_path: str
     parser_level: Literal[0, 1, 2, 3] = 3  # Always 3 for AST parsing
     classes: tuple[CppClass, ...] = ()
@@ -94,15 +101,21 @@ def _extract_base_class(base_class_clause, code_bytes: bytes) -> str | None:
     # Find the type_identifier or template_type node
     for child in base_class_clause.children:
         if child.type == "type_identifier":
-            return code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+            return code_bytes[child.start_byte : child.end_byte].decode(
+                "utf-8", errors="replace"
+            )
         if child.type == "template_type":
             # Extract the base name from template_type
             for grandchild in child.children:
                 if grandchild.type == "type_identifier":
-                    return code_bytes[grandchild.start_byte:grandchild.end_byte].decode("utf-8", errors="replace")
+                    return code_bytes[
+                        grandchild.start_byte : grandchild.end_byte
+                    ].decode("utf-8", errors="replace")
         if child.type == "qualified_identifier":
             # Extract the last identifier
-            raw = code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+            raw = code_bytes[child.start_byte : child.end_byte].decode(
+                "utf-8", errors="replace"
+            )
             if "::" in raw:
                 return raw.rsplit("::", 1)[-1]
             return raw
@@ -127,7 +140,9 @@ def _build_class(class_specifier, code_bytes: bytes) -> CppClass:
     # Extract class name and base class
     for child in class_specifier.children:
         if child.type == "type_identifier":
-            class_name = code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+            class_name = code_bytes[child.start_byte : child.end_byte].decode(
+                "utf-8", errors="replace"
+            )
         elif child.type == "base_class_clause":
             base_class = _extract_base_class(child, code_bytes)
 
@@ -150,13 +165,15 @@ def _build_class(class_specifier, code_bytes: bytes) -> CppClass:
                     if field_child.type == "function_declarator":
                         method_name = _ts_extract_func_name(field_child, code_bytes)
                         if method_name:
-                            methods.append(CppMethod(
-                                name=method_name,
-                                parent_class=class_name,
-                                qualified=f"{class_name}::{method_name}",
-                                line=child.start_point[0] + 1,
-                                is_declaration_only=True,
-                            ))
+                            methods.append(
+                                CppMethod(
+                                    name=method_name,
+                                    parent_class=class_name,
+                                    qualified=f"{class_name}::{method_name}",
+                                    line=child.start_point[0] + 1,
+                                    is_declaration_only=True,
+                                )
+                            )
                             break
 
     return CppClass(
@@ -168,7 +185,9 @@ def _build_class(class_specifier, code_bytes: bytes) -> CppClass:
     )
 
 
-def _build_method(function_def, parent_class: str, code_bytes: bytes) -> CppMethod | None:
+def _build_method(
+    function_def, parent_class: str, code_bytes: bytes
+) -> CppMethod | None:
     """Build a CppMethod from a function_definition node.
 
     Args:
@@ -233,7 +252,9 @@ def _walk_ast(root_node, code_bytes: bytes) -> CppParseResult:
             # Extract include path
             for child in node.children:
                 if child.type == "string_literal" or child.type == "system_lib_string":
-                    include_path = code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                    include_path = code_bytes[child.start_byte : child.end_byte].decode(
+                        "utf-8", errors="replace"
+                    )
                     includes.append(include_path)
 
         elif node.type == "class_specifier":
@@ -254,16 +275,22 @@ def _walk_ast(root_node, code_bytes: bytes) -> CppParseResult:
                 for child in func_declarator.children:
                     if child.type == "qualified_identifier":
                         # This is a qualified method like Class::Method
-                        qualified_text = code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                        qualified_text = code_bytes[
+                            child.start_byte : child.end_byte
+                        ].decode("utf-8", errors="replace")
                         if "::" in qualified_text:
                             parts = qualified_text.split("::")
                             if len(parts) == 2:
                                 class_name, method_name = parts
                                 is_qualified = True
                     elif child.type == "field_identifier" and not is_qualified:
-                        method_name = code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                        method_name = code_bytes[
+                            child.start_byte : child.end_byte
+                        ].decode("utf-8", errors="replace")
                     elif child.type == "identifier" and not is_qualified:
-                        method_name = code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                        method_name = code_bytes[
+                            child.start_byte : child.end_byte
+                        ].decode("utf-8", errors="replace")
 
                 if is_qualified and class_name and method_name:
                     # Find or create the class and add this method

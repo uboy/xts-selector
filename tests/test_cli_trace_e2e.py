@@ -2,13 +2,14 @@
 
 This test actually runs the trace command on a real fixture file without mocks.
 """
+
 import unittest
 import sys
 import os
 from pathlib import Path
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from arkui_xts_selector.indexing.trace import cmd_trace
 
@@ -20,68 +21,106 @@ class CliTraceE2ETests(unittest.TestCase):
         """Set up test fixtures."""
         self.fixture_dir = Path(__file__).parent / "fixtures" / "ace_engine"
         self.button_model_static = (
-            self.fixture_dir / "frameworks" / "core" / "components_ng" / "pattern" / "button" / "button_model_static.cpp"
+            self.fixture_dir
+            / "frameworks"
+            / "core"
+            / "components_ng"
+            / "pattern"
+            / "button"
+            / "button_model_static.cpp"
         )
 
     def test_trace_setrole_on_button_model_static(self):
         """Test that trace finds SetRole in the button_model_static fixture."""
-        self.assertTrue(self.button_model_static.exists(), f"Fixture file not found: {self.button_model_static}")
+        self.assertTrue(
+            self.button_model_static.exists(),
+            f"Fixture file not found: {self.button_model_static}",
+        )
 
-        args = type("Args", (), {
-            "target": str(self.button_model_static) + ":SetRole",
-            "repo_root": None,
-            "sdk_root": None,
-        })()
+        args = type(
+            "Args",
+            (),
+            {
+                "target": str(self.button_model_static) + ":SetRole",
+                "repo_root": None,
+                "sdk_root": None,
+            },
+        )()
 
         result = cmd_trace(args)
         self.assertEqual(result, 0)
 
     def test_trace_no_symbol_shows_all_methods(self):
         """Test that trace without a symbol shows all methods in the file."""
-        self.assertTrue(self.button_model_static.exists(), f"Fixture file not found: {self.button_model_static}")
+        self.assertTrue(
+            self.button_model_static.exists(),
+            f"Fixture file not found: {self.button_model_static}",
+        )
 
-        args = type("Args", (), {
-            "target": str(self.button_model_static) + ":",
-            "repo_root": None,
-            "sdk_root": None,
-        })()
+        args = type(
+            "Args",
+            (),
+            {
+                "target": str(self.button_model_static) + ":",
+                "repo_root": None,
+                "sdk_root": None,
+            },
+        )()
 
         result = cmd_trace(args)
         self.assertEqual(result, 0)
 
     def test_trace_nonexistent_symbol_returns_error(self):
         """Test that trace with a nonexistent symbol returns error code."""
-        self.assertTrue(self.button_model_static.exists(), f"Fixture file not found: {self.button_model_static}")
+        self.assertTrue(
+            self.button_model_static.exists(),
+            f"Fixture file not found: {self.button_model_static}",
+        )
 
-        args = type("Args", (), {
-            "target": str(self.button_model_static) + ":NonexistentSymbol12345",
-            "repo_root": None,
-            "sdk_root": None,
-        })()
+        args = type(
+            "Args",
+            (),
+            {
+                "target": str(self.button_model_static) + ":NonexistentSymbol12345",
+                "repo_root": None,
+                "sdk_root": None,
+            },
+        )()
 
         result = cmd_trace(args)
         self.assertEqual(result, 1)
 
     def test_trace_nonexistent_file_returns_error(self):
         """Test that trace with a nonexistent file returns error code."""
-        args = type("Args", (), {
-            "target": "/nonexistent/path/file.cpp:SetRole",
-            "repo_root": None,
-            "sdk_root": None,
-        })()
+        args = type(
+            "Args",
+            (),
+            {
+                "target": "/nonexistent/path/file.cpp:SetRole",
+                "repo_root": None,
+                "sdk_root": None,
+            },
+        )()
 
         result = cmd_trace(args)
         self.assertEqual(result, 1)
 
     def test_trace_settype_on_button_model_static(self):
         """Test that trace finds SetType in the button_model_static fixture."""
-        self.assertTrue(self.button_model_static.exists(), f"Fixture file not found: {self.button_model_static}")
+        self.assertTrue(
+            self.button_model_static.exists(),
+            f"Fixture file not found: {self.button_model_static}",
+        )
 
-        args = type("Args", (), {
-            "target": str(self.button_model_static) + ":SetType",
-            "repo_root": None,
-            "sdk_root": None,
-        })()
+        args = type(
+            "Args",
+            (),
+            {
+                "target": str(self.button_model_static) + ":SetType",
+                "repo_root": None,
+                "sdk_root": None,
+            },
+        )()
 
         result = cmd_trace(args)
         self.assertEqual(result, 0)

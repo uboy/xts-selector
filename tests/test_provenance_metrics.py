@@ -5,13 +5,21 @@ Verifies that:
 - provenance_distribution counts each provenance value across entries
 - legacy exact_consumer_hit_rate is unchanged
 """
+
 from __future__ import annotations
 
 
-def _make_entry(changed_file="test.cpp", affected_apis=None, consumer_projects=None,
-                selection_reasons=None, canonical_affected_apis=None,
-                unresolved_reason=None, broad_infra_match=None,
-                impact_candidates=None, parser_level=0):
+def _make_entry(
+    changed_file="test.cpp",
+    affected_apis=None,
+    consumer_projects=None,
+    selection_reasons=None,
+    canonical_affected_apis=None,
+    unresolved_reason=None,
+    broad_infra_match=None,
+    impact_candidates=None,
+    parser_level=0,
+):
     entry = {
         "changed_file": changed_file,
         "affected_apis": affected_apis or [],
@@ -162,7 +170,7 @@ def test_legacy_exact_consumer_rate_unchanged():
     }
     summary = _summarize_result(result)
     # 2 entries with consumer_projects out of 3
-    assert summary["exact_consumer_hit_rate"] == round(2/3, 4)
+    assert summary["exact_consumer_hit_rate"] == round(2 / 3, 4)
 
 
 def test_exact_canonical_also_counts():
@@ -199,7 +207,7 @@ def test_exact_canonical_also_counts():
     }
     summary = _summarize_result(result)
     # Both strict_canonical and exact_canonical count (2 out of 3)
-    assert summary["strict_canonical_consumer_hit_rate"] == round(2/3, 4)
+    assert summary["strict_canonical_consumer_hit_rate"] == round(2 / 3, 4)
     # All 3 have consumer_projects
     assert summary["exact_consumer_hit_rate"] == 1.0
 

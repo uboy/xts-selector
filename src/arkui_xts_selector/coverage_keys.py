@@ -43,7 +43,9 @@ def coverage_family_key(token: str) -> str:
         # they look like reasonable component names (not path concatenations).
         _MAX_FAMILY_TOKEN_LEN = 18
         _PATH_NOISE_PREFIXES = ("arkts", "static", "declarative")
-        if len(normalized) > _MAX_FAMILY_TOKEN_LEN or any(normalized.startswith(p) for p in _PATH_NOISE_PREFIXES):
+        if len(normalized) > _MAX_FAMILY_TOKEN_LEN or any(
+            normalized.startswith(p) for p in _PATH_NOISE_PREFIXES
+        ):
             return ""
         canonical = normalized
     grouped = _rr.COVERAGE_FAMILY_GROUP_OVERRIDES.get(canonical, canonical)
@@ -57,7 +59,10 @@ def is_registered_family_token(token: str) -> bool:
     normalized = compact_token(token)
     if not normalized or normalized in _rr.GENERIC_COVERAGE_TOKENS:
         return False
-    return normalized in FAMILY_TOKEN_ALIAS_INDEX or normalized in _rr.COVERAGE_FAMILY_GROUP_OVERRIDES
+    return (
+        normalized in FAMILY_TOKEN_ALIAS_INDEX
+        or normalized in _rr.COVERAGE_FAMILY_GROUP_OVERRIDES
+    )
 
 
 def capability_family_key(capability: str) -> str:
@@ -75,7 +80,9 @@ def coverage_capability_key(token: str) -> str:
         return ""
     grouped = _rr.COVERAGE_CAPABILITY_GROUP_OVERRIDES.get(normalized, "")
     if not grouped and normalized in FAMILY_TOKEN_ALIAS_INDEX:
-        grouped = _rr.COVERAGE_CAPABILITY_GROUP_OVERRIDES.get(FAMILY_TOKEN_ALIAS_INDEX[normalized], "")
+        grouped = _rr.COVERAGE_CAPABILITY_GROUP_OVERRIDES.get(
+            FAMILY_TOKEN_ALIAS_INDEX[normalized], ""
+        )
     normalized_group = normalize_capability_name(grouped)
     if not normalized_group:
         return ""
@@ -116,7 +123,11 @@ def extract_reason_family_tokens(reasons: Iterable[str]) -> set[str]:
             if matched:
                 tokens.add(matched)
         for symbol in REASON_SYMBOL_RE.findall(text):
-            normalized = symbol.replace("Modifier", "").replace("Configuration", "").replace("Controller", "")
+            normalized = (
+                symbol.replace("Modifier", "")
+                .replace("Configuration", "")
+                .replace("Controller", "")
+            )
             token = compact_token(normalized)
             if token:
                 tokens.add(token)
@@ -148,7 +159,14 @@ STRUCTURAL_TYPED_CALLBACK_TYPES = {
 
 def related_signal_base_token(name: str) -> str:
     value = str(name).strip()
-    for suffix in ("Modifier", "Configuration", "Controller", "Internal", "Options", "Proxy"):
+    for suffix in (
+        "Modifier",
+        "Configuration",
+        "Controller",
+        "Internal",
+        "Options",
+        "Proxy",
+    ):
         if value.endswith(suffix):
             value = value[: -len(suffix)]
             break

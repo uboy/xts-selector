@@ -1,4 +1,5 @@
 """Tests for ETS import graph (B.4)."""
+
 from __future__ import annotations
 
 from arkui_xts_selector.indexing.ets_indexer import EtsIndexResult, EtsTestEntry
@@ -17,12 +18,18 @@ class TestImportGraph:
                 "/path/button_test.ets": ["@ohos.button", "@ohos.common"],
             },
         )
-        assert result.imports_from["/path/button_test.ets"] == ["@ohos.button", "@ohos.common"]
+        assert result.imports_from["/path/button_test.ets"] == [
+            "@ohos.button",
+            "@ohos.common",
+        ]
 
     def test_imported_by_reverse_lookup(self) -> None:
         result = EtsIndexResult(
             imported_by={
-                "@ohos.button": ["/path/button_test.ets", "/path/button_style_test.ets"],
+                "@ohos.button": [
+                    "/path/button_test.ets",
+                    "/path/button_style_test.ets",
+                ],
             },
         )
         assert result.find_importers("@ohos.button") == [

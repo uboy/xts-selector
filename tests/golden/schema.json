@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GoldenTestCase",
+  "description": "Schema for arkui-xts-selector golden test cases",
+  "type": "object",
+  "required": ["case_id", "status", "changed_input", "source_classification", "expected_affected_apis", "expected_bucket_constraints", "expected_xts", "negative_expectations"],
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["manual_verified", "generated_candidate", "needs_review"]
+    },
+    "changed_input": {
+      "type": "object",
+      "required": ["kind", "path"],
+      "properties": {
+        "kind": {"type": "string", "enum": ["file", "symbol", "range"]},
+        "path": {"type": "string"},
+        "symbol": {"type": ["string", "null"]},
+        "range": {"type": ["string", "null"]}
+      }
+    },
+    "source_classification": {
+      "type": "object",
+      "required": ["component_family", "layer", "surface", "specificity"],
+      "properties": {
+        "component_family": {"type": ["string", "null"]},
+        "layer": {
+          "type": "string",
+          "enum": ["pattern", "model", "native_modifier", "native_node_accessor", "arkts_bridge", "dynamic_jsview", "infra", "generator", "unknown"]
+        },
+        "surface": {
+          "type": "string",
+          "enum": ["static", "dynamic", "shared", "unknown"]
+        },
+        "specificity": {
+          "type": "string",
+          "enum": ["file_level", "symbol_level", "hunk_level"]
+        }
+      }
+    },
+    "expected_affected_apis": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["api_name", "api_kind", "surface", "confidence", "evidence"],
+        "properties": {
+          "api_name": {"type": "string"},
+          "api_kind": {
+            "type": "string",
+            "enum": ["modifier", "component", "attribute", "event_or_method", "module", "configuration", "unknown"]
+          },
+          "surface": {
+            "type": "string",
+            "enum": ["static", "dynamic", "shared", "unknown"]
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["strong", "medium", "weak", "unknown"]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["type"],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["sdk_declaration", "source_symbol", "source_class_or_method", "native_modifier_accessor", "bridge_symbol", "xts_usage", "path_layer", "config_rule", "manual_note", "manual_code_review_note"]
+                },
+                "path": {"type": ["string", "null"]},
+                "line": {"type": ["integer", "null"]},
+                "symbol": {"type": ["string", "null"]},
+                "note": {"type": ["string", "null"]}
+              }
+            }
+          }
+        }
+      }
+    },
+    "expected_bucket_constraints": {
+      "type": "object",
+      "required": ["must_include_any_api", "must_not_must_run_api", "allow_unresolved"],
+      "properties": {
+        "must_include_any_api": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "must_not_must_run_api": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "max_bucket_if_only_path_evidence": {
+          "type": "string",
+          "enum": ["must_run", "required", "recommended", "possible", "optional"],
+          "default": "possible"
+        },
+        "allow_unresolved": {"type": "boolean", "default": false}
+      }
+    },
+    "expected_xts": {
+      "type": "object",
+      "required": ["must_include_projects", "must_not_must_run_projects", "optional_related_projects"],
+      "properties": {
+        "must_include_projects": {"type": "array", "items": {"type": "string"}},
+        "must_not_must_run_projects": {"type": "array", "items": {"type": "string"}},
+        "optional_related_projects": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "negative_expectations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule", "description"],
+        "properties": {
+          "rule": {"type": "string"},
+          "description": {"type": "string"}
+        }
+      }
+    },
+    "notes": {"type": "string", "default": ""}
+  }
+}

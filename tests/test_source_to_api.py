@@ -7,9 +7,9 @@ Tests verify:
 - JS view dynamic methods are mapped correctly
 - Pattern methods are mapped with lower confidence
 """
+
 from __future__ import annotations
 
-import pytest
 
 from arkui_xts_selector.indexing.ace_indexer import (
     AceIndexEntry,
@@ -18,7 +18,6 @@ from arkui_xts_selector.indexing.ace_indexer import (
 )
 from arkui_xts_selector.indexing.cpp_parser import CppClass, CppMethod
 from arkui_xts_selector.indexing.source_to_api import (
-    ConfidenceLevel,
     SourceApiMapping,
     build_source_to_api_mapping,
 )
@@ -91,7 +90,10 @@ class TestBuildSourceToApiMapping:
         # Find SetRole mapping from native_modifier
         set_role_mapping = None
         for mapping in mappings:
-            if mapping.source_qualified == "ButtonModifier::SetRole" and mapping.file_role == "native_modifier":
+            if (
+                mapping.source_qualified == "ButtonModifier::SetRole"
+                and mapping.file_role == "native_modifier"
+            ):
                 set_role_mapping = mapping
                 break
 
@@ -102,7 +104,10 @@ class TestBuildSourceToApiMapping:
         # Find ResetRole mapping
         reset_role_mapping = None
         for mapping in mappings:
-            if "ResetRole" in mapping.source_qualified and mapping.file_role == "native_modifier":
+            if (
+                "ResetRole" in mapping.source_qualified
+                and mapping.file_role == "native_modifier"
+            ):
                 reset_role_mapping = mapping
                 break
 
@@ -122,7 +127,10 @@ class TestBuildSourceToApiMapping:
         # Find GetRole mapping
         get_role_mapping = None
         for mapping in mappings:
-            if "GetRole" in mapping.source_qualified and mapping.file_role == "native_node_accessor":
+            if (
+                "GetRole" in mapping.source_qualified
+                and mapping.file_role == "native_node_accessor"
+            ):
                 get_role_mapping = mapping
                 break
 
@@ -133,7 +141,10 @@ class TestBuildSourceToApiMapping:
         # Find SetRole mapping from node accessor
         set_role_mapping = None
         for mapping in mappings:
-            if mapping.source_qualified == "ButtonModifier::SetRole" and mapping.file_role == "native_node_accessor":
+            if (
+                mapping.source_qualified == "ButtonModifier::SetRole"
+                and mapping.file_role == "native_node_accessor"
+            ):
                 set_role_mapping = mapping
                 break
 
@@ -153,7 +164,10 @@ class TestBuildSourceToApiMapping:
         # Find Create mapping
         create_mapping = None
         for mapping in mappings:
-            if mapping.source_qualified == "JsButton::Create" and mapping.file_role == "jsview_dynamic":
+            if (
+                mapping.source_qualified == "JsButton::Create"
+                and mapping.file_role == "jsview_dynamic"
+            ):
                 create_mapping = mapping
                 break
 
@@ -164,7 +178,10 @@ class TestBuildSourceToApiMapping:
         # Find JsType mapping
         js_type_mapping = None
         for mapping in mappings:
-            if "JsType" in mapping.source_qualified and mapping.file_role == "jsview_dynamic":
+            if (
+                "JsType" in mapping.source_qualified
+                and mapping.file_role == "jsview_dynamic"
+            ):
                 js_type_mapping = mapping
                 break
 
@@ -473,7 +490,7 @@ class TestSdkIndexFiltering:
                     name="ButtonPattern",
                     methods=(
                         CppMethod(name="Measure"),  # Internal method
-                        CppMethod(name="Layout"),    # Internal method
+                        CppMethod(name="Layout"),  # Internal method
                     ),
                 ),
             ),

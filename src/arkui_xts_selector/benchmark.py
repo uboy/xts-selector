@@ -6,12 +6,12 @@ output against must_have / must_not_have expectations.
 Run:
     python3 -m unittest tests.test_benchmark_runner -v
 """
+
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 
 @dataclass
@@ -137,14 +137,18 @@ class BenchmarkRunner:
 
         # Precision: top-N correct (must_have in top-N)
         if case.must_have and output_paths:
-            top_n = min(len(output_paths), case.precision_budget.get("max_required_count", 100))
+            top_n = min(
+                len(output_paths), case.precision_budget.get("max_required_count", 100)
+            )
             top_n_paths = output_paths[:top_n]
             found_in_top = sum(
                 1
                 for expected in case.must_have
                 if any(expected in path for path in top_n_paths)
             )
-            result.precision = found_in_top / len(case.must_have) if case.must_have else 0.0
+            result.precision = (
+                found_in_top / len(case.must_have) if case.must_have else 0.0
+            )
 
         # Noise: must_not_have in top-5
         top_5 = output_paths[:5]
@@ -229,12 +233,14 @@ def run_suite(
     for case in runner.load_all_cases():
         report = reports.get(case.name)
         if report is None:
-            results.append(BenchmarkResult(
-                case_name=case.name,
-                family=case.family,
-                pass_fail=False,
-                notes=f"No report provided for case {case.name!r}",
-            ))
+            results.append(
+                BenchmarkResult(
+                    case_name=case.name,
+                    family=case.family,
+                    pass_fail=False,
+                    notes=f"No report provided for case {case.name!r}",
+                )
+            )
             continue
         results.append(runner.evaluate(case, report))
     return results

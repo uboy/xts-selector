@@ -21,9 +21,16 @@ from arkui_xts_selector.model.evidence import Evidence
 class NodeTypeTests(unittest.TestCase):
     def test_all_required_types_exist(self) -> None:
         required = {
-            "engine_file", "sdk_declaration", "api_entity", "api_surface",
-            "component_family", "consumer_file", "consumer_project",
-            "runnable_target", "build_artifact", "unresolved_input",
+            "engine_file",
+            "sdk_declaration",
+            "api_entity",
+            "api_surface",
+            "component_family",
+            "consumer_file",
+            "consumer_project",
+            "runnable_target",
+            "build_artifact",
+            "unresolved_input",
         }
         actual = {m.value for m in NodeType}
         self.assertEqual(actual, required)
@@ -36,10 +43,18 @@ class NodeTypeTests(unittest.TestCase):
 class EdgeTypeTests(unittest.TestCase):
     def test_all_required_types_exist(self) -> None:
         required = {
-            "declares", "wraps", "implements", "bridges_dynamic",
-            "provides_static_modifier", "backs_component", "fanout_accessor",
-            "uses_api", "belongs_to_project", "maps_to_target",
-            "produces_artifact", "depends_on",
+            "declares",
+            "wraps",
+            "implements",
+            "bridges_dynamic",
+            "provides_static_modifier",
+            "backs_component",
+            "fanout_accessor",
+            "uses_api",
+            "belongs_to_project",
+            "maps_to_target",
+            "produces_artifact",
+            "depends_on",
         }
         actual = {m.value for m in EdgeType}
         self.assertEqual(actual, required)
@@ -126,12 +141,18 @@ class GraphContainerTests(unittest.TestCase):
     def test_round_trip(self) -> None:
         g = Graph()
         g.add_node(GraphNode(node_id="n1", node_type="api_entity", label="Button"))
-        g.add_node(GraphNode(node_id="n2", node_type="consumer_file", label="ButtonTest.ets"))
-        g.add_edge(GraphEdge(
-            edge_id="e1", edge_type="uses_api",
-            from_node="n2", to_node="n1",
-            consumer_usage_confidence="strong",
-        ))
+        g.add_node(
+            GraphNode(node_id="n2", node_type="consumer_file", label="ButtonTest.ets")
+        )
+        g.add_edge(
+            GraphEdge(
+                edge_id="e1",
+                edge_type="uses_api",
+                from_node="n2",
+                to_node="n1",
+                consumer_usage_confidence="strong",
+            )
+        )
         d = g.to_dict()
         restored = Graph.from_dict(d)
         self.assertEqual(set(g.nodes.keys()), set(restored.nodes.keys()))
@@ -148,8 +169,16 @@ class GraphContainerTests(unittest.TestCase):
 
     def test_deterministic_edge_ordering(self) -> None:
         g = Graph()
-        g.add_edge(GraphEdge(edge_id="z_edge", edge_type="uses_api", from_node="a", to_node="b"))
-        g.add_edge(GraphEdge(edge_id="a_edge", edge_type="declares", from_node="c", to_node="d"))
+        g.add_edge(
+            GraphEdge(
+                edge_id="z_edge", edge_type="uses_api", from_node="a", to_node="b"
+            )
+        )
+        g.add_edge(
+            GraphEdge(
+                edge_id="a_edge", edge_type="declares", from_node="c", to_node="d"
+            )
+        )
         d = g.to_dict()
         edge_ids = [e["edge_id"] for e in d["edges"]]
         self.assertEqual(edge_ids, sorted(edge_ids))
@@ -182,11 +211,15 @@ class GraphContainerTests(unittest.TestCase):
         g = Graph()
         g.add_node(GraphNode(node_id="a", node_type="consumer_file"))
         g.add_node(GraphNode(node_id="b", node_type="api_entity"))
-        g.add_edge(GraphEdge(edge_id="e1", edge_type="uses_api",
-                             from_node="a", to_node="b"))
+        g.add_edge(
+            GraphEdge(edge_id="e1", edge_type="uses_api", from_node="a", to_node="b")
+        )
         with self.assertRaises(ValueError) as ctx:
-            g.add_edge(GraphEdge(edge_id="e1", edge_type="declares",
-                                 from_node="a", to_node="b"))
+            g.add_edge(
+                GraphEdge(
+                    edge_id="e1", edge_type="declares", from_node="a", to_node="b"
+                )
+            )
         self.assertIn("Duplicate edge id", str(ctx.exception))
 
 

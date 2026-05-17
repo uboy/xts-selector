@@ -1,5 +1,4 @@
 import unittest
-from pathlib import Path
 from arkui_xts_selector.indexing.symbol_span_index import SymbolSpan, symbols_in_range
 
 

@@ -9,6 +9,7 @@ Changes:
 Usage:
     python3 scripts/phase_b_remediate_golden_set.py [golden_file.json]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,8 +20,9 @@ from pathlib import Path
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("golden_file", type=Path, nargs="?",
-                       default=Path("config/golden_pr_set.json"))
+    parser.add_argument(
+        "golden_file", type=Path, nargs="?", default=Path("config/golden_pr_set.json")
+    )
     args = parser.parse_args()
 
     if not args.golden_file.exists():
@@ -41,7 +43,9 @@ def main() -> None:
         pr["label_source"] = "helper_script"
 
     # Write back
-    args.golden_file.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    args.golden_file.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     print(f"Updated {len(data['golden_prs'])} PR entries in {args.golden_file}")
     print("All annotation_status → 'candidate'")
     print("All label_source → 'helper_script'")

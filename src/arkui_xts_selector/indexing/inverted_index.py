@@ -3,6 +3,7 @@
 Maps each ApiEntityId canonical string to the list of XTS consumer projects
 that use it. Built from extract_api_usages() output across XTS test files.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -11,16 +12,17 @@ from pathlib import Path
 from ..model.api import ApiEntityId
 from .ets_indexer import build_ets_index, EtsIndexResult
 from .sdk_indexer import SdkIndexResult
-from .usage_extractor import extract_api_usages, ApiUsage
+from .usage_extractor import extract_api_usages
 
 
 @dataclass(frozen=True)
 class ConsumerEntry:
     """A consumer project that uses an API entity."""
-    project_path: str        # e.g. "arkui/ace_ets_module_button_role_static"
-    file_path: str           # e.g. ".../ButtonRoleTest.ets"
-    line: int                # usage line
-    usage_kind: str          # "component_instantiation" | "chained_modifier" | ...
+
+    project_path: str  # e.g. "arkui/ace_ets_module_button_role_static"
+    file_path: str  # e.g. ".../ButtonRoleTest.ets"
+    line: int  # usage line
+    usage_kind: str  # "component_instantiation" | "chained_modifier" | ...
     confidence: str
 
     def to_dict(self) -> dict:
@@ -42,6 +44,7 @@ class ConsumerEntry:
 @dataclass
 class InvertedIndex:
     """API entity -> list of consumer entries."""
+
     by_api: dict[str, list[ConsumerEntry]] = field(default_factory=dict)
     # R6 fix: dedicated member_name index for precise lookup, populated lazily.
     # Maps bare member name (e.g. "role") → list of consumer entries from any parent.
@@ -97,7 +100,9 @@ class InvertedIndex:
         return self.by_api.get(canonical_id, [])
 
     def consumers_for_member_name(
-        self, member_name: str, parent_filter: str | None = None,
+        self,
+        member_name: str,
+        parent_filter: str | None = None,
     ) -> list[ConsumerEntry]:
         """Look up consumers by bare member name with optional parent disambiguation.
 
@@ -119,8 +124,10 @@ class InvertedIndex:
         # Walk by_api once to find parent-matching keys
         results: list[ConsumerEntry] = []
         for key, consumers in self.by_api.items():
-            if (f"{parent_filter}%23{member_name}" in key
-                    or f"{parent_filter}.{member_name}" in key):
+            if (
+                f"{parent_filter}%23{member_name}" in key
+                or f"{parent_filter}.{member_name}" in key
+            ):
                 results.extend(consumers)
         return results
 
@@ -206,13 +213,15 @@ def build_inverted_index(
         api_id = _resolve_api_entity_id(usage.api_name, sdk_index)
         canonical = api_id.canonical()
 
-        by_api.setdefault(canonical, []).append(ConsumerEntry(
-            project_path=rel_path,
-            file_path=usage.source_file,
-            line=usage.line or 0,
-            usage_kind=usage.usage_type,
-            confidence=usage.confidence,
-        ))
+        by_api.setdefault(canonical, []).append(
+            ConsumerEntry(
+                project_path=rel_path,
+                file_path=usage.source_file,
+                line=usage.line or 0,
+                usage_kind=usage.usage_type,
+                confidence=usage.confidence,
+            )
+        )
     return InvertedIndex(by_api=by_api)
 
 

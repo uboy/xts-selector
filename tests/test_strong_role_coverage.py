@@ -1,8 +1,7 @@
 """Tests for strong-role canonical coverage metric in batch_validate."""
+
 from __future__ import annotations
 
-import json
-from pathlib import Path
 
 from arkui_xts_selector.batch_validate import _summarize_result
 
@@ -28,9 +27,18 @@ def _make_result(entries: list[dict]) -> dict:
 
 def test_strong_role_files_counted():
     entries = [
-        _make_entry("frameworks/core/components_ng/pattern/button/button_model_static.cpp", canonical=True),
-        _make_entry("frameworks/core/components_ng/pattern/button/button_model_ng.cpp", canonical=False),
-        _make_entry("frameworks/core/components_ng/pattern/button/button_pattern.cpp", canonical=False),
+        _make_entry(
+            "frameworks/core/components_ng/pattern/button/button_model_static.cpp",
+            canonical=True,
+        ),
+        _make_entry(
+            "frameworks/core/components_ng/pattern/button/button_model_ng.cpp",
+            canonical=False,
+        ),
+        _make_entry(
+            "frameworks/core/components_ng/pattern/button/button_pattern.cpp",
+            canonical=False,
+        ),
     ]
     result = _summarize_result(_make_result(entries))
     assert result["strong_role_files_count"] == 2  # model_static + model_ng
@@ -50,8 +58,14 @@ def test_no_strong_role_files():
 
 def test_all_strong_role_files_canonical():
     entries = [
-        _make_entry("frameworks/core/components_ng/pattern/text/text_model_static.cpp", canonical=True),
-        _make_entry("frameworks/core/interfaces/native/implementation/text_modifier.cpp", canonical=True),
+        _make_entry(
+            "frameworks/core/components_ng/pattern/text/text_model_static.cpp",
+            canonical=True,
+        ),
+        _make_entry(
+            "frameworks/core/interfaces/native/implementation/text_modifier.cpp",
+            canonical=True,
+        ),
     ]
     result = _summarize_result(_make_result(entries))
     assert result["strong_role_files_count"] == 2

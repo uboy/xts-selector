@@ -1,4 +1,5 @@
 """AST-based ground-truth oracle for method-level diffs using tree-sitter C++ parsing."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -6,7 +7,10 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Literal
 
-from arkui_xts_selector.tree_sitter_parsers import _get_ts_cpp_parser, _ts_extract_func_name
+from arkui_xts_selector.tree_sitter_parsers import (
+    _get_ts_cpp_parser,
+    _ts_extract_func_name,
+)
 
 
 ChangeKind = Literal[
@@ -100,7 +104,9 @@ def _git_show(repo_root: Path, sha: str, path: str) -> bytes:
     return result.stdout
 
 
-def _diff_cpp(file_path: str, pre: bytes | None, post: bytes | None) -> list[MethodChange]:
+def _diff_cpp(
+    file_path: str, pre: bytes | None, post: bytes | None
+) -> list[MethodChange]:
     """Diff two C++ file contents and extract method-level changes.
 
     Args:
@@ -203,6 +209,7 @@ def _parse_cpp_methods(content: bytes, file_path: str) -> list[MethodSnapshot]:
     # Real C++ files (especially generated bridges) can have AST depth > 1000.
     # Bump recursion limit just for this visit; restore after.
     import sys as _sys
+
     _prev_limit = _sys.getrecursionlimit()
     _sys.setrecursionlimit(max(_prev_limit, 10000))
 
@@ -213,7 +220,9 @@ def _parse_cpp_methods(content: bytes, file_path: str) -> list[MethodSnapshot]:
             class_name = None
             for child in node.children:
                 if child.type == "type_identifier":
-                    class_name = content[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                    class_name = content[child.start_byte : child.end_byte].decode(
+                        "utf-8", errors="replace"
+                    )
                     break
 
             if class_name:
@@ -225,7 +234,9 @@ def _parse_cpp_methods(content: bytes, file_path: str) -> list[MethodSnapshot]:
             body = node.child_by_field_name("body")
 
             if declarator:
-                method_name, qualified_name, parent_class = _extract_cpp_name(declarator, current_class, content)
+                method_name, qualified_name, parent_class = _extract_cpp_name(
+                    declarator, current_class, content
+                )
 
                 if method_name:
                     signature = _normalize_cpp_signature(declarator, content)
@@ -254,7 +265,9 @@ def _parse_cpp_methods(content: bytes, file_path: str) -> list[MethodSnapshot]:
                     func_decl = child
                     break
             if func_decl:
-                method_name, qualified_name, parent_class = _extract_cpp_name(func_decl, current_class, content)
+                method_name, qualified_name, parent_class = _extract_cpp_name(
+                    func_decl, current_class, content
+                )
                 if method_name:
                     signature = _normalize_cpp_signature(func_decl, content)
                     line_start = node.start_point[0] + 1
@@ -280,7 +293,9 @@ def _parse_cpp_methods(content: bytes, file_path: str) -> list[MethodSnapshot]:
                     func_decl = child
                     break
             if func_decl:
-                method_name, qualified_name, parent_class = _extract_cpp_name(func_decl, current_class, content)
+                method_name, qualified_name, parent_class = _extract_cpp_name(
+                    func_decl, current_class, content
+                )
                 if method_name:
                     signature = _normalize_cpp_signature(func_decl, content)
                     line_start = node.start_point[0] + 1
@@ -323,7 +338,7 @@ def _hash_body(body_node, content: bytes) -> str:
     Returns:
         SHA256 hex digest of normalized body content
     """
-    body_text = content[body_node.start_byte:body_node.end_byte]
+    body_text = content[body_node.start_byte : body_node.end_byte]
 
     import re
 
@@ -347,7 +362,9 @@ def _normalize_cpp_signature(func_node, content: bytes) -> str:
     Returns:
         Normalized signature string
     """
-    sig_text = content[func_node.start_byte:func_node.end_byte].decode("utf-8", errors="replace")
+    sig_text = content[func_node.start_byte : func_node.end_byte].decode(
+        "utf-8", errors="replace"
+    )
 
     import re
 
@@ -356,7 +373,9 @@ def _normalize_cpp_signature(func_node, content: bytes) -> str:
     return sig_text
 
 
-def _extract_cpp_name(declarator_node, current_class: str | None, content: bytes = b"") -> tuple[str, str, str | None]:
+def _extract_cpp_name(
+    declarator_node, current_class: str | None, content: bytes = b""
+) -> tuple[str, str, str | None]:
     """Extract method name, qualified name, and parent class from a declarator."""
     method_name = _ts_extract_func_name(declarator_node, content)
 
@@ -372,7 +391,9 @@ def _extract_cpp_name(declarator_node, current_class: str | None, content: bytes
     else:
         for child in declarator_node.children:
             if child.type == "qualified_identifier":
-                raw = content[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                raw = content[child.start_byte : child.end_byte].decode(
+                    "utf-8", errors="replace"
+                )
                 if "::" in raw:
                     parts = raw.rsplit("::", 1)
                     parent_class = parts[0]
@@ -404,7 +425,9 @@ def _parse_text_signatures(content: bytes) -> dict[str, str]:
         if not stripped or stripped.startswith("//") or stripped.startswith("/*"):
             continue
 
-        m = re.match(r"(?:export\s+)?(?:declare\s+)?(?:interface|class)\s+(\w+)", stripped)
+        m = re.match(
+            r"(?:export\s+)?(?:declare\s+)?(?:interface|class)\s+(\w+)", stripped
+        )
         if m:
             current_iface = m.group(1)
             continue
@@ -446,39 +469,63 @@ def _diff_signatures(
 
     for qname in set(post_sigs) - set(pre_sigs):
         parent, method = qname.split("::", 1) if "::" in qname else (None, qname)
-        changes.append(MethodChange(
-            file_path=file_path, parent_class=parent, method_name=method,
-            qualified_name=qname, change_kind=change_kind_added,
-            pre=None, post=None,
-        ))
+        changes.append(
+            MethodChange(
+                file_path=file_path,
+                parent_class=parent,
+                method_name=method,
+                qualified_name=qname,
+                change_kind=change_kind_added,
+                pre=None,
+                post=None,
+            )
+        )
 
     for qname in set(pre_sigs) - set(post_sigs):
         parent, method = qname.split("::", 1) if "::" in qname else (None, qname)
-        changes.append(MethodChange(
-            file_path=file_path, parent_class=parent, method_name=method,
-            qualified_name=qname, change_kind=change_kind_removed,
-            pre=None, post=None,
-        ))
+        changes.append(
+            MethodChange(
+                file_path=file_path,
+                parent_class=parent,
+                method_name=method,
+                qualified_name=qname,
+                change_kind=change_kind_removed,
+                pre=None,
+                post=None,
+            )
+        )
 
     for qname in set(pre_sigs) & set(post_sigs):
         if pre_sigs[qname] != post_sigs[qname]:
             parent, method = qname.split("::", 1) if "::" in qname else (None, qname)
-            changes.append(MethodChange(
-                file_path=file_path, parent_class=parent, method_name=method,
-                qualified_name=qname, change_kind=change_kind_sig,
-                pre=None, post=None,
-            ))
+            changes.append(
+                MethodChange(
+                    file_path=file_path,
+                    parent_class=parent,
+                    method_name=method,
+                    qualified_name=qname,
+                    change_kind=change_kind_sig,
+                    pre=None,
+                    post=None,
+                )
+            )
 
     return changes
 
 
-def _diff_dts(file_path: str, pre: bytes | None, post: bytes | None) -> list[MethodChange]:
+def _diff_dts(
+    file_path: str, pre: bytes | None, post: bytes | None
+) -> list[MethodChange]:
     return _diff_signatures(file_path, pre, post)
 
 
-def _diff_idl(file_path: str, pre: bytes | None, post: bytes | None) -> list[MethodChange]:
+def _diff_idl(
+    file_path: str, pre: bytes | None, post: bytes | None
+) -> list[MethodChange]:
     return _diff_signatures(file_path, pre, post)
 
 
-def _diff_ets(file_path: str, pre: bytes | None, post: bytes | None) -> list[MethodChange]:
+def _diff_ets(
+    file_path: str, pre: bytes | None, post: bytes | None
+) -> list[MethodChange]:
     return _diff_signatures(file_path, pre, post)

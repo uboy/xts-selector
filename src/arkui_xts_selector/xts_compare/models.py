@@ -18,6 +18,7 @@ class TestOutcome(enum.Enum):
 
 class FailureType(enum.Enum):
     """Classification of WHY a test failed."""
+
     CRASH = "CRASH"
     TIMEOUT = "TIMEOUT"
     ASSERTION = "ASSERTION"
@@ -244,13 +245,16 @@ class ComparisonReport:
     disappeared: list[TestTransition] = field(default_factory=list)
     root_causes: list[RootCauseCluster] = field(default_factory=list)
     performance_changes: list[PerformanceChange] = field(default_factory=list)
-    selector_correlations: list[SelectorChangedFileCorrelation] = field(default_factory=list)
+    selector_correlations: list[SelectorChangedFileCorrelation] = field(
+        default_factory=list
+    )
     input_order: InputOrderInfo = field(default_factory=InputOrderInfo)
 
 
 @dataclass
 class RootCauseCluster:
     """Group of failures sharing the same normalized root cause."""
+
     fingerprint: str = ""
     failure_type: FailureType = FailureType.UNKNOWN_FAIL
     canonical_message: str = ""

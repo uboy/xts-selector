@@ -70,18 +70,20 @@ def _render_input_order(data: dict) -> str:
         return ""
     buf = StringIO()
     buf.write('<section class="panel">')
-    buf.write('<h2>Input Order</h2>')
+    buf.write("<h2>Input Order</h2>")
     buf.write('<div class="meta-list">')
-    buf.write(f'<div><strong>Mode:</strong> {_esc(info.get("mode") or "-")}</div>')
+    buf.write(f"<div><strong>Mode:</strong> {_esc(info.get('mode') or '-')}</div>")
     buf.write(
-        f'<div><strong>Order:</strong> {_esc(info.get("source") or "-")} '
-        f'({_esc("auto" if info.get("auto_detected") else "explicit")})</div>'
+        f"<div><strong>Order:</strong> {_esc(info.get('source') or '-')} "
+        f"({_esc('auto' if info.get('auto_detected') else 'explicit')})</div>"
     )
     if info.get("origin"):
-        buf.write(f'<div><strong>Origin:</strong> {_esc(info["origin"])}</div>')
+        buf.write(f"<div><strong>Origin:</strong> {_esc(info['origin'])}</div>")
     if info.get("ordered_paths"):
-        names = " -> ".join(_esc(path.rsplit("/", 1)[-1]) for path in info["ordered_paths"])
-        buf.write(f'<div><strong>Paths:</strong> {names}</div>')
+        names = " -> ".join(
+            _esc(path.rsplit("/", 1)[-1]) for path in info["ordered_paths"]
+        )
+        buf.write(f"<div><strong>Paths:</strong> {names}</div>")
     buf.write("</div></section>")
     return buf.getvalue()
 
@@ -97,12 +99,14 @@ def _render_run_provenance(meta: dict, title: str) -> str:
     buf.write(f"<h2>{_esc(title)}</h2>")
     buf.write('<div class="meta-list">')
     if timestamp_source:
-        buf.write(f'<div><strong>Timestamp source:</strong> {_esc(timestamp_source)}</div>')
+        buf.write(
+            f"<div><strong>Timestamp source:</strong> {_esc(timestamp_source)}</div>"
+        )
     if skipped:
         items = ", ".join(f"{item['reason']}:{item['path']}" for item in skipped[:5])
         if len(skipped) > 5:
             items += ", ..."
-        buf.write(f'<div><strong>Archive notices:</strong> {_esc(items)}</div>')
+        buf.write(f"<div><strong>Archive notices:</strong> {_esc(items)}</div>")
     buf.write("</div></section>")
     return buf.getvalue()
 
@@ -113,11 +117,13 @@ def _render_root_causes(data: dict) -> str:
         return ""
     buf = StringIO()
     buf.write('<section class="panel">')
-    buf.write('<div class="panel-head"><h2>Root Cause Analysis</h2><input class="table-filter" data-target="root-cause-table" placeholder="Filter root causes"></div>')
+    buf.write(
+        '<div class="panel-head"><h2>Root Cause Analysis</h2><input class="table-filter" data-target="root-cause-table" placeholder="Filter root causes"></div>'
+    )
     buf.write('<table id="root-cause-table"><thead><tr>')
     for heading in ("Failure Type", "Message", "Count", "Modules"):
-        buf.write(f'<th>{_esc(heading)}</th>')
-    buf.write('</tr></thead><tbody>')
+        buf.write(f"<th>{_esc(heading)}</th>")
+    buf.write("</tr></thead><tbody>")
     for row in rows:
         buf.write("<tr>")
         buf.write(f"<td>{_esc(row['failure_type'])}</td>")
@@ -135,11 +141,13 @@ def _render_regressions(data: dict) -> str:
         return ""
     buf = StringIO()
     buf.write('<section class="panel">')
-    buf.write('<div class="panel-head"><h2>Regressions</h2><input class="table-filter" data-target="regressions-table" placeholder="Filter regressions"></div>')
+    buf.write(
+        '<div class="panel-head"><h2>Regressions</h2><input class="table-filter" data-target="regressions-table" placeholder="Filter regressions"></div>'
+    )
     buf.write('<table id="regressions-table"><thead><tr>')
     for heading in ("Module", "Suite", "Case", "Transition", "Failure Type", "Message"):
-        buf.write(f'<th>{_esc(heading)}</th>')
-    buf.write('</tr></thead><tbody>')
+        buf.write(f"<th>{_esc(heading)}</th>")
+    buf.write("</tr></thead><tbody>")
     for row in regressions:
         identity = row["identity"]
         transition = f"{row['base_outcome'] or '(absent)'} -> {row['target_outcome'] or '(absent)'}"
@@ -166,8 +174,12 @@ def _render_module_health(data: dict) -> str:
     for module in modules:
         score = float(module.get("health_score", 0.0))
         buf.write('<div class="health-item">')
-        buf.write(f'<div class="health-meta"><strong>{_esc(module["module"])}</strong><span>{score:.1f}%</span></div>')
-        buf.write(f'<div class="health-bar"><span style="width:{max(0.0, min(100.0, score)):.1f}%"></span></div>')
+        buf.write(
+            f'<div class="health-meta"><strong>{_esc(module["module"])}</strong><span>{score:.1f}%</span></div>'
+        )
+        buf.write(
+            f'<div class="health-bar"><span style="width:{max(0.0, min(100.0, score)):.1f}%"></span></div>'
+        )
         buf.write("</div>")
     buf.write("</div></section>")
     return buf.getvalue()
@@ -179,11 +191,21 @@ def _render_performance(data: dict) -> str:
         return ""
     buf = StringIO()
     buf.write('<section class="panel">')
-    buf.write('<div class="panel-head"><h2>Performance Changes</h2><input class="table-filter" data-target="performance-table" placeholder="Filter performance"></div>')
+    buf.write(
+        '<div class="panel-head"><h2>Performance Changes</h2><input class="table-filter" data-target="performance-table" placeholder="Filter performance"></div>'
+    )
     buf.write('<table id="performance-table"><thead><tr>')
-    for heading in ("Module", "Suite", "Case", "Base ms", "Target ms", "Delta ms", "Ratio"):
-        buf.write(f'<th>{_esc(heading)}</th>')
-    buf.write('</tr></thead><tbody>')
+    for heading in (
+        "Module",
+        "Suite",
+        "Case",
+        "Base ms",
+        "Target ms",
+        "Delta ms",
+        "Ratio",
+    ):
+        buf.write(f"<th>{_esc(heading)}</th>")
+    buf.write("</tr></thead><tbody>")
     for row in rows:
         identity = row["identity"]
         buf.write("<tr>")
@@ -208,28 +230,33 @@ def _render_selector_correlation(data: dict) -> str:
     buf.write("<h2>Selector Correlation</h2>")
     for entry in rows:
         buf.write('<article class="selector-entry">')
-        buf.write(f'<h3>{_esc(entry["changed_file"])}</h3>')
+        buf.write(f"<h3>{_esc(entry['changed_file'])}</h3>")
         for project in entry.get("predicted_projects", []):
             buf.write('<div class="selector-project">')
             buf.write(
-                f'<div><strong>{_esc(project["project"])}</strong> '
+                f"<div><strong>{_esc(project['project'])}</strong> "
                 f'<span class="muted">score={_esc(project["score"])}, '
-                f'bucket={_esc(project["bucket"])}, confidence={_esc(project["confidence"])}</span></div>'
+                f"bucket={_esc(project['bucket'])}, confidence={_esc(project['confidence'])}</span></div>"
             )
-            matched_modules = ", ".join(project.get("matched_modules", [])) or "no compared module match"
+            matched_modules = (
+                ", ".join(project.get("matched_modules", []))
+                or "no compared module match"
+            )
             buf.write(f'<div class="muted">Modules: {_esc(matched_modules)}</div>')
             if project.get("regressions"):
                 names = ", ".join(item["case"] for item in project["regressions"])
-                buf.write(f'<div>Regressions: {_esc(names)}</div>')
+                buf.write(f"<div>Regressions: {_esc(names)}</div>")
             if project.get("improvements"):
                 names = ", ".join(item["case"] for item in project["improvements"])
-                buf.write(f'<div>Improvements: {_esc(names)}</div>')
+                buf.write(f"<div>Improvements: {_esc(names)}</div>")
             if project.get("predicted_but_no_change"):
                 buf.write("<div>No changes in matched modules</div>")
             buf.write("</div>")
         if entry.get("regression_not_predicted"):
             names = ", ".join(item["key"] for item in entry["regression_not_predicted"])
-            buf.write(f'<div class="selector-missed">Not predicted regressions: {_esc(names)}</div>')
+            buf.write(
+                f'<div class="selector-missed">Not predicted regressions: {_esc(names)}</div>'
+            )
         buf.write("</article>")
     buf.write("</section>")
     return buf.getvalue()
@@ -241,11 +268,21 @@ def _render_single_run_results(data: dict) -> str:
         return ""
     buf = StringIO()
     buf.write('<section class="panel">')
-    buf.write('<div class="panel-head"><h2>Results</h2><input class="table-filter" data-target="single-run-results" placeholder="Filter results"></div>')
+    buf.write(
+        '<div class="panel-head"><h2>Results</h2><input class="table-filter" data-target="single-run-results" placeholder="Filter results"></div>'
+    )
     buf.write('<table id="single-run-results"><thead><tr>')
-    for heading in ("Module", "Suite", "Case", "Outcome", "Failure Type", "Time ms", "Message"):
-        buf.write(f'<th>{_esc(heading)}</th>')
-    buf.write('</tr></thead><tbody>')
+    for heading in (
+        "Module",
+        "Suite",
+        "Case",
+        "Outcome",
+        "Failure Type",
+        "Time ms",
+        "Message",
+    ):
+        buf.write(f"<th>{_esc(heading)}</th>")
+    buf.write("</tr></thead><tbody>")
     for row in rows:
         identity = row["identity"]
         buf.write("<tr>")
@@ -268,12 +305,12 @@ def _render_full_transitions(data: dict) -> str:
     buf = StringIO()
     buf.write('<section class="panel"><h2>Full Transition List</h2>')
     for module in modules:
-        buf.write(f'<details><summary>{_esc(module["module"])}</summary>')
+        buf.write(f"<details><summary>{_esc(module['module'])}</summary>")
         for suite, transitions in module.get("suites", {}).items():
-            buf.write(f'<h4>{_esc(suite)}</h4><ul>')
+            buf.write(f"<h4>{_esc(suite)}</h4><ul>")
             for transition in transitions:
                 identity = transition["identity"]
-                transition_text = f'{transition["base_outcome"] or "(absent)"} -> {transition["target_outcome"] or "(absent)"}'
+                transition_text = f"{transition['base_outcome'] or '(absent)'} -> {transition['target_outcome'] or '(absent)'}"
                 buf.write(
                     "<li>"
                     f"{_esc(identity['case'])} | {_esc(transition['kind'])} | {_esc(transition_text)}"
@@ -468,7 +505,7 @@ def format_html(report: ComparisonReport) -> str:
       <h1>{_esc(title)}</h1>
       <p>Base: {_esc(base.get("timestamp") or base.get("source_path") or "-")} | Target: {_esc(target.get("timestamp") or target.get("source_path") or "-")}</p>
     </header>
-    {''.join(section for section in sections if section)}
+    {"".join(section for section in sections if section)}
   </main>
   <script>
     document.querySelectorAll('.table-filter').forEach(function(input) {{
@@ -488,7 +525,9 @@ def format_html(report: ComparisonReport) -> str:
 """
 
 
-def format_single_run_html(meta: RunMetadata, results: dict[TestIdentity, TestResult]) -> str:
+def format_single_run_html(
+    meta: RunMetadata, results: dict[TestIdentity, TestResult]
+) -> str:
     """Render a standalone HTML summary for one run."""
     data = single_run_to_dict(meta, results)
     run = data["run"]
@@ -607,7 +646,7 @@ def format_single_run_html(meta: RunMetadata, results: dict[TestIdentity, TestRe
       <h1>{_esc(title)}</h1>
       <p>Timestamp: {_esc(run.get("timestamp") or run.get("source_path") or "-")}</p>
     </header>
-    {''.join(section for section in sections if section)}
+    {"".join(section for section in sections if section)}
   </main>
   <script>
     document.querySelectorAll('.table-filter').forEach(function(input) {{

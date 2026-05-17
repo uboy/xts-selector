@@ -1,4 +1,5 @@
 """Tests for coverage index module."""
+
 from __future__ import annotations
 
 import json
@@ -43,11 +44,13 @@ class TestCoverageIndex:
         assert idx.imported_at == ""
 
     def test_lookup_found(self) -> None:
-        idx = CoverageIndex(_forward={
-            "button.ts": [
-                CoverageEntry("button.ts", "test1", 10, 20, 0.5),
-            ],
-        })
+        idx = CoverageIndex(
+            _forward={
+                "button.ts": [
+                    CoverageEntry("button.ts", "test1", 10, 20, 0.5),
+                ],
+            }
+        )
         results = idx.lookup_coverage("button.ts")
         assert len(results) == 1
         assert results[0].source_file == "button.ts"
@@ -57,11 +60,13 @@ class TestCoverageIndex:
         assert results[0].coverage_ratio == 0.5
 
     def test_lookup_basename_fallback(self) -> None:
-        idx = CoverageIndex(_forward={
-            "button.ts": [
-                CoverageEntry("button.ts", "test1", 10, 20, 0.5),
-            ],
-        })
+        idx = CoverageIndex(
+            _forward={
+                "button.ts": [
+                    CoverageEntry("button.ts", "test1", 10, 20, 0.5),
+                ],
+            }
+        )
         results = idx.lookup_coverage("some/path/button.ts")
         assert len(results) == 1
 
@@ -79,6 +84,7 @@ class TestCoverageIndex:
 
     def test_is_stale_fresh(self) -> None:
         from datetime import datetime, timezone
+
         fresh_ts = datetime.now(timezone.utc).isoformat()
         idx = CoverageIndex(imported_at=fresh_ts)
         assert not idx.is_stale()
@@ -120,7 +126,13 @@ class TestCoverageIndexSerialization:
             "imported_at": "2026-05-06T12:00:00+00:00",
             "entries": {
                 "foo.ts": [
-                    {"source_file": "foo.ts", "test_id": "test1", "line_count": 10, "total_lines": 20, "coverage_ratio": 0.5},
+                    {
+                        "source_file": "foo.ts",
+                        "test_id": "test1",
+                        "line_count": 10,
+                        "total_lines": 20,
+                        "coverage_ratio": 0.5,
+                    },
                 ],
             },
         }
@@ -202,18 +214,29 @@ class TestCoverageIndexFileIO:
 
 class TestLoadCoverageIndex:
     def test_default_path(self, tmp_path: Path) -> None:
-        idx = load_coverage_index(tmp_path / "local" / "coverage" / "coverage_index.json")
+        idx = load_coverage_index(
+            tmp_path / "local" / "coverage" / "coverage_index.json"
+        )
         assert idx._forward == {}
 
     def test_explicit_path(self, tmp_path: Path) -> None:
-        p = _write_index(tmp_path, {
-            "imported_at": "2026-05-06T12:00:00+00:00",
-            "entries": {
-                "foo.ts": [
-                    {"source_file": "foo.ts", "test_id": "test1", "line_count": 10, "total_lines": 20, "coverage_ratio": 0.5},
-                ],
+        p = _write_index(
+            tmp_path,
+            {
+                "imported_at": "2026-05-06T12:00:00+00:00",
+                "entries": {
+                    "foo.ts": [
+                        {
+                            "source_file": "foo.ts",
+                            "test_id": "test1",
+                            "line_count": 10,
+                            "total_lines": 20,
+                            "coverage_ratio": 0.5,
+                        },
+                    ],
+                },
             },
-        })
+        )
         idx = load_coverage_index(p)
         assert len(idx.lookup_coverage("foo.ts")) == 1
 

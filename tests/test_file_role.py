@@ -9,12 +9,11 @@ Tests verify:
 - Infrastructure files are identified
 - Unknown files return unknown role
 """
+
 from __future__ import annotations
 
-import pytest
 
 from arkui_xts_selector.indexing.file_role import (
-    FileRole,
     classify,
     get_role_description,
 )
@@ -103,7 +102,9 @@ class TestClassifyNativeModifier:
 
     def test_classify_native_extender_cpp(self):
         """Native extender implementation returns (native_modifier, date_picker)."""
-        path = "frameworks/core/interfaces/native/implementation/date_picker_extender.cpp"
+        path = (
+            "frameworks/core/interfaces/native/implementation/date_picker_extender.cpp"
+        )
         role, family = classify(path)
         assert role == "native_modifier"
         assert family == "date_picker"
@@ -145,7 +146,9 @@ class TestClassifyNativeModifier:
 
     def test_classify_compound_component_two_parts(self):
         """Two-word component family extraction works correctly."""
-        path = "frameworks/core/interfaces/native/implementation/date_picker_extender.cpp"
+        path = (
+            "frameworks/core/interfaces/native/implementation/date_picker_extender.cpp"
+        )
         role, family = classify(path)
         assert role == "native_modifier"
         assert family == "date_picker"
@@ -298,19 +301,30 @@ class TestGetRoleDescription:
 
     def test_description_pattern(self):
         """Pattern role description."""
-        assert get_role_description("pattern") == "Pattern implementation (component behavior)"
+        assert (
+            get_role_description("pattern")
+            == "Pattern implementation (component behavior)"
+        )
 
     def test_description_model_static(self):
         """Model static role description."""
-        assert get_role_description("model_static") == "Static model API surface (ArkUI static API)"
+        assert (
+            get_role_description("model_static")
+            == "Static model API surface (ArkUI static API)"
+        )
 
     def test_description_native_modifier(self):
         """Native modifier role description."""
-        assert get_role_description("native_modifier") == "Native modifier implementation"
+        assert (
+            get_role_description("native_modifier") == "Native modifier implementation"
+        )
 
     def test_description_infrastructure(self):
         """Infrastructure role description."""
-        assert get_role_description("infrastructure") == "Infrastructure (frame_node, pipeline, etc.)"
+        assert (
+            get_role_description("infrastructure")
+            == "Infrastructure (frame_node, pipeline, etc.)"
+        )
 
     def test_description_unknown(self):
         """Unknown role description."""

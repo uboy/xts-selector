@@ -5,6 +5,7 @@ They do NOT replace existing code.
 
 Import boundary: standard library only.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -13,6 +14,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class XtsProjectEntry:
     """An XTS test project entry."""
+
     project_id: str
     project_path: str
     test_files: tuple[str, ...] = ()
@@ -45,6 +47,7 @@ class XtsProjectEntry:
 @dataclass(frozen=True)
 class XtsIndexResult:
     """Result of indexing XTS test projects."""
+
     entries: tuple[XtsProjectEntry, ...] = ()
     index_time_ms: float = 0.0
     source: str = "project_index"

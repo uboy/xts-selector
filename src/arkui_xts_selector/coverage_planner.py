@@ -10,10 +10,9 @@ from __future__ import annotations
 import math
 import re
 from pathlib import Path
-from typing import Iterable, Callable, Sequence
+from typing import Sequence
 
 from .api_lineage import ApiLineageMap
-from .models import AppConfig
 from .execution import build_run_target_entry
 from .project_index import parse_test_json
 from .scoring import (
@@ -64,7 +63,9 @@ def build_global_coverage_recommendations(
             "unavailable_targets": [],
         }
 
-    def _unit_key_for_source(source_profile: dict[str, object], unit_key: str, unit_kind: str) -> str:
+    def _unit_key_for_source(
+        source_profile: dict[str, object], unit_key: str, unit_kind: str
+    ) -> str:
         source_key = str(source_profile.get("key") or "")
         source_type = str(source_profile.get("type") or "")
         if unit_key:
@@ -101,7 +102,12 @@ def build_global_coverage_recommendations(
             built_artifact_index=built_artifact_index,
             device=device,
         )
-        target_key = target.get("target_key") or target.get("test_json") or target.get("project") or ""
+        target_key = (
+            target.get("target_key")
+            or target.get("test_json")
+            or target.get("project")
+            or ""
+        )
         if not target_key:
             continue
         if str(target.get("artifact_status") or "") == "missing":
@@ -145,7 +151,9 @@ def build_global_coverage_recommendations(
             },
         )
         existing_target = candidate["target"]
-        if project_result_sort_tuple(project_entry) < project_result_sort_tuple(existing_target):
+        if project_result_sort_tuple(project_entry) < project_result_sort_tuple(
+            existing_target
+        ):
             candidate["target"] = target
             existing_target = target
         candidate["aggregate_type_hint_keys"].update(
@@ -159,7 +167,9 @@ def build_global_coverage_recommendations(
             if str(item).strip()
         )
         aggregate_focus_counts = candidate["aggregate_type_hint_focus_counts"]
-        for raw_key, raw_value in dict(project_entry.get("type_hint_focus_counts") or {}).items():
+        for raw_key, raw_value in dict(
+            project_entry.get("type_hint_focus_counts") or {}
+        ).items():
             normalized_key = str(raw_key).strip()
             if not normalized_key:
                 continue
@@ -181,7 +191,9 @@ def build_global_coverage_recommendations(
             if str(item).strip()
         )
         aggregate_member_focus_counts = candidate["aggregate_member_hint_focus_counts"]
-        for raw_key, raw_value in dict(project_entry.get("member_hint_focus_counts") or {}).items():
+        for raw_key, raw_value in dict(
+            project_entry.get("member_hint_focus_counts") or {}
+        ).items():
             normalized_key = str(raw_key).strip()
             if not normalized_key:
                 continue
@@ -189,12 +201,16 @@ def build_global_coverage_recommendations(
                 normalized_value = int(raw_value or 0)
             except (TypeError, ValueError):
                 continue
-            previous_value = int(aggregate_member_focus_counts.get(normalized_key, 0) or 0)
+            previous_value = int(
+                aggregate_member_focus_counts.get(normalized_key, 0) or 0
+            )
             if normalized_value > previous_value:
                 aggregate_member_focus_counts[normalized_key] = normalized_value
         candidate["source_keys"].add(source_key)
         candidate["sources"][source_key] = all_sources[source_key]
-        candidate["source_reasons"].setdefault(source_key, list(project_entry.get("scope_reasons", [])))
+        candidate["source_reasons"].setdefault(
+            source_key, list(project_entry.get("scope_reasons", []))
+        )
         source_rank = int(entry.get("source_rank", 999) or 999)
         candidate["source_ranks"][source_key] = min(
             int(candidate["source_ranks"].get(source_key, 999) or 999),
@@ -204,23 +220,35 @@ def build_global_coverage_recommendations(
         type_hint_keys = list(source_profile.get("type_hint_keys", []))
         capability_keys = list(source_profile.get("capability_keys", []))
         family_keys = list(source_profile.get("family_keys", []))
-        member_hint_gains = suite_source_member_hint_gains(project_entry, source_profile)
-        member_hint_representative_scores = suite_source_member_hint_representative_scores(project_entry, source_profile)
+        member_hint_gains = suite_source_member_hint_gains(
+            project_entry, source_profile
+        )
+        member_hint_representative_scores = (
+            suite_source_member_hint_representative_scores(
+                project_entry, source_profile
+            )
+        )
         type_hint_gains = suite_source_type_hint_gains(project_entry, source_profile)
-        type_hint_representative_scores = suite_source_type_hint_representative_scores(project_entry, source_profile)
+        type_hint_representative_scores = suite_source_type_hint_representative_scores(
+            project_entry, source_profile
+        )
         capability_gains = suite_source_capability_gains(project_entry, source_profile)
-        capability_representative_scores = suite_source_capability_representative_scores(project_entry, source_profile)
+        capability_representative_scores = (
+            suite_source_capability_representative_scores(project_entry, source_profile)
+        )
         family_gains = suite_source_family_gains(project_entry, source_profile)
-        family_representative_scores = suite_source_family_representative_scores(project_entry, source_profile)
+        family_representative_scores = suite_source_family_representative_scores(
+            project_entry, source_profile
+        )
         focus_overlap = suite_source_focus_token_overlap(project_entry, source_profile)
         member_hint_owner_keys = {
-            str(item).partition(".")[0]
-            for item in member_hint_keys
-            if "." in str(item)
+            str(item).partition(".")[0] for item in member_hint_keys if "." in str(item)
         }
         if member_hint_keys:
             for member_hint_key in member_hint_keys:
-                unit_key = _unit_key_for_source(source_profile, member_hint_key, "member")
+                unit_key = _unit_key_for_source(
+                    source_profile, member_hint_key, "member"
+                )
                 all_units.setdefault(
                     unit_key,
                     {
@@ -248,13 +276,25 @@ def build_global_coverage_recommendations(
                 previous_gain = float(source_gains.get(source_key, 0.0) or 0.0)
                 if weighted_gain > previous_gain:
                     source_gains[source_key] = weighted_gain
-                    candidate["unit_gains"][unit_key] = round(sum(float(value or 0.0) for value in source_gains.values()), 6)
-                    candidate["unit_sources"][unit_key] = list(all_units[unit_key]["sources"])
-                representative_score = float(member_hint_representative_scores.get(member_hint_key, 0.0) or 0.0)
-                previous_representative_score = float(candidate["unit_representative_scores"].get(unit_key, 0.0) or 0.0)
+                    candidate["unit_gains"][unit_key] = round(
+                        sum(float(value or 0.0) for value in source_gains.values()), 6
+                    )
+                    candidate["unit_sources"][unit_key] = list(
+                        all_units[unit_key]["sources"]
+                    )
+                representative_score = float(
+                    member_hint_representative_scores.get(member_hint_key, 0.0) or 0.0
+                )
+                previous_representative_score = float(
+                    candidate["unit_representative_scores"].get(unit_key, 0.0) or 0.0
+                )
                 if representative_score > previous_representative_score:
-                    candidate["unit_representative_scores"][unit_key] = representative_score
-                previous_focus_overlap = int(candidate["unit_focus_overlaps"].get(unit_key, 0) or 0)
+                    candidate["unit_representative_scores"][unit_key] = (
+                        representative_score
+                    )
+                previous_focus_overlap = int(
+                    candidate["unit_focus_overlaps"].get(unit_key, 0) or 0
+                )
                 if focus_overlap > previous_focus_overlap:
                     candidate["unit_focus_overlaps"][unit_key] = focus_overlap
                 candidate["covered_member_hints"].add(member_hint_key)
@@ -265,7 +305,10 @@ def build_global_coverage_recommendations(
                     for item in project_entry.get("member_hint_keys", [])
                     if "." in str(item)
                 }
-                if type_hint_key in member_hint_owner_keys and type_hint_key not in candidate_member_hint_keys:
+                if (
+                    type_hint_key in member_hint_owner_keys
+                    and type_hint_key not in candidate_member_hint_keys
+                ):
                     continue
                 unit_key = _unit_key_for_source(source_profile, type_hint_key, "type")
                 all_units.setdefault(
@@ -296,19 +339,33 @@ def build_global_coverage_recommendations(
                 previous_gain = float(source_gains.get(source_key, 0.0) or 0.0)
                 if weighted_gain > previous_gain:
                     source_gains[source_key] = weighted_gain
-                    candidate["unit_gains"][unit_key] = round(sum(float(value or 0.0) for value in source_gains.values()), 6)
-                    candidate["unit_sources"][unit_key] = list(all_units[unit_key]["sources"])
-                representative_score = float(type_hint_representative_scores.get(type_hint_key, 0.0) or 0.0)
-                previous_representative_score = float(candidate["unit_representative_scores"].get(unit_key, 0.0) or 0.0)
+                    candidate["unit_gains"][unit_key] = round(
+                        sum(float(value or 0.0) for value in source_gains.values()), 6
+                    )
+                    candidate["unit_sources"][unit_key] = list(
+                        all_units[unit_key]["sources"]
+                    )
+                representative_score = float(
+                    type_hint_representative_scores.get(type_hint_key, 0.0) or 0.0
+                )
+                previous_representative_score = float(
+                    candidate["unit_representative_scores"].get(unit_key, 0.0) or 0.0
+                )
                 if representative_score > previous_representative_score:
-                    candidate["unit_representative_scores"][unit_key] = representative_score
-                previous_focus_overlap = int(candidate["unit_focus_overlaps"].get(unit_key, 0) or 0)
+                    candidate["unit_representative_scores"][unit_key] = (
+                        representative_score
+                    )
+                previous_focus_overlap = int(
+                    candidate["unit_focus_overlaps"].get(unit_key, 0) or 0
+                )
                 if focus_overlap > previous_focus_overlap:
                     candidate["unit_focus_overlaps"][unit_key] = focus_overlap
                 candidate["covered_type_hints"].add(type_hint_key)
         if capability_keys:
             for capability_key in capability_keys:
-                unit_key = _unit_key_for_source(source_profile, capability_key, "capability")
+                unit_key = _unit_key_for_source(
+                    source_profile, capability_key, "capability"
+                )
                 all_units.setdefault(
                     unit_key,
                     {
@@ -334,13 +391,25 @@ def build_global_coverage_recommendations(
                 previous_gain = float(source_gains.get(source_key, 0.0) or 0.0)
                 if weighted_gain > previous_gain:
                     source_gains[source_key] = weighted_gain
-                    candidate["unit_gains"][unit_key] = round(sum(float(value or 0.0) for value in source_gains.values()), 6)
-                    candidate["unit_sources"][unit_key] = list(all_units[unit_key]["sources"])
-                representative_score = float(capability_representative_scores.get(capability_key, 0.0) or 0.0)
-                previous_representative_score = float(candidate["unit_representative_scores"].get(unit_key, 0.0) or 0.0)
+                    candidate["unit_gains"][unit_key] = round(
+                        sum(float(value or 0.0) for value in source_gains.values()), 6
+                    )
+                    candidate["unit_sources"][unit_key] = list(
+                        all_units[unit_key]["sources"]
+                    )
+                representative_score = float(
+                    capability_representative_scores.get(capability_key, 0.0) or 0.0
+                )
+                previous_representative_score = float(
+                    candidate["unit_representative_scores"].get(unit_key, 0.0) or 0.0
+                )
                 if representative_score > previous_representative_score:
-                    candidate["unit_representative_scores"][unit_key] = representative_score
-                previous_focus_overlap = int(candidate["unit_focus_overlaps"].get(unit_key, 0) or 0)
+                    candidate["unit_representative_scores"][unit_key] = (
+                        representative_score
+                    )
+                previous_focus_overlap = int(
+                    candidate["unit_focus_overlaps"].get(unit_key, 0) or 0
+                )
                 if focus_overlap > previous_focus_overlap:
                     candidate["unit_focus_overlaps"][unit_key] = focus_overlap
                 candidate["covered_capabilities"].add(capability_key)
@@ -375,13 +444,25 @@ def build_global_coverage_recommendations(
                 previous_gain = float(source_gains.get(source_key, 0.0) or 0.0)
                 if weighted_gain > previous_gain:
                     source_gains[source_key] = weighted_gain
-                    candidate["unit_gains"][unit_key] = round(sum(float(value or 0.0) for value in source_gains.values()), 6)
-                    candidate["unit_sources"][unit_key] = list(all_units[unit_key]["sources"])
-                representative_score = float(family_representative_scores.get(family_key, 0.0) or 0.0)
-                previous_representative_score = float(candidate["unit_representative_scores"].get(unit_key, 0.0) or 0.0)
+                    candidate["unit_gains"][unit_key] = round(
+                        sum(float(value or 0.0) for value in source_gains.values()), 6
+                    )
+                    candidate["unit_sources"][unit_key] = list(
+                        all_units[unit_key]["sources"]
+                    )
+                representative_score = float(
+                    family_representative_scores.get(family_key, 0.0) or 0.0
+                )
+                previous_representative_score = float(
+                    candidate["unit_representative_scores"].get(unit_key, 0.0) or 0.0
+                )
                 if representative_score > previous_representative_score:
-                    candidate["unit_representative_scores"][unit_key] = representative_score
-                previous_focus_overlap = int(candidate["unit_focus_overlaps"].get(unit_key, 0) or 0)
+                    candidate["unit_representative_scores"][unit_key] = (
+                        representative_score
+                    )
+                previous_focus_overlap = int(
+                    candidate["unit_focus_overlaps"].get(unit_key, 0) or 0
+                )
                 if focus_overlap > previous_focus_overlap:
                     candidate["unit_focus_overlaps"][unit_key] = focus_overlap
                 candidate["covered_families"].add(family_key)
@@ -395,11 +476,20 @@ def build_global_coverage_recommendations(
                     "family_key": "",
                     "capability_key": "",
                     "type": str(source_profile.get("type") or ""),
-                    "sources": [{"type": str(source_profile.get("type") or ""), "value": str(source_profile.get("value") or "")}],
+                    "sources": [
+                        {
+                            "type": str(source_profile.get("type") or ""),
+                            "value": str(source_profile.get("value") or ""),
+                        }
+                    ],
                 },
             )
-            scope_multiplier = _rr.SCOPE_GAIN_MULTIPLIER.get(str(project_entry.get("scope_tier", "focused")), 1.0)
-            bucket_multiplier = _rr.BUCKET_GAIN_MULTIPLIER.get(str(project_entry.get("bucket", "possible related")), 0.65)
+            scope_multiplier = _rr.SCOPE_GAIN_MULTIPLIER.get(
+                str(project_entry.get("scope_tier", "focused")), 1.0
+            )
+            bucket_multiplier = _rr.BUCKET_GAIN_MULTIPLIER.get(
+                str(project_entry.get("bucket", "possible related")), 0.65
+            )
             weighted_gain = (
                 _rr.ACTIVE_RANKING_RULES.planner_fallback_no_family_gain
                 * scope_multiplier
@@ -409,11 +499,17 @@ def build_global_coverage_recommendations(
             previous_gain = float(candidate["unit_gains"].get(unit_key, 0.0) or 0.0)
             if weighted_gain > previous_gain:
                 candidate["unit_gains"][unit_key] = weighted_gain
-                candidate["unit_sources"][unit_key] = list(all_units[unit_key]["sources"])
-            previous_focus_overlap = int(candidate["unit_focus_overlaps"].get(unit_key, 0) or 0)
+                candidate["unit_sources"][unit_key] = list(
+                    all_units[unit_key]["sources"]
+                )
+            previous_focus_overlap = int(
+                candidate["unit_focus_overlaps"].get(unit_key, 0) or 0
+            )
             if focus_overlap > previous_focus_overlap:
                 candidate["unit_focus_overlaps"][unit_key] = focus_overlap
-            previous_representative_score = float(candidate["unit_representative_scores"].get(unit_key, 0.0) or 0.0)
+            previous_representative_score = float(
+                candidate["unit_representative_scores"].get(unit_key, 0.0) or 0.0
+            )
             if float(focus_overlap) > previous_representative_score:
                 candidate["unit_representative_scores"][unit_key] = float(focus_overlap)
 
@@ -422,9 +518,14 @@ def build_global_coverage_recommendations(
     for candidate_key, candidate in candidates_by_key.items():
         target = dict(candidate["target"])
         for unit_key, gain in candidate.get("unit_gains", {}).items():
-            representative_score = float(candidate.get("unit_representative_scores", {}).get(unit_key, 0.0) or 0.0)
+            representative_score = float(
+                candidate.get("unit_representative_scores", {}).get(unit_key, 0.0)
+                or 0.0
+            )
             existing = unit_winners.get(unit_key)
-            focus_overlap = int(candidate.get("unit_focus_overlaps", {}).get(unit_key, 0) or 0)
+            focus_overlap = int(
+                candidate.get("unit_focus_overlaps", {}).get(unit_key, 0) or 0
+            )
             umbrella_penalty = float(target.get("umbrella_penalty", 0.0) or 0.0)
             family_count = len(target.get("family_keys", []) or [])
             if existing is None:
@@ -438,15 +539,20 @@ def build_global_coverage_recommendations(
                     "sort_key": project_result_sort_tuple(target),
                 }
                 continue
-            existing_representative_score = float(existing.get("representative_score", 0.0) or 0.0)
+            existing_representative_score = float(
+                existing.get("representative_score", 0.0) or 0.0
+            )
             existing_gain = float(existing.get("gain", 0.0) or 0.0)
             existing_focus_overlap = int(existing.get("focus_overlap", 0) or 0)
-            existing_umbrella_penalty = float(existing.get("umbrella_penalty", 0.0) or 0.0)
+            existing_umbrella_penalty = float(
+                existing.get("umbrella_penalty", 0.0) or 0.0
+            )
             existing_family_count = int(existing.get("family_count", 0) or 0)
             if representative_score > existing_representative_score or (
                 math.isclose(representative_score, existing_representative_score)
                 and (
-                    float(gain) > existing_gain or (
+                    float(gain) > existing_gain
+                    or (
                         math.isclose(float(gain), existing_gain)
                         and (
                             focus_overlap > existing_focus_overlap
@@ -455,12 +561,15 @@ def build_global_coverage_recommendations(
                                 and (
                                     umbrella_penalty < existing_umbrella_penalty
                                     or (
-                                        math.isclose(umbrella_penalty, existing_umbrella_penalty)
+                                        math.isclose(
+                                            umbrella_penalty, existing_umbrella_penalty
+                                        )
                                         and (
                                             family_count < existing_family_count
                                             or (
                                                 family_count == existing_family_count
-                                                and project_result_sort_tuple(target) < tuple(existing.get("sort_key", ()))
+                                                and project_result_sort_tuple(target)
+                                                < tuple(existing.get("sort_key", ()))
                                             )
                                         )
                                     )
@@ -487,7 +596,11 @@ def build_global_coverage_recommendations(
         }
 
     uncovered = set(all_units.keys())
-    remaining = [candidate for candidate in candidates_by_key.values() if candidate.get("unit_gains")]
+    remaining = [
+        candidate
+        for candidate in candidates_by_key.values()
+        if candidate.get("unit_gains")
+    ]
     while remaining:
         best_index = 0
         best_key: tuple[object, ...] | None = None
@@ -498,9 +611,15 @@ def build_global_coverage_recommendations(
             planned_units = set(planning_unit_gains.keys())
             new_keys = planned_units & uncovered
             target = candidate["target"]
-            new_score = sum(float(planning_unit_gains.get(key, 0.0) or 0.0) for key in new_keys)
-            planning_total_score = sum(float(planning_unit_gains.get(key, 0.0) or 0.0) for key in planned_units)
-            total_score = sum(float(all_unit_gains.get(key, 0.0) or 0.0) for key in all_covered_units)
+            new_score = sum(
+                float(planning_unit_gains.get(key, 0.0) or 0.0) for key in new_keys
+            )
+            planning_total_score = sum(
+                float(planning_unit_gains.get(key, 0.0) or 0.0) for key in planned_units
+            )
+            total_score = sum(
+                float(all_unit_gains.get(key, 0.0) or 0.0) for key in all_covered_units
+            )
             tie_key = (
                 -new_score,
                 -len(new_keys),
@@ -534,24 +653,49 @@ def build_global_coverage_recommendations(
         target["covered_sources"] = covered_sources
         target["new_coverage_count"] = len(new_keys)
         target["total_coverage_count"] = len(all_covered_units)
-        target["new_coverage_score"] = round(sum(float(planning_unit_gains.get(key, 0.0) or 0.0) for key in new_keys), 6)
-        target["total_coverage_score"] = round(sum(float(all_unit_gains.get(key, 0.0) or 0.0) for key in all_covered_units), 6)
-        target["type_hint_keys"] = sorted(candidate.get("aggregate_type_hint_keys", set()))
-        target["direct_type_hint_keys"] = sorted(candidate.get("aggregate_direct_type_hint_keys", set()))
+        target["new_coverage_score"] = round(
+            sum(float(planning_unit_gains.get(key, 0.0) or 0.0) for key in new_keys), 6
+        )
+        target["total_coverage_score"] = round(
+            sum(
+                float(all_unit_gains.get(key, 0.0) or 0.0) for key in all_covered_units
+            ),
+            6,
+        )
+        target["type_hint_keys"] = sorted(
+            candidate.get("aggregate_type_hint_keys", set())
+        )
+        target["direct_type_hint_keys"] = sorted(
+            candidate.get("aggregate_direct_type_hint_keys", set())
+        )
         target["type_hint_focus_counts"] = {
             str(key): int(value)
-            for key, value in dict(candidate.get("aggregate_type_hint_focus_counts") or {}).items()
+            for key, value in dict(
+                candidate.get("aggregate_type_hint_focus_counts") or {}
+            ).items()
         }
-        target["member_hint_keys"] = sorted(candidate.get("aggregate_member_hint_keys", set()))
-        target["direct_member_hint_keys"] = sorted(candidate.get("aggregate_direct_member_hint_keys", set()))
+        target["member_hint_keys"] = sorted(
+            candidate.get("aggregate_member_hint_keys", set())
+        )
+        target["direct_member_hint_keys"] = sorted(
+            candidate.get("aggregate_direct_member_hint_keys", set())
+        )
         target["member_hint_focus_counts"] = {
             str(key): int(value)
-            for key, value in dict(candidate.get("aggregate_member_hint_focus_counts") or {}).items()
+            for key, value in dict(
+                candidate.get("aggregate_member_hint_focus_counts") or {}
+            ).items()
         }
         target["covered_families"] = sorted(candidate.get("covered_families", set()))
-        target["covered_capabilities"] = sorted(candidate.get("covered_capabilities", set()))
-        target["covered_type_hints"] = sorted(candidate.get("covered_type_hints", set()))
-        target["covered_member_hints"] = sorted(candidate.get("covered_member_hints", set()))
+        target["covered_capabilities"] = sorted(
+            candidate.get("covered_capabilities", set())
+        )
+        target["covered_type_hints"] = sorted(
+            candidate.get("covered_type_hints", set())
+        )
+        target["covered_member_hints"] = sorted(
+            candidate.get("covered_member_hints", set())
+        )
         target["new_families"] = sorted(
             {
                 str(all_units[key].get("family_key") or "")
@@ -608,15 +752,16 @@ def build_global_coverage_recommendations(
         target["new_sources"] = new_sources
         target["execution_sources"] = covered_sources
         target["coverage_source_reasons"] = {
-            key: candidate["source_reasons"].get(key, [])
-            for key in sorted(source_keys)
+            key: candidate["source_reasons"].get(key, []) for key in sorted(source_keys)
         }
         target["selection_signals"] = _build_selection_signals(candidate, target)
         ordered_candidates.append(target)
 
     # Phase 3: Apply fan-out limits from ranking_rules.json
     fanout_limits = getattr(_rr.ACTIVE_RANKING_RULES, "family_fanout_limits", {})
-    default_limit = fanout_limits.get("default", {"max_type_representatives": 5, "max_family_representatives": 10})
+    default_limit = fanout_limits.get(
+        "default", {"max_type_representatives": 5, "max_family_representatives": 10}
+    )
     precision_budget = getattr(_rr.ACTIVE_RANKING_RULES, "precision_budget", {})
     member_max_required = precision_budget.get("member_aware_max_required", 30)
     type_max_required = precision_budget.get("type_level_max_required", 100)
@@ -651,7 +796,9 @@ def build_global_coverage_recommendations(
         # Apply per-family type representative limits
         for family_key in list(target.get("covered_families", [])):
             limit = fanout_limits.get(family_key, default_limit)
-            max_types = limit.get("max_type_representatives", default_limit["max_type_representatives"])
+            max_types = limit.get(
+                "max_type_representatives", default_limit["max_type_representatives"]
+            )
             if len(covered_type_hints) > max_types:
                 # Suppress lowest-scoring type hints by marking excess as suppressed
                 sorted_types = sorted(covered_type_hints)
@@ -661,7 +808,10 @@ def build_global_coverage_recommendations(
         # Apply per-family family representative limits
         for family_key in list(target.get("covered_families", [])):
             limit = fanout_limits.get(family_key, default_limit)
-            max_families = limit.get("max_family_representatives", default_limit["max_family_representatives"])
+            max_families = limit.get(
+                "max_family_representatives",
+                default_limit["max_family_representatives"],
+            )
             if len(covered_families) > max_families:
                 sorted_families = sorted(covered_families)
                 for extra_family in sorted_families[max_families:]:
@@ -675,7 +825,11 @@ def build_global_coverage_recommendations(
 
     required: list[dict[str, object]] = []
     recommended_additional: list[dict[str, object]] = []
-    optional_duplicates = [target for target in ordered_candidates if int(target.get("new_coverage_count", 0)) <= 0]
+    optional_duplicates = [
+        target
+        for target in ordered_candidates
+        if int(target.get("new_coverage_count", 0)) <= 0
+    ]
     for target in ordered_candidates:
         new_coverage_count = int(target.get("new_coverage_count", 0) or 0)
         direct_member_hints = set(target.get("direct_member_hint_keys", []) or [])
@@ -688,9 +842,13 @@ def build_global_coverage_recommendations(
             # Direct component path match boost: if the test's project family
             # directly matches the component directory in the changed file path,
             # elevate to required even without new coverage or member hints.
-            source_component_families = set(target.get("source_component_families", []) or [])
+            source_component_families = set(
+                target.get("source_component_families", []) or []
+            )
             target_project_families = covered_families
-            direct_path_match = bool(source_component_families & target_project_families)
+            direct_path_match = bool(
+                source_component_families & target_project_families
+            )
             if direct_path_match and str(target.get("bucket") or "") == "must-run":
                 target["coverage_status"] = "required"
                 target["coverage_reason"] = (
@@ -733,15 +891,21 @@ def build_global_coverage_recommendations(
                     recommended_additional.append(target)
                     continue
             target["coverage_status"] = "optional"
-            target["coverage_reason"] = "covers only functionality already covered by earlier selected suites"
+            target["coverage_reason"] = (
+                "covers only functionality already covered by earlier selected suites"
+            )
             continue
         if str(target.get("bucket") or "") == "must-run":
             target["coverage_status"] = "required"
-            target["coverage_reason"] = f"adds {new_coverage_count} new functional area(s) with strong direct coverage"
+            target["coverage_reason"] = (
+                f"adds {new_coverage_count} new functional area(s) with strong direct coverage"
+            )
             required.append(target)
         else:
             target["coverage_status"] = "recommended"
-            target["coverage_reason"] = f"adds {new_coverage_count} new functional area(s) but with weaker evidence"
+            target["coverage_reason"] = (
+                f"adds {new_coverage_count} new functional area(s) but with weaker evidence"
+            )
             recommended_additional.append(target)
     recommended = required + recommended_additional
     covered_unit_keys = sorted(
@@ -773,11 +937,21 @@ def build_global_coverage_recommendations(
         "recommended_additional": recommended_additional,
         "optional_duplicates": optional_duplicates,
         "ordered_targets": ordered_candidates,
-        "required_target_keys": [str(target.get("target_key") or "") for target in required],
-        "recommended_target_keys": [str(target.get("target_key") or "") for target in recommended],
-        "recommended_additional_target_keys": [str(target.get("target_key") or "") for target in recommended_additional],
-        "optional_target_keys": [str(target.get("target_key") or "") for target in optional_duplicates],
-        "ordered_target_keys": [str(target.get("target_key") or "") for target in ordered_candidates],
+        "required_target_keys": [
+            str(target.get("target_key") or "") for target in required
+        ],
+        "recommended_target_keys": [
+            str(target.get("target_key") or "") for target in recommended
+        ],
+        "recommended_additional_target_keys": [
+            str(target.get("target_key") or "") for target in recommended_additional
+        ],
+        "optional_target_keys": [
+            str(target.get("target_key") or "") for target in optional_duplicates
+        ],
+        "ordered_target_keys": [
+            str(target.get("target_key") or "") for target in ordered_candidates
+        ],
         "covered_source_keys": covered_unit_keys,
         "uncovered_sources": uncovered_sources,
         "unavailable_targets": list(unavailable_targets.values()),
@@ -788,12 +962,22 @@ def test_json_data(path_value: str, repo_root: Path | None = None) -> dict:
     return parse_test_json(path_value, repo_root=repo_root)
 
 
-def driver_module_name(test_json_path: str, repo_root: Path | None = None) -> str | None:
-    return test_json_data(test_json_path, repo_root=repo_root).get("driver", {}).get("module-name")
+def driver_module_name(
+    test_json_path: str, repo_root: Path | None = None
+) -> str | None:
+    return (
+        test_json_data(test_json_path, repo_root=repo_root)
+        .get("driver", {})
+        .get("module-name")
+    )
 
 
 def driver_type(test_json_path: str, repo_root: Path | None = None) -> str | None:
-    return test_json_data(test_json_path, repo_root=repo_root).get("driver", {}).get("type")
+    return (
+        test_json_data(test_json_path, repo_root=repo_root)
+        .get("driver", {})
+        .get("type")
+    )
 
 
 def build_unresolved_analysis(
@@ -806,8 +990,11 @@ def build_unresolved_analysis(
     top_score = project_results[0]["score"] if project_results else 0
     top_paths = [item["project"].lower() for item in project_results[:5]]
     broad_common_hits = sum(
-        1 for path in top_paths
-        if "common_seven_attrs" in path or "common_attrss" in path or "component_common" in path
+        1
+        for path in top_paths
+        if "common_seven_attrs" in path
+        or "common_attrss" in path
+        or "component_common" in path
     )
     has_content_modifier_signal = (
         "contentmodifier" in signals["project_hints"]
@@ -826,17 +1013,23 @@ def build_unresolved_analysis(
     if not project_results:
         if affected_api_entities:
             analysis["reason_class"] = "consumer_evidence_gap"
-            analysis["reason"] = "Changed APIs were mapped, but no XTS consumer evidence was found for them."
+            analysis["reason"] = (
+                "Changed APIs were mapped, but no XTS consumer evidence was found for them."
+            )
         elif derived_source_symbols:
             analysis["reason_class"] = "lineage_gap"
-            analysis["reason"] = "Source symbols were detected, but they could not be mapped to XTS-covered APIs."
+            analysis["reason"] = (
+                "Source symbols were detected, but they could not be mapped to XTS-covered APIs."
+            )
         else:
             analysis["reason_class"] = "no_matches"
             analysis["reason"] = "No XTS usages were found for this file."
         return analysis
     if top_score < 12:
         analysis["reason_class"] = "weak_signal"
-        analysis["reason"] = "Only weak matches were found; test usage could not be determined reliably."
+        analysis["reason"] = (
+            "Only weak matches were found; test usage could not be determined reliably."
+        )
         return analysis
     if (
         has_content_modifier_signal
@@ -845,7 +1038,9 @@ def build_unresolved_analysis(
         and not any("contentmodifier" in path for path in top_paths)
     ):
         analysis["reason_class"] = "broad_common_overmatch"
-        analysis["reason"] = "Only broad/common ArkUI suites were matched; no reliable content-modifier-specific XTS usage was found."
+        analysis["reason"] = (
+            "Only broad/common ArkUI suites were matched; no reliable content-modifier-specific XTS usage was found."
+        )
     return analysis
 
 
@@ -927,7 +1122,9 @@ def build_function_coverage_rows(
         return []
 
     rows: list[dict[str, object]] = []
-    symbol_list = list(derived_source_symbols) if derived_source_symbols else ["<file-level>"]
+    symbol_list = (
+        list(derived_source_symbols) if derived_source_symbols else ["<file-level>"]
+    )
     for symbol in symbol_list:
         symbol_api_entities: list[str]
         if api_lineage_map is not None and symbol != "<file-level>":
@@ -964,14 +1161,28 @@ def build_function_coverage_rows(
             indirect_hits: set[str] = set()
             for project in project_results:
                 project_name = str(project.get("project") or "").strip()
-                direct_type_hints = {str(item).strip() for item in project.get("direct_type_hint_keys", []) if str(item).strip()}
+                direct_type_hints = {
+                    str(item).strip()
+                    for item in project.get("direct_type_hint_keys", [])
+                    if str(item).strip()
+                }
                 if owner_token and owner_token in direct_type_hints:
                     if project_name:
                         direct_hits.add(project_name)
                     continue
-                family_keys = {str(item).strip() for item in project.get("family_keys", []) if str(item).strip()}
-                direct_family_keys = {str(item).strip() for item in project.get("direct_family_keys", []) if str(item).strip()}
-                if owner_token and (owner_token in family_keys or owner_token in direct_family_keys):
+                family_keys = {
+                    str(item).strip()
+                    for item in project.get("family_keys", [])
+                    if str(item).strip()
+                }
+                direct_family_keys = {
+                    str(item).strip()
+                    for item in project.get("direct_family_keys", [])
+                    if str(item).strip()
+                }
+                if owner_token and (
+                    owner_token in family_keys or owner_token in direct_family_keys
+                ):
                     if project_name:
                         indirect_hits.add(project_name)
 
@@ -1029,21 +1240,43 @@ def _build_coverage_gap_report(
 
     for entity in affected_api_entities:
         owner_token = _api_owner_token(entity)
-        entity_key = normalize_member_hint(entity) if "." in str(entity) else compact_token(str(entity))
+        entity_key = (
+            normalize_member_hint(entity)
+            if "." in str(entity)
+            else compact_token(str(entity))
+        )
         direct_hits: set[str] = set()
         indirect_hits: set[str] = set()
 
         for project in project_results:
             project_name = str(project.get("project") or "").strip()
-            direct_type_hints = {str(h).strip() for h in project.get("direct_type_hint_keys", []) if str(h).strip()}
-            member_hints = {str(h).strip() for h in project.get("member_hint_keys", []) if str(h).strip()}
-            if (owner_token and owner_token in direct_type_hints) or (entity_key and entity_key in member_hints):
+            direct_type_hints = {
+                str(h).strip()
+                for h in project.get("direct_type_hint_keys", [])
+                if str(h).strip()
+            }
+            member_hints = {
+                str(h).strip()
+                for h in project.get("member_hint_keys", [])
+                if str(h).strip()
+            }
+            if (owner_token and owner_token in direct_type_hints) or (
+                entity_key and entity_key in member_hints
+            ):
                 if project_name:
                     direct_hits.add(project_name)
                 continue
-            family_keys = {str(h).strip() for h in project.get("family_keys", []) if str(h).strip()}
-            direct_family_keys = {str(h).strip() for h in project.get("direct_family_keys", []) if str(h).strip()}
-            if owner_token and (owner_token in family_keys or owner_token in direct_family_keys):
+            family_keys = {
+                str(h).strip() for h in project.get("family_keys", []) if str(h).strip()
+            }
+            direct_family_keys = {
+                str(h).strip()
+                for h in project.get("direct_family_keys", [])
+                if str(h).strip()
+            }
+            if owner_token and (
+                owner_token in family_keys or owner_token in direct_family_keys
+            ):
                 if project_name:
                     indirect_hits.add(project_name)
 
@@ -1053,7 +1286,10 @@ def _build_coverage_gap_report(
         elif indirect_hits:
             indirectly_covered.append(entity)
             all_indirect_suites.update(indirect_hits)
-        elif api_lineage_map is not None and not api_lineage_map.api_to_consumer_projects.get(entity):
+        elif (
+            api_lineage_map is not None
+            and not api_lineage_map.api_to_consumer_projects.get(entity)
+        ):
             unresolved.append({"api_entity": entity, "reason": "no_consumer_evidence"})
         else:
             not_covered.append(entity)

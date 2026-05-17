@@ -1,4 +1,5 @@
 """P4 regression benchmark for ButtonModifier with keep-per-signature=2."""
+
 from __future__ import annotations
 
 from test_benchmark_contract import (
@@ -27,18 +28,26 @@ class ButtonModifierKeep2RegressionTests(WorkspaceAwareTestCase):
     ]
 
     def _get_report(self) -> dict:
-        return _run_selector(self.ws, [
-            "--symbol-query", "ButtonModifier",
-            "--variants", "static",
-            "--top-projects", str(self.TOP_N),
-            "--keep-per-signature", "2",
-        ])
+        return _run_selector(
+            self.ws,
+            [
+                "--symbol-query",
+                "ButtonModifier",
+                "--variants",
+                "static",
+                "--top-projects",
+                str(self.TOP_N),
+                "--keep-per-signature",
+                "2",
+            ],
+        )
 
     def test_p4_expected_suites_survive_keep2_dedup(self) -> None:
         report = self._get_report()
         output_paths = [path.lower() for path in _all_project_paths(report)]
         missing = [
-            expected for expected in self.EXPECTED_KEEP2
+            expected
+            for expected in self.EXPECTED_KEEP2
             if not any(expected in path for path in output_paths)
         ]
         if missing:
@@ -55,7 +64,11 @@ class ButtonModifierKeep2RegressionTests(WorkspaceAwareTestCase):
 
         report = self._get_report()
         output_paths = _all_project_paths(report)
-        matched = sum(1 for expected in must_have if any(expected in path for path in output_paths))
+        matched = sum(
+            1
+            for expected in must_have
+            if any(expected in path for path in output_paths)
+        )
 
         self.assertGreaterEqual(
             matched,

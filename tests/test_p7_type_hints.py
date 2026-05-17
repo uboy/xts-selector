@@ -9,11 +9,11 @@ from arkui_xts_selector.cli import (
     ContentModifierIndex,
     MappingConfig,
     SdkIndex,
-    TestFileIndex,
-    build_query_signals,
     infer_signals,
-    score_file,
 )
+from arkui_xts_selector.models import TestFileIndex
+from arkui_xts_selector.query import build_query_signals
+from arkui_xts_selector.scoring import score_file
 
 
 class P7TypeHintsTests(unittest.TestCase):
@@ -37,9 +37,13 @@ class P7TypeHintsTests(unittest.TestCase):
         self.assertEqual(signals["method_hints"], {"contentModifier"})
         self.assertEqual(signals["type_hints"], {"ContentModifier"})
 
-    def test_infer_signals_matches_composite_mapping_with_inserted_static_token(self) -> None:
+    def test_infer_signals_matches_composite_mapping_with_inserted_static_token(
+        self,
+    ) -> None:
         signals = infer_signals(
-            Path("frameworks/core/components_ng/pattern/menu/bridge/menu_item/menu_item_static_configuration_accessor.cpp"),
+            Path(
+                "frameworks/core/components_ng/pattern/menu/bridge/menu_item/menu_item_static_configuration_accessor.cpp"
+            ),
             SdkIndex(),
             ContentModifierIndex(),
             MappingConfig(
@@ -49,7 +53,11 @@ class P7TypeHintsTests(unittest.TestCase):
                         "project_hints": ["contentmodifier", "menu", "select"],
                         "method_hints": ["contentModifier"],
                         "type_hints": ["ContentModifier", "MenuItemConfiguration"],
-                        "symbols": ["ContentModifier", "MenuItem", "MenuItemConfiguration"],
+                        "symbols": [
+                            "ContentModifier",
+                            "MenuItem",
+                            "MenuItemConfiguration",
+                        ],
                     }
                 }
             ),
@@ -61,7 +69,9 @@ class P7TypeHintsTests(unittest.TestCase):
         self.assertIn("MenuItemConfiguration", signals["type_hints"])
         self.assertIn("Menu", signals["type_hints"])
 
-    def test_build_query_signals_collects_type_hints_from_composite_mapping(self) -> None:
+    def test_build_query_signals_collects_type_hints_from_composite_mapping(
+        self,
+    ) -> None:
         # After substring matching fix (Task 3), use exact key name to trigger.
         signals = build_query_signals(
             "content_modifier_helper_accessor",
@@ -103,7 +113,9 @@ class P7TypeHintsTests(unittest.TestCase):
         self.assertIn("constructs hinted type CalendarPickerDialog", reasons)
         self.assertIn("imports hinted type CalendarPickerDialog", reasons)
 
-    def test_score_file_dedupes_type_like_evidence_between_method_and_type_hints(self) -> None:
+    def test_score_file_dedupes_type_like_evidence_between_method_and_type_hints(
+        self,
+    ) -> None:
         file_index = TestFileIndex(
             relative_path="test/common/content_modifier.ets",
             imported_symbols={"ContentModifier"},

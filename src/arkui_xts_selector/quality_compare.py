@@ -3,6 +3,7 @@
 Compares two batch result JSON files and produces a per-PR diff with summary metrics.
 Designed for offline replay from cached results.
 """
+
 from __future__ import annotations
 
 import json
@@ -14,6 +15,7 @@ from typing import Any
 @dataclass
 class PrDiff:
     """Per-PR comparison between baseline and new results."""
+
     pr_number: int
     baseline_status: str
     new_status: str
@@ -40,6 +42,7 @@ class PrDiff:
 @dataclass
 class QualityComparisonReport:
     """Aggregate comparison report."""
+
     baseline_path: str
     new_path: str
     total_prs: int

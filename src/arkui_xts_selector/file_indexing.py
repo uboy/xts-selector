@@ -23,6 +23,7 @@ from .api_surface import classify_xts_file_surface
 def extract_typed_field_accesses(text: str) -> set[str]:
     """Extract typed field accesses from text (wrapper for backwards compatibility)."""
     from .consumer_semantics import extract_typed_field_accesses as extract_semantic
+
     return extract_semantic(text)
 
 
@@ -60,7 +61,10 @@ def normalize_member_hint(value: str) -> str:
     member_token = compact_token(member)
     if not separator or not owner_token or not member_token:
         return ""
-    if owner_token in STRUCTURAL_TYPED_CALLBACK_TYPES or member_token in GENERIC_TYPED_FIELD_NAMES:
+    if (
+        owner_token in STRUCTURAL_TYPED_CALLBACK_TYPES
+        or member_token in GENERIC_TYPED_FIELD_NAMES
+    ):
         return ""
     return f"{owner_token}.{member_token}"
 
@@ -216,10 +220,14 @@ def infer_project_type_hint_profile(
         for type_hint_key in source_type_hint_keys:
             if type_hint_key in related_tokens:
                 matched_type_hints.add(type_hint_key)
-                focus_token_counts[type_hint_key] = focus_token_counts.get(type_hint_key, 0) + 1
+                focus_token_counts[type_hint_key] = (
+                    focus_token_counts.get(type_hint_key, 0) + 1
+                )
             if type_hint_key in direct_tokens:
                 direct_type_hints.add(type_hint_key)
-                focus_token_counts[type_hint_key] = focus_token_counts.get(type_hint_key, 0) + 2
+                focus_token_counts[type_hint_key] = (
+                    focus_token_counts.get(type_hint_key, 0) + 2
+                )
     return {
         "type_hint_keys": sorted(matched_type_hints),
         "direct_type_hint_keys": sorted(direct_type_hints),
@@ -232,7 +240,9 @@ def infer_project_member_hint_profile(
     signals: dict[str, set[str]],
 ) -> dict[str, object]:
     """Infer project member hint profile from file hits."""
-    source_member_hint_keys = extract_member_hint_keys(signals.get("member_hints", set()))
+    source_member_hint_keys = extract_member_hint_keys(
+        signals.get("member_hints", set())
+    )
     if not source_member_hint_keys:
         return {
             "member_hint_keys": [],
@@ -245,14 +255,20 @@ def infer_project_member_hint_profile(
     focus_token_counts: dict[str, int] = {}
     for _file_score, test_file, _reasons in file_hits:
         direct_members = _typed_member_tokens(test_file.typed_field_accesses)
-        related_members = direct_members | _typed_member_tokens(test_file.type_member_calls)
+        related_members = direct_members | _typed_member_tokens(
+            test_file.type_member_calls
+        )
         for member_hint_key in source_member_hint_keys:
             if member_hint_key in related_members:
                 matched_member_hints.add(member_hint_key)
-                focus_token_counts[member_hint_key] = focus_token_counts.get(member_hint_key, 0) + 1
+                focus_token_counts[member_hint_key] = (
+                    focus_token_counts.get(member_hint_key, 0) + 1
+                )
             if member_hint_key in direct_members:
                 direct_member_hints.add(member_hint_key)
-                focus_token_counts[member_hint_key] = focus_token_counts.get(member_hint_key, 0) + 2
+                focus_token_counts[member_hint_key] = (
+                    focus_token_counts.get(member_hint_key, 0) + 2
+                )
     return {
         "member_hint_keys": sorted(matched_member_hints),
         "direct_member_hint_keys": sorted(direct_member_hints),

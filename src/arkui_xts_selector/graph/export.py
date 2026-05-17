@@ -15,7 +15,7 @@ from arkui_xts_selector.graph.coverage_relation import (
     build_selection_result,
     resolve_coverage_relations,
 )
-from arkui_xts_selector.graph.schema import EdgeType, Graph
+from arkui_xts_selector.graph.schema import Graph
 from arkui_xts_selector.graph.validation import validate_graph
 from arkui_xts_selector.model.api import ApiEntityId
 
@@ -62,8 +62,7 @@ def export_graph_debug(graph: Graph) -> dict:
     # corresponds to a uses_api edge pointing to that api_entity
     selection_results: list[dict] = []
     api_entity_nodes = [
-        node for node in graph.nodes.values()
-        if node.node_type == "api_entity"
+        node for node in graph.nodes.values() if node.node_type == "api_entity"
     ]
     for node in sorted(api_entity_nodes, key=lambda n: n.node_id):
         # Reconstruct ApiEntityId from the node
@@ -83,19 +82,19 @@ def export_graph_debug(graph: Graph) -> dict:
         # Build selection result for each relation
         for relation in relations:
             result = build_selection_result(relation)
-            selection_results.append({
-                "api_entity_id": canonical_id,
-                "semantic_bucket": result.semantic_bucket,
-                "runnability_state": result.runnability_state,
-                "coverage_equivalence": relation.coverage_equivalence,
-                "order_score": result.order_score,
-                "explanation": result.explanation,
-            })
+            selection_results.append(
+                {
+                    "api_entity_id": canonical_id,
+                    "semantic_bucket": result.semantic_bucket,
+                    "runnability_state": result.runnability_state,
+                    "coverage_equivalence": relation.coverage_equivalence,
+                    "order_score": result.order_score,
+                    "explanation": result.explanation,
+                }
+            )
 
     # Sort selection results by order_score descending, then by api_entity_id
-    selection_results.sort(
-        key=lambda r: (-r["order_score"], r["api_entity_id"])
-    )
+    selection_results.sort(key=lambda r: (-r["order_score"], r["api_entity_id"]))
 
     # Build the export dict
     export = {
