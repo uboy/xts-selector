@@ -35,10 +35,16 @@ SOURCE_FILE_SUFFIXES = {
     ".h",
 }
 SDK_COMPONENT_SKIP = {"common", "builder", "enums", "units", "resources"}
-SOURCE_CONSUMER_ROOTS = (
-    Path("foundation/arkui/ace_engine/examples"),
-)
-SOURCE_CONSUMER_SKIP_DIRS = {".git", ".ohpm", "node_modules", "oh_modules", "out", "hvigor", "AppScope"}
+SOURCE_CONSUMER_ROOTS = (Path("foundation/arkui/ace_engine/examples"),)
+SOURCE_CONSUMER_SKIP_DIRS = {
+    ".git",
+    ".ohpm",
+    "node_modules",
+    "oh_modules",
+    "out",
+    "hvigor",
+    "AppScope",
+}
 COMPONENT_ATTRIBUTE_METHOD_ALLOWLIST: dict[str, set[str]] = {
     "button": {"role", "buttonStyle", "controlSize", "contentModifier"},
     "checkbox": {"contentModifier"},
@@ -68,12 +74,20 @@ INTERFACE_METHOD_RE = re.compile(
     re.M,
 )
 IMPORT_RE = re.compile(r"""from\s+['"]([^'"]+)['"]""")
-IMPORT_BINDING_RE = re.compile(r"""import\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]""", re.S)
-DEFAULT_IMPORT_RE = re.compile(r"""import\s+([A-Za-z_][A-Za-z0-9_]*)\s+from\s+['"]([^'"]+)['"]""")
+IMPORT_BINDING_RE = re.compile(
+    r"""import\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]""", re.S
+)
+DEFAULT_IMPORT_RE = re.compile(
+    r"""import\s+([A-Za-z_][A-Za-z0-9_]*)\s+from\s+['"]([^'"]+)['"]"""
+)
 IDENTIFIER_CALL_RE = re.compile(r"""\b([A-Z][A-Za-z0-9_]*)\s*\(""")
 MEMBER_CALL_RE = re.compile(r"""\.([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
-TYPE_MEMBER_CALL_RE = re.compile(r"""\b([A-Z][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
-TYPED_ATTRIBUTE_MODIFIER_RE = re.compile(r"""AttributeModifier<([A-Za-z_][A-Za-z0-9_]*)Attribute>""")
+TYPE_MEMBER_CALL_RE = re.compile(
+    r"""\b([A-Z][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\s*\("""
+)
+TYPED_ATTRIBUTE_MODIFIER_RE = re.compile(
+    r"""AttributeModifier<([A-Za-z_][A-Za-z0-9_]*)Attribute>"""
+)
 EXTENDS_MODIFIER_RE = re.compile(r"""extends\s+([A-Za-z_][A-Za-z0-9_]*)Modifier\b""")
 SOURCE_SYMBOL_HEADER_RE = re.compile(
     r"""
@@ -132,22 +146,34 @@ EXPLICIT_SOURCE_FANOUT_RULES: dict[str, tuple[ExplicitSourceFanoutRule, ...]] = 
         ExplicitSourceFanoutRule(
             family="button",
             method_name="contentModifier",
-            symbol_hints=("ContentModifierButtonImpl", "ResetContentModifierButtonImpl"),
+            symbol_hints=(
+                "ContentModifierButtonImpl",
+                "ResetContentModifierButtonImpl",
+            ),
         ),
         ExplicitSourceFanoutRule(
             family="checkbox",
             method_name="contentModifier",
-            symbol_hints=("ContentModifierCheckBoxImpl", "ResetContentModifierCheckBoxImpl"),
+            symbol_hints=(
+                "ContentModifierCheckBoxImpl",
+                "ResetContentModifierCheckBoxImpl",
+            ),
         ),
         ExplicitSourceFanoutRule(
             family="checkboxgroup",
             method_name="contentModifier",
-            symbol_hints=("ContentModifierCheckBoxGroupImpl", "ResetContentModifierCheckBoxGroupImpl"),
+            symbol_hints=(
+                "ContentModifierCheckBoxGroupImpl",
+                "ResetContentModifierCheckBoxGroupImpl",
+            ),
         ),
         ExplicitSourceFanoutRule(
             family="datapanel",
             method_name="contentModifier",
-            symbol_hints=("ContentModifierDataPanelImpl", "ResetContentModifierDataPanelImpl"),
+            symbol_hints=(
+                "ContentModifierDataPanelImpl",
+                "ResetContentModifierDataPanelImpl",
+            ),
         ),
         ExplicitSourceFanoutRule(
             family="gauge",
@@ -157,12 +183,18 @@ EXPLICIT_SOURCE_FANOUT_RULES: dict[str, tuple[ExplicitSourceFanoutRule, ...]] = 
         ExplicitSourceFanoutRule(
             family="loadingprogress",
             method_name="contentModifier",
-            symbol_hints=("ContentModifierLoadingProgressImpl", "ResetContentModifierLoadingProgressImpl"),
+            symbol_hints=(
+                "ContentModifierLoadingProgressImpl",
+                "ResetContentModifierLoadingProgressImpl",
+            ),
         ),
         ExplicitSourceFanoutRule(
             family="progress",
             method_name="contentModifier",
-            symbol_hints=("ContentModifierProgressImpl", "ResetContentModifierProgressImpl"),
+            symbol_hints=(
+                "ContentModifierProgressImpl",
+                "ResetContentModifierProgressImpl",
+            ),
         ),
         ExplicitSourceFanoutRule(
             family="radio",
@@ -172,32 +204,50 @@ EXPLICIT_SOURCE_FANOUT_RULES: dict[str, tuple[ExplicitSourceFanoutRule, ...]] = 
         ExplicitSourceFanoutRule(
             family="rating",
             method_name="contentModifier",
-            symbol_hints=("ContentModifierRatingImpl", "ResetContentModifierRatingImpl"),
+            symbol_hints=(
+                "ContentModifierRatingImpl",
+                "ResetContentModifierRatingImpl",
+            ),
         ),
         ExplicitSourceFanoutRule(
             family="select",
             method_name="menuItemContentModifier",
-            symbol_hints=("ContentModifierMenuItemImpl", "ResetContentModifierMenuItemImpl"),
+            symbol_hints=(
+                "ContentModifierMenuItemImpl",
+                "ResetContentModifierMenuItemImpl",
+            ),
         ),
         ExplicitSourceFanoutRule(
             family="slider",
             method_name="contentModifier",
-            symbol_hints=("ContentModifierSliderImpl", "ResetContentModifierSliderImpl"),
+            symbol_hints=(
+                "ContentModifierSliderImpl",
+                "ResetContentModifierSliderImpl",
+            ),
         ),
         ExplicitSourceFanoutRule(
             family="textclock",
             method_name="contentModifier",
-            symbol_hints=("ContentModifierTextClockImpl", "ResetContentModifierTextClockImpl"),
+            symbol_hints=(
+                "ContentModifierTextClockImpl",
+                "ResetContentModifierTextClockImpl",
+            ),
         ),
         ExplicitSourceFanoutRule(
             family="texttimer",
             method_name="contentModifier",
-            symbol_hints=("ContentModifierTextTimerImpl", "ResetContentModifierTextTimerImpl"),
+            symbol_hints=(
+                "ContentModifierTextTimerImpl",
+                "ResetContentModifierTextTimerImpl",
+            ),
         ),
         ExplicitSourceFanoutRule(
             family="toggle",
             method_name="contentModifier",
-            symbol_hints=("ContentModifierToggleImpl", "ResetContentModifierToggleImpl"),
+            symbol_hints=(
+                "ContentModifierToggleImpl",
+                "ResetContentModifierToggleImpl",
+            ),
         ),
     ),
 }
@@ -217,7 +267,9 @@ def normalize_repo_rel(path: str | Path, repo_root: Path | None = None) -> str:
     candidate = Path(path)
     if candidate.is_absolute() and repo_root is not None:
         try:
-            return str(candidate.resolve().relative_to(repo_root.resolve())).replace("\\", "/")
+            return str(candidate.resolve().relative_to(repo_root.resolve())).replace(
+                "\\", "/"
+            )
         except ValueError:
             return str(candidate.resolve()).replace("\\", "/")
     return str(candidate).replace("\\", "/")
@@ -341,7 +393,7 @@ def extract_source_members(text: str) -> dict[str, dict[str, object]]:
                     break
         if body_end is None:
             continue
-        body = text[match.end():body_end]
+        body = text[match.end() : body_end]
 
         result[type_name] = {
             "methods": set(),
@@ -364,7 +416,11 @@ def extract_source_members(text: str) -> dict[str, dict[str, object]]:
     for match in SOURCE_FUNCTION_DECL_RE.finditer(text):
         functions.add(match.group(1))
     if functions:
-        result["__functions__"] = {"methods": set(), "functions": functions, "events": set()}
+        result["__functions__"] = {
+            "methods": set(),
+            "functions": functions,
+            "events": set(),
+        }
 
     return result
 
@@ -385,7 +441,7 @@ def extract_proxy_members(text: str) -> dict[str, set[str]]:
         # Try to find the proxy variable name from context
         # Look backwards for a variable assignment
         start = max(0, match.start() - 200)
-        context = text[start:match.start()]
+        context = text[start : match.start()]
         proxy_var = None
         # Pattern 1: let/var/const x = ...; x.bind*
         for var_match in re.finditer(r"\b(let|var|const)\s+(\w+)\s*=", context):
@@ -428,7 +484,9 @@ def build_source_member_index(repo_root: Path) -> dict[str, dict[str, object]]:
     return index
 
 
-def _matching_interface_name(interfaces: dict[str, dict[str, object]], family: str, suffix: str) -> str | None:
+def _matching_interface_name(
+    interfaces: dict[str, dict[str, object]], family: str, suffix: str
+) -> str | None:
     family_key = compact_token(family)
     matches = [
         name
@@ -468,25 +526,35 @@ def _parse_source_consumer_file(path: Path, repo_root: Path) -> SourceConsumerFi
         imported_symbols=imported_symbols,
         identifier_calls=set(IDENTIFIER_CALL_RE.findall(text)),
         member_calls=set(MEMBER_CALL_RE.findall(text)),
-        type_member_calls={f"{owner}.{member}" for owner, member in TYPE_MEMBER_CALL_RE.findall(text)},
+        type_member_calls={
+            f"{owner}.{member}" for owner, member in TYPE_MEMBER_CALL_RE.findall(text)
+        },
         typed_modifier_bases=typed_modifier_bases,
     )
 
 
-def _discover_source_consumer_projects(repo_root: Path, consumer_root: Path) -> list[SourceConsumerProjectIndex]:
+def _discover_source_consumer_projects(
+    repo_root: Path, consumer_root: Path
+) -> list[SourceConsumerProjectIndex]:
     if not consumer_root.is_dir():
         return []
 
     projects: list[SourceConsumerProjectIndex] = []
     for child in sorted(item for item in consumer_root.iterdir() if item.is_dir()):
         files: list[SourceConsumerFileIndex] = []
-        for dirpath, dirnames, filenames in os.walk(child, topdown=True, onerror=lambda _exc: None):
-            dirnames[:] = [name for name in dirnames if name not in SOURCE_CONSUMER_SKIP_DIRS]
+        for dirpath, dirnames, filenames in os.walk(
+            child, topdown=True, onerror=lambda _exc: None
+        ):
+            dirnames[:] = [
+                name for name in dirnames if name not in SOURCE_CONSUMER_SKIP_DIRS
+            ]
             base = Path(dirpath)
             for filename in filenames:
                 if not filename.endswith((".ets", ".ts", ".js")):
                     continue
-                files.append(_parse_source_consumer_file((base / filename).resolve(), repo_root))
+                files.append(
+                    _parse_source_consumer_file((base / filename).resolve(), repo_root)
+                )
         if not files:
             continue
         relative_root = normalize_repo_rel(child.resolve(), repo_root=repo_root)
@@ -520,16 +588,22 @@ class ApiLineageMap:
     consumer_project_to_files: dict[str, set[str]] = field(default_factory=dict)
     source_member_index: dict[str, dict[str, object]] = field(default_factory=dict)
 
-    def record_source_api(self, source_path: str | Path, api_entity: str, *, family: str | None = None) -> None:
+    def record_source_api(
+        self, source_path: str | Path, api_entity: str, *, family: str | None = None
+    ) -> None:
         source_key = normalize_repo_rel(source_path)
         api_key = str(api_entity)
         self.source_to_apis.setdefault(source_key, set()).add(api_key)
         self.api_to_sources.setdefault(api_key, set()).add(source_key)
-        family_key = compact_token(family or api_key.replace("Modifier", "").replace("Configuration", ""))
+        family_key = compact_token(
+            family or api_key.replace("Modifier", "").replace("Configuration", "")
+        )
         if family_key:
             self.api_to_families.setdefault(api_key, set()).add(family_key)
 
-    def record_source_symbol_api(self, source_path: str | Path, symbol_hint: str, api_entity: str) -> None:
+    def record_source_symbol_api(
+        self, source_path: str | Path, symbol_hint: str, api_entity: str
+    ) -> None:
         source_key = normalize_repo_rel(source_path)
         symbol_key = _source_symbol_key(source_key, symbol_hint)
         if not symbol_key:
@@ -574,27 +648,39 @@ class ApiLineageMap:
         if consumer_project is not None:
             project_key = normalize_repo_rel(consumer_project)
             self.consumer_file_to_project[consumer_key] = project_key
-            self.consumer_project_to_files.setdefault(project_key, set()).add(consumer_key)
+            self.consumer_project_to_files.setdefault(project_key, set()).add(
+                consumer_key
+            )
             self.consumer_project_kinds.setdefault(project_key, kind)
 
-    def record_consumer_project_api(self, consumer_project: str | Path, api_entity: str, *, kind: str = "xts") -> None:
+    def record_consumer_project_api(
+        self, consumer_project: str | Path, api_entity: str, *, kind: str = "xts"
+    ) -> None:
         consumer_key = normalize_repo_rel(consumer_project)
         api_key = str(api_entity)
         self.consumer_project_to_apis.setdefault(consumer_key, set()).add(api_key)
         self.api_to_consumer_projects.setdefault(api_key, set()).add(consumer_key)
         self.consumer_project_kinds.setdefault(consumer_key, kind)
 
-    def consumer_projects_for_api(self, api_entity: str, *, kind: str | None = None) -> list[str]:
+    def consumer_projects_for_api(
+        self, api_entity: str, *, kind: str | None = None
+    ) -> list[str]:
         projects = sorted(self.api_to_consumer_projects.get(str(api_entity), set()))
         if kind is None:
             return projects
-        return [project for project in projects if self.consumer_project_kinds.get(project) == kind]
+        return [
+            project
+            for project in projects
+            if self.consumer_project_kinds.get(project) == kind
+        ]
 
     def consumer_files_for_project(self, consumer_project: str | Path) -> list[str]:
         project_key = normalize_repo_rel(consumer_project)
         return sorted(self.consumer_project_to_files.get(project_key, set()))
 
-    def apis_for_source(self, source_path: str | Path, repo_root: Path | None = None) -> list[str]:
+    def apis_for_source(
+        self, source_path: str | Path, repo_root: Path | None = None
+    ) -> list[str]:
         source_key = normalize_repo_rel(source_path, repo_root=repo_root)
         return sorted(self.source_to_apis.get(source_key, set()))
 
@@ -618,7 +704,10 @@ class ApiLineageMap:
                 family = _family_token_from_entity_name(api_entity)
                 if family:
                     family_to_symbols.setdefault(family, set()).add(api_entity)
-        return {family: sorted(symbols) for family, symbols in sorted(family_to_symbols.items())}
+        return {
+            family: sorted(symbols)
+            for family, symbols in sorted(family_to_symbols.items())
+        }
 
     def apis_for_source_symbols(
         self,
@@ -656,8 +745,11 @@ class ApiLineageMap:
             if not span_key.startswith(prefix):
                 continue
             for span_start, span_end in spans:
-                if any(span_start <= end and start <= span_end for start, end in normalized_ranges):
-                    matched.add(span_key[len(prefix):])
+                if any(
+                    span_start <= end and start <= span_end
+                    for start, end in normalized_ranges
+                ):
+                    matched.add(span_key[len(prefix) :])
                     break
         return sorted(matched)
 
@@ -683,7 +775,9 @@ class ApiLineageMap:
             "api_to_consumer_projects": _serialize(self.api_to_consumer_projects),
             "consumer_file_kinds": dict(sorted(self.consumer_file_kinds.items())),
             "consumer_project_kinds": dict(sorted(self.consumer_project_kinds.items())),
-            "consumer_file_to_project": dict(sorted(self.consumer_file_to_project.items())),
+            "consumer_file_to_project": dict(
+                sorted(self.consumer_file_to_project.items())
+            ),
             "consumer_project_to_files": _serialize(self.consumer_project_to_files),
             "source_member_index": {
                 type_name: {
@@ -709,7 +803,9 @@ class ApiLineageMap:
 
         return cls(
             schema_version=int(data.get("schema_version", SCHEMA_VERSION)),
-            metadata=dict(data.get("metadata", {})) if isinstance(data.get("metadata"), dict) else {},
+            metadata=dict(data.get("metadata", {}))
+            if isinstance(data.get("metadata"), dict)
+            else {},
             source_to_apis=_restore(data.get("source_to_apis")),
             source_symbol_to_apis=_restore(data.get("source_symbol_to_apis")),
             source_symbol_spans={
@@ -720,7 +816,9 @@ class ApiLineageMap:
                 ]
                 for key, values in (data.get("source_symbol_spans", {}) or {}).items()
                 if isinstance(values, list)
-            } if isinstance(data.get("source_symbol_spans"), dict) else {},
+            }
+            if isinstance(data.get("source_symbol_spans"), dict)
+            else {},
             api_to_sources=_restore(data.get("api_to_sources")),
             api_to_families=_restore(data.get("api_to_families")),
             api_to_surfaces=_restore(data.get("api_to_surfaces")),
@@ -731,15 +829,23 @@ class ApiLineageMap:
             consumer_file_kinds={
                 str(key): str(value)
                 for key, value in (data.get("consumer_file_kinds", {}) or {}).items()
-            } if isinstance(data.get("consumer_file_kinds"), dict) else {},
+            }
+            if isinstance(data.get("consumer_file_kinds"), dict)
+            else {},
             consumer_project_kinds={
                 str(key): str(value)
                 for key, value in (data.get("consumer_project_kinds", {}) or {}).items()
-            } if isinstance(data.get("consumer_project_kinds"), dict) else {},
+            }
+            if isinstance(data.get("consumer_project_kinds"), dict)
+            else {},
             consumer_file_to_project={
                 str(key): str(value)
-                for key, value in (data.get("consumer_file_to_project", {}) or {}).items()
-            } if isinstance(data.get("consumer_file_to_project"), dict) else {},
+                for key, value in (
+                    data.get("consumer_file_to_project", {}) or {}
+                ).items()
+            }
+            if isinstance(data.get("consumer_file_to_project"), dict)
+            else {},
             consumer_project_to_files=_restore(data.get("consumer_project_to_files")),
             source_member_index={
                 str(type_name): {
@@ -750,7 +856,9 @@ class ApiLineageMap:
                 }
                 for type_name, info in (data.get("source_member_index") or {}).items()
                 if isinstance(info, dict)
-            } if isinstance(data.get("source_member_index"), dict) else {},
+            }
+            if isinstance(data.get("source_member_index"), dict)
+            else {},
         )
 
 
@@ -776,7 +884,9 @@ def _load_sdk_entities(
     repo_root: Path,
     sdk_api_root: Path,
     lineage_map: ApiLineageMap,
-) -> tuple[dict[str, set[str]], dict[str, set[str]], dict[str, set[str]], dict[str, set[str]]]:
+) -> tuple[
+    dict[str, set[str]], dict[str, set[str]], dict[str, set[str]], dict[str, set[str]]
+]:
     component_symbols_by_family: dict[str, set[str]] = {}
     modifier_symbols_by_family: dict[str, set[str]] = {}
     family_to_api_symbols: dict[str, set[str]] = {}
@@ -798,7 +908,9 @@ def _load_sdk_entities(
         family_to_api_symbols.setdefault(family, set()).add(symbol)
         lineage_map.record_source_api(path, symbol, family=family)
         lineage_map.record_api_surface(symbol, "static")
-        attribute_name = _matching_interface_name(_parse_interface_blocks(path), family, "Attribute")
+        attribute_name = _matching_interface_name(
+            _parse_interface_blocks(path), family, "Attribute"
+        )
         if attribute_name:
             attribute_interface_names_by_family[family] = attribute_name
 
@@ -807,10 +919,10 @@ def _load_sdk_entities(
     for path in modifier_paths:
         name = path.name
         if name.endswith(".d.ts"):
-            symbol = name[:-len(".d.ts")]
+            symbol = name[: -len(".d.ts")]
             surface = "dynamic"
         else:
-            symbol = name[:-len(".static.d.ets")]
+            symbol = name[: -len(".static.d.ets")]
             surface = "static"
         family = compact_token(symbol.replace("Modifier", ""))
         if not family:
@@ -822,20 +934,26 @@ def _load_sdk_entities(
 
     common_static_path = sdk_component_root / "common.static.d.ets"
     common_interfaces = _parse_interface_blocks(common_static_path)
-    common_method_methods = set(common_interfaces.get("CommonMethod", {}).get("methods", set()) or set())
+    common_method_methods = set(
+        common_interfaces.get("CommonMethod", {}).get("methods", set()) or set()
+    )
 
     # Auto-derive attribute methods for ALL component families, not just
     # the ones in COMPONENT_ATTRIBUTE_METHOD_ALLOWLIST.  The allowlist is
     # kept as a priority filter for backward compatibility: families that
     # are listed there use the allowlisted subset; unlisted families get
     # ALL their methods extracted automatically.
-    all_families = sorted(set(component_symbols_by_family) | set(modifier_symbols_by_family))
+    all_families = sorted(
+        set(component_symbols_by_family) | set(modifier_symbols_by_family)
+    )
     for family in all_families:
         component_static_path = sdk_component_root / f"{family}.static.d.ets"
         if not component_static_path.exists():
             continue
         interfaces = _parse_interface_blocks(component_static_path)
-        attribute_name = attribute_interface_names_by_family.get(family) or _matching_interface_name(
+        attribute_name = attribute_interface_names_by_family.get(
+            family
+        ) or _matching_interface_name(
             interfaces,
             family,
             "Attribute",
@@ -846,11 +964,15 @@ def _load_sdk_entities(
         direct_methods = set(attribute_data.get("methods", set()) or set())
         # If the family has an explicit allowlist, use it; otherwise extract all methods.
         allowed_methods = COMPONENT_ATTRIBUTE_METHOD_ALLOWLIST.get(family)
-        methods_to_record = (direct_methods & allowed_methods) if allowed_methods else direct_methods
+        methods_to_record = (
+            (direct_methods & allowed_methods) if allowed_methods else direct_methods
+        )
         for method_name in sorted(methods_to_record):
             api_entity = f"{attribute_name}.{method_name}"
             method_entities_by_family.setdefault(family, set()).add(api_entity)
-            lineage_map.record_source_api(component_static_path, api_entity, family=family)
+            lineage_map.record_source_api(
+                component_static_path, api_entity, family=family
+            )
             lineage_map.record_api_surface(api_entity, "static")
 
     for family, allowed_methods in sorted(INHERITED_COMMON_METHOD_ALLOWLIST.items()):
@@ -863,7 +985,12 @@ def _load_sdk_entities(
             lineage_map.record_source_api(common_static_path, api_entity, family=family)
             lineage_map.record_api_surface(api_entity, "static")
 
-    return component_symbols_by_family, modifier_symbols_by_family, family_to_api_symbols, method_entities_by_family
+    return (
+        component_symbols_by_family,
+        modifier_symbols_by_family,
+        family_to_api_symbols,
+        method_entities_by_family,
+    )
 
 
 def discover_source_scan_roots(ace_engine_root: Path) -> list[Path]:
@@ -883,7 +1010,10 @@ def discover_source_scan_roots(ace_engine_root: Path) -> list[Path]:
         components_ng = frameworks / "core" / "components_ng" / "pattern"
         if components_ng.is_dir():
             for child in sorted(components_ng.iterdir()):
-                if child.is_dir() and (frameworks / "core" / "components_ng" / "pattern") not in base:
+                if (
+                    child.is_dir()
+                    and (frameworks / "core" / "components_ng" / "pattern") not in base
+                ):
                     # Already covered by SOURCE_SCAN_ROOTS entry
                     pass
 
@@ -922,7 +1052,9 @@ def _iter_source_files(ace_engine_root: Path) -> Iterable[Path]:
                 yield path
 
 
-def _match_source_families(rel_path: str, family_to_api_symbols: dict[str, set[str]]) -> set[str]:
+def _match_source_families(
+    rel_path: str, family_to_api_symbols: dict[str, set[str]]
+) -> set[str]:
     rel_lower = rel_path.lower()
     matched: set[str] = set()
     tokens = _tokenize_path(rel_lower)
@@ -988,7 +1120,9 @@ def _find_block_end_line(lines: list[str], brace_line_index: int) -> int:
     return brace_line_index + 1
 
 
-def _extract_source_symbol_spans(path: Path, source_text: str) -> list[tuple[str, int, int]]:
+def _extract_source_symbol_spans(
+    path: Path, source_text: str
+) -> list[tuple[str, int, int]]:
     if path.suffix.lower() not in SOURCE_FILE_SUFFIXES:
         return []
     lines = source_text.splitlines()
@@ -1009,7 +1143,11 @@ def _extract_source_symbol_spans(path: Path, source_text: str) -> list[tuple[str
         cursor = index
         brace_line_index: int | None = index if "{" in stripped else None
         invalid = False
-        while cursor + 1 < len(lines) and brace_line_index is None and cursor - header_start < 5:
+        while (
+            cursor + 1 < len(lines)
+            and brace_line_index is None
+            and cursor - header_start < 5
+        ):
             if ";" in lines[cursor]:
                 invalid = True
                 break
@@ -1116,14 +1254,17 @@ def _detect_source_fanout(
         matched_entities = [
             api_entity
             for api_entity in sorted(method_entities_by_family.get(family, set()))
-            if api_entity.endswith(".contentModifier") or api_entity.endswith(".menuItemContentModifier")
+            if api_entity.endswith(".contentModifier")
+            or api_entity.endswith(".menuItemContentModifier")
         ]
         for api_entity in matched_entities:
             lineage_map.record_source_api(rel_path, api_entity, family=family)
             # Record symbol hints for narrowing
             property_name = camel_to_pascal(api_entity.rsplit(".", 1)[-1])
-            for symbol_hint in (f"ContentModifier{snake_to_pascal(family)}Impl",
-                                f"ResetContentModifier{snake_to_pascal(family)}Impl"):
+            for symbol_hint in (
+                f"ContentModifier{snake_to_pascal(family)}Impl",
+                f"ResetContentModifier{snake_to_pascal(family)}Impl",
+            ):
                 lineage_map.record_source_symbol_api(rel_path, symbol_hint, api_entity)
 
 
@@ -1136,7 +1277,9 @@ def _build_source_edges(
 ) -> None:
     for path in _iter_source_files(ace_engine_root):
         rel_path = normalize_repo_rel(path, repo_root=repo_root)
-        matched_families = sorted(_match_source_families(rel_path, family_to_api_symbols))
+        matched_families = sorted(
+            _match_source_families(rel_path, family_to_api_symbols)
+        )
         for family in matched_families:
             for api_entity in sorted(family_to_api_symbols.get(family, set())):
                 lineage_map.record_source_api(rel_path, api_entity, family=family)
@@ -1147,7 +1290,9 @@ def _build_source_edges(
                 for api_entity in method_entities_by_family.get(family, set())
             }
         )
-        needs_source_text = bool(relevant_method_entities) or rel_path in EXPLICIT_SOURCE_FANOUT_RULES
+        needs_source_text = (
+            bool(relevant_method_entities) or rel_path in EXPLICIT_SOURCE_FANOUT_RULES
+        )
         # Also check if the file might contain fan-out patterns
         if not needs_source_text and "accessor" in rel_path.lower():
             needs_source_text = True
@@ -1157,17 +1302,33 @@ def _build_source_edges(
             source_text = path.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
-        for symbol_name, start_line, end_line in _extract_source_symbol_spans(path, source_text):
-            lineage_map.record_source_symbol_span(rel_path, symbol_name, start_line, end_line)
+        for symbol_name, start_line, end_line in _extract_source_symbol_spans(
+            path, source_text
+        ):
+            lineage_map.record_source_symbol_span(
+                rel_path, symbol_name, start_line, end_line
+            )
         _record_explicit_source_fanout(rel_path, lineage_map, method_entities_by_family)
         # Auto-detect fan-out from accessor files that aren't in explicit rules
         if rel_path not in EXPLICIT_SOURCE_FANOUT_RULES:
-            _detect_source_fanout(source_text, family_to_api_symbols, method_entities_by_family, lineage_map, rel_path)
+            _detect_source_fanout(
+                source_text,
+                family_to_api_symbols,
+                method_entities_by_family,
+                lineage_map,
+                rel_path,
+            )
         for api_entity in relevant_method_entities:
             if _source_matches_method_entity(source_text, api_entity):
-                lineage_map.record_source_api(rel_path, api_entity, family=_family_token_from_entity_name(api_entity))
+                lineage_map.record_source_api(
+                    rel_path,
+                    api_entity,
+                    family=_family_token_from_entity_name(api_entity),
+                )
                 for symbol_hint in sorted(_method_entity_symbol_hints(api_entity)):
-                    lineage_map.record_source_symbol_api(rel_path, symbol_hint, api_entity)
+                    lineage_map.record_source_symbol_api(
+                        rel_path, symbol_hint, api_entity
+                    )
 
 
 def _record_consumer_matches(
@@ -1180,7 +1341,9 @@ def _record_consumer_matches(
     *,
     consumer_kind: str = "xts",
 ) -> None:
-    project_key = str(getattr(project, "relative_root", "") or getattr(project, "path_key", "") or "")
+    project_key = str(
+        getattr(project, "relative_root", "") or getattr(project, "path_key", "") or ""
+    )
     file_key = str(getattr(file_index, "relative_path", "") or "")
     imported_symbols = set(getattr(file_index, "imported_symbols", set()) or set())
     identifier_calls = set(getattr(file_index, "identifier_calls", set()) or set())
@@ -1192,19 +1355,34 @@ def _record_consumer_matches(
         if compact_token(value)
     }
 
-    direct_apis = {symbol for symbol in (imported_symbols | identifier_calls) if symbol in known_api_entities}
+    direct_apis = {
+        symbol
+        for symbol in (imported_symbols | identifier_calls)
+        if symbol in known_api_entities
+    }
     for api_entity in sorted(direct_apis):
         if file_key:
-            lineage_map.record_consumer_file_api(file_key, api_entity, kind=consumer_kind, consumer_project=project_key)
+            lineage_map.record_consumer_file_api(
+                file_key, api_entity, kind=consumer_kind, consumer_project=project_key
+            )
         if project_key:
-            lineage_map.record_consumer_project_api(project_key, api_entity, kind=consumer_kind)
+            lineage_map.record_consumer_project_api(
+                project_key, api_entity, kind=consumer_kind
+            )
 
     for family in sorted(typed_modifier_bases):
         for api_entity in sorted(modifier_symbols_by_family.get(family, set())):
             if file_key:
-                lineage_map.record_consumer_file_api(file_key, api_entity, kind=consumer_kind, consumer_project=project_key)
+                lineage_map.record_consumer_file_api(
+                    file_key,
+                    api_entity,
+                    kind=consumer_kind,
+                    consumer_project=project_key,
+                )
             if project_key:
-                lineage_map.record_consumer_project_api(project_key, api_entity, kind=consumer_kind)
+                lineage_map.record_consumer_project_api(
+                    project_key, api_entity, kind=consumer_kind
+                )
 
     family_contexts = set(typed_modifier_bases)
     for symbol in imported_symbols | identifier_calls:
@@ -1227,19 +1405,35 @@ def _record_consumer_matches(
                     consumer_project=project_key,
                 )
             if project_key:
-                lineage_map.record_consumer_project_api(project_key, explicit_entity, kind=consumer_kind)
+                lineage_map.record_consumer_project_api(
+                    project_key, explicit_entity, kind=consumer_kind
+                )
 
-    member_call_tokens = {compact_token(item) for item in member_calls if compact_token(item)}
-    for family in sorted(token for token in family_contexts if token in method_entities_by_family):
+    member_call_tokens = {
+        compact_token(item) for item in member_calls if compact_token(item)
+    }
+    for family in sorted(
+        token for token in family_contexts if token in method_entities_by_family
+    ):
         for api_entity in sorted(method_entities_by_family.get(family, set())):
             _owner, _separator, method_name = api_entity.partition(".")
             if not method_name:
                 continue
-            if method_name in member_calls or compact_token(method_name) in member_call_tokens:
+            if (
+                method_name in member_calls
+                or compact_token(method_name) in member_call_tokens
+            ):
                 if file_key:
-                    lineage_map.record_consumer_file_api(file_key, api_entity, kind=consumer_kind, consumer_project=project_key)
+                    lineage_map.record_consumer_file_api(
+                        file_key,
+                        api_entity,
+                        kind=consumer_kind,
+                        consumer_project=project_key,
+                    )
                 if project_key:
-                    lineage_map.record_consumer_project_api(project_key, api_entity, kind=consumer_kind)
+                    lineage_map.record_consumer_project_api(
+                        project_key, api_entity, kind=consumer_kind
+                    )
 
 
 def _build_consumer_edges(
@@ -1275,7 +1469,10 @@ def _build_source_only_consumer_edges(
 ) -> None:
     roots = list(source_consumer_roots or [])
     if not roots:
-        roots = [(repo_root / relative_root).resolve() for relative_root in SOURCE_CONSUMER_ROOTS]
+        roots = [
+            (repo_root / relative_root).resolve()
+            for relative_root in SOURCE_CONSUMER_ROOTS
+        ]
     for root in roots:
         for project in _discover_source_consumer_projects(repo_root, root.resolve()):
             _build_consumer_edges(
@@ -1317,7 +1514,9 @@ def _build_tree_signature(
         }
     h = hashlib.sha256()
     file_count = 0
-    for dirpath, dirnames, filenames in os.walk(resolved_root, topdown=True, onerror=lambda _exc: None):
+    for dirpath, dirnames, filenames in os.walk(
+        resolved_root, topdown=True, onerror=lambda _exc: None
+    ):
         dirnames[:] = sorted(name for name in dirnames if name not in skipped)
         base = Path(dirpath)
         for filename in sorted(filenames):
@@ -1384,7 +1583,10 @@ def _lineage_input_signatures(
     ]
     roots = list(source_consumer_roots or [])
     if not roots:
-        roots = [(repo_root / relative_root).resolve() for relative_root in SOURCE_CONSUMER_ROOTS]
+        roots = [
+            (repo_root / relative_root).resolve()
+            for relative_root in SOURCE_CONSUMER_ROOTS
+        ]
     source_consumer_signatures = [
         _build_tree_signature(
             root.resolve(),
@@ -1436,13 +1638,23 @@ def build_api_lineage_map(
             "input_signatures": input_signatures,
         }
     )
-    _, modifier_symbols_by_family, family_to_api_symbols, method_entities_by_family = _load_sdk_entities(
-        repo_root,
-        sdk_api_root,
-        lineage_map,
+    _, modifier_symbols_by_family, family_to_api_symbols, method_entities_by_family = (
+        _load_sdk_entities(
+            repo_root,
+            sdk_api_root,
+            lineage_map,
+        )
     )
-    _build_source_edges(repo_root, ace_engine_root, lineage_map, family_to_api_symbols, method_entities_by_family)
-    _build_consumer_edges(lineage_map, projects, modifier_symbols_by_family, method_entities_by_family)
+    _build_source_edges(
+        repo_root,
+        ace_engine_root,
+        lineage_map,
+        family_to_api_symbols,
+        method_entities_by_family,
+    )
+    _build_consumer_edges(
+        lineage_map, projects, modifier_symbols_by_family, method_entities_by_family
+    )
     _build_source_only_consumer_edges(
         repo_root,
         lineage_map,

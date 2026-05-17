@@ -4,11 +4,10 @@ ImpactCandidate separates semantic evidence strength from raw target counts.
 Path/naming heuristics produce candidates with explicit confidence and risk,
 not direct XTS directory selections.
 """
+
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass, field, asdict
-from pathlib import Path
+from dataclasses import dataclass, asdict
 from typing import Literal
 
 ImpactKind = Literal[
@@ -53,6 +52,7 @@ class ImpactCandidate:
     - naming/path-only evidence CANNOT default to false_negative_risk=low
     - subsystem files must have relation_scope=subsystem
     """
+
     changed_file: str
     impact_kind: ImpactKind
     family: str | None = None
@@ -68,13 +68,18 @@ class ImpactCandidate:
     def __post_init__(self) -> None:
         _validate_literal(self.impact_kind, VALID_IMPACT_KINDS, "impact_kind")
         _validate_literal(self.relation_scope, VALID_RELATION_SCOPES, "relation_scope")
-        _validate_literal(self.source_confidence, VALID_CONFIDENCES, "source_confidence")
+        _validate_literal(
+            self.source_confidence, VALID_CONFIDENCES, "source_confidence"
+        )
         self._check_risk_consistency()
 
     def _check_risk_consistency(self) -> None:
         """Naming/path-only evidence cannot default to low risk."""
         if self.false_negative_risk == "low":
-            if self.impact_kind == "component_family" and self.source_confidence in ("unknown", "weak"):
+            if self.impact_kind == "component_family" and self.source_confidence in (
+                "unknown",
+                "weak",
+            ):
                 raise ValueError(
                     "component_family with unknown/low confidence cannot have "
                     "false_negative_risk=low. Use medium or higher."
@@ -83,7 +88,10 @@ class ImpactCandidate:
                 raise ValueError(
                     "subsystem impact cannot have false_negative_risk=low."
                 )
-            if self.provenance in ("path_rule", "lexical_fallback") and self.parser_level < 2:
+            if (
+                self.provenance in ("path_rule", "lexical_fallback")
+                and self.parser_level < 2
+            ):
                 raise ValueError(
                     f"provenance={self.provenance} with parser_level={self.parser_level} "
                     "cannot have false_negative_risk=low."

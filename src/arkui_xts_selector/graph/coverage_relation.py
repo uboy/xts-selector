@@ -33,9 +33,11 @@ from arkui_xts_selector.model.usage import (
 # Coverage resolution
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class CoverageRelation:
     """Result of resolving an API entity's test coverage through the graph."""
+
     api_entity_id: ApiEntityId
     coverage_equivalence: CoverageEquivalenceClass
     usage_signature: ApiUsageSignature | None
@@ -61,7 +63,8 @@ def resolve_coverage_relations(
 
     # Find uses_api edges pointing to this API entity
     uses_edges = [
-        e for e in graph.edges.values()
+        e
+        for e in graph.edges.values()
         if e.edge_type == EdgeType.USES_API.value and e.to_node == canonical
     ]
 
@@ -104,7 +107,8 @@ def resolve_coverage_relations(
 
         # belongs_to_project from this consumer
         proj_edges = [
-            e for e in graph.edges.values()
+            e
+            for e in graph.edges.values()
             if e.edge_type == EdgeType.BELONGS_TO_PROJECT.value
             and e.from_node == consumer_file_id
         ]
@@ -114,7 +118,8 @@ def resolve_coverage_relations(
 
             # maps_to_target from project
             target_edges = [
-                e for e in graph.edges.values()
+                e
+                for e in graph.edges.values()
                 if e.edge_type == EdgeType.MAPS_TO_TARGET.value
                 and e.from_node == project_id
             ]
@@ -126,8 +131,10 @@ def resolve_coverage_relations(
         # Determine source_impact_confidence from source edges
         source_impact: ConfidenceLevel = "unknown"
         source_edges = [
-            e for e in graph.edges.values()
-            if e.edge_type in (
+            e
+            for e in graph.edges.values()
+            if e.edge_type
+            in (
                 EdgeType.PROVIDES_STATIC_MODIFIER.value,
                 EdgeType.IMPLEMENTS.value,
             )
@@ -143,17 +150,19 @@ def resolve_coverage_relations(
             consumer_usage_confidence=consumer_usage,
         )
 
-        relations.append(CoverageRelation(
-            api_entity_id=api_id,
-            coverage_equivalence=coverage_eq,
-            usage_signature=usage_sig,
-            source_impact_confidence=source_impact,
-            consumer_usage_confidence=consumer_usage,
-            runnability_confidence=runnability,
-            consumer_file_id=consumer_file_id,
-            consumer_project_id=project_id,
-            runnable_target_id=target_id,
-        ))
+        relations.append(
+            CoverageRelation(
+                api_entity_id=api_id,
+                coverage_equivalence=coverage_eq,
+                usage_signature=usage_sig,
+                source_impact_confidence=source_impact,
+                consumer_usage_confidence=consumer_usage,
+                runnability_confidence=runnability,
+                consumer_file_id=consumer_file_id,
+                consumer_project_id=project_id,
+                runnable_target_id=target_id,
+            )
+        )
 
     return relations
 
@@ -207,6 +216,7 @@ def build_selection_result(
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _infer_usage_kind(evidence) -> UsageKind:
     """Infer usage kind from evidence provenance and parser metadata.
 
@@ -231,14 +241,16 @@ def _infer_usage_kind(evidence) -> UsageKind:
     return "unknown"
 
 
-_DIRECT_USAGE_KINDS = frozenset({
-    "component_instantiation",
-    "chained_modifier",
-    "static_modifier",
-    "method_call",
-    "member_access",
-    "event_handler",
-})
+_DIRECT_USAGE_KINDS = frozenset(
+    {
+        "component_instantiation",
+        "chained_modifier",
+        "static_modifier",
+        "method_call",
+        "member_access",
+        "event_handler",
+    }
+)
 
 
 def _determine_coverage_equivalence(
@@ -307,10 +319,10 @@ def _assign_bucket(
     ):
         return "recommended"
 
-    if (
-        source_impact_confidence in ("strong", "medium")
-        and consumer_usage_confidence in ("strong", "medium")
-    ):
+    if source_impact_confidence in (
+        "strong",
+        "medium",
+    ) and consumer_usage_confidence in ("strong", "medium"):
         return "recommended"
 
     return "possible"
@@ -344,9 +356,16 @@ def _assess_false_negative_risk(
         and coverage_equivalence == "exact_api_same_usage_shape"
     ):
         return "low"
-    if source_impact_confidence in ("strong", "medium") and consumer_usage_confidence in ("strong", "medium"):
+    if source_impact_confidence in (
+        "strong",
+        "medium",
+    ) and consumer_usage_confidence in ("strong", "medium"):
         return "medium"
-    if coverage_equivalence in ("harness_only_usage", "broad_fallback", "unresolved_coverage"):
+    if coverage_equivalence in (
+        "harness_only_usage",
+        "broad_fallback",
+        "unresolved_coverage",
+    ):
         return "high"
     return "medium"
 

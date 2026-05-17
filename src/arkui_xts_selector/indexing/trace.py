@@ -65,11 +65,19 @@ def cmd_trace(args: argparse.Namespace) -> int:
                     includes=parsed.includes,
                 )
                 synthetic_ace_index = AceIndexResult(entries=(synthetic_entry,))
-                mappings = build_source_to_api_mapping(synthetic_ace_index, sdk_index=sdk)
+                mappings = build_source_to_api_mapping(
+                    synthetic_ace_index, sdk_index=sdk
+                )
                 for mapping in mappings:
-                    if symbol and symbol not in mapping.source_qualified and symbol not in mapping.api_public_name:
+                    if (
+                        symbol
+                        and symbol not in mapping.source_qualified
+                        and symbol not in mapping.api_public_name
+                    ):
                         continue
-                    print(f"        └─ {mapping.confidence} → {mapping.api_public_name}")
+                    print(
+                        f"        └─ {mapping.confidence} → {mapping.api_public_name}"
+                    )
             found = True
 
     # Also check free functions

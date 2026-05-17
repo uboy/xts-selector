@@ -18,7 +18,10 @@ def discover_selector_repo_root() -> Path:
 def _looks_like_ohos_root(candidate: Path) -> bool:
     try:
         candidate = candidate.resolve()
-        return all((candidate / relative_path).exists() for relative_path in _OHOS_REQUIRED_PATHS)
+        return all(
+            (candidate / relative_path).exists()
+            for relative_path in _OHOS_REQUIRED_PATHS
+        )
     except OSError:
         return False
 
@@ -67,7 +70,10 @@ def _iter_sibling_candidates(bases: list[Path]) -> list[Path]:
     seen_children: set[Path] = set()
     for container in containers:
         try:
-            children = sorted((child for child in container.iterdir() if child.is_dir()), key=_sibling_sort_key)
+            children = sorted(
+                (child for child in container.iterdir() if child.is_dir()),
+                key=_sibling_sort_key,
+            )
         except OSError:
             continue
         for child in children:
@@ -135,7 +141,10 @@ def _existing_acts_out_roots(repo_root: Path) -> list[Path]:
     if not out_root.is_dir():
         return candidates
     try:
-        for child in sorted((item for item in out_root.iterdir() if item.is_dir()), key=lambda p: p.name.lower()):
+        for child in sorted(
+            (item for item in out_root.iterdir() if item.is_dir()),
+            key=lambda p: p.name.lower(),
+        ):
             candidate = child / "suites/acts"
             if candidate.is_dir():
                 candidates.append(candidate.resolve())

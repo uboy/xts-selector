@@ -6,18 +6,17 @@ Tests verify:
 - Index parses classes and methods
 - Index handles errors gracefully
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 
 from arkui_xts_selector.indexing.ace_indexer import (
     AceIndexEntry,
     AceIndexResult,
     build_ace_index,
 )
-from arkui_xts_selector.indexing.file_role import FileRole
 
 
 class TestBuildAceIndex:
@@ -106,7 +105,10 @@ class TestBuildAceIndex:
         # Find native modifier entry
         native_modifier_entry = None
         for entry in result.entries:
-            if "interfaces/native/implementation/button_modifier.cpp" in entry.file_path:
+            if (
+                "interfaces/native/implementation/button_modifier.cpp"
+                in entry.file_path
+            ):
                 native_modifier_entry = entry
                 break
 
@@ -193,7 +195,9 @@ class TestBuildAceIndex:
 
         # All entries should have family == "button"
         for entry in result.entries:
-            assert entry.family == "button", f"Expected family 'button', got {entry.family} for {entry.file_path}"
+            assert entry.family == "button", (
+                f"Expected family 'button', got {entry.family} for {entry.file_path}"
+            )
 
     def test_index_skips_unknown_and_infrastructure(self):
         """Index skips unknown and infrastructure files."""

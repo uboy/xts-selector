@@ -67,7 +67,8 @@ def build_query_signals(
             signals["method_hints"].add(member)
 
     component_tokens = {
-        token for token in query_tokens
+        token
+        for token in query_tokens
         if token in sdk_index.component_file_bases
         or token in sdk_index.modifier_file_bases
         or token in content_index.family_to_symbols
@@ -101,7 +102,9 @@ def build_query_signals(
         # Token-based matching: exact compact match OR all key tokens present
         # in query tokens. Prevents short queries like "content" from matching
         # "content_modifier_helper_accessor".
-        key_tokens = {compact_token(t) for t in tokenize_path_parts(key) if compact_token(t)}
+        key_tokens = {
+            compact_token(t) for t in tokenize_path_parts(key) if compact_token(t)
+        }
         if compact == compact_key or key_tokens.issubset(query_tokens):
             signals["symbols"].update(rule.get("symbols", []))
             signals["project_hints"].update(rule.get("project_hints", []))
@@ -111,7 +114,9 @@ def build_query_signals(
                 family_key = compact_token(family)
                 signals["family_tokens"].add(family_key)
                 signals["project_hints"].add(family_key)
-                signals["symbols"].update(content_index.family_to_symbols.get(family_key, set()))
+                signals["symbols"].update(
+                    content_index.family_to_symbols.get(family_key, set())
+                )
             if rule.get("method_hint_required", False):
                 signals["method_hint_required"] = True
 
@@ -121,14 +126,16 @@ def build_query_signals(
         "symbols": {item for item in signals["symbols"] if item},
         "weak_symbols": {item for item in signals.get("weak_symbols", set()) if item},
         "project_hints": {
-            compact_token(item) for item in signals["project_hints"]
+            compact_token(item)
+            for item in signals["project_hints"]
             if item and compact_token(item) not in CONTENT_MODIFIER_NOISE
         },
         "method_hints": {item for item in signals["method_hints"] if item},
         "type_hints": {item for item in signals["type_hints"] if item},
         "raw_tokens": signals["raw_tokens"],
         "family_tokens": {
-            compact_token(item) for item in signals["family_tokens"]
+            compact_token(item)
+            for item in signals["family_tokens"]
             if item and compact_token(item) not in CONTENT_MODIFIER_NOISE
         },
         "method_hint_required": signals["method_hint_required"],
@@ -168,7 +175,10 @@ def explain_symbol_query_sources(query: str, xts_root: Path, limit: int = 20) ->
             continue
         if query.endswith("Modifier"):
             base = query[:-8]
-            if base and (f"AttributeModifier<{base}Attribute>" in text or f"extends {query}" in text):
+            if base and (
+                f"AttributeModifier<{base}Attribute>" in text
+                or f"extends {query}" in text
+            ):
                 related_hits.append(rel)
     return {
         "exact_hits": exact_hits[:limit],
@@ -188,7 +198,18 @@ def search_code_matches(
     for path in code_root.rglob("*"):
         if not path.is_file():
             continue
-        if path.suffix.lower() not in {".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".hh", ".ets", ".ts", ".js"}:
+        if path.suffix.lower() not in {
+            ".cpp",
+            ".cc",
+            ".cxx",
+            ".c",
+            ".h",
+            ".hpp",
+            ".hh",
+            ".ets",
+            ".ts",
+            ".js",
+        }:
             continue
         rel = repo_rel(path)
         rel_compact = compact_token(rel)
@@ -208,5 +229,3 @@ def search_code_matches(
             candidates.append({"file": rel, "score": score, "reasons": reasons[:3]})
     candidates.sort(key=lambda item: (-item["score"], item["file"]))
     return candidates[:limit]
-
-

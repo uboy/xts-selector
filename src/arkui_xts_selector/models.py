@@ -192,7 +192,9 @@ class TestProjectIndex:
     search_project_path_compact: str = ""
     search_file_path_compacts: list[str] = field(default_factory=list)
     search_evidence_kinds: dict[str, str] = field(default_factory=dict)
-    _serialized_files: list[dict] | None = field(default=None, repr=False, compare=False)
+    _serialized_files: list[dict] | None = field(
+        default=None, repr=False, compare=False
+    )
 
     def to_dict(self) -> dict:
         payload = {
@@ -203,7 +205,9 @@ class TestProjectIndex:
             "variant": self.variant,
             "surface": self.surface,
             "supported_surfaces": sorted(self.supported_surfaces),
-            "files": self._serialized_files if self._serialized_files is not None else [item.to_dict() for item in self.files],
+            "files": self._serialized_files
+            if self._serialized_files is not None
+            else [item.to_dict() for item in self.files],
         }
         if self.search_summary_ready:
             payload["search_summary"] = {
@@ -251,17 +255,29 @@ class TestProjectIndex:
             project.search_summary_ready = True
             project.search_imports = set(summary.get("imports", []))
             project.search_imported_symbols = set(summary.get("imported_symbols", []))
-            project.search_imported_symbol_tokens = set(summary.get("imported_symbol_tokens", []))
+            project.search_imported_symbol_tokens = set(
+                summary.get("imported_symbol_tokens", [])
+            )
             project.search_identifier_calls = set(summary.get("identifier_calls", []))
-            project.search_identifier_call_tokens = set(summary.get("identifier_call_tokens", []))
-            project.search_member_call_tokens = set(summary.get("member_call_tokens", []))
+            project.search_identifier_call_tokens = set(
+                summary.get("identifier_call_tokens", [])
+            )
+            project.search_member_call_tokens = set(
+                summary.get("member_call_tokens", [])
+            )
             project.search_type_owner_tokens = set(summary.get("type_owner_tokens", []))
             project.search_typed_field_types = set(summary.get("typed_field_types", []))
             project.search_exact_member_keys = set(summary.get("exact_member_keys", []))
-            project.search_typed_modifier_bases = set(summary.get("typed_modifier_bases", []))
+            project.search_typed_modifier_bases = set(
+                summary.get("typed_modifier_bases", [])
+            )
             project.search_words = set(summary.get("words", []))
             project.search_path_tokens = set(summary.get("path_tokens", []))
-            project.search_project_path_compact = str(summary.get("project_path_compact", ""))
-            project.search_file_path_compacts = [str(item) for item in summary.get("file_path_compacts", [])]
+            project.search_project_path_compact = str(
+                summary.get("project_path_compact", "")
+            )
+            project.search_file_path_compacts = [
+                str(item) for item in summary.get("file_path_compacts", [])
+            ]
             project.search_evidence_kinds = dict(summary.get("evidence_kinds", {}))
         return project

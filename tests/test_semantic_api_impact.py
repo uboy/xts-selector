@@ -43,7 +43,9 @@ struct Index {
 
     def test_parse_test_file_uses_semantic_parser(self) -> None:
         with TemporaryDirectory() as tmpdir:
-            source = Path(tmpdir) / "entry" / "src" / "main" / "ets" / "pages" / "Index.ets"
+            source = (
+                Path(tmpdir) / "entry" / "src" / "main" / "ets" / "pages" / "Index.ets"
+            )
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(
                 """
@@ -131,4 +133,3 @@ class FunctionCoverageTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

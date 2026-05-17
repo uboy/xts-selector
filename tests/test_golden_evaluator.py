@@ -1,4 +1,5 @@
 """Tests for golden_evaluator.py — strict mode, approved metrics, policy checks."""
+
 from __future__ import annotations
 
 import json
@@ -7,12 +8,13 @@ import sys
 import tempfile
 from pathlib import Path
 
-import pytest
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 
 
-def _run_evaluator(golden: list[dict], results: list[dict], *, allow_auto_labels: bool = False) -> dict:
+def _run_evaluator(
+    golden: list[dict], results: list[dict], *, allow_auto_labels: bool = False
+) -> dict:
     """Run golden_evaluator.py with temp files, return parsed JSON output."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as gf:
         json.dump({"schema_version": "golden-pr-set-v2", "golden_prs": golden}, gf)
@@ -24,10 +26,14 @@ def _run_evaluator(golden: list[dict], results: list[dict], *, allow_auto_labels
         output_path = of.name
 
     cmd = [
-        sys.executable, str(SCRIPTS_DIR / "golden_evaluator.py"),
-        "--golden", golden_path,
-        "--batch-results", results_path,
-        "--output", output_path,
+        sys.executable,
+        str(SCRIPTS_DIR / "golden_evaluator.py"),
+        "--golden",
+        golden_path,
+        "--batch-results",
+        results_path,
+        "--output",
+        output_path,
     ]
     if allow_auto_labels:
         cmd.append("--allow-auto-labels")
@@ -40,22 +46,33 @@ def _run_evaluator(golden: list[dict], results: list[dict], *, allow_auto_labels
     except (FileNotFoundError, json.JSONDecodeError):
         output = {}
 
-    return {"exit_code": proc.returncode, "stdout": proc.stdout, "stderr": proc.stderr, "output": output}
+    return {
+        "exit_code": proc.returncode,
+        "stdout": proc.stdout,
+        "stderr": proc.stderr,
+        "output": output,
+    }
 
 
-def _make_golden(pr_number: int, *, annotation_status: str = "approved",
-                 expected_selection: str = "required_targets",
-                 category: str = "component_api",
-                 must_run: list[str] | None = None,
-                 must_not_run: list[str] | None = None,
-                 allowed_extra: list[str] | None = None,
-                 expected_policy: str = "",
-                 notes: str = "") -> dict:
+def _make_golden(
+    pr_number: int,
+    *,
+    annotation_status: str = "approved",
+    expected_selection: str = "required_targets",
+    category: str = "component_api",
+    must_run: list[str] | None = None,
+    must_not_run: list[str] | None = None,
+    allowed_extra: list[str] | None = None,
+    expected_policy: str = "",
+    notes: str = "",
+) -> dict:
     return {
         "pr_number": pr_number,
         "category": category,
         "annotation_status": annotation_status,
-        "label_source": "human" if annotation_status == "approved" else "auto_selector_output",
+        "label_source": "human"
+        if annotation_status == "approved"
+        else "auto_selector_output",
         "expected_selection": expected_selection,
         "reviewer_decision": {
             "must_run": must_run or [],
@@ -68,16 +85,23 @@ def _make_golden(pr_number: int, *, annotation_status: str = "approved",
     }
 
 
-def _make_result(pr_number: int, *, targets: list[str] | None = None,
-                 policy: str = "ok", status: str = "ok") -> dict:
+def _make_result(
+    pr_number: int,
+    *,
+    targets: list[str] | None = None,
+    policy: str = "ok",
+    status: str = "ok",
+) -> dict:
     entries = []
     if targets:
-        entries.append({
-            "changed_file": "test.cpp",
-            "consumer_projects": targets,
-            "affected_apis": [],
-            "selection_reasons": [],
-        })
+        entries.append(
+            {
+                "changed_file": "test.cpp",
+                "consumer_projects": targets,
+                "affected_apis": [],
+                "selection_reasons": [],
+            }
+        )
     return {
         "pr_number": pr_number,
         "status": status,
@@ -106,8 +130,14 @@ class TestStrictModeApprovedOnly:
 
     def test_auto_labeled_included_diagnostic(self):
         """Auto-labeled PRs are included in diagnostic mode."""
-        golden = [_make_golden(100, annotation_status="auto_labeled",
-                               expected_selection="none_required", notes="auto")]
+        golden = [
+            _make_golden(
+                100,
+                annotation_status="auto_labeled",
+                expected_selection="none_required",
+                notes="auto",
+            )
+        ]
         results = [_make_result(100)]
         res = _run_evaluator(golden, results, allow_auto_labels=True)
         assert res["exit_code"] == 0
@@ -138,8 +168,14 @@ class TestRequiredTargets:
 
 class TestNoneRequired:
     def test_none_required_with_rationale_passes(self):
-        golden = [_make_golden(100, expected_selection="none_required",
-                               must_run=[], notes="Build-only change")]
+        golden = [
+            _make_golden(
+                100,
+                expected_selection="none_required",
+                must_run=[],
+                notes="Build-only change",
+            )
+        ]
         results = [_make_result(100)]
         res = _run_evaluator(golden, results)
         assert res["exit_code"] == 0
@@ -153,17 +189,29 @@ class TestNoneRequired:
 
     def test_none_required_with_unexpected_targets_fails(self):
         """none_required + selector finds unexpected targets -> FAIL."""
-        golden = [_make_golden(100, expected_selection="none_required",
-                               must_run=[], notes="Build-only change")]
+        golden = [
+            _make_golden(
+                100,
+                expected_selection="none_required",
+                must_run=[],
+                notes="Build-only change",
+            )
+        ]
         results = [_make_result(100, targets=["unexpected_target"])]
         res = _run_evaluator(golden, results)
         assert res["exit_code"] == 1
 
     def test_none_required_with_allowed_targets_passes(self):
         """none_required + targets in allowed_extra -> PASS."""
-        golden = [_make_golden(100, expected_selection="none_required",
-                               must_run=[], allowed_extra=["target_a"],
-                               notes="Build-only change")]
+        golden = [
+            _make_golden(
+                100,
+                expected_selection="none_required",
+                must_run=[],
+                allowed_extra=["target_a"],
+                notes="Build-only change",
+            )
+        ]
         results = [_make_result(100, targets=["target_a"])]
         res = _run_evaluator(golden, results)
         assert res["exit_code"] == 0
@@ -171,7 +219,9 @@ class TestNoneRequired:
 
 class TestManualReviewOnly:
     def test_manual_review_excluded_from_recall(self):
-        golden = [_make_golden(100, expected_selection="manual_review_only", must_run=[])]
+        golden = [
+            _make_golden(100, expected_selection="manual_review_only", must_run=[])
+        ]
         results = [_make_result(100)]
         res = _run_evaluator(golden, results)
         assert res["exit_code"] == 0
@@ -236,8 +286,11 @@ class TestFallbackTargets:
 
 class TestZeroDenominator:
     def test_zero_zero_recall_not_shown_as_success(self):
-        golden = [_make_golden(100, expected_selection="none_required",
-                               must_run=[], notes="empty")]
+        golden = [
+            _make_golden(
+                100, expected_selection="none_required", must_run=[], notes="empty"
+            )
+        ]
         results = [_make_result(100)]
         res = _run_evaluator(golden, results)
         agg = res["output"]["aggregate"]
@@ -248,32 +301,53 @@ class TestZeroDenominator:
 class TestBroadSuiteRequired:
     def test_broad_suite_empty_contract_fails(self):
         """broad_suite_required with no must_run and no must_not_run -> FAIL."""
-        golden = [_make_golden(100, expected_selection="broad_suite_required",
-                               must_run=[], must_not_run=[])]
+        golden = [
+            _make_golden(
+                100,
+                expected_selection="broad_suite_required",
+                must_run=[],
+                must_not_run=[],
+            )
+        ]
         results = [_make_result(100, targets=["target_a"])]
         res = _run_evaluator(golden, results)
         assert res["exit_code"] == 1
 
     def test_broad_suite_with_must_run_passes(self):
         """broad_suite_required with valid must_run -> PASS."""
-        golden = [_make_golden(100, expected_selection="broad_suite_required",
-                               must_run=["target_a"])]
+        golden = [
+            _make_golden(
+                100, expected_selection="broad_suite_required", must_run=["target_a"]
+            )
+        ]
         results = [_make_result(100, targets=["target_a"])]
         res = _run_evaluator(golden, results)
         assert res["exit_code"] == 0
 
     def test_broad_suite_policy_mismatch_fails(self):
         """broad_suite_required with policy mismatch -> FAIL."""
-        golden = [_make_golden(100, expected_selection="broad_suite_required",
-                               must_run=["target_a"], expected_policy="ok")]
+        golden = [
+            _make_golden(
+                100,
+                expected_selection="broad_suite_required",
+                must_run=["target_a"],
+                expected_policy="ok",
+            )
+        ]
         results = [_make_result(100, targets=["target_a"], policy="manual_review")]
         res = _run_evaluator(golden, results)
         assert res["exit_code"] == 1
 
     def test_broad_suite_with_must_not_run_passes(self):
         """broad_suite_required with must_not_run (no must_run) but no violations -> PASS."""
-        golden = [_make_golden(100, expected_selection="broad_suite_required",
-                               must_run=[], must_not_run=["forbidden_target"])]
+        golden = [
+            _make_golden(
+                100,
+                expected_selection="broad_suite_required",
+                must_run=[],
+                must_not_run=["forbidden_target"],
+            )
+        ]
         results = [_make_result(100, targets=["target_a"])]
         res = _run_evaluator(golden, results)
         assert res["exit_code"] == 0
@@ -328,7 +402,9 @@ class TestAggregateMetrics:
 
     def test_broad_suite_required_count(self):
         golden = [
-            _make_golden(100, expected_selection="broad_suite_required", must_run=["t1"]),
+            _make_golden(
+                100, expected_selection="broad_suite_required", must_run=["t1"]
+            ),
         ]
         results = [_make_result(100, targets=["t1"])]
         res = _run_evaluator(golden, results)
@@ -336,7 +412,9 @@ class TestAggregateMetrics:
 
     def test_none_required_count(self):
         golden = [
-            _make_golden(100, expected_selection="none_required", must_run=[], notes="ok"),
+            _make_golden(
+                100, expected_selection="none_required", must_run=[], notes="ok"
+            ),
         ]
         results = [_make_result(100)]
         res = _run_evaluator(golden, results)
@@ -371,7 +449,11 @@ class TestAggregateMetrics:
 
     def test_mixed_label_source_with_notes_passes(self):
         """Approved PR with mixed label_source and notes evaluates normally."""
-        golden = [_make_golden(100, must_run=["t1"], notes="Verified selector targets manually")]
+        golden = [
+            _make_golden(
+                100, must_run=["t1"], notes="Verified selector targets manually"
+            )
+        ]
         golden[0]["label_source"] = "mixed"
         results = [_make_result(100, targets=["t1"])]
         res = _run_evaluator(golden, results)

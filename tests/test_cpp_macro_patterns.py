@@ -2,6 +2,7 @@
 
 Tests macro pattern loading, matching, and synthetic method generation.
 """
+
 from __future__ import annotations
 
 import json
@@ -28,9 +29,16 @@ class TestLoadMacroPatterns:
     """Test config file loading."""
 
     def test_loads_valid_config(self, tmp_path: Path) -> None:
-        p = _write_config(tmp_path, [
-            {"macro": "ACE_DEFINE_PROPERTY", "synthetic_method_pattern": "Set{1}", "confidence": "medium"},
-        ])
+        p = _write_config(
+            tmp_path,
+            [
+                {
+                    "macro": "ACE_DEFINE_PROPERTY",
+                    "synthetic_method_pattern": "Set{1}",
+                    "confidence": "medium",
+                },
+            ],
+        )
         patterns = load_macro_patterns(p)
         assert len(patterns) == 1
         assert patterns[0].macro == "ACE_DEFINE_PROPERTY"
@@ -45,17 +53,27 @@ class TestLoadMacroPatterns:
         assert load_macro_patterns(p) == []
 
     def test_defaults_confidence_to_medium(self, tmp_path: Path) -> None:
-        p = _write_config(tmp_path, [
-            {"macro": "SOME_MACRO", "synthetic_method_pattern": None},
-        ])
+        p = _write_config(
+            tmp_path,
+            [
+                {"macro": "SOME_MACRO", "synthetic_method_pattern": None},
+            ],
+        )
         patterns = load_macro_patterns(p)
         assert len(patterns) == 1
         assert patterns[0].confidence == "medium"
 
     def test_handles_null_synthetic_method_pattern(self, tmp_path: Path) -> None:
-        p = _write_config(tmp_path, [
-            {"macro": "NO_METHOD_MACRO", "synthetic_method_pattern": None, "confidence": "weak"},
-        ])
+        p = _write_config(
+            tmp_path,
+            [
+                {
+                    "macro": "NO_METHOD_MACRO",
+                    "synthetic_method_pattern": None,
+                    "confidence": "weak",
+                },
+            ],
+        )
         patterns = load_macro_patterns(p)
         assert len(patterns) == 1
         assert patterns[0].synthetic_method_pattern is None
@@ -66,7 +84,13 @@ class TestMatchMacroInSource:
     """Test macro invocation matching in source code."""
 
     def test_matches_simple_macro(self) -> None:
-        patterns = [MacroPattern(macro="ACE_DEFINE_PROPERTY", synthetic_method_pattern="Set{1}", confidence="medium")]
+        patterns = [
+            MacroPattern(
+                macro="ACE_DEFINE_PROPERTY",
+                synthetic_method_pattern="Set{1}",
+                confidence="medium",
+            )
+        ]
         source = "ACE_DEFINE_PROPERTY(Button, role)"
         match = match_macro_in_source(source, patterns)
         assert match is not None
@@ -74,7 +98,13 @@ class TestMatchMacroInSource:
         assert match[1] == "role"
 
     def test_matches_macro_with_multiple_args(self) -> None:
-        patterns = [MacroPattern(macro="ACE_DEFINE_PROPERTY", synthetic_method_pattern="Set{1}", confidence="medium")]
+        patterns = [
+            MacroPattern(
+                macro="ACE_DEFINE_PROPERTY",
+                synthetic_method_pattern="Set{1}",
+                confidence="medium",
+            )
+        ]
         source = "ACE_DEFINE_PROPERTY(button_model, enabled, false)"
         match = match_macro_in_source(source, patterns)
         assert match is not None
@@ -82,16 +112,40 @@ class TestMatchMacroInSource:
         assert match[1] == "enabled"
 
     def test_case_insensitive_matching(self) -> None:
-        patterns = [MacroPattern(macro="ACE_DEFINE_PROPERTY", synthetic_method_pattern="Set{1}", confidence="medium")]
-        assert match_macro_in_source("ace_define_property(Button, role)", patterns) is not None
-        assert match_macro_in_source("Ace_Define_Property(Button, role)", patterns) is not None
+        patterns = [
+            MacroPattern(
+                macro="ACE_DEFINE_PROPERTY",
+                synthetic_method_pattern="Set{1}",
+                confidence="medium",
+            )
+        ]
+        assert (
+            match_macro_in_source("ace_define_property(Button, role)", patterns)
+            is not None
+        )
+        assert (
+            match_macro_in_source("Ace_Define_Property(Button, role)", patterns)
+            is not None
+        )
 
     def test_no_match_returns_none(self) -> None:
-        patterns = [MacroPattern(macro="ACE_DEFINE_PROPERTY", synthetic_method_pattern="Set{1}", confidence="medium")]
+        patterns = [
+            MacroPattern(
+                macro="ACE_DEFINE_PROPERTY",
+                synthetic_method_pattern="Set{1}",
+                confidence="medium",
+            )
+        ]
         assert match_macro_in_source("SOME_OTHER_MACRO(Button, role)", patterns) is None
 
     def test_matches_multiline_macro(self) -> None:
-        patterns = [MacroPattern(macro="ACE_DEFINE_PROPERTY", synthetic_method_pattern="Set{1}", confidence="medium")]
+        patterns = [
+            MacroPattern(
+                macro="ACE_DEFINE_PROPERTY",
+                synthetic_method_pattern="Set{1}",
+                confidence="medium",
+            )
+        ]
         source = """ACE_DEFINE_PROPERTY(
             Button,
             role
@@ -102,8 +156,16 @@ class TestMatchMacroInSource:
 
     def test_multiple_patterns(self) -> None:
         patterns = [
-            MacroPattern(macro="ACE_DEFINE_PROPERTY", synthetic_method_pattern="Set{1}", confidence="medium"),
-            MacroPattern(macro="ACE_EXPORT_MODULE", synthetic_method_pattern=None, confidence="weak"),
+            MacroPattern(
+                macro="ACE_DEFINE_PROPERTY",
+                synthetic_method_pattern="Set{1}",
+                confidence="medium",
+            ),
+            MacroPattern(
+                macro="ACE_EXPORT_MODULE",
+                synthetic_method_pattern=None,
+                confidence="weak",
+            ),
         ]
         source = "ACE_DEFINE_PROPERTY(Button, role)"
         match = match_macro_in_source(source, patterns)
@@ -161,20 +223,28 @@ class TestMacroPatternDataclass:
     """Test MacroPattern dataclass."""
 
     def test_frozen_dataclass(self) -> None:
-        pattern = MacroPattern(macro="TEST_MACRO", synthetic_method_pattern="Set{1}", confidence="medium")
+        pattern = MacroPattern(
+            macro="TEST_MACRO", synthetic_method_pattern="Set{1}", confidence="medium"
+        )
         assert pattern.macro == "TEST_MACRO"
         assert pattern.synthetic_method_pattern == "Set{1}"
         assert pattern.confidence == "medium"
 
     def test_to_dict(self) -> None:
-        pattern = MacroPattern(macro="TEST_MACRO", synthetic_method_pattern="Set{1}", confidence="medium")
+        pattern = MacroPattern(
+            macro="TEST_MACRO", synthetic_method_pattern="Set{1}", confidence="medium"
+        )
         d = pattern.to_dict()
         assert d["macro"] == "TEST_MACRO"
         assert d["synthetic_method_pattern"] == "Set{1}"
         assert d["confidence"] == "medium"
 
     def test_from_dict(self) -> None:
-        d = {"macro": "TEST_MACRO", "synthetic_method_pattern": "Set{1}", "confidence": "medium"}
+        d = {
+            "macro": "TEST_MACRO",
+            "synthetic_method_pattern": "Set{1}",
+            "confidence": "medium",
+        }
         pattern = MacroPattern.from_dict(d)
         assert pattern.macro == "TEST_MACRO"
         assert pattern.synthetic_method_pattern == "Set{1}"
@@ -188,7 +258,9 @@ class TestMacroPatternDataclass:
         assert pattern.confidence == "medium"  # default
 
     def test_roundtrip(self) -> None:
-        original = MacroPattern(macro="TEST_MACRO", synthetic_method_pattern="Set{1}", confidence="weak")
+        original = MacroPattern(
+            macro="TEST_MACRO", synthetic_method_pattern="Set{1}", confidence="weak"
+        )
         d = original.to_dict()
         restored = MacroPattern.from_dict(d)
         assert restored.macro == original.macro

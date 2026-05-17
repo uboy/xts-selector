@@ -9,6 +9,7 @@ Usage:
 
 Classifies PRs by change category and selects representative candidates.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,7 +17,6 @@ import json
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
 
 
 # Category definitions with target counts
@@ -54,8 +54,7 @@ def classify_pr(entry: dict) -> str:
 
     # Check if ALL files are test/doc/build/config files
     if changed_files and all(
-        is_test_doc_build_file(f.get("changed_file", ""))
-        for f in changed_files
+        is_test_doc_build_file(f.get("changed_file", "")) for f in changed_files
     ):
         return "test_only"
 
@@ -77,12 +76,11 @@ def classify_pr(entry: dict) -> str:
 
         # common_api: CommonMethod, CommonAttribute, common inherited API changes
         # Exclude test files to avoid false positives
-        if (
-            not is_test_doc_build_file(file_path) and
-            ("common/" in file_path.lower()
+        if not is_test_doc_build_file(file_path) and (
+            "common/" in file_path.lower()
             or "common_method" in file_path.lower()
             or "common_attribute" in file_path.lower()
-            or "/common_" in file_path.lower())
+            or "/common_" in file_path.lower()
         ):
             categories_found.add("common_api")
 
@@ -98,21 +96,19 @@ def classify_pr(entry: dict) -> str:
 
         # bridge: ArkTS/Koala/Arkoala bridge files (but exclude generated files)
         if (
-            ("bridge/" in file_path.lower()
+            "bridge/" in file_path.lower()
             or "koala" in file_path.lower()
             or "arkoala" in file_path.lower()
-            or "declarative_frontend" in file_path.lower())
-            and "generated/" not in file_path.lower()
-        ):
+            or "declarative_frontend" in file_path.lower()
+        ) and "generated/" not in file_path.lower():
             categories_found.add("bridge")
 
         # broad_infra: render, pipeline, engine, declarative frontend (not in component dirs)
         if (
-            ("/render/" in file_path.lower()
+            "/render/" in file_path.lower()
             or "/pipeline/" in file_path.lower()
-            or "/engine/" in file_path.lower())
-            and "components/" not in file_path
-        ):
+            or "/engine/" in file_path.lower()
+        ) and "components/" not in file_path:
             categories_found.add("broad_infra")
 
         # generated: IDL, codegen, generated files (highest priority)
@@ -130,7 +126,15 @@ def classify_pr(entry: dict) -> str:
     # Return the first matching category if any found
     if categories_found:
         # Priority order: generated files should be classified as generated first
-        priority_order = ["generated", "component_api", "common_api", "native_interface", "bridge", "broad_infra", "test_only"]
+        priority_order = [
+            "generated",
+            "component_api",
+            "common_api",
+            "native_interface",
+            "bridge",
+            "broad_infra",
+            "test_only",
+        ]
         for cat in priority_order:
             if cat in categories_found:
                 return cat
@@ -308,17 +312,17 @@ def select_candidates_by_category(
     # Priority 2: Unresolved PRs (up to 15% of target)
     unresolved_target = max(1, int(target_count * 0.15))
     remaining_slots = target_count - len(selected)
-    selected.extend(unresolved_prs[:min(unresolved_target, remaining_slots)])
+    selected.extend(unresolved_prs[: min(unresolved_target, remaining_slots)])
 
     # Priority 3: Manual review PRs (up to 20% of target)
     manual_target = max(1, int(target_count * 0.2))
     remaining_slots = target_count - len(selected)
-    selected.extend(manual_prs[:min(manual_target, remaining_slots)])
+    selected.extend(manual_prs[: min(manual_target, remaining_slots)])
 
     # Priority 4: Target explosion PRs (up to 10% of target)
     explosion_target = max(1, int(target_count * 0.1))
     remaining_slots = target_count - len(selected)
-    selected.extend(explosion_prs[:min(explosion_target, remaining_slots)])
+    selected.extend(explosion_prs[: min(explosion_target, remaining_slots)])
 
     # Priority 5: Ensure size diversity
     remaining_slots = target_count - len(selected)
@@ -425,13 +429,15 @@ def main():
         # Extract summary info for output
         candidates_summary = []
         for pr in selected:
-            candidates_summary.append({
-                "pr_number": pr["pr_number"],
-                "size": pr["size"],
-                "selector_status": pr["selector_status"],
-                "num_files": pr["num_files"],
-                "num_targets": pr["num_targets"],
-            })
+            candidates_summary.append(
+                {
+                    "pr_number": pr["pr_number"],
+                    "size": pr["size"],
+                    "selector_status": pr["selector_status"],
+                    "num_files": pr["num_files"],
+                    "num_targets": pr["num_targets"],
+                }
+            )
 
         by_category[category] = candidates_summary
         total_selected += actual_count
@@ -458,7 +464,9 @@ def main():
         "by_category": by_category,
         "shortfall_by_category": shortfall_by_category,
         "shortfall_reason": shortfall_reason,
-        "selection_notes": "; ".join(selection_notes) if selection_notes else "All categories met targets",
+        "selection_notes": "; ".join(selection_notes)
+        if selection_notes
+        else "All categories met targets",
     }
 
     # Write output
@@ -474,7 +482,9 @@ def main():
     print("\n" + "=" * 80)
     print("SUMMARY TABLE")
     print("=" * 80)
-    print(f"{'Category':<20} {'Target':>7} {'Selected':>9} {'PR Range':<20} {'Errors':>6}")
+    print(
+        f"{'Category':<20} {'Target':>7} {'Selected':>9} {'PR Range':<20} {'Errors':>6}"
+    )
     print("-" * 80)
 
     for category in CATEGORY_TARGETS.keys():
@@ -488,12 +498,18 @@ def main():
             max_pr = max(pr_numbers)
             pr_range = f"{min_pr}-{max_pr}"
 
-            error_count = sum(1 for c in candidates if c["selector_status"] in ["execution_error", "unresolved"])
+            error_count = sum(
+                1
+                for c in candidates
+                if c["selector_status"] in ["execution_error", "unresolved"]
+            )
         else:
             pr_range = "N/A"
             error_count = 0
 
-        print(f"{category:<20} {target:>7} {selected:>9} {pr_range:<20} {error_count:>6}")
+        print(
+            f"{category:<20} {target:>7} {selected:>9} {pr_range:<20} {error_count:>6}"
+        )
 
     print("=" * 80)
     print(f"Total selected: {total_selected}/{sum(CATEGORY_TARGETS.values())}")

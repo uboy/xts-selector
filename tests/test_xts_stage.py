@@ -97,29 +97,41 @@ class XtsStageTests(unittest.TestCase):
             self.assertTrue((stage_root / "testcases" / "module.json").exists())
             self.assertTrue((stage_root / "testcases" / "queryStandard").exists())
             self.assertTrue((stage_root / "testcases" / "module_info.list").exists())
-            self.assertTrue((stage_root / "testcases" / "syscap" / "caps.json").exists())
+            self.assertTrue(
+                (stage_root / "testcases" / "syscap" / "caps.json").exists()
+            )
             self.assertTrue((stage_root / "testcases" / "ActsFoo.json").exists())
             self.assertTrue((stage_root / "testcases" / "ActsFoo.moduleInfo").exists())
             self.assertTrue((stage_root / "testcases" / "ActsFoo.hap").exists())
             self.assertFalse((stage_root / "testcases" / "ActsBar.json").exists())
-            stage_report = json.loads((stage_root / "stage_report.json").read_text(encoding="utf-8"))
+            stage_report = json.loads(
+                (stage_root / "stage_report.json").read_text(encoding="utf-8")
+            )
             self.assertEqual(stage_report["selected_count"], 1)
-            self.assertIn(str(acts_out_root / "resource"), stage_report["xdevice_command"])
+            self.assertIn(
+                str(acts_out_root / "resource"), stage_report["xdevice_command"]
+            )
             self.assertIn("-l ActsFoo", stage_report["xdevice_command"])
-            wanted_modules = (stage_root / "wanted_modules.txt").read_text(encoding="utf-8")
+            wanted_modules = (stage_root / "wanted_modules.txt").read_text(
+                encoding="utf-8"
+            )
             self.assertEqual(wanted_modules.strip(), "ActsFoo")
             self.assertIn("Run XDevice", stdout.getvalue())
 
     def test_main_respects_requested_test_names(self) -> None:
         with TemporaryDirectory() as tmpdir:
             report_path, _, _ = self._write_fixture_bundle(tmpdir)
-            code = main(["--from-report", str(report_path), "--run-test-name", "acts_bar_alias"])
+            code = main(
+                ["--from-report", str(report_path), "--run-test-name", "acts_bar_alias"]
+            )
 
             self.assertEqual(code, 0)
             stage_root = report_path.parent / "staged_testcases"
             self.assertFalse((stage_root / "testcases" / "ActsFoo.json").exists())
             self.assertTrue((stage_root / "testcases" / "ActsBar.json").exists())
-            stage_report = json.loads((stage_root / "stage_report.json").read_text(encoding="utf-8"))
+            stage_report = json.loads(
+                (stage_root / "stage_report.json").read_text(encoding="utf-8")
+            )
             self.assertEqual(stage_report["requested_test_names"], ["acts_bar_alias"])
             self.assertEqual(stage_report["missing_requested_test_names"], [])
             self.assertEqual(stage_report["tests"][0]["module_name"], "ActsBar")
@@ -132,8 +144,12 @@ class XtsStageTests(unittest.TestCase):
             self.assertEqual(code, 0)
             stage_root = report_path.parent / "staged_testcases"
             self.assertTrue((stage_root / "stage_report.json").exists())
-            stage_report = json.loads((stage_root / "stage_report.json").read_text(encoding="utf-8"))
-            self.assertEqual(stage_report["selected_tests_json_path"], str(selected_tests_path))
+            stage_report = json.loads(
+                (stage_root / "stage_report.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                stage_report["selected_tests_json_path"], str(selected_tests_path)
+            )
             self.assertEqual(stage_report["selector_report_path"], str(report_path))
 
 

@@ -3,6 +3,7 @@
 Identifies and classifies generated files (protobuf, autogen, build artifacts)
 that should not be mapped to specific test targets.
 """
+
 from __future__ import annotations
 
 import re

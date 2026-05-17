@@ -7,6 +7,7 @@ ticket reference.
 Override rules are checked first in the resolver chain, before any algorithmic
 resolution. Expired rules are filtered at load time with a warning to stderr.
 """
+
 from __future__ import annotations
 
 import json
@@ -33,7 +34,11 @@ class OverrideRule:
 def load_overrides(path: Path | None = None) -> list[OverrideRule]:
     """Load override rules from config file, filtering expired ones."""
     if path is None:
-        path = Path(__file__).resolve().parents[2] / "config" / "manual_path_overrides.json"
+        path = (
+            Path(__file__).resolve().parents[2]
+            / "config"
+            / "manual_path_overrides.json"
+        )
     if not path.exists():
         return []
     try:
@@ -59,18 +64,23 @@ def load_overrides(path: Path | None = None) -> list[OverrideRule]:
             except ValueError:
                 continue
         if expires_at and expires_at < today:
-            print(f"WARNING: manual override expired on {expires_at} for pattern '{pattern}' "
-                  f"(owner={raw.get('owner', '')}, ticket={raw.get('ticket', '')}). "
-                  f"Update expires_at or remove the rule.", file=__import__('sys').stderr)
+            print(
+                f"WARNING: manual override expired on {expires_at} for pattern '{pattern}' "
+                f"(owner={raw.get('owner', '')}, ticket={raw.get('ticket', '')}). "
+                f"Update expires_at or remove the rule.",
+                file=__import__("sys").stderr,
+            )
             continue
-        rules.append(OverrideRule(
-            path_regex=re.compile(pattern),
-            must_run_targets=tuple(targets),
-            expires_at=expires_at,
-            owner=raw.get("owner", ""),
-            ticket=raw.get("ticket", ""),
-            rationale=raw.get("rationale", ""),
-        ))
+        rules.append(
+            OverrideRule(
+                path_regex=re.compile(pattern),
+                must_run_targets=tuple(targets),
+                expires_at=expires_at,
+                owner=raw.get("owner", ""),
+                ticket=raw.get("ticket", ""),
+                rationale=raw.get("rationale", ""),
+            )
+        )
     return rules
 
 
@@ -88,7 +98,11 @@ def check_expired_overrides(path: Path | None = None) -> list[dict]:
     Each descriptor has: path_regex, expires_at, owner, ticket.
     """
     if path is None:
-        path = Path(__file__).resolve().parents[2] / "config" / "manual_path_overrides.json"
+        path = (
+            Path(__file__).resolve().parents[2]
+            / "config"
+            / "manual_path_overrides.json"
+        )
     if not path.exists():
         return []
     try:
@@ -108,10 +122,12 @@ def check_expired_overrides(path: Path | None = None) -> list[dict]:
         except ValueError:
             continue
         if expires_at < today:
-            expired.append({
-                "path_regex": raw.get("path_regex", ""),
-                "expires_at": expires_str,
-                "owner": raw.get("owner", ""),
-                "ticket": raw.get("ticket", ""),
-            })
+            expired.append(
+                {
+                    "path_regex": raw.get("path_regex", ""),
+                    "expires_at": expires_str,
+                    "owner": raw.get("owner", ""),
+                    "ticket": raw.get("ticket", ""),
+                }
+            )
     return expired

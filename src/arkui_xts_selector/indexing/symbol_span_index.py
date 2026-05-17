@@ -27,6 +27,7 @@ def build_symbol_span_index(
     # Try to use cpp_parser if available (from Phase 2)
     try:
         from .cpp_parser import parse_cpp_file
+
         _use_cpp_parser = True
     except ImportError:
         _use_cpp_parser = False
@@ -53,28 +54,34 @@ def _spans_from_cpp_result(result) -> list[SymbolSpan]:
     spans: list[SymbolSpan] = []
     for cls in result.classes:
         # Add class itself
-        spans.append(SymbolSpan(
-            symbol=cls.name,
-            parent_class=None,
-            line=cls.line or 0,
-            end_line=cls.end_line or 0,
-        ))
+        spans.append(
+            SymbolSpan(
+                symbol=cls.name,
+                parent_class=None,
+                line=cls.line or 0,
+                end_line=cls.end_line or 0,
+            )
+        )
         # Add methods
         for m in cls.methods:
-            spans.append(SymbolSpan(
-                symbol=m.name,
-                parent_class=cls.name,
-                line=m.line or 0,
-                end_line=m.end_line or 0,
-            ))
+            spans.append(
+                SymbolSpan(
+                    symbol=m.name,
+                    parent_class=cls.name,
+                    line=m.line or 0,
+                    end_line=m.end_line or 0,
+                )
+            )
     # Add free functions (qualified methods found outside classes)
     for f in result.free_functions:
-        spans.append(SymbolSpan(
-            symbol=f,
-            parent_class=None,
-            line=0,
-            end_line=0,
-        ))
+        spans.append(
+            SymbolSpan(
+                symbol=f,
+                parent_class=None,
+                line=0,
+                end_line=0,
+            )
+        )
     return spans
 
 

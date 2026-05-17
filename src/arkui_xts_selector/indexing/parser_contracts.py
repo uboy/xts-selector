@@ -5,6 +5,7 @@ They are additive — existing parsing behavior is unchanged.
 
 Import boundary: standard library + arkui_xts_selector.model only.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -15,10 +16,11 @@ from ..model.evidence import ConfidenceLevel, Evidence
 @dataclass(frozen=True)
 class ParserResult:
     """Output of a single parser pass on a file."""
+
     file_path: str
     language: str = "unknown"  # ArkTS, TS, C++, JS
-    parser_name: str = ""      # e.g. "tree-sitter-cpp", "regex-import"
-    parser_level: int = 0      # 0=fallback, 1=heuristic, 2=import-level, 3=AST
+    parser_name: str = ""  # e.g. "tree-sitter-cpp", "regex-import"
+    parser_level: int = 0  # 0=fallback, 1=heuristic, 2=import-level, 3=AST
     discovered_symbols: tuple[SymbolDiscovery, ...] = ()
     aliases: tuple[tuple[str, str], ...] = ()  # (alias_name, original_name) pairs
     limitations: tuple[str, ...] = ()
@@ -39,10 +41,13 @@ class ParserResult:
 @dataclass(frozen=True)
 class SymbolDiscovery:
     """A single symbol discovered by a parser."""
+
     symbol: str
     line: int | None = None
     span: tuple[int, int] | None = None
-    kind: str = "unknown"  # import, call, member_access, type_reference, component_usage
+    kind: str = (
+        "unknown"  # import, call, member_access, type_reference, component_usage
+    )
     confidence: ConfidenceLevel = "unknown"
     receiver_type: str | None = None
     argument_count: int | None = None

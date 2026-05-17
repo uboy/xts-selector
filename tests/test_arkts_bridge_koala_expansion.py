@@ -1,9 +1,10 @@
 """Tests for koala_projects bridge expansion (Sprint D.1)."""
+
 from __future__ import annotations
 
-import pytest
 from arkui_xts_selector.indexing.arkts_bridge_resolver import (
-    resolve_arkts_bridge_candidate, _camel_to_snake,
+    resolve_arkts_bridge_candidate,
+    _camel_to_snake,
 )
 
 

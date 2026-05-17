@@ -3,9 +3,8 @@
 Verifies that quality metrics are split into clean_gate and
 diagnostic_adjusted blocks, with excluded_prs listing reason.
 """
-from __future__ import annotations
 
-import pytest
+from __future__ import annotations
 
 
 def test_clean_gate_includes_all_ok_prs():
@@ -15,7 +14,7 @@ def test_clean_gate_includes_all_ok_prs():
     from arkui_xts_selector import batch_validate
 
     # Check that the module has the expected structure
-    assert hasattr(batch_validate, '_summarize_result')
+    assert hasattr(batch_validate, "_summarize_result")
 
 
 def test_diagnostic_adjusted_excludes_manual_review():
@@ -105,7 +104,7 @@ def test_product_unresolved_rate_in_summary():
     summary = _summarize_result(result)
     assert "product_unresolved_rate" in summary
     # 2 unresolved out of 3 product files
-    assert summary["product_unresolved_rate"] == round(2/3, 4)
+    assert summary["product_unresolved_rate"] == round(2 / 3, 4)
 
 
 def test_require_broader_suite_excluded_from_diagnostic_adjusted():
@@ -128,10 +127,17 @@ def test_require_broader_suite_excluded_from_diagnostic_adjusted():
     assert summary["ci_policy"] == "require_broader_suite"
 
 
-def _make_entry(changed_file="test.cpp", affected_apis=None, consumer_projects=None,
-                selection_reasons=None, canonical_affected_apis=None,
-                unresolved_reason=None, broad_infra_match=None,
-                impact_candidates=None, parser_level=0):
+def _make_entry(
+    changed_file="test.cpp",
+    affected_apis=None,
+    consumer_projects=None,
+    selection_reasons=None,
+    canonical_affected_apis=None,
+    unresolved_reason=None,
+    broad_infra_match=None,
+    impact_candidates=None,
+    parser_level=0,
+):
     """Helper to create a graph entry."""
     entry = {
         "changed_file": changed_file,

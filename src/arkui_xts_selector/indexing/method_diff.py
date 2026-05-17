@@ -4,6 +4,7 @@ Determines whether diff hunks affect function/method bodies vs. only
 comments or whitespace. Uses tree-sitter for AST-based classification
 when the source file is available.
 """
+
 from __future__ import annotations
 from dataclasses import dataclass
 
@@ -27,6 +28,7 @@ def parse_unified_diff(patch_text: str) -> list[tuple[int, int]]:
     for line in patch_text.split("\n"):
         if line.startswith("@@"):
             import re
+
             m = re.match(r"@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", line)
             if m:
                 start = int(m.group(1))
@@ -56,9 +58,12 @@ def classify_hunk_impact(
     if file_content is None:
         return [
             HunkImpact(
-                start_line=start, end_line=end,
-                is_body_change=True, is_comment_only=False,
-                is_signature_change=False, enclosing_function=None,
+                start_line=start,
+                end_line=end,
+                is_body_change=True,
+                is_comment_only=False,
+                is_signature_change=False,
+                enclosing_function=None,
             )
             for start, end in ranges
         ]
@@ -71,8 +76,13 @@ def classify_hunk_impact(
 
     # Default: assume body change
     return [
-        HunkImpact(start_line=s, end_line=e, is_body_change=True,
-                   is_comment_only=False, is_signature_change=False)
+        HunkImpact(
+            start_line=s,
+            end_line=e,
+            is_body_change=True,
+            is_comment_only=False,
+            is_signature_change=False,
+        )
         for s, e in ranges
     ]
 
@@ -83,6 +93,7 @@ def _classify_with_treesitter_cpp(
     """Classify hunks using tree-sitter C++ parser."""
     try:
         from ..tree_sitter_parsers import _get_ts_cpp_parser
+
         parser, lang = _get_ts_cpp_parser()
     except Exception:
         return _classify_heuristic(content, ranges, ("//", "/*"))
@@ -98,6 +109,7 @@ def _classify_with_treesitter_ts(
     """Classify hunks using tree-sitter TypeScript parser."""
     try:
         from ..tree_sitter_parsers import _get_ts_ts_parser
+
         parser, lang = _get_ts_ts_parser()
     except Exception:
         return _classify_heuristic(content, ranges, ("//", "/*"))
@@ -112,25 +124,34 @@ def _collect_function_spans(
 ) -> list[tuple[int, int, str]]:
     """Collect (start_line, end_line, function_name) for all function definitions."""
     functions: list[tuple[int, int, str]] = []
+
     def walk(n):
-        node_type = getattr(n, 'type', '')
-        if node_type in ('function_definition', 'method_definition', 'arrow_function', 'function_declaration'):
+        node_type = getattr(n, "type", "")
+        if node_type in (
+            "function_definition",
+            "method_definition",
+            "arrow_function",
+            "function_declaration",
+        ):
             start = n.start_point[0] + 1
             end = n.end_point[0] + 1
             # Try to extract name
             name = _extract_function_name(n, content) or "<anonymous>"
             functions.append((start, end, name))
-        for child in getattr(n, 'children', []):
+        for child in getattr(n, "children", []):
             walk(child)
+
     walk(node)
     return functions
 
 
 def _extract_function_name(node: object, content: bytes) -> str | None:
     """Extract function name from a function node."""
-    for child in getattr(node, 'children', []):
-        if getattr(child, 'type', '') in ('identifier', 'property_identifier'):
-            return content[child.start_byte:child.end_byte].decode('utf-8', errors='replace')
+    for child in getattr(node, "children", []):
+        if getattr(child, "type", "") in ("identifier", "property_identifier"):
+            return content[child.start_byte : child.end_byte].decode(
+                "utf-8", errors="replace"
+            )
     return None
 
 
@@ -152,13 +173,16 @@ def _map_ranges_to_hunks(
         # Check if lines are all comments
         is_comment_only = _is_range_comment_only(content, start, end, comment_markers)
 
-        results.append(HunkImpact(
-            start_line=start, end_line=end,
-            is_body_change=not is_comment_only,
-            is_comment_only=is_comment_only,
-            is_signature_change=False,
-            enclosing_function=enclosing,
-        ))
+        results.append(
+            HunkImpact(
+                start_line=start,
+                end_line=end,
+                is_body_change=not is_comment_only,
+                is_comment_only=is_comment_only,
+                is_signature_change=False,
+                enclosing_function=enclosing,
+            )
+        )
     return results
 
 
@@ -166,7 +190,7 @@ def _is_range_comment_only(
     content: bytes, start: int, end: int, markers: tuple[str, ...]
 ) -> bool:
     """Check if all lines in range are comments or whitespace."""
-    lines = content.decode('utf-8', errors='replace').splitlines()
+    lines = content.decode("utf-8", errors="replace").splitlines()
     for i in range(start - 1, min(end, len(lines))):
         line = lines[i].strip()
         if not line:

@@ -20,7 +20,11 @@ from arkui_xts_selector.cli import (
     score_file,
 )
 from arkui_xts_selector.daily_prebuilt import DailyBuildInfo, PreparedDailyPrebuilt
-from arkui_xts_selector.execution import attach_execution_plan, build_run_target_entry, preflight_execution
+from arkui_xts_selector.execution import (
+    attach_execution_plan,
+    build_run_target_entry,
+    preflight_execution,
+)
 
 
 def _sample_target(project_name: str, module_name: str) -> dict[str, object]:
@@ -58,12 +62,14 @@ export interface DemoConfiguration {}
         self.assertEqual(profile.surface, STATIC)
         self.assertEqual(profile.layer, "koala_generated_component")
 
-    def test_resolve_variants_mode_uses_static_for_koala_generated_component(self) -> None:
+    def test_resolve_variants_mode_uses_static_for_koala_generated_component(
+        self,
+    ) -> None:
         with TemporaryDirectory() as tmpdir:
             path = (
                 Path(tmpdir)
                 / "foundation/arkui/ace_engine/frameworks/bridge/arkts_frontend/"
-                  "koala_projects/arkoala-arkts/arkui-ohos/generated/component/select.ets"
+                "koala_projects/arkoala-arkts/arkui-ohos/generated/component/select.ets"
             )
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(
@@ -79,7 +85,9 @@ export interface DemoConfiguration {}
             tmp = Path(tmpdir)
             source_root = tmp / "prepared" / "acts"
             (source_root / "testcases").mkdir(parents=True, exist_ok=True)
-            (source_root / "testcases" / "module_info.list").write_text("demo\n", encoding="utf-8")
+            (source_root / "testcases" / "module_info.list").write_text(
+                "demo\n", encoding="utf-8"
+            )
             extracted_root = tmp / "prepared"
             real_parent = tmp / "real_parent"
             real_parent.mkdir()
@@ -138,13 +146,27 @@ export interface DemoConfiguration {}
             return "hdc" if command == "hdc" else None
 
         fake_completed = SimpleNamespace(returncode=0, stdout="SER1\n", stderr="")
-        with mock.patch("arkui_xts_selector.execution.shutil.which", side_effect=fake_exec_which), \
-             mock.patch("arkui_xts_selector.hdc_transport.shutil.which", side_effect=fake_hdc_which), \
-             mock.patch("arkui_xts_selector.execution.subprocess.run", return_value=fake_completed):
-            preflight = preflight_execution(report, repo_root=repo_root, devices=["SER1"])
+        with (
+            mock.patch(
+                "arkui_xts_selector.execution.shutil.which", side_effect=fake_exec_which
+            ),
+            mock.patch(
+                "arkui_xts_selector.hdc_transport.shutil.which",
+                side_effect=fake_hdc_which,
+            ),
+            mock.patch(
+                "arkui_xts_selector.execution.subprocess.run",
+                return_value=fake_completed,
+            ),
+        ):
+            preflight = preflight_execution(
+                report, repo_root=repo_root, devices=["SER1"]
+            )
 
         self.assertEqual(preflight["status"], "failed")
-        self.assertTrue(any("ACTS inventory is unavailable" in item for item in preflight["errors"]))
+        self.assertTrue(
+            any("ACTS inventory is unavailable" in item for item in preflight["errors"])
+        )
 
     def test_format_case_summary_shows_unavailable_count(self) -> None:
         rendered = _format_case_summary(
@@ -161,7 +183,9 @@ export interface DemoConfiguration {}
 
     def test_parse_test_file_extracts_typed_callback_field_reads(self) -> None:
         with TemporaryDirectory() as tmpdir:
-            file_path = Path(tmpdir) / "entry" / "src" / "main" / "ets" / "pages" / "Index.ets"
+            file_path = (
+                Path(tmpdir) / "entry" / "src" / "main" / "ets" / "pages" / "Index.ets"
+            )
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(
                 """
@@ -187,7 +211,9 @@ struct Index {
 
     def test_parse_test_file_extracts_typed_object_literal_field_writes(self) -> None:
         with TemporaryDirectory() as tmpdir:
-            file_path = Path(tmpdir) / "entry" / "src" / "main" / "ets" / "pages" / "Index.ets"
+            file_path = (
+                Path(tmpdir) / "entry" / "src" / "main" / "ets" / "pages" / "Index.ets"
+            )
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(
                 """
@@ -208,7 +234,9 @@ const event: KeyEvent = {
 
     def test_score_file_rewards_typed_field_access_of_hinted_type(self) -> None:
         with TemporaryDirectory() as tmpdir:
-            file_path = Path(tmpdir) / "entry" / "src" / "main" / "ets" / "pages" / "Index.ets"
+            file_path = (
+                Path(tmpdir) / "entry" / "src" / "main" / "ets" / "pages" / "Index.ets"
+            )
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(
                 """
@@ -246,13 +274,18 @@ struct Index {
 
         self.assertGreaterEqual(score, 9)
         self.assertTrue(
-            any(reason.startswith("reads/writes fields of hinted type ClickEvent.") for reason in reasons),
+            any(
+                reason.startswith("reads/writes fields of hinted type ClickEvent.")
+                for reason in reasons
+            ),
             reasons,
         )
 
     def test_score_file_rewards_exact_changed_member_match(self) -> None:
         with TemporaryDirectory() as tmpdir:
-            file_path = Path(tmpdir) / "entry" / "src" / "main" / "ets" / "pages" / "Index.ets"
+            file_path = (
+                Path(tmpdir) / "entry" / "src" / "main" / "ets" / "pages" / "Index.ets"
+            )
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(
                 """

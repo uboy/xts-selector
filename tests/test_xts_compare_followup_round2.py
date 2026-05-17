@@ -17,7 +17,10 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from arkui_xts_selector.xts_compare.cli import main
 from arkui_xts_selector.xts_compare.format_json import single_run_to_dict
-from arkui_xts_selector.xts_compare.parse import discover_archives_with_metadata, load_run
+from arkui_xts_selector.xts_compare.parse import (
+    discover_archives_with_metadata,
+    load_run,
+)
 
 
 def _write_valid_summary_xml(path: Path) -> None:
@@ -74,8 +77,15 @@ class ArchiveDiagnosticsTests(unittest.TestCase):
             self.assertEqual(len(results), 1)
             self.assertEqual(meta.archive_diagnostics.source_type, "tar")
             self.assertEqual(len(meta.archive_diagnostics.skipped_entries), 1)
-            self.assertEqual(meta.archive_diagnostics.skipped_entries[0].reason, "symlink")
-            self.assertTrue(any("Skipped 1 unsupported archive entry" in str(item.message) for item in caught))
+            self.assertEqual(
+                meta.archive_diagnostics.skipped_entries[0].reason, "symlink"
+            )
+            self.assertTrue(
+                any(
+                    "Skipped 1 unsupported archive entry" in str(item.message)
+                    for item in caught
+                )
+            )
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
@@ -91,7 +101,9 @@ class ArchiveDiagnosticsTests(unittest.TestCase):
 
 
 class SingleRunContractTests(unittest.TestCase):
-    def test_single_run_json_includes_summary_and_filename_timestamp_source(self) -> None:
+    def test_single_run_json_includes_summary_and_filename_timestamp_source(
+        self,
+    ) -> None:
         tmp = tempfile.mkdtemp()
         try:
             run_dir = Path(tmp) / "2026-02-01-10-20-30"
@@ -115,7 +127,10 @@ class SingleRunContractTests(unittest.TestCase):
             _make_zip_report(archive)
             output = Path(tmp) / "single-run.html"
 
-            with mock.patch("sys.stdout", new=io.StringIO()), mock.patch("sys.stderr", new=io.StringIO()):
+            with (
+                mock.patch("sys.stdout", new=io.StringIO()),
+                mock.patch("sys.stderr", new=io.StringIO()),
+            ):
                 code = main([str(archive), "--html", "-o", str(output)])
 
             self.assertEqual(code, 0)
@@ -127,7 +142,9 @@ class SingleRunContractTests(unittest.TestCase):
 
 
 class OrderingAndScanTests(unittest.TestCase):
-    def test_discover_archives_with_metadata_respects_recursive_glob_and_limit(self) -> None:
+    def test_discover_archives_with_metadata_respects_recursive_glob_and_limit(
+        self,
+    ) -> None:
         tmp = tempfile.mkdtemp()
         try:
             root = Path(tmp)
@@ -163,14 +180,20 @@ class OrderingAndScanTests(unittest.TestCase):
             _write_valid_summary_xml(later / "summary_report.xml")
             output = Path(tmp) / "compare.json"
 
-            with mock.patch("sys.stdout", new=io.StringIO()), mock.patch("sys.stderr", new=io.StringIO()):
+            with (
+                mock.patch("sys.stdout", new=io.StringIO()),
+                mock.patch("sys.stderr", new=io.StringIO()),
+            ):
                 code = main([str(later), str(earlier), "--json", "-o", str(output)])
 
             self.assertEqual(code, 0)
             data = json.loads(output.read_text(encoding="utf-8"))
             self.assertTrue(data["input_order"]["auto_detected"])
             self.assertEqual(data["input_order"]["source"], "filename")
-            self.assertEqual([Path(path).name for path in data["input_order"]["ordered_paths"]], [earlier.name, later.name])
+            self.assertEqual(
+                [Path(path).name for path in data["input_order"]["ordered_paths"]],
+                [earlier.name, later.name],
+            )
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 

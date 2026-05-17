@@ -28,7 +28,13 @@ REASON_CODES = (
 )
 
 UnresolvedLayer = Literal[
-    "input", "source", "sdk", "consumer", "target", "artifact", "ranking",
+    "input",
+    "source",
+    "sdk",
+    "consumer",
+    "target",
+    "artifact",
+    "ranking",
 ]
 
 

@@ -10,6 +10,7 @@ based on macro patterns detected in source files.
 
 Import boundary: standard library only.
 """
+
 from __future__ import annotations
 
 import json
@@ -22,6 +23,7 @@ from typing import Literal
 @dataclass(frozen=True)
 class MacroPattern:
     """A C++ macro expansion pattern."""
+
     macro: str
     synthetic_method_pattern: str | None
     confidence: Literal["weak", "medium", "strong"] = "medium"
@@ -73,11 +75,13 @@ def load_macro_patterns(path: Path | None = None) -> list[MacroPattern]:
         macro = raw.get("macro", "")
         if not macro:
             continue
-        patterns.append(MacroPattern(
-            macro=macro,
-            synthetic_method_pattern=raw.get("synthetic_method_pattern"),
-            confidence=raw.get("confidence", "medium"),
-        ))
+        patterns.append(
+            MacroPattern(
+                macro=macro,
+                synthetic_method_pattern=raw.get("synthetic_method_pattern"),
+                confidence=raw.get("confidence", "medium"),
+            )
+        )
     return patterns
 
 
@@ -100,7 +104,7 @@ def match_macro_in_source(
         # Captures: MACRO_NAME(first_arg, second_arg)
         regex = re.compile(
             rf"{re.escape(pattern.macro)}\s*\(\s*[^,]+,\s*([^),]+?)\s*[),]",
-            re.IGNORECASE | re.DOTALL
+            re.IGNORECASE | re.DOTALL,
         )
         match = regex.search(source)
         if match:
@@ -148,7 +152,9 @@ def generate_synthetic_method_name(
             if placeholder in result:
                 # Capitalize if it's a solo placeholder or if it's the first arg
                 # and pattern doesn't start with it
-                if is_solo_placeholder or (i == 1 and not pattern.strip().startswith("{1}")):
+                if is_solo_placeholder or (
+                    i == 1 and not pattern.strip().startswith("{1}")
+                ):
                     # Capitalize first letter
                     capitalized = arg[0].upper() + arg[1:] if arg else ""
                     result = result.replace(placeholder, capitalized)

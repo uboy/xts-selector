@@ -4,17 +4,50 @@ When all typed resolvers fail, this module provides a final fallback that
 finds XTS test modules whose names share token overlap with the changed file path.
 Results are always low-confidence (score capped at 0.25).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-_STOPWORDS: frozenset[str] = frozenset({
-    "ace", "arkui", "component", "components", "core", "cpp", "engine",
-    "ets", "foundation", "frameworks", "interfaces", "module", "pattern",
-    "src", "test", "common", "base", "impl", "ng", "the", "and", "for",
-    "lib", "include", "adapter", "helper", "util", "utils", "inner",
-    "system", "sys", "ext", "static", "dynamic", "accessibility",
-})
+_STOPWORDS: frozenset[str] = frozenset(
+    {
+        "ace",
+        "arkui",
+        "component",
+        "components",
+        "core",
+        "cpp",
+        "engine",
+        "ets",
+        "foundation",
+        "frameworks",
+        "interfaces",
+        "module",
+        "pattern",
+        "src",
+        "test",
+        "common",
+        "base",
+        "impl",
+        "ng",
+        "the",
+        "and",
+        "for",
+        "lib",
+        "include",
+        "adapter",
+        "helper",
+        "util",
+        "utils",
+        "inner",
+        "system",
+        "sys",
+        "ext",
+        "static",
+        "dynamic",
+        "accessibility",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -80,14 +113,16 @@ def last_resort_targets(
         score = _jaccard(source_tokens, target_tokens)
         if score >= min_jaccard:
             project_path = getattr(entry, "project_path", module_name)
-            candidates.append((
-                LastResortMatch(
-                    module_name=module_name,
-                    project_path=str(project_path),
-                    score=min(0.25, score),
-                ),
-                score,
-            ))
+            candidates.append(
+                (
+                    LastResortMatch(
+                        module_name=module_name,
+                        project_path=str(project_path),
+                        score=min(0.25, score),
+                    ),
+                    score,
+                )
+            )
 
     candidates.sort(key=lambda x: -x[1])
     return [match for match, _ in candidates[:top_k]]

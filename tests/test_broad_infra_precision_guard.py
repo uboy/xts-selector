@@ -3,6 +3,7 @@
 Verifies that broad infra does not overtake specific resolution
 for component-specific files.
 """
+
 from __future__ import annotations
 
 import json
@@ -13,9 +14,10 @@ import pytest
 
 def test_broad_infra_rules_have_allow_overtake():
     """All broad infra rules should have allow_overtake field."""
-    from arkui_xts_selector.indexing.broad_infra import match_changed_file
 
-    config_path = Path(__file__).parent.parent / "config" / "broad_infrastructure_files.json"
+    config_path = (
+        Path(__file__).parent.parent / "config" / "broad_infrastructure_files.json"
+    )
     if not config_path.exists():
         pytest.skip("broad_infrastructure_files.json not found")
 
@@ -27,14 +29,19 @@ def test_broad_infra_rules_have_allow_overtake():
     # Each rule should have allow_overtake field (or default false)
     for rule in rules:
         # allow_overtake should be explicitly set
-        assert "allow_overtake" in rule, f"Rule {rule.get('id')} missing allow_overtake field"
-        assert isinstance(rule["allow_overtake"], bool), \
+        assert "allow_overtake" in rule, (
+            f"Rule {rule.get('id')} missing allow_overtake field"
+        )
+        assert isinstance(rule["allow_overtake"], bool), (
             f"Rule {rule.get('id')} has non-bool allow_overtake"
+        )
 
 
 def test_render_paint_is_deferred():
     """Render paint broad infra rule should be deferred (not overtake)."""
-    config_path = Path(__file__).parent.parent / "config" / "broad_infrastructure_files.json"
+    config_path = (
+        Path(__file__).parent.parent / "config" / "broad_infrastructure_files.json"
+    )
     if not config_path.exists():
         pytest.skip("config not found")
 
@@ -42,20 +49,25 @@ def test_render_paint_is_deferred():
     render_rules = [r for r in rules if "render" in r.get("id", "").lower()]
 
     for rule in render_rules:
-        assert rule.get("allow_overtake", False) is False, \
+        assert rule.get("allow_overtake", False) is False, (
             f"Render rule {rule['id']} should not allow_overtake"
+        )
 
 
 def test_broad_infra_still_matches_infra_files():
     """Broad infra still matches files with no specific resolution."""
     from arkui_xts_selector.indexing.broad_infra import match_changed_file
 
-    config_path = Path(__file__).parent.parent / "config" / "broad_infrastructure_files.json"
+    config_path = (
+        Path(__file__).parent.parent / "config" / "broad_infrastructure_files.json"
+    )
     if not config_path.exists():
         pytest.skip("config not found")
 
     rules = json.loads(config_path.read_text()).get("rules", [])
-    infra = match_changed_file("frameworks/core/components_ng/render/render_context.cpp", rules)
+    infra = match_changed_file(
+        "frameworks/core/components_ng/render/render_context.cpp", rules
+    )
     # This should still match broad infra (after deferral)
     if infra is not None:
         assert infra.fan_out_target is not None
@@ -63,7 +75,9 @@ def test_broad_infra_still_matches_infra_files():
 
 def test_frame_node_allows_overtake():
     """Frame node rule should NOT allow_overtake (most rules default false)."""
-    config_path = Path(__file__).parent.parent / "config" / "broad_infrastructure_files.json"
+    config_path = (
+        Path(__file__).parent.parent / "config" / "broad_infrastructure_files.json"
+    )
     if not config_path.exists():
         pytest.skip("config not found")
 
@@ -78,12 +92,20 @@ def test_frame_node_allows_overtake():
 
 def test_all_rules_have_required_fields():
     """Ensure all rules have required fields including allow_overtake."""
-    config_path = Path(__file__).parent.parent / "config" / "broad_infrastructure_files.json"
+    config_path = (
+        Path(__file__).parent.parent / "config" / "broad_infrastructure_files.json"
+    )
     if not config_path.exists():
         pytest.skip("config not found")
 
     rules = json.loads(config_path.read_text()).get("rules", [])
-    required_fields = ["id", "match_paths", "fan_out_target", "false_negative_risk", "allow_overtake"]
+    required_fields = [
+        "id",
+        "match_paths",
+        "fan_out_target",
+        "false_negative_risk",
+        "allow_overtake",
+    ]
 
     for rule in rules:
         for field in required_fields:
@@ -93,7 +115,6 @@ def test_all_rules_have_required_fields():
 def test_pr_resolver_defers_broad_infra():
     """Integration test: PR resolver defers broad infra for files with specific resolution."""
     from arkui_xts_selector.indexing.pr_resolver import (
-        PrResolveResult,
         resolve_pr,
     )
     from arkui_xts_selector.indexing.ace_indexer import AceIndexResult

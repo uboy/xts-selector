@@ -4,6 +4,7 @@ Tests for Phase 3: Planner hierarchy (member > type > family preference).
 Run:
     python3 -m unittest tests.test_planner_hierarchy -v
 """
+
 from __future__ import annotations
 
 import json
@@ -13,7 +14,9 @@ from pathlib import Path
 from arkui_xts_selector.cli import build_global_coverage_recommendations
 
 # Load ranking_rules.json to get the config we just updated
-RANKING_RULES_PATH = Path(__file__).resolve().parents[1] / "config" / "ranking_rules.json"
+RANKING_RULES_PATH = (
+    Path(__file__).resolve().parents[1] / "config" / "ranking_rules.json"
+)
 
 
 class FanOutLimitsConfigTests(unittest.TestCase):
@@ -81,7 +84,9 @@ class PrecisionModeTests(unittest.TestCase):
     - family only -> precision_mode = "family"
     """
 
-    def _simulate_precision_mode(self, member_hints: list, type_hints: list, family_hints: list) -> str:
+    def _simulate_precision_mode(
+        self, member_hints: list, type_hints: list, family_hints: list
+    ) -> str:
         """Simulate the precision mode determination logic."""
         if member_hints:
             return "member"
@@ -132,15 +137,23 @@ class PrecisionModeTests(unittest.TestCase):
 class FanOutSuppressionTests(unittest.TestCase):
     """Verify that fan-out limits suppress excess type/family representatives."""
 
-    def _apply_fanout_limits(self, covered_types: list, covered_families: list, family_key: str) -> dict:
+    def _apply_fanout_limits(
+        self, covered_types: list, covered_families: list, family_key: str
+    ) -> dict:
         """Simulate fan-out limit enforcement."""
         with RANKING_RULES_PATH.open(encoding="utf-8") as fh:
             data = json.load(fh)
         fanout = data.get("family_fanout_limits", {})
-        default = fanout.get("default", {"max_type_representatives": 5, "max_family_representatives": 10})
+        default = fanout.get(
+            "default", {"max_type_representatives": 5, "max_family_representatives": 10}
+        )
         limit = fanout.get(family_key, default)
-        max_types = limit.get("max_type_representatives", default["max_type_representatives"])
-        max_families = limit.get("max_family_representatives", default["max_family_representatives"])
+        max_types = limit.get(
+            "max_type_representatives", default["max_type_representatives"]
+        )
+        max_families = limit.get(
+            "max_family_representatives", default["max_family_representatives"]
+        )
 
         suppressed_types = []
         suppressed_families = []
@@ -163,7 +176,13 @@ class FanOutSuppressionTests(unittest.TestCase):
     def test_button_type_suppression(self) -> None:
         """Button family has max_type_representatives=3, excess types should be suppressed."""
         result = self._apply_fanout_limits(
-            covered_types=["Button", "ButtonAttribute", "ButtonModifier", "ButtonStyle", "ButtonTheme"],
+            covered_types=[
+                "Button",
+                "ButtonAttribute",
+                "ButtonModifier",
+                "ButtonStyle",
+                "ButtonTheme",
+            ],
             covered_families=["button"],
             family_key="button",
         )
@@ -184,7 +203,12 @@ class FanOutSuppressionTests(unittest.TestCase):
     def test_slider_stricter_limits(self) -> None:
         """Slider family has max_type_representatives=2, tighter than default."""
         result = self._apply_fanout_limits(
-            covered_types=["Slider", "SliderModifier", "SliderAttribute", "SliderTheme"],
+            covered_types=[
+                "Slider",
+                "SliderModifier",
+                "SliderAttribute",
+                "SliderTheme",
+            ],
             covered_families=["slider"],
             family_key="slider",
         )
@@ -194,7 +218,14 @@ class FanOutSuppressionTests(unittest.TestCase):
     def test_default_limits_for_unknown_family(self) -> None:
         """Unknown families should use default limits (5 types, 10 families)."""
         result = self._apply_fanout_limits(
-            covered_types=["Web", "WebModifier", "WebView", "WebController", "WebAttribute", "WebTheme"],
+            covered_types=[
+                "Web",
+                "WebModifier",
+                "WebView",
+                "WebController",
+                "WebAttribute",
+                "WebTheme",
+            ],
             covered_families=["web"],
             family_key="unknown_family",
         )
@@ -205,7 +236,13 @@ class FanOutSuppressionTests(unittest.TestCase):
     def test_web_explicit_limits(self) -> None:
         """Web family has explicit max_type_representatives=3."""
         result = self._apply_fanout_limits(
-            covered_types=["Web", "WebModifier", "WebView", "WebController", "WebAttribute"],
+            covered_types=[
+                "Web",
+                "WebModifier",
+                "WebView",
+                "WebController",
+                "WebAttribute",
+            ],
             covered_families=["web"],
             family_key="web",
         )
@@ -215,7 +252,13 @@ class FanOutSuppressionTests(unittest.TestCase):
     def test_text_higher_type_limit(self) -> None:
         """Text family allows max_type_representatives=4 (broader than slider/swiper)."""
         result = self._apply_fanout_limits(
-            covered_types=["Text", "TextModifier", "Span", "SpanModifier", "TextAttribute"],
+            covered_types=[
+                "Text",
+                "TextModifier",
+                "Span",
+                "SpanModifier",
+                "TextAttribute",
+            ],
             covered_families=["text"],
             family_key="text",
         )
@@ -225,7 +268,12 @@ class FanOutSuppressionTests(unittest.TestCase):
     def test_swiper_strict_type_limit(self) -> None:
         """Swiper family has max_type_representatives=2."""
         result = self._apply_fanout_limits(
-            covered_types=["Swiper", "SwiperModifier", "SwiperAttribute", "SwiperController"],
+            covered_types=[
+                "Swiper",
+                "SwiperModifier",
+                "SwiperAttribute",
+                "SwiperController",
+            ],
             covered_families=["swiper"],
             family_key="swiper",
         )
@@ -242,10 +290,20 @@ class FanOutSuppressionTests(unittest.TestCase):
         self.assertGreater(image["max_type_representatives"], 0)
 
 
-def _make_candidate(project: str, member_hint_keys: list, type_hint_keys: list, family_keys: list, source_profile: dict) -> dict:
+def _make_candidate(
+    project: str,
+    member_hint_keys: list,
+    type_hint_keys: list,
+    family_keys: list,
+    source_profile: dict,
+) -> dict:
     """Build a minimal candidate_entry for build_global_coverage_recommendations."""
     return {
-        "source": {"key": source_profile["key"], "type": source_profile["type"], "value": source_profile["value"]},
+        "source": {
+            "key": source_profile["key"],
+            "type": source_profile["type"],
+            "value": source_profile["value"],
+        },
         "source_profile": source_profile,
         "project_entry": {
             "project": project,
@@ -279,7 +337,9 @@ class RealPlannerTypeFallbackTests(unittest.TestCase):
     """Integration tests that call build_global_coverage_recommendations directly
     to verify member > type > family preference ordering in the real planner."""
 
-    def _source_profile(self, member_hints: list, type_hints: list, family_keys: list) -> dict:
+    def _source_profile(
+        self, member_hints: list, type_hints: list, family_keys: list
+    ) -> dict:
         return {
             "key": "changed_file:button_model_static.cpp",
             "type": "changed_file",
@@ -373,7 +433,8 @@ class RealPlannerTypeFallbackTests(unittest.TestCase):
         ordered = result.get("ordered_targets", [])
         self.assertTrue(len(ordered) > 0, "Expected at least one ordered target")
         member_target = next(
-            (t for t in ordered if t["project"] == "test/xts/acts/arkui/button_member"), None
+            (t for t in ordered if t["project"] == "test/xts/acts/arkui/button_member"),
+            None,
         )
         self.assertIsNotNone(member_target)
         self.assertEqual(member_target.get("precision_mode"), "member")
@@ -406,7 +467,9 @@ class FanOutSuppressionSerializationTests(unittest.TestCase):
             "focus_tokens": list(family_keys),
         }
 
-    def _type_hint_profile(self, type_hints: list, family_keys: list, label: str = "b") -> dict:
+    def _type_hint_profile(
+        self, type_hints: list, family_keys: list, label: str = "b"
+    ) -> dict:
         """Source profile with type hints -> populates covered_type_hints."""
         return {
             "key": f"changed_file:nav_{label}.cpp",
@@ -427,9 +490,15 @@ class FanOutSuppressionSerializationTests(unittest.TestCase):
         Combined they satisfy the suppression trigger condition.
         """
         profile_a = self._family_only_profile(family_keys=["navigation"], label="a")
-        profile_b = self._type_hint_profile(type_hints=type_hints, family_keys=["navigation"], label="b")
+        profile_b = self._type_hint_profile(
+            type_hints=type_hints, family_keys=["navigation"], label="b"
+        )
         entry_a = {
-            "source": {"key": profile_a["key"], "type": profile_a["type"], "value": profile_a["value"]},
+            "source": {
+                "key": profile_a["key"],
+                "type": profile_a["type"],
+                "value": profile_a["value"],
+            },
             "source_profile": profile_a,
             "project_entry": {
                 "project": self._SUITE,
@@ -458,7 +527,11 @@ class FanOutSuppressionSerializationTests(unittest.TestCase):
             "source_rank": 1,
         }
         entry_b = {
-            "source": {"key": profile_b["key"], "type": profile_b["type"], "value": profile_b["value"]},
+            "source": {
+                "key": profile_b["key"],
+                "type": profile_b["type"],
+                "value": profile_b["value"],
+            },
             "source_profile": profile_b,
             "project_entry": {
                 **entry_a["project_entry"],
@@ -479,7 +552,12 @@ class FanOutSuppressionSerializationTests(unittest.TestCase):
         import json
 
         # navigation family has max_type_representatives=3; provide 4 hints -> 1 suppressed
-        type_hints = ["navigationoperation", "navcontentinfo", "popinfo", "swipercontroller"]
+        type_hints = [
+            "navigationoperation",
+            "navcontentinfo",
+            "popinfo",
+            "swipercontroller",
+        ]
         candidates = self._make_nav_candidates(type_hints)
         result = build_global_coverage_recommendations(
             candidates,
@@ -494,7 +572,12 @@ class FanOutSuppressionSerializationTests(unittest.TestCase):
 
     def test_suppressed_type_hints_type_is_list(self) -> None:
         """When fan-out suppression fires, suppressed_type_hints must be a list."""
-        type_hints = ["navigationoperation", "navcontentinfo", "popinfo", "swipercontroller"]
+        type_hints = [
+            "navigationoperation",
+            "navcontentinfo",
+            "popinfo",
+            "swipercontroller",
+        ]
         candidates = self._make_nav_candidates(type_hints)
         result = build_global_coverage_recommendations(
             candidates,
@@ -506,7 +589,8 @@ class FanOutSuppressionSerializationTests(unittest.TestCase):
             suppressed = target.get("suppressed_type_hints")
             if suppressed is not None:
                 self.assertIsInstance(
-                    suppressed, list,
+                    suppressed,
+                    list,
                     f"suppressed_type_hints must be list, got {type(suppressed).__name__}",
                 )
 
@@ -517,12 +601,23 @@ class FanOutSuppressionSerializationTests(unittest.TestCase):
         # To trigger family suppression: navigation max_family_representatives=5;
         # stack multiple families from different sources.
         # Easiest: use one source with 6 family hints (all family-only so covered_families fills up).
-        families = ["navigation", "text_input", "select", "checkboxgroup", "gesture", "text_rendering"]
+        families = [
+            "navigation",
+            "text_input",
+            "select",
+            "checkboxgroup",
+            "gesture",
+            "text_rendering",
+        ]
         profiles_and_entries = []
         for i, fam in enumerate(families):
             prof = self._family_only_profile(family_keys=[fam], label=str(i))
             entry = {
-                "source": {"key": prof["key"], "type": prof["type"], "value": prof["value"]},
+                "source": {
+                    "key": prof["key"],
+                    "type": prof["type"],
+                    "value": prof["value"],
+                },
                 "source_profile": prof,
                 "project_entry": {
                     "project": self._SUITE,
@@ -567,7 +662,8 @@ class FanOutSuppressionSerializationTests(unittest.TestCase):
             sf = target.get("suppressed_families")
             if sf is not None:
                 self.assertIsInstance(
-                    sf, list,
+                    sf,
+                    list,
                     f"suppressed_families must be list, got {type(sf).__name__}",
                 )
 

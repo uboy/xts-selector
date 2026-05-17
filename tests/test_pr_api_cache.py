@@ -1,8 +1,7 @@
 """Tests for PR API response cache (pr_cache.py)."""
+
 from __future__ import annotations
 
-import json
-import os
 import unittest
 from pathlib import Path
 
@@ -71,6 +70,7 @@ class TestPrApiCacheReadWrite(unittest.TestCase):
 
     def tearDown(self) -> None:
         import shutil
+
         if self.tmp.exists():
             shutil.rmtree(self.tmp)
 
@@ -118,6 +118,7 @@ class TestPrApiCacheReadOnly(unittest.TestCase):
 
     def tearDown(self) -> None:
         import shutil
+
         if self.tmp.exists():
             shutil.rmtree(self.tmp)
 
@@ -154,6 +155,7 @@ class TestPrApiCacheRefresh(unittest.TestCase):
 
     def tearDown(self) -> None:
         import shutil
+
         if self.tmp.exists():
             shutil.rmtree(self.tmp)
 
@@ -173,14 +175,23 @@ class TestPrApiCacheRefresh(unittest.TestCase):
 class TestProxyCleanup(unittest.TestCase):
     def test_all_proxy_vars_in_list(self) -> None:
         expected = {
-            "http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY",
-            "all_proxy", "ALL_PROXY", "no_proxy", "NO_PROXY",
+            "http_proxy",
+            "https_proxy",
+            "HTTP_PROXY",
+            "HTTPS_PROXY",
+            "all_proxy",
+            "ALL_PROXY",
+            "no_proxy",
+            "NO_PROXY",
         }
         from arkui_xts_selector.batch_validate import cmd_validate_batch
         import inspect
+
         source = inspect.getsource(cmd_validate_batch)
         for var in expected:
-            self.assertIn(f'"{var}"', source, f"Proxy var {var} not found in cleanup list")
+            self.assertIn(
+                f'"{var}"', source, f"Proxy var {var} not found in cleanup list"
+            )
 
 
 class TestBackwardCompat(unittest.TestCase):
@@ -230,6 +241,7 @@ class TestRefreshModeSkipsCache(unittest.TestCase):
 
     def tearDown(self) -> None:
         import shutil
+
         if self.tmp.exists():
             shutil.rmtree(self.tmp)
 

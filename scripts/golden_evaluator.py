@@ -19,6 +19,7 @@ Evaluates batch results against a golden PR set with reviewer-approved
 must_run/must_not_run targets. In strict mode (default), only PRs with
 annotation_status == "approved" contribute to gate metrics.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -52,7 +53,7 @@ def _shorten(path: str) -> str:
         "/data/shared/common/proj/ohos_master/",
     ]:
         if path.startswith(prefix):
-            return path[len(prefix):]
+            return path[len(prefix) :]
     return path
 
 
@@ -172,7 +173,9 @@ def evaluate_pr(golden: dict, result: dict, *, strict: bool = True) -> dict:
             fail_reasons.append(f"extra target violations: {len(extra_violations)}")
         if expected_policy and not policy_match:
             passed = False
-            fail_reasons.append(f"policy mismatch: expected={expected_policy} actual={actual_policy}")
+            fail_reasons.append(
+                f"policy mismatch: expected={expected_policy} actual={actual_policy}"
+            )
 
     elif selection_type == "none_required":
         if must_run:
@@ -190,7 +193,9 @@ def evaluate_pr(golden: dict, result: dict, *, strict: bool = True) -> dict:
             unexpected = actual_targets - allowed
             if unexpected:
                 passed = False
-                fail_reasons.append(f"none_required but selector found {len(unexpected)} unexpected targets")
+                fail_reasons.append(
+                    f"none_required but selector found {len(unexpected)} unexpected targets"
+                )
         notes = reviewer.get("notes", golden.get("notes", ""))
         if not notes:
             passed = False
@@ -200,12 +205,16 @@ def evaluate_pr(golden: dict, result: dict, *, strict: bool = True) -> dict:
         passed = None  # sentinel: excluded from recall computation
         if forbidden_hits:
             passed = False
-            fail_reasons.append(f"must_not_run violations even for manual_review: {forbidden_hits}")
+            fail_reasons.append(
+                f"must_not_run violations even for manual_review: {forbidden_hits}"
+            )
 
     elif selection_type == "broad_suite_required":
         if not must_run and not must_not_run:
             passed = False
-            fail_reasons.append("broad_suite_required without any contract (empty must_run and must_not_run)")
+            fail_reasons.append(
+                "broad_suite_required without any contract (empty must_run and must_not_run)"
+            )
         else:
             if must_run and must_run_hits < len(must_run):
                 passed = False
@@ -215,7 +224,9 @@ def evaluate_pr(golden: dict, result: dict, *, strict: bool = True) -> dict:
             fail_reasons.append(f"must_not_run violations: {forbidden_hits}")
         if expected_policy and not policy_match:
             passed = False
-            fail_reasons.append(f"policy mismatch: expected={expected_policy} actual={actual_policy}")
+            fail_reasons.append(
+                f"policy mismatch: expected={expected_policy} actual={actual_policy}"
+            )
 
     return {
         "pr_number": pr_num,
@@ -242,12 +253,24 @@ def evaluate_pr(golden: dict, result: dict, *, strict: bool = True) -> dict:
 def compute_aggregate_metrics(evaluations: list[dict]) -> dict:
     """Compute aggregate metrics across all evaluated PRs."""
     valid_evals = [e for e in evaluations if "skipped_reason" not in e]
-    approved_evals = [e for e in valid_evals if e.get("annotation_status") == "approved"]
+    approved_evals = [
+        e for e in valid_evals if e.get("annotation_status") == "approved"
+    ]
 
-    required_targets = [e for e in approved_evals if e.get("expected_selection") == "required_targets"]
-    none_required = [e for e in approved_evals if e.get("expected_selection") == "none_required"]
-    manual_review_only = [e for e in approved_evals if e.get("expected_selection") == "manual_review_only"]
-    broad_suite = [e for e in approved_evals if e.get("expected_selection") == "broad_suite_required"]
+    required_targets = [
+        e for e in approved_evals if e.get("expected_selection") == "required_targets"
+    ]
+    none_required = [
+        e for e in approved_evals if e.get("expected_selection") == "none_required"
+    ]
+    manual_review_only = [
+        e for e in approved_evals if e.get("expected_selection") == "manual_review_only"
+    ]
+    broad_suite = [
+        e
+        for e in approved_evals
+        if e.get("expected_selection") == "broad_suite_required"
+    ]
 
     total_must_run = sum(e["must_run_total"] for e in required_targets)
     total_must_run_hits = sum(e["must_run_hits"] for e in required_targets)
@@ -255,19 +278,29 @@ def compute_aggregate_metrics(evaluations: list[dict]) -> dict:
     must_run_missed = total_must_run - total_must_run_hits
 
     total_must_not_run = sum(e["must_not_run_total"] for e in approved_evals)
-    total_forbidden = sum(len(e.get("must_not_run_violations", [])) for e in approved_evals)
+    total_forbidden = sum(
+        len(e.get("must_not_run_violations", [])) for e in approved_evals
+    )
     must_not_run_violation_rate = total_forbidden / max(1, total_must_not_run)
 
     total_allowed_extra = sum(e.get("allowed_extra_targets", 0) for e in approved_evals)
-    total_extra_violations = sum(len(e.get("extra_target_violations", [])) for e in approved_evals)
-    extra_target_violation_rate = total_extra_violations / max(1, total_allowed_extra) if total_allowed_extra else 0.0
+    total_extra_violations = sum(
+        len(e.get("extra_target_violations", [])) for e in approved_evals
+    )
+    extra_target_violation_rate = (
+        total_extra_violations / max(1, total_allowed_extra)
+        if total_allowed_extra
+        else 0.0
+    )
 
     policy_evals = [e for e in approved_evals if e.get("expected_policy")]
     policy_matches = sum(1 for e in policy_evals if e.get("policy_match") is True)
     policy_accuracy = policy_matches / max(1, len(policy_evals))
 
     total_selected = sum(e["target_count"] for e in approved_evals)
-    total_required = sum(e["must_run_total"] + len(e.get("should_run") or []) for e in approved_evals)
+    total_required = sum(
+        e["must_run_total"] + len(e.get("should_run") or []) for e in approved_evals
+    )
     target_overselection_ratio = total_selected / max(1, total_required)
 
     by_category: dict[str, dict] = {}
@@ -299,7 +332,9 @@ def compute_aggregate_metrics(evaluations: list[dict]) -> dict:
         "target_overselection_ratio": round(target_overselection_ratio, 4),
         "approved_pr_count": len(approved_evals),
         "unapproved_pr_count": len(evaluations) - len(approved_evals),
-        "manual_review_rate": round(len(manual_review_only) / max(1, len(approved_evals)), 4),
+        "manual_review_rate": round(
+            len(manual_review_only) / max(1, len(approved_evals)), 4
+        ),
         "none_required_count": len(none_required),
         "broad_suite_required_count": len(broad_suite),
         "required_targets_count": len(required_targets),
@@ -310,10 +345,15 @@ def compute_aggregate_metrics(evaluations: list[dict]) -> dict:
 def main():
     parser = argparse.ArgumentParser(description="Golden PR evaluator")
     parser.add_argument("--golden", required=True, help="Path to golden_pr_set.json")
-    parser.add_argument("--batch-results", required=True, help="Path to batch_results.json")
+    parser.add_argument(
+        "--batch-results", required=True, help="Path to batch_results.json"
+    )
     parser.add_argument("--output", help="Output evaluation JSON path")
-    parser.add_argument("--allow-auto-labels", action="store_true",
-                        help="Include auto-labeled PRs in evaluation (diagnostic mode)")
+    parser.add_argument(
+        "--allow-auto-labels",
+        action="store_true",
+        help="Include auto-labeled PRs in evaluation (diagnostic mode)",
+    )
     args = parser.parse_args()
 
     strict = not args.allow_auto_labels
@@ -322,10 +362,15 @@ def main():
     golden_prs = load_golden(args.golden)
     results = load_results(args.batch_results)
 
-    approved_count = sum(1 for g in golden_prs if g.get("annotation_status") == "approved")
+    approved_count = sum(
+        1 for g in golden_prs if g.get("annotation_status") == "approved"
+    )
     if strict and approved_count == 0:
-        print("ERROR: No approved golden PRs — strict gate requires annotation_status=approved. "
-              "Use --allow-auto-labels for diagnostic mode.", file=sys.stderr)
+        print(
+            "ERROR: No approved golden PRs — strict gate requires annotation_status=approved. "
+            "Use --allow-auto-labels for diagnostic mode.",
+            file=sys.stderr,
+        )
         return 2
 
     evaluations = []
@@ -333,13 +378,15 @@ def main():
         pr_num = g["pr_number"]
         result = results.get(pr_num)
         if result is None:
-            evaluations.append({
-                "pr_number": pr_num,
-                "passed": False,
-                "error": "PR not found in batch results",
-                "annotation_status": g.get("annotation_status", "unknown"),
-                "category": g.get("category", "unknown"),
-            })
+            evaluations.append(
+                {
+                    "pr_number": pr_num,
+                    "passed": False,
+                    "error": "PR not found in batch results",
+                    "annotation_status": g.get("annotation_status", "unknown"),
+                    "category": g.get("category", "unknown"),
+                }
+            )
             continue
         evaluations.append(evaluate_pr(g, result, strict=strict))
 
@@ -350,7 +397,9 @@ def main():
     errored = sum(1 for e in evaluations if "error" in e)
     evaluated = total - skipped - errored
     passed = sum(1 for e in evaluations if e.get("passed") is True)
-    failed = sum(1 for e in evaluations if e.get("passed") is False and "skipped_reason" not in e)
+    failed = sum(
+        1 for e in evaluations if e.get("passed") is False and "skipped_reason" not in e
+    )
     manual_review = sum(1 for e in evaluations if e.get("passed") is None)
 
     print(f"=== Golden PR Evaluation ({mode_name} mode) ===")
@@ -362,14 +411,20 @@ def main():
     print(f"  Failed: {failed}")
     print(f"  Manual review (excluded from recall): {manual_review}")
     if manual_review > 0:
-        print(f"  Note: {manual_review} manual_review_only PRs excluded from pass/fail rate")
+        print(
+            f"  Note: {manual_review} manual_review_only PRs excluded from pass/fail rate"
+        )
     print()
 
     for e in evaluations:
         if "skipped_reason" in e:
             status = "SKIP"
         else:
-            status = "PASS" if e.get("passed") is True else ("MANUAL_REVIEW" if e.get("passed") is None else "FAIL")
+            status = (
+                "PASS"
+                if e.get("passed") is True
+                else ("MANUAL_REVIEW" if e.get("passed") is None else "FAIL")
+            )
         ann = e.get("annotation_status", "?")
         sel = e.get("expected_selection", "?")
         print(f"  PR {e['pr_number']}: {status} [{ann}/{sel}]")
@@ -394,14 +449,18 @@ def main():
         if total_mr > 0:
             print(f"approved_must_run_recall: {mr:.4f} ({hits}/{total_mr})")
         else:
-            print(f"approved_must_run_recall: N/A (no required_targets PRs)")
+            print("approved_must_run_recall: N/A (no required_targets PRs)")
         print(f"must_run_missed:          {aggregate['approved_must_run_missed']}")
-        print(f"must_not_run_violations:  {aggregate['must_not_run_violation_count']} "
-              f"(rate: {aggregate['must_not_run_violation_rate']*100:.2f}%)")
+        print(
+            f"must_not_run_violations:  {aggregate['must_not_run_violation_count']} "
+            f"(rate: {aggregate['must_not_run_violation_rate'] * 100:.2f}%)"
+        )
         print(f"extra_target_violations:  {aggregate['extra_target_violation_count']}")
-        print(f"policy_accuracy:          {aggregate['policy_accuracy']*100:.1f}%")
-        print(f"target_overselection:     {aggregate['target_overselection_ratio']:.4f}")
-        print(f"manual_review_rate:       {aggregate['manual_review_rate']*100:.1f}%")
+        print(f"policy_accuracy:          {aggregate['policy_accuracy'] * 100:.1f}%")
+        print(
+            f"target_overselection:     {aggregate['target_overselection_ratio']:.4f}"
+        )
+        print(f"manual_review_rate:       {aggregate['manual_review_rate'] * 100:.1f}%")
         print(f"none_required_count:      {aggregate['none_required_count']}")
         print(f"broad_suite_count:        {aggregate['broad_suite_required_count']}")
         print(f"required_targets_count:   {aggregate['required_targets_count']}")
@@ -409,7 +468,9 @@ def main():
         if aggregate["must_run_recall_by_category"]:
             print()
             print("By category (required_targets only):")
-            for cat, metrics in sorted(aggregate["must_run_recall_by_category"].items()):
+            for cat, metrics in sorted(
+                aggregate["must_run_recall_by_category"].items()
+            ):
                 recall = metrics["must_run_recall"]
                 hits = metrics["must_run_hits"]
                 total_cat = metrics["must_run_total"]
@@ -422,19 +483,24 @@ def main():
         pass_rate_excl = round(passed / max(1, non_manual_evaluated), 4)
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
         with open(args.output, "w") as f:
-            json.dump({
-                "mode": mode_name,
-                "total": total,
-                "evaluated": evaluated,
-                "passed": passed,
-                "failed": failed,
-                "skipped": skipped,
-                "manual_review": manual_review,
-                "pass_rate": round(passed / max(1, evaluated), 4),
-                "pass_rate_excluding_manual": pass_rate_excl,
-                "aggregate": aggregate,
-                "evaluations": evaluations,
-            }, f, indent=2, default=str)
+            json.dump(
+                {
+                    "mode": mode_name,
+                    "total": total,
+                    "evaluated": evaluated,
+                    "passed": passed,
+                    "failed": failed,
+                    "skipped": skipped,
+                    "manual_review": manual_review,
+                    "pass_rate": round(passed / max(1, evaluated), 4),
+                    "pass_rate_excluding_manual": pass_rate_excl,
+                    "aggregate": aggregate,
+                    "evaluations": evaluations,
+                },
+                f,
+                indent=2,
+                default=str,
+            )
         print(f"\nSaved to {args.output}")
 
     if strict and approved_count == 0:

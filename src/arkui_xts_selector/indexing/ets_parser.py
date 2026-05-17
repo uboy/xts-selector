@@ -9,6 +9,7 @@ This module parses ETS test files to extract:
 
 Import boundary: standard library only + tree_sitter + tree_sitter_typescript.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -29,6 +30,7 @@ UsageKind = Literal[
 @dataclass(frozen=True)
 class EtsUsage:
     """A single API usage extracted from an ETS file."""
+
     symbol_name: str
     usage_type: UsageKind
     line: int | None = None
@@ -60,6 +62,7 @@ class EtsUsage:
 @dataclass(frozen=True)
 class EtsImport:
     """An import statement extracted from an ETS file."""
+
     module: str
     symbols: tuple[str, ...] = ()
     line: int | None = None
@@ -89,11 +92,12 @@ class EtsImport:
 @dataclass(frozen=True)
 class EtsParseResult:
     """Result of parsing an ETS file."""
+
     file_path: str
     usages: tuple[EtsUsage, ...] = ()
     imports: tuple[EtsImport, ...] = ()
     components: tuple[str, ...] = ()  # @Component struct names
-    classes: tuple[str, ...] = ()     # class definitions
+    classes: tuple[str, ...] = ()  # class definitions
     parse_time_ms: float = 0.0
 
     def to_dict(self) -> dict:
@@ -135,7 +139,7 @@ def _get_ts_parser():
 def _extract_context(node, code_bytes: bytes, max_length: int = 80) -> str:
     """Extract surrounding code context from a node."""
     try:
-        context_bytes = code_bytes[node.start_byte:node.end_byte]
+        context_bytes = code_bytes[node.start_byte : node.end_byte]
         context = context_bytes.decode("utf-8", errors="replace")
         if len(context) > max_length:
             context = context[:max_length] + "..."
@@ -153,9 +157,9 @@ def _extract_imports(root_node, code_bytes: bytes) -> tuple[EtsImport, ...]:
             # Extract the source module
             source_node = node.child_by_field_name("source")
             if source_node:
-                module_text = code_bytes[source_node.start_byte:source_node.end_byte]
+                module_text = code_bytes[source_node.start_byte : source_node.end_byte]
                 # Remove quotes
-                module = module_text.decode("utf-8", errors="replace").strip('"\'')
+                module = module_text.decode("utf-8", errors="replace").strip("\"'")
                 line = node.start_point[0] + 1  # 1-based
 
                 # Extract imported symbols
@@ -166,12 +170,20 @@ def _extract_imports(root_node, code_bytes: bytes) -> tuple[EtsImport, ...]:
                             if grandchild.type == "named_imports":
                                 for name_node in grandchild.children:
                                     if name_node.type == "import_specifier":
-                                        name_child = name_node.child_by_field_name("name")
+                                        name_child = name_node.child_by_field_name(
+                                            "name"
+                                        )
                                         if name_child:
-                                            name = code_bytes[name_child.start_byte:name_child.end_byte]
-                                            symbols.append(name.decode("utf-8", errors="replace"))
+                                            name = code_bytes[
+                                                name_child.start_byte : name_child.end_byte
+                                            ]
+                                            symbols.append(
+                                                name.decode("utf-8", errors="replace")
+                                            )
 
-                imports.append(EtsImport(module=module, symbols=tuple(symbols), line=line))
+                imports.append(
+                    EtsImport(module=module, symbols=tuple(symbols), line=line)
+                )
         for child in node.children:
             visit(child)
 
@@ -186,7 +198,7 @@ def _extract_decorators(node, code_bytes: bytes) -> tuple[str, ...]:
         if child.type == "decorator":
             for grandchild in child.children:
                 if grandchild.type == "identifier":
-                    name = code_bytes[grandchild.start_byte:grandchild.end_byte]
+                    name = code_bytes[grandchild.start_byte : grandchild.end_byte]
                     decorators.append(name.decode("utf-8", errors="replace"))
     return tuple(decorators)
 
@@ -203,30 +215,39 @@ def _extract_components(root_node, code_bytes: bytes) -> tuple[str, ...]:
         # Look for struct declarations in ERROR nodes (ArkTS specific)
         if node.type == "ERROR":
             # Check if this ERROR node contains 'struct'
-            error_text = code_bytes[node.start_byte:node.end_byte].decode("utf-8", errors="replace")
+            error_text = code_bytes[node.start_byte : node.end_byte].decode(
+                "utf-8", errors="replace"
+            )
             if "struct" in error_text.lower():
                 # Look for @Component or @Entry decorators in preceding nodes
                 # The struct name should be the identifier after "struct"
                 found_struct = False
                 for i, child in enumerate(node.children):
-                    child_text = code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                    child_text = code_bytes[child.start_byte : child.end_byte].decode(
+                        "utf-8", errors="replace"
+                    )
                     if "struct" in child_text.lower():
                         found_struct = True
                     elif found_struct and child.type == "identifier":
                         # This is the struct name
-                        name = code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                        name = code_bytes[child.start_byte : child.end_byte].decode(
+                            "utf-8", errors="replace"
+                        )
                         components.append(name)
                         break
 
         # Also handle standard TypeScript type/interface declarations
-        elif node.type == "type_alias_declaration" or node.type == "interface_declaration":
+        elif (
+            node.type == "type_alias_declaration"
+            or node.type == "interface_declaration"
+        ):
             # Check for @Component decorator
             decorators = _extract_decorators(node, code_bytes)
             if "Component" in decorators or "Entry" in decorators:
                 # Get the struct/interface name
                 name_node = node.child_by_field_name("name")
                 if name_node:
-                    name = code_bytes[name_node.start_byte:name_node.end_byte]
+                    name = code_bytes[name_node.start_byte : name_node.end_byte]
                     components.append(name.decode("utf-8", errors="replace"))
 
         for child in node.children:
@@ -244,7 +265,7 @@ def _extract_classes(root_node, code_bytes: bytes) -> tuple[str, ...]:
         if node.type == "class_declaration":
             name_node = node.child_by_field_name("name")
             if name_node:
-                name = code_bytes[name_node.start_byte:name_node.end_byte]
+                name = code_bytes[name_node.start_byte : name_node.end_byte]
                 classes.append(name.decode("utf-8", errors="replace"))
         for child in node.children:
             visit(child)
@@ -266,12 +287,16 @@ def _extract_component_construction(node, code_bytes: bytes) -> EtsUsage | None:
     # Extract function name
     function_name = ""
     if function_node.type == "identifier":
-        function_name = code_bytes[function_node.start_byte:function_node.end_byte].decode("utf-8", errors="replace")
+        function_name = code_bytes[
+            function_node.start_byte : function_node.end_byte
+        ].decode("utf-8", errors="replace")
     elif function_node.type == "member_expression":
         # Handle cases like new ButtonModifier()
         for child in function_node.children:
             if child.type == "property_identifier":
-                function_name = code_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="replace")
+                function_name = code_bytes[child.start_byte : child.end_byte].decode(
+                    "utf-8", errors="replace"
+                )
                 break
 
     if not function_name:
@@ -301,7 +326,9 @@ def _extract_chained_methods(node, code_bytes: bytes) -> tuple[EtsUsage, ...]:
                 # Get the method name
                 property_node = parent.child_by_field_name("property")
                 if property_node:
-                    method_name = code_bytes[property_node.start_byte:property_node.end_byte].decode("utf-8", errors="replace")
+                    method_name = code_bytes[
+                        property_node.start_byte : property_node.end_byte
+                    ].decode("utf-8", errors="replace")
 
                     # Extract argument shape
                     args_node = n.child_by_field_name("arguments")
@@ -312,12 +339,14 @@ def _extract_chained_methods(node, code_bytes: bytes) -> tuple[EtsUsage, ...]:
                                 has_args = True
                                 break
 
-                    methods.append(EtsUsage(
-                        symbol_name=method_name,
-                        usage_type="chained_method",
-                        line=n.start_point[0] + 1,
-                        context=_extract_context(n, code_bytes),
-                    ))
+                    methods.append(
+                        EtsUsage(
+                            symbol_name=method_name,
+                            usage_type="chained_method",
+                            line=n.start_point[0] + 1,
+                            context=_extract_context(n, code_bytes),
+                        )
+                    )
 
         for child in n.children:
             visit(child)
@@ -337,17 +366,27 @@ def _extract_property_access(node, code_bytes: bytes) -> tuple[EtsUsage, ...]:
             property_node = n.child_by_field_name("property")
 
             if object_node and property_node:
-                object_name = code_bytes[object_node.start_byte:object_node.end_byte].decode("utf-8", errors="replace")
-                property_name = code_bytes[property_node.start_byte:property_node.end_byte].decode("utf-8", errors="replace")
+                object_name = code_bytes[
+                    object_node.start_byte : object_node.end_byte
+                ].decode("utf-8", errors="replace")
+                property_name = code_bytes[
+                    property_node.start_byte : property_node.end_byte
+                ].decode("utf-8", errors="replace")
 
                 # Look for enum-like access (ObjectType.Value)
-                if object_name and object_name[0].isupper() and property_name[0].isupper():
-                    accesses.append(EtsUsage(
-                        symbol_name=f"{object_name}.{property_name}",
-                        usage_type="property_access",
-                        line=n.start_point[0] + 1,
-                        context=_extract_context(n, code_bytes),
-                    ))
+                if (
+                    object_name
+                    and object_name[0].isupper()
+                    and property_name[0].isupper()
+                ):
+                    accesses.append(
+                        EtsUsage(
+                            symbol_name=f"{object_name}.{property_name}",
+                            usage_type="property_access",
+                            line=n.start_point[0] + 1,
+                            context=_extract_context(n, code_bytes),
+                        )
+                    )
 
         for child in n.children:
             visit(child)

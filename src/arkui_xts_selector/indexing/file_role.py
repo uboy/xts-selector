@@ -13,6 +13,7 @@ This module classifies C++ source files by their architectural role in AceEngine
 
 Import boundary: standard library only.
 """
+
 from __future__ import annotations
 
 import re
@@ -74,7 +75,9 @@ def _is_infrastructure(rel_path: str) -> bool:
     return False
 
 
-def _classify_pattern_file(rel_path: str, family: str | None) -> tuple[FileRole, str | None]:
+def _classify_pattern_file(
+    rel_path: str, family: str | None
+) -> tuple[FileRole, str | None]:
     """Classify a file within the pattern directory."""
     filename = Path(rel_path).name.lower()
 

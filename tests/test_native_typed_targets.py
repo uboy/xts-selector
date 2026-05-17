@@ -3,12 +3,13 @@
 Verifies that native interface files with known families produce
 actual XTS targets when target_families mapping is provided.
 """
-import pytest
 
 
 def test_native_resolver_returns_targets_with_mapping():
     """resolve_native_interface_targets returns targets when target_families provided."""
-    from arkui_xts_selector.indexing.native_interface_resolver import resolve_native_interface_targets
+    from arkui_xts_selector.indexing.native_interface_resolver import (
+        resolve_native_interface_targets,
+    )
 
     targets = resolve_native_interface_targets(
         "frameworks/core/interfaces/native/implementation/button_modifier.cpp",
@@ -20,7 +21,9 @@ def test_native_resolver_returns_targets_with_mapping():
 
 def test_native_resolver_returns_empty_without_mapping():
     """resolve_native_interface_targets returns empty list without target_families."""
-    from arkui_xts_selector.indexing.native_interface_resolver import resolve_native_interface_targets
+    from arkui_xts_selector.indexing.native_interface_resolver import (
+        resolve_native_interface_targets,
+    )
 
     targets = resolve_native_interface_targets(
         "frameworks/core/interfaces/native/implementation/button_modifier.cpp",
@@ -30,7 +33,9 @@ def test_native_resolver_returns_empty_without_mapping():
 
 def test_native_resolver_unrelated_file():
     """Unrelated files return empty targets."""
-    from arkui_xts_selector.indexing.native_interface_resolver import resolve_native_interface_targets
+    from arkui_xts_selector.indexing.native_interface_resolver import (
+        resolve_native_interface_targets,
+    )
 
     targets = resolve_native_interface_targets(
         "some/random/file.cpp",
@@ -41,7 +46,9 @@ def test_native_resolver_unrelated_file():
 
 def test_native_resolver_accessor_pattern():
     """Native accessor files resolve to correct family targets."""
-    from arkui_xts_selector.indexing.native_interface_resolver import resolve_native_interface_targets
+    from arkui_xts_selector.indexing.native_interface_resolver import (
+        resolve_native_interface_targets,
+    )
 
     targets = resolve_native_interface_targets(
         "frameworks/core/interfaces/native/implementation/text_accessor.cpp",
@@ -52,7 +59,9 @@ def test_native_resolver_accessor_pattern():
 
 def test_native_resolver_family_alias():
     """Family aliases (e.g. indexer->AlphabetIndexer) resolve correctly."""
-    from arkui_xts_selector.indexing.native_interface_resolver import resolve_native_interface_targets
+    from arkui_xts_selector.indexing.native_interface_resolver import (
+        resolve_native_interface_targets,
+    )
 
     targets = resolve_native_interface_targets(
         "frameworks/core/interfaces/native/implementation/indexer_modifier.cpp",

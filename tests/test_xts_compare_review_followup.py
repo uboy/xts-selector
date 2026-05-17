@@ -20,14 +20,31 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from arkui_xts_selector.xts_compare.cli import _run_compare, build_parser, main
-from arkui_xts_selector.xts_compare.compare import classify_transition, compare_runs, compute_module_health
+from arkui_xts_selector.xts_compare.compare import (
+    classify_transition,
+    compare_runs,
+    compute_module_health,
+)
 from arkui_xts_selector.xts_compare.format_terminal import format_report
-from arkui_xts_selector.xts_compare.models import FailureType, ModuleComparison, TestIdentity, TestOutcome, TestResult, TransitionKind
-from arkui_xts_selector.xts_compare.parse import discover_archives, load_run, open_archive
+from arkui_xts_selector.xts_compare.models import (
+    FailureType,
+    ModuleComparison,
+    TestIdentity,
+    TestOutcome,
+    TestResult,
+    TransitionKind,
+)
+from arkui_xts_selector.xts_compare.parse import (
+    discover_archives,
+    load_run,
+    open_archive,
+)
 from arkui_xts_selector.xts_compare.selector_integration import correlate_with_selector
 
 
-def _make_result(module: str, suite: str, case: str, outcome: TestOutcome, msg: str = "") -> TestResult:
+def _make_result(
+    module: str, suite: str, case: str, outcome: TestOutcome, msg: str = ""
+) -> TestResult:
     return TestResult(
         identity=TestIdentity(module=module, suite=suite, case=case),
         outcome=outcome,
@@ -37,9 +54,15 @@ def _make_result(module: str, suite: str, case: str, outcome: TestOutcome, msg: 
 
 def _make_run(results: list[TestResult]):
     result_map = {result.identity: result for result in results}
-    pass_count = sum(1 for result in result_map.values() if result.outcome == TestOutcome.PASS)
-    fail_count = sum(1 for result in result_map.values() if result.outcome == TestOutcome.FAIL)
-    blocked_count = sum(1 for result in result_map.values() if result.outcome == TestOutcome.BLOCKED)
+    pass_count = sum(
+        1 for result in result_map.values() if result.outcome == TestOutcome.PASS
+    )
+    fail_count = sum(
+        1 for result in result_map.values() if result.outcome == TestOutcome.FAIL
+    )
+    blocked_count = sum(
+        1 for result in result_map.values() if result.outcome == TestOutcome.BLOCKED
+    )
     from arkui_xts_selector.xts_compare.models import RunMetadata
 
     return RunMetadata(
@@ -83,7 +106,9 @@ def _make_tar_report(path: Path) -> None:
         report_root.mkdir()
         _write_valid_summary_xml(report_root / "summary_report.xml")
         with tarfile.open(path, "w:gz") as archive:
-            archive.add(report_root / "summary_report.xml", arcname="summary_report.xml")
+            archive.add(
+                report_root / "summary_report.xml", arcname="summary_report.xml"
+            )
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -150,7 +175,11 @@ class PhaseOneLogicTests(unittest.TestCase):
 
     def test_selector_correlation_unblocked_does_not_report_no_change(self):
         base_meta, base_results = _make_run(
-            [_make_result("ActsButtonTest", "ButtonSuite", "case1", TestOutcome.BLOCKED)]
+            [
+                _make_result(
+                    "ActsButtonTest", "ButtonSuite", "case1", TestOutcome.BLOCKED
+                )
+            ]
         )
         target_meta, target_results = _make_run(
             [_make_result("ActsButtonTest", "ButtonSuite", "case1", TestOutcome.PASS)]
@@ -203,7 +232,9 @@ class CliErrorHandlingTests(unittest.TestCase):
             target_dir = Path(tmp) / "target"
             base_dir.mkdir()
             target_dir.mkdir()
-            (base_dir / "summary_report.xml").write_text("<testsuites>", encoding="utf-8")
+            (base_dir / "summary_report.xml").write_text(
+                "<testsuites>", encoding="utf-8"
+            )
             (target_dir / "summary_report.xml").write_text(
                 """<testsuites name="ActsTarget">
 <testsuite name="Suite">
@@ -214,7 +245,9 @@ class CliErrorHandlingTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            args = self.parser.parse_args(["--base", str(base_dir), "--target", str(target_dir)])
+            args = self.parser.parse_args(
+                ["--base", str(base_dir), "--target", str(target_dir)]
+            )
             with mock.patch("sys.stderr", new=io.StringIO()) as stderr:
                 code = _run_compare(args)
             self.assertEqual(code, 2)
@@ -248,12 +281,17 @@ class PhaseTwoCliTests(unittest.TestCase):
             _write_valid_summary_xml(target_dir / "summary_report.xml")
             output_path = Path(tmp) / "report.html"
 
-            with mock.patch("sys.stdout", new=io.StringIO()), mock.patch("sys.stderr", new=io.StringIO()):
+            with (
+                mock.patch("sys.stdout", new=io.StringIO()),
+                mock.patch("sys.stderr", new=io.StringIO()),
+            ):
                 code = main([str(base_dir), str(target_dir), "-o", str(output_path)])
 
             self.assertEqual(code, 0)
             self.assertTrue(output_path.is_file())
-            self.assertIn("<!doctype html>", output_path.read_text(encoding="utf-8").lower())
+            self.assertIn(
+                "<!doctype html>", output_path.read_text(encoding="utf-8").lower()
+            )
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
@@ -298,7 +336,10 @@ class PhaseThreeTests(unittest.TestCase):
 
             stdout = io.StringIO()
             stderr = io.StringIO()
-            with mock.patch("sys.stdout", new=stdout), mock.patch("sys.stderr", new=stderr):
+            with (
+                mock.patch("sys.stdout", new=stdout),
+                mock.patch("sys.stderr", new=stderr),
+            ):
                 code = main([str(scan_dir)])
 
             self.assertEqual(code, 0)
@@ -317,7 +358,10 @@ class PhaseThreeTests(unittest.TestCase):
 
             stdout = io.StringIO()
             stderr = io.StringIO()
-            with mock.patch("sys.stdout", new=stdout), mock.patch("sys.stderr", new=stderr):
+            with (
+                mock.patch("sys.stdout", new=stdout),
+                mock.patch("sys.stderr", new=stderr),
+            ):
                 code = main([str(scan_dir)])
 
             self.assertEqual(code, 0)
@@ -327,26 +371,48 @@ class PhaseThreeTests(unittest.TestCase):
             shutil.rmtree(tmp, ignore_errors=True)
 
     def test_run_compare_defaults_sort_to_severity_when_regressions_exist(self):
-        base_meta, base_results = _make_run([_make_result("M", "S", "C", TestOutcome.PASS)])
-        target_meta, target_results = _make_run([_make_result("M", "S", "C", TestOutcome.FAIL, "boom")])
+        base_meta, base_results = _make_run(
+            [_make_result("M", "S", "C", TestOutcome.PASS)]
+        )
+        target_meta, target_results = _make_run(
+            [_make_result("M", "S", "C", TestOutcome.FAIL, "boom")]
+        )
         args = self.parser.parse_args(["--base", "base", "--target", "target"])
 
-        with mock.patch("arkui_xts_selector.xts_compare.cli.load_run", side_effect=[(base_meta, base_results), (target_meta, target_results)]), \
-                mock.patch("arkui_xts_selector.xts_compare.cli.format_report", return_value="ok") as format_report_mock, \
-                mock.patch("sys.stdout", new=io.StringIO()):
+        with (
+            mock.patch(
+                "arkui_xts_selector.xts_compare.cli.load_run",
+                side_effect=[(base_meta, base_results), (target_meta, target_results)],
+            ),
+            mock.patch(
+                "arkui_xts_selector.xts_compare.cli.format_report", return_value="ok"
+            ) as format_report_mock,
+            mock.patch("sys.stdout", new=io.StringIO()),
+        ):
             code = _run_compare(args)
 
         self.assertEqual(code, 1)
         self.assertEqual(format_report_mock.call_args.kwargs["sort_key"], "severity")
 
     def test_run_compare_auto_enables_show_persistent_when_no_regressions(self):
-        base_meta, base_results = _make_run([_make_result("M", "S", "C", TestOutcome.FAIL, "boom")])
-        target_meta, target_results = _make_run([_make_result("M", "S", "C", TestOutcome.FAIL, "boom")])
+        base_meta, base_results = _make_run(
+            [_make_result("M", "S", "C", TestOutcome.FAIL, "boom")]
+        )
+        target_meta, target_results = _make_run(
+            [_make_result("M", "S", "C", TestOutcome.FAIL, "boom")]
+        )
         args = self.parser.parse_args(["--base", "base", "--target", "target"])
 
-        with mock.patch("arkui_xts_selector.xts_compare.cli.load_run", side_effect=[(base_meta, base_results), (target_meta, target_results)]), \
-                mock.patch("arkui_xts_selector.xts_compare.cli.format_report", return_value="ok") as format_report_mock, \
-                mock.patch("sys.stdout", new=io.StringIO()):
+        with (
+            mock.patch(
+                "arkui_xts_selector.xts_compare.cli.load_run",
+                side_effect=[(base_meta, base_results), (target_meta, target_results)],
+            ),
+            mock.patch(
+                "arkui_xts_selector.xts_compare.cli.format_report", return_value="ok"
+            ) as format_report_mock,
+            mock.patch("sys.stdout", new=io.StringIO()),
+        ):
             code = _run_compare(args)
 
         self.assertEqual(code, 0)
@@ -384,7 +450,9 @@ class PhaseFourTests(unittest.TestCase):
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 load_run(str(report_dir))
-            self.assertTrue(any("Duplicate test identity" in str(item.message) for item in caught))
+            self.assertTrue(
+                any("Duplicate test identity" in str(item.message) for item in caught)
+            )
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
@@ -399,7 +467,10 @@ class PhaseFourTests(unittest.TestCase):
             _write_valid_summary_xml(target_dir / "summary_report.xml")
 
             stderr = io.StringIO()
-            with mock.patch("sys.stdout", new=io.StringIO()), mock.patch("sys.stderr", new=stderr):
+            with (
+                mock.patch("sys.stdout", new=io.StringIO()),
+                mock.patch("sys.stderr", new=stderr),
+            ):
                 code = main([str(base_dir), str(target_dir), "--html"])
 
             self.assertEqual(code, 0)
@@ -456,15 +527,23 @@ class PhaseFourTests(unittest.TestCase):
         self.assertIn("Use --failure-type crash", text)
 
     def test_format_report_emits_stable_blocked_tip(self):
-        base_meta, base_results = _make_run([_make_result("M", "S", "c1", TestOutcome.BLOCKED)])
-        target_meta, target_results = _make_run([_make_result("M", "S", "c1", TestOutcome.BLOCKED)])
+        base_meta, base_results = _make_run(
+            [_make_result("M", "S", "c1", TestOutcome.BLOCKED)]
+        )
+        target_meta, target_results = _make_run(
+            [_make_result("M", "S", "c1", TestOutcome.BLOCKED)]
+        )
         report = compare_runs(base_meta, base_results, target_meta, target_results)
         text = format_report(report)
         self.assertIn("Use --show-stable-blocked", text)
 
     def test_format_report_can_show_stable_blocked_section(self):
-        base_meta, base_results = _make_run([_make_result("M", "S", "c1", TestOutcome.BLOCKED)])
-        target_meta, target_results = _make_run([_make_result("M", "S", "c1", TestOutcome.BLOCKED)])
+        base_meta, base_results = _make_run(
+            [_make_result("M", "S", "c1", TestOutcome.BLOCKED)]
+        )
+        target_meta, target_results = _make_run(
+            [_make_result("M", "S", "c1", TestOutcome.BLOCKED)]
+        )
         report = compare_runs(base_meta, base_results, target_meta, target_results)
         text = format_report(report, show_stable_blocked=True)
         self.assertIn("STABLE BLOCKED", text)
@@ -481,7 +560,10 @@ class PhaseFourTests(unittest.TestCase):
 
             stdout = io.StringIO()
             stderr = io.StringIO()
-            with mock.patch("sys.stdout", new=stdout), mock.patch("sys.stderr", new=stderr):
+            with (
+                mock.patch("sys.stdout", new=stdout),
+                mock.patch("sys.stderr", new=stderr),
+            ):
                 code = main([str(later_dir), str(earlier_dir)])
 
             self.assertEqual(code, 0)

@@ -15,7 +15,9 @@ from arkui_xts_selector.run_store import create_run_session
 from arkui_xts_selector.xts_compare.cli import build_parser, main
 
 
-def _write_summary_xml(path: Path, module: str, suite: str, case: str, passed: bool) -> None:
+def _write_summary_xml(
+    path: Path, module: str, suite: str, case: str, passed: bool
+) -> None:
     result = "true" if passed else "false"
     xml = (
         f'<testsuites name="{module}">'
@@ -28,7 +30,12 @@ def _write_summary_xml(path: Path, module: str, suite: str, case: str, passed: b
     (path / "summary_report.xml").write_text(xml, encoding="utf-8")
 
 
-def _write_manifest(session_path: Path, label: str, comparable_paths: list[str], status: str = "completed") -> None:
+def _write_manifest(
+    session_path: Path,
+    label: str,
+    comparable_paths: list[str],
+    status: str = "completed",
+) -> None:
     session_path.write_text(
         json.dumps(
             {
@@ -58,18 +65,35 @@ class XtsCompareLabelResolutionTests(unittest.TestCase):
             run_store_root = Path(tmpdir) / ".runs"
             base_result = Path(tmpdir) / "base-result"
             target_result = Path(tmpdir) / "target-result"
-            _write_summary_xml(base_result, "ActsButton", "ButtonSuite", "testCase", passed=True)
-            _write_summary_xml(target_result, "ActsButton", "ButtonSuite", "testCase", passed=False)
+            _write_summary_xml(
+                base_result, "ActsButton", "ButtonSuite", "testCase", passed=True
+            )
+            _write_summary_xml(
+                target_result, "ActsButton", "ButtonSuite", "testCase", passed=False
+            )
 
-            base_session = create_run_session("baseline", run_store_root=run_store_root, timestamp="20260403T100000Z")
-            target_session = create_run_session("v1", run_store_root=run_store_root, timestamp="20260403T110000Z")
+            base_session = create_run_session(
+                "baseline", run_store_root=run_store_root, timestamp="20260403T100000Z"
+            )
+            target_session = create_run_session(
+                "v1", run_store_root=run_store_root, timestamp="20260403T110000Z"
+            )
             _write_manifest(base_session.manifest_path, "baseline", [str(base_result)])
             _write_manifest(target_session.manifest_path, "v1", [str(target_result)])
 
             stdout = StringIO()
             stderr = StringIO()
             with redirect_stdout(stdout), redirect_stderr(stderr):
-                code = main(["--base-label", "baseline", "--target-label", "v1", "--label-root", str(run_store_root)])
+                code = main(
+                    [
+                        "--base-label",
+                        "baseline",
+                        "--target-label",
+                        "v1",
+                        "--label-root",
+                        str(run_store_root),
+                    ]
+                )
 
         self.assertEqual(code, 1)
         self.assertIn("REGRESSION", stdout.getvalue())
@@ -81,20 +105,45 @@ class XtsCompareLabelResolutionTests(unittest.TestCase):
             base_b = Path(tmpdir) / "base-b"
             target_a = Path(tmpdir) / "target-a"
             target_b = Path(tmpdir) / "target-b"
-            _write_summary_xml(base_a, "ActsButton", "ButtonSuite", "buttonCase", passed=True)
-            _write_summary_xml(base_b, "ActsSlider", "SliderSuite", "sliderCase", passed=True)
-            _write_summary_xml(target_a, "ActsButton", "ButtonSuite", "buttonCase", passed=True)
-            _write_summary_xml(target_b, "ActsSlider", "SliderSuite", "sliderCase", passed=False)
+            _write_summary_xml(
+                base_a, "ActsButton", "ButtonSuite", "buttonCase", passed=True
+            )
+            _write_summary_xml(
+                base_b, "ActsSlider", "SliderSuite", "sliderCase", passed=True
+            )
+            _write_summary_xml(
+                target_a, "ActsButton", "ButtonSuite", "buttonCase", passed=True
+            )
+            _write_summary_xml(
+                target_b, "ActsSlider", "SliderSuite", "sliderCase", passed=False
+            )
 
-            base_session = create_run_session("baseline", run_store_root=run_store_root, timestamp="20260403T100000Z")
-            target_session = create_run_session("v1", run_store_root=run_store_root, timestamp="20260403T110000Z")
-            _write_manifest(base_session.manifest_path, "baseline", [str(base_a), str(base_b)])
-            _write_manifest(target_session.manifest_path, "v1", [str(target_a), str(target_b)])
+            base_session = create_run_session(
+                "baseline", run_store_root=run_store_root, timestamp="20260403T100000Z"
+            )
+            target_session = create_run_session(
+                "v1", run_store_root=run_store_root, timestamp="20260403T110000Z"
+            )
+            _write_manifest(
+                base_session.manifest_path, "baseline", [str(base_a), str(base_b)]
+            )
+            _write_manifest(
+                target_session.manifest_path, "v1", [str(target_a), str(target_b)]
+            )
 
             stdout = StringIO()
             stderr = StringIO()
             with redirect_stdout(stdout), redirect_stderr(stderr):
-                code = main(["--base-label", "baseline", "--target-label", "v1", "--label-root", str(run_store_root)])
+                code = main(
+                    [
+                        "--base-label",
+                        "baseline",
+                        "--target-label",
+                        "v1",
+                        "--label-root",
+                        str(run_store_root),
+                    ]
+                )
 
         self.assertEqual(code, 1)
         self.assertIn("ActsSlider", stdout.getvalue())

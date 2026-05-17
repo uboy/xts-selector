@@ -208,8 +208,14 @@ class TestExecutiveSummary(TestCase):
     def test_executive_summary_shows_changed_file_count(self) -> None:
         report = _base_report()
         report["results"] = [
-            {"source": {"type": "changed_file", "value": "file1.cpp"}, "source_profile": {"type": "changed_file", "family_keys": []}},
-            {"source": {"type": "changed_file", "value": "file2.cpp"}, "source_profile": {"type": "changed_file", "family_keys": []}},
+            {
+                "source": {"type": "changed_file", "value": "file1.cpp"},
+                "source_profile": {"type": "changed_file", "family_keys": []},
+            },
+            {
+                "source": {"type": "changed_file", "value": "file2.cpp"},
+                "source_profile": {"type": "changed_file", "family_keys": []},
+            },
         ]
         output = self._capture_summary(report)
         self.assertIn("Changed: 2 files", output)
@@ -218,7 +224,9 @@ class TestExecutiveSummary(TestCase):
         report = _base_report()
         report["coverage_recommendations"] = {
             "required": [{"target_key": "suite_a", "build_target": "suite_a"}],
-            "recommended_additional": [{"target_key": "suite_b", "build_target": "suite_b"}],
+            "recommended_additional": [
+                {"target_key": "suite_b", "build_target": "suite_b"}
+            ],
             "optional_duplicates": [],
             "estimated_required_duration_s": 480.0,
             "estimated_recommended_duration_s": 780.0,
@@ -232,7 +240,11 @@ class TestExecutiveSummary(TestCase):
     def test_executive_summary_shows_run_commands(self) -> None:
         report = _base_report()
         report["coverage_run_commands"] = [
-            {"label": "Run required batch", "command": "ohos xts run last --run-priority required", "count": "3"},
+            {
+                "label": "Run required batch",
+                "command": "ohos xts run last --run-priority required",
+                "count": "3",
+            },
         ]
         output = self._capture_summary(report)
         self.assertIn("RUN COMMANDS", output)
@@ -246,7 +258,9 @@ class TestExecutiveSummary(TestCase):
 
     def test_executive_summary_fallback_to_report_json(self) -> None:
         report = _base_report()
-        output = self._capture_summary(report, json_path=Path("/tmp/selector_report.json"))
+        output = self._capture_summary(
+            report, json_path=Path("/tmp/selector_report.json")
+        )
         self.assertIn("/tmp/selector_report.json", output)
 
     def test_executive_summary_estimated_duration(self) -> None:
@@ -270,7 +284,10 @@ class TestExecutiveSummary(TestCase):
         report["results"] = [
             {
                 "source": {"type": "changed_file", "value": "button.cpp"},
-                "source_profile": {"type": "changed_file", "family_keys": ["arkui/button_modifier"]},
+                "source_profile": {
+                    "type": "changed_file",
+                    "family_keys": ["arkui/button_modifier"],
+                },
             }
         ]
         output = self._capture_summary(report)

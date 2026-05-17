@@ -5,12 +5,12 @@ can replay from cache without hitting GitCode/CodeHub APIs.
 
 Cache layout: <cache_dir>/<host>/<owner>/<repo>/PR_<number>.json
 """
+
 from __future__ import annotations
 
 import json
 import re
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -57,9 +57,7 @@ class PrCacheEntry:
     def from_dict(cls, d: dict) -> PrCacheEntry:
         version = d.get("schema_version", "")
         if version and version != SCHEMA_VERSION:
-            raise CacheSchemaMismatchError(
-                f"Expected {SCHEMA_VERSION}, got {version}"
-            )
+            raise CacheSchemaMismatchError(f"Expected {SCHEMA_VERSION}, got {version}")
         # Ensure ranges are list-of-pairs
         ranges = d.get("normalized_ranges", {})
         converted: dict[str, list[tuple[int, int]]] = {}

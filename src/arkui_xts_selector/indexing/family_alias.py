@@ -1,4 +1,5 @@
 """Family name normalization: snake_case ACE paths → PascalCase SDK names."""
+
 from __future__ import annotations
 
 import json
@@ -77,7 +78,10 @@ def normalize_family(snake_name: str, config_path: Path | None = None) -> str:
     if config_path and config_path.exists():
         try:
             data = json.loads(config_path.read_text(encoding="utf-8"))
-            aliases = {**aliases, **data.get("aliases", {})}  # config overrides defaults
+            aliases = {
+                **aliases,
+                **data.get("aliases", {}),
+            }  # config overrides defaults
         except (json.JSONDecodeError, OSError):
             pass
 

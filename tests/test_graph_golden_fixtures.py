@@ -17,8 +17,6 @@ sys.path.insert(0, str(ROOT / "src"))
 from arkui_xts_selector.graph.schema import (
     EdgeType,
     Graph,
-    GraphEdge,
-    GraphNode,
     NodeType,
 )
 from arkui_xts_selector.graph.validation import validate_graph
@@ -57,7 +55,8 @@ class ButtonModifierStaticGoldenTests(unittest.TestCase):
         valid_types = {m.value for m in NodeType}
         for node in self.graph.nodes.values():
             self.assertIn(
-                node.node_type, valid_types,
+                node.node_type,
+                valid_types,
                 f"Node '{node.node_id}' has invalid type '{node.node_type}'",
             )
 
@@ -65,26 +64,29 @@ class ButtonModifierStaticGoldenTests(unittest.TestCase):
         valid_types = {m.value for m in EdgeType}
         for edge in self.graph.edges.values():
             self.assertIn(
-                edge.edge_type, valid_types,
+                edge.edge_type,
+                valid_types,
                 f"Edge '{edge.edge_id}' has invalid type '{edge.edge_type}'",
             )
 
     def test_distinct_api_entity_ids(self) -> None:
         """ButtonModifier API entity must exist."""
         api_nodes = [
-            n for n in self.graph.nodes.values()
-            if n.node_type == "api_entity"
+            n for n in self.graph.nodes.values() if n.node_type == "api_entity"
         ]
         api_labels = {n.label for n in api_nodes}
         self.assertIn("ButtonModifier", api_labels)
         # Must be distinct nodes
         api_ids = [n.node_id for n in api_nodes]
-        self.assertEqual(len(api_ids), len(set(api_ids)), "Duplicate api_entity node_ids")
+        self.assertEqual(
+            len(api_ids), len(set(api_ids)), "Duplicate api_entity node_ids"
+        )
 
     def test_provides_static_modifier_edge(self) -> None:
         """Engine file must provide ButtonModifier."""
         modifier_edges = [
-            e for e in self.graph.edges.values()
+            e
+            for e in self.graph.edges.values()
             if e.edge_type == "provides_static_modifier"
         ]
         self.assertGreaterEqual(len(modifier_edges), 1)
@@ -96,10 +98,7 @@ class ButtonModifierStaticGoldenTests(unittest.TestCase):
 
     def test_uses_api_edge(self) -> None:
         """Consumer file must use ButtonModifier."""
-        uses_edges = [
-            e for e in self.graph.edges.values()
-            if e.edge_type == "uses_api"
-        ]
+        uses_edges = [e for e in self.graph.edges.values() if e.edge_type == "uses_api"]
         self.assertGreaterEqual(len(uses_edges), 1)
         targets = {e.to_node for e in uses_edges}
         self.assertTrue(
@@ -111,31 +110,45 @@ class ButtonModifierStaticGoldenTests(unittest.TestCase):
         """Source -> API -> Consumer -> Project -> Target -> Artifact path."""
         g = self.graph
         # Find provides_static_modifier edge -> ButtonModifier
-        prov_edges = [e for e in g.edges.values() if e.edge_type == "provides_static_modifier"]
+        prov_edges = [
+            e for e in g.edges.values() if e.edge_type == "provides_static_modifier"
+        ]
         self.assertTrue(prov_edges, "No provides_static_modifier edge")
         modifier_node = prov_edges[0].to_node
 
         # Find uses_api edge pointing to modifier
-        uses_edges = [e for e in g.edges.values()
-                      if e.edge_type == "uses_api" and e.to_node == modifier_node]
+        uses_edges = [
+            e
+            for e in g.edges.values()
+            if e.edge_type == "uses_api" and e.to_node == modifier_node
+        ]
         self.assertTrue(uses_edges, f"No uses_api edge to {modifier_node}")
         consumer_file = uses_edges[0].from_node
 
         # Find belongs_to_project edge
-        proj_edges = [e for e in g.edges.values()
-                      if e.edge_type == "belongs_to_project" and e.from_node == consumer_file]
+        proj_edges = [
+            e
+            for e in g.edges.values()
+            if e.edge_type == "belongs_to_project" and e.from_node == consumer_file
+        ]
         self.assertTrue(proj_edges, f"No belongs_to_project from {consumer_file}")
         project = proj_edges[0].to_node
 
         # Find maps_to_target edge
-        target_edges = [e for e in g.edges.values()
-                        if e.edge_type == "maps_to_target" and e.from_node == project]
+        target_edges = [
+            e
+            for e in g.edges.values()
+            if e.edge_type == "maps_to_target" and e.from_node == project
+        ]
         self.assertTrue(target_edges, f"No maps_to_target from {project}")
         target = target_edges[0].to_node
 
         # Find produces_artifact edge
-        art_edges = [e for e in g.edges.values()
-                     if e.edge_type == "produces_artifact" and e.from_node == target]
+        art_edges = [
+            e
+            for e in g.edges.values()
+            if e.edge_type == "produces_artifact" and e.from_node == target
+        ]
         self.assertTrue(art_edges, f"No produces_artifact from {target}")
 
     def test_graph_validation_passes(self) -> None:
@@ -143,8 +156,7 @@ class ButtonModifierStaticGoldenTests(unittest.TestCase):
         result = validate_graph(self.graph)
         if not result.ok:
             errors = "\n".join(
-                f"  [{f.severity}] {f.rule}: {f.message}"
-                for f in result.errors
+                f"  [{f.severity}] {f.rule}: {f.message}" for f in result.errors
             )
             self.fail(f"Golden graph validation failed:\n{errors}")
 
@@ -168,12 +180,15 @@ class ButtonModifierStaticGoldenTests(unittest.TestCase):
     def test_source_impact_confidence_on_source_edges(self) -> None:
         """Source edges must set source_impact_confidence."""
         source_edges = [
-            e for e in self.graph.edges.values()
-            if e.edge_type in ("provides_static_modifier", "implements", "backs_component")
+            e
+            for e in self.graph.edges.values()
+            if e.edge_type
+            in ("provides_static_modifier", "implements", "backs_component")
         ]
         for edge in source_edges:
             self.assertNotEqual(
-                edge.source_impact_confidence, "unknown",
+                edge.source_impact_confidence,
+                "unknown",
                 f"Source edge '{edge.edge_id}' must set source_impact_confidence",
             )
 
@@ -182,21 +197,25 @@ class ButtonModifierStaticGoldenTests(unittest.TestCase):
         uses_edges = [e for e in self.graph.edges.values() if e.edge_type == "uses_api"]
         for edge in uses_edges:
             self.assertNotEqual(
-                edge.consumer_usage_confidence, "unknown",
+                edge.consumer_usage_confidence,
+                "unknown",
                 f"uses_api edge '{edge.edge_id}' must set consumer_usage_confidence",
             )
 
     def test_artifact_edges_runnability_only(self) -> None:
         """Artifact edges must not set source_impact or consumer_usage confidence."""
-        art_edges = [e for e in self.graph.edges.values()
-                     if e.edge_type == "produces_artifact"]
+        art_edges = [
+            e for e in self.graph.edges.values() if e.edge_type == "produces_artifact"
+        ]
         for edge in art_edges:
             self.assertEqual(
-                edge.source_impact_confidence, "unknown",
+                edge.source_impact_confidence,
+                "unknown",
                 f"Artifact edge '{edge.edge_id}' must not set source_impact_confidence",
             )
             self.assertEqual(
-                edge.consumer_usage_confidence, "unknown",
+                edge.consumer_usage_confidence,
+                "unknown",
                 f"Artifact edge '{edge.edge_id}' must not set consumer_usage_confidence",
             )
 

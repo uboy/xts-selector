@@ -5,21 +5,35 @@ from dataclasses import dataclass, field
 
 
 IMPORT_RE = re.compile(r"""from\s+['"]([^'"]+)['"]""")
-IMPORT_BINDING_RE = re.compile(r"""import\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]""", re.S)
-DEFAULT_IMPORT_RE = re.compile(r"""import\s+([A-Za-z_][A-Za-z0-9_]*)\s+from\s+['"]([^'"]+)['"]""")
+IMPORT_BINDING_RE = re.compile(
+    r"""import\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]""", re.S
+)
+DEFAULT_IMPORT_RE = re.compile(
+    r"""import\s+([A-Za-z_][A-Za-z0-9_]*)\s+from\s+['"]([^'"]+)['"]"""
+)
 IDENTIFIER_CALL_RE = re.compile(r"""\b([A-Z][A-Za-z0-9_]*)\s*\(""")
 MEMBER_CALL_RE = re.compile(r"""\.([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
-TYPE_MEMBER_CALL_RE = re.compile(r"""\b([A-Z][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
+TYPE_MEMBER_CALL_RE = re.compile(
+    r"""\b([A-Z][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\s*\("""
+)
 WORD_RE = re.compile(r"""\b[A-Za-z_][A-Za-z0-9_]{2,}\b""")
-PARAM_TYPE_RE = re.compile(r"""[\(,]\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([A-Z][A-Za-z0-9_]*)\b""")
-VAR_TYPE_RE = re.compile(r"""\b(?:const|let|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([A-Z][A-Za-z0-9_]*)\b""")
-MEMBER_ACCESS_RE = re.compile(r"""\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b(?!\s*\()""")
+PARAM_TYPE_RE = re.compile(
+    r"""[\(,]\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([A-Z][A-Za-z0-9_]*)\b"""
+)
+VAR_TYPE_RE = re.compile(
+    r"""\b(?:const|let|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*([A-Z][A-Za-z0-9_]*)\b"""
+)
+MEMBER_ACCESS_RE = re.compile(
+    r"""\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b(?!\s*\()"""
+)
 TYPED_OBJECT_LITERAL_RE = re.compile(
     r"""\b(?:const|let|var)\s+[A-Za-z_][A-Za-z0-9_]*\s*:\s*([A-Z][A-Za-z0-9_]*)\s*=\s*\{(?P<body>[^{}]*)\}""",
     re.S,
 )
 OBJECT_LITERAL_FIELD_RE = re.compile(r"""\b([A-Za-z_][A-Za-z0-9_]*)\s*:""")
-TYPED_ATTRIBUTE_MODIFIER_RE = re.compile(r"""AttributeModifier<([A-Za-z_][A-Za-z0-9_]*)Attribute>""")
+TYPED_ATTRIBUTE_MODIFIER_RE = re.compile(
+    r"""AttributeModifier<([A-Za-z_][A-Za-z0-9_]*)Attribute>"""
+)
 EXTENDS_MODIFIER_RE = re.compile(r"""extends\s+([A-Za-z_][A-Za-z0-9_]*)Modifier\b""")
 
 GENERIC_TYPED_FIELD_NAMES = {
@@ -117,7 +131,10 @@ def extract_typed_field_accesses(text: str) -> set[str]:
         field_token = compact_token(field)
         if not field or field_token in GENERIC_TYPED_FIELD_NAMES:
             continue
-        if origin == "param" and compact_token(type_name) in STRUCTURAL_TYPED_CALLBACK_TYPES:
+        if (
+            origin == "param"
+            and compact_token(type_name) in STRUCTURAL_TYPED_CALLBACK_TYPES
+        ):
             continue
         accesses.add(f"{type_name}.{field}")
 
@@ -137,7 +154,11 @@ def extract_consumer_semantics(text: str) -> ConsumerSemantics:
         for part in match.group(1).split(","):
             normalized = part.strip()
             alias_parts = [item.strip() for item in normalized.split(" as ", 1)]
-            token = alias_parts[1] if len(alias_parts) == 2 and alias_parts[1] else alias_parts[0]
+            token = (
+                alias_parts[1]
+                if len(alias_parts) == 2 and alias_parts[1]
+                else alias_parts[0]
+            )
             if token:
                 imported_symbols.add(token)
     for match in DEFAULT_IMPORT_RE.finditer(text):
@@ -199,7 +220,9 @@ def extract_consumer_semantics(text: str) -> ConsumerSemantics:
         imported_symbols=imported_symbols,
         identifier_calls=set(IDENTIFIER_CALL_RE.findall(text)),
         member_calls=set(MEMBER_CALL_RE.findall(text)),
-        type_member_calls={f"{owner}.{member}" for owner, member in TYPE_MEMBER_CALL_RE.findall(text)},
+        type_member_calls={
+            f"{owner}.{member}" for owner, member in TYPE_MEMBER_CALL_RE.findall(text)
+        },
         typed_field_accesses=extract_typed_field_accesses(text),
         typed_modifier_bases=typed_modifier_bases,
         words={word.lower() for word in WORD_RE.findall(text)},

@@ -40,13 +40,16 @@ class FileTypeCoverageTests(unittest.TestCase):
     def test_pattern_directory_high_precision_button(self) -> None:
         """Test pattern/ directory (button) extracts correct signals with HIGH precision."""
         with TemporaryDirectory() as tmpdir:
-            source = Path(tmpdir) / "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+            source = (
+                Path(tmpdir)
+                / "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp"
+            )
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(
                 '#include "button_pattern.h"\n'
-                'namespace OHOS::Ace::NG {\n'
-                'void ButtonPattern::OnModifyDone() {}\n'
-                '}\n',
+                "namespace OHOS::Ace::NG {\n"
+                "void ButtonPattern::OnModifyDone() {}\n"
+                "}\n",
                 encoding="utf-8",
             )
 
@@ -71,9 +74,9 @@ class FileTypeCoverageTests(unittest.TestCase):
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(
                 '#include "checkbox_static_modifier.h"\n'
-                'namespace OHOS::Ace::NG {\n'
-                'void CheckboxStaticModifier::Apply() {}\n'
-                '}\n',
+                "namespace OHOS::Ace::NG {\n"
+                "void CheckboxStaticModifier::Apply() {}\n"
+                "}\n",
                 encoding="utf-8",
             )
 
@@ -97,9 +100,9 @@ class FileTypeCoverageTests(unittest.TestCase):
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(
                 '#include "list_item_pattern.h"\n'
-                'namespace OHOS::Ace::NG {\n'
-                'void ListItemPattern::OnModifyDone() {}\n'
-                '}\n',
+                "namespace OHOS::Ace::NG {\n"
+                "void ListItemPattern::OnModifyDone() {}\n"
+                "}\n",
                 encoding="utf-8",
             )
 
@@ -123,9 +126,9 @@ class FileTypeCoverageTests(unittest.TestCase):
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(
                 '#include "scroll_bar.h"\n'
-                'namespace OHOS::Ace::NG {\n'
-                'void ScrollBarPattern::OnModifyDone() {}\n'
-                '}\n',
+                "namespace OHOS::Ace::NG {\n"
+                "void ScrollBarPattern::OnModifyDone() {}\n"
+                "}\n",
                 encoding="utf-8",
             )
 
@@ -150,9 +153,9 @@ class FileTypeCoverageTests(unittest.TestCase):
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(
                 '#include "button_component.h"\n'
-                'namespace OHOS::Ace {\n'
-                'void ButtonComponent::Build() {}\n'
-                '}\n',
+                "namespace OHOS::Ace {\n"
+                "void ButtonComponent::Build() {}\n"
+                "}\n",
                 encoding="utf-8",
             )
 
@@ -175,9 +178,9 @@ class FileTypeCoverageTests(unittest.TestCase):
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(
                 '#include "image_component.h"\n'
-                'namespace OHOS::Ace {\n'
-                'void ImageComponent::Build() {}\n'
-                '}\n',
+                "namespace OHOS::Ace {\n"
+                "void ImageComponent::Build() {}\n"
+                "}\n",
                 encoding="utf-8",
             )
 
@@ -200,9 +203,9 @@ class FileTypeCoverageTests(unittest.TestCase):
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(
                 '#include "button_modifier.h"\n'
-                'namespace OHOS::Ace::NG {\n'
-                'void ButtonModifier::Apply() {}\n'
-                '}\n',
+                "namespace OHOS::Ace::NG {\n"
+                "void ButtonModifier::Apply() {}\n"
+                "}\n",
                 encoding="utf-8",
             )
 
@@ -226,9 +229,9 @@ class FileTypeCoverageTests(unittest.TestCase):
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(
                 '#include "canvas_rendering_context2d_accessor.h"\n'
-                'namespace OHOS::Ace {\n'
-                'void CanvasRenderingContext2DAccessor::GetContext() {}\n'
-                '}\n',
+                "namespace OHOS::Ace {\n"
+                "void CanvasRenderingContext2DAccessor::GetContext() {}\n"
+                "}\n",
                 encoding="utf-8",
             )
 
@@ -251,9 +254,9 @@ class FileTypeCoverageTests(unittest.TestCase):
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(
                 '#include "privacy_manager.h"\n'
-                'namespace OHOS::Ace {\n'
-                'void PrivacyManager::Init() {}\n'
-                '}\n',
+                "namespace OHOS::Ace {\n"
+                "void PrivacyManager::Init() {}\n"
+                "}\n",
                 encoding="utf-8",
             )
 
@@ -279,12 +282,12 @@ class FileTypeCoverageTests(unittest.TestCase):
             )
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(
-                '#ifndef CONVERTER_H\n'
-                '#define CONVERTER_H\n'
-                'namespace OHOS::Ace {\n'
-                'class Converter {};\n'
-                '}\n'
-                '#endif\n',
+                "#ifndef CONVERTER_H\n"
+                "#define CONVERTER_H\n"
+                "namespace OHOS::Ace {\n"
+                "class Converter {};\n"
+                "}\n"
+                "#endif\n",
                 encoding="utf-8",
             )
 
@@ -310,14 +313,14 @@ class FileTypeCoverageTests(unittest.TestCase):
             )
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(
-                'export class CheckboxModifier {\n'
-                '  select(value: boolean): CheckboxModifier {\n'
-                '    return this;\n'
-                '  }\n'
-                '  selectedColor(value: string): CheckboxModifier {\n'
-                '    return this;\n'
-                '  }\n'
-                '}\n',
+                "export class CheckboxModifier {\n"
+                "  select(value: boolean): CheckboxModifier {\n"
+                "    return this;\n"
+                "  }\n"
+                "  selectedColor(value: string): CheckboxModifier {\n"
+                "    return this;\n"
+                "  }\n"
+                "}\n",
                 encoding="utf-8",
             )
 
@@ -342,14 +345,14 @@ class FileTypeCoverageTests(unittest.TestCase):
             )
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(
-                'export class ArkCheckbox {\n'
-                '  static create(): ArkCheckbox {\n'
-                '    return new ArkCheckbox();\n'
-                '  }\n'
-                '  select(value: boolean): ArkCheckbox {\n'
-                '    return this;\n'
-                '  }\n'
-                '}\n',
+                "export class ArkCheckbox {\n"
+                "  static create(): ArkCheckbox {\n"
+                "    return new ArkCheckbox();\n"
+                "  }\n"
+                "  select(value: boolean): ArkCheckbox {\n"
+                "    return this;\n"
+                "  }\n"
+                "}\n",
                 encoding="utf-8",
             )
 
@@ -362,7 +365,9 @@ class FileTypeCoverageTests(unittest.TestCase):
 
         assert "checkbox" in signals["project_hints"]
         assert "checkbox" in signals["family_tokens"]
-        assert "Checkbox" in signals["type_hints"] or "checkbox" in signals["type_hints"]
+        assert (
+            "Checkbox" in signals["type_hints"] or "checkbox" in signals["type_hints"]
+        )
 
     def test_state_management_files_broad_matching(self) -> None:
         """Test stateManagement/ files produce multiple hints (broad matching)."""
@@ -373,9 +378,9 @@ class FileTypeCoverageTests(unittest.TestCase):
             )
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(
-                'export class Observed {}\n'
-                'export class ObservedObject {}\n'
-                'export function trackBy() {}\n',
+                "export class Observed {}\n"
+                "export class ObservedObject {}\n"
+                "export function trackBy() {}\n",
                 encoding="utf-8",
             )
 

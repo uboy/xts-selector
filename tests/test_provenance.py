@@ -1,4 +1,5 @@
 """Tests for provenance tracking and caps in pr_resolver."""
+
 from __future__ import annotations
 
 from arkui_xts_selector.indexing.pr_resolver import (
@@ -37,7 +38,11 @@ class TestProvenanceFields:
     def test_backward_compat_no_new_fields(self):
         """Existing code creating PrResolveResult still works without new fields."""
         result = PrResolveResult(
-            entries=(PrResolveEntry(changed_file="a.cpp", affected_apis=(), consumer_projects=()),),
+            entries=(
+                PrResolveEntry(
+                    changed_file="a.cpp", affected_apis=(), consumer_projects=()
+                ),
+            ),
         )
         assert result.dropped_count == 0
         assert result.provenance == ()

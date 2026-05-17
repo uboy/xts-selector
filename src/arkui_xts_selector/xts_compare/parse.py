@@ -96,7 +96,9 @@ def _skip_archive_entry(
 ) -> None:
     notice = ArchiveEntryNotice(path=member_name, reason=reason)
     if strict_archive:
-        raise ValueError(f"Archive contains unsupported entry: {member_name} ({reason})")
+        raise ValueError(
+            f"Archive contains unsupported entry: {member_name} ({reason})"
+        )
     diagnostics.skipped_entries.append(notice)
 
 
@@ -167,7 +169,9 @@ def _safe_extract_tar(
     return diagnostics
 
 
-def open_archive_details(path: str, strict_archive: bool = False) -> tuple[Path, bool, ArchiveDiagnostics]:
+def open_archive_details(
+    path: str, strict_archive: bool = False
+) -> tuple[Path, bool, ArchiveDiagnostics]:
     """
     Open a ZIP archive or plain directory.
 
@@ -183,12 +187,16 @@ def open_archive_details(path: str, strict_archive: bool = False) -> tuple[Path,
     if zipfile.is_zipfile(p):
         tmp = tempfile.mkdtemp(prefix="xts_compare_")
         with zipfile.ZipFile(p, "r") as zf:
-            diagnostics = _safe_extract_zip(zf, Path(tmp), strict_archive=strict_archive)
+            diagnostics = _safe_extract_zip(
+                zf, Path(tmp), strict_archive=strict_archive
+            )
         return Path(tmp), True, diagnostics
     if tarfile.is_tarfile(p):
         tmp = tempfile.mkdtemp(prefix="xts_compare_")
         with tarfile.open(p, "r:*") as tf:
-            diagnostics = _safe_extract_tar(tf, Path(tmp), strict_archive=strict_archive)
+            diagnostics = _safe_extract_tar(
+                tf, Path(tmp), strict_archive=strict_archive
+            )
         return Path(tmp), True, diagnostics
     raise ValueError(f"Path is neither a directory nor a valid ZIP file: {path}")
 
@@ -280,9 +288,15 @@ def parse_summary_xml(xml_path: Path) -> Iterator[TestResult]:
                     case=name,
                 )
                 outcome = classify_outcome(status, result)
-                ft = classify_failure(message) if outcome in (
-                    TestOutcome.FAIL, TestOutcome.ERROR,
-                ) else FailureType.UNKNOWN_FAIL
+                ft = (
+                    classify_failure(message)
+                    if outcome
+                    in (
+                        TestOutcome.FAIL,
+                        TestOutcome.ERROR,
+                    )
+                    else FailureType.UNKNOWN_FAIL
+                )
                 yield TestResult(
                     identity=identity,
                     outcome=outcome,
@@ -398,7 +412,7 @@ def parse_data_js(data_js_path: Path) -> dict:
         eq_idx = text.find("=")
         if eq_idx == -1:
             return {}
-        payload = text[eq_idx + 1:].strip()
+        payload = text[eq_idx + 1 :].strip()
     else:
         payload = text.strip()
 
@@ -468,7 +482,10 @@ def sort_run_paths(paths: list[str]) -> tuple[list[str], str, dict[str, str]]:
     summary_timestamps = {path: _summary_ini_timestamp(path) for path in paths}
     if all(summary_timestamps.values()):
         return (
-            sorted(paths, key=lambda path: (summary_timestamps[path], Path(path).name.lower())),
+            sorted(
+                paths,
+                key=lambda path: (summary_timestamps[path], Path(path).name.lower()),
+            ),
             "summary.ini",
             summary_timestamps,
         )
@@ -476,7 +493,10 @@ def sort_run_paths(paths: list[str]) -> tuple[list[str], str, dict[str, str]]:
     filename_timestamps = {path: _filename_timestamp(path) for path in paths}
     if all(filename_timestamps.values()):
         return (
-            sorted(paths, key=lambda path: (filename_timestamps[path], Path(path).name.lower())),
+            sorted(
+                paths,
+                key=lambda path: (filename_timestamps[path], Path(path).name.lower()),
+            ),
             "filename",
             filename_timestamps,
         )
@@ -512,12 +532,18 @@ def discover_archives_with_metadata(
         if not entry.is_file():
             continue
         entry_name = entry.name.lower()
-        if not any(entry_name.endswith(suffix) for suffix in _DISCOVERABLE_ARCHIVE_SUFFIXES):
+        if not any(
+            entry_name.endswith(suffix) for suffix in _DISCOVERABLE_ARCHIVE_SUFFIXES
+        ):
             continue
-        if pattern and not (fnmatch.fnmatch(entry.name, pattern) or fnmatch.fnmatch(rel, pattern)):
+        if pattern and not (
+            fnmatch.fnmatch(entry.name, pattern) or fnmatch.fnmatch(rel, pattern)
+        ):
             continue
         try:
-            extracted, is_temp, _diagnostics = open_archive_details(str(entry), strict_archive=strict_archive)
+            extracted, is_temp, _diagnostics = open_archive_details(
+                str(entry), strict_archive=strict_archive
+            )
         except (FileNotFoundError, OSError, ValueError):
             continue
         try:
@@ -531,7 +557,9 @@ def discover_archives_with_metadata(
     if limit > 0:
         ordered_paths = ordered_paths[-limit:]
         details = {path: details[path] for path in ordered_paths if path in details}
-    return ArchiveDiscovery(paths=ordered_paths, ordering_source=source, ordering_details=details)
+    return ArchiveDiscovery(
+        paths=ordered_paths, ordering_source=source, ordering_details=details
+    )
 
 
 def discover_archives(
@@ -642,7 +670,9 @@ def _build_metadata(
         timestamp = _filename_timestamp(source_path)
         if timestamp:
             timestamp_source = "filename"
-    device = ini.get("device_name", "") or ini.get("devicename", "") or ini.get("device", "")
+    device = (
+        ini.get("device_name", "") or ini.get("devicename", "") or ini.get("device", "")
+    )
     end_time_str = ini.get("end_time", "") or ini.get("endtime", "")
     duration_s = 0.0
     if timestamp and end_time_str:
@@ -689,13 +719,13 @@ def load_run(
     Returns (RunMetadata, {TestIdentity: TestResult}).
     Cleans up any temporary extraction directory automatically.
     """
-    directory, is_temp, diagnostics = open_archive_details(path, strict_archive=strict_archive)
+    directory, is_temp, diagnostics = open_archive_details(
+        path, strict_archive=strict_archive
+    )
     try:
         xml_path = find_summary_xml(directory)
         if xml_path is None:
-            raise FileNotFoundError(
-                f"Could not find summary_report.xml in {path}"
-            )
+            raise FileNotFoundError(f"Could not find summary_report.xml in {path}")
 
         results: dict[TestIdentity, TestResult] = {}
         for result in parse_summary_xml(xml_path):
@@ -751,7 +781,9 @@ def load_run(
                     crash_path = _resolve_report_path(directory, log_path)
                     if crash_path is None or not crash_path.is_file():
                         continue
-                    crash_text = crash_path.read_text(encoding="utf-8", errors="replace")
+                    crash_text = crash_path.read_text(
+                        encoding="utf-8", errors="replace"
+                    )
                     crash_info = parse_crash_log(crash_text)
                     crash_info.crash_file = log_path
                     if not crash_info.module_name:

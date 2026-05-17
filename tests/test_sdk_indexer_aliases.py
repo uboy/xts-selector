@@ -1,4 +1,5 @@
 """Tests for SDK alias/re-export graph (A.3)."""
+
 from __future__ import annotations
 
 from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult, SdkIndexEntry
@@ -8,12 +9,17 @@ from arkui_xts_selector.model.api import ApiEntityId, ApiDeclarationRef
 def _make_entry(public_name: str) -> SdkIndexEntry:
     return SdkIndexEntry(
         api_id=ApiEntityId.from_parts(
-            namespace="arkui", surface="static", kind="component",
-            module="test", public_name=public_name,
+            namespace="arkui",
+            surface="static",
+            kind="component",
+            module="test",
+            public_name=public_name,
         ),
         declaration=ApiDeclarationRef(
             declaration_id=f"#{public_name}",
-            file_path="test.d.ts", module="test", export_name=public_name,
+            file_path="test.d.ts",
+            module="test",
+            export_name=public_name,
         ),
     )
 

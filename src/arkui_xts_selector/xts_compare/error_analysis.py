@@ -10,13 +10,11 @@ from __future__ import annotations
 
 import hashlib
 import re
-from collections import defaultdict
 
 from .models import (
     CrashInfo,
     FailureType,
     RootCauseCluster,
-    TestIdentity,
     TestOutcome,
     TestTransition,
 )
@@ -119,7 +117,7 @@ def normalize_failure_message(raw: str) -> tuple[str, str]:
 
     for prefix in ("Error: ", "AssertionError: ", "TypeError: ", "ReferenceError: "):
         if first_line.startswith(prefix):
-            first_line = first_line[len(prefix):]
+            first_line = first_line[len(prefix) :]
             break
 
     detail = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
@@ -175,9 +173,12 @@ def parse_crash_log(text: str) -> CrashInfo:
 # Regex replacements for normalizing variable parts of messages.
 _NORMALIZE_RULES = [
     # UUID must come before PID/number rules to avoid partial matches.
-    (re.compile(
-        r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-    ), "UUID"),
+    (
+        re.compile(
+            r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+        ),
+        "UUID",
+    ),
     (re.compile(r"0x[0-9a-fA-F]+"), "0xADDR"),
     (re.compile(r"\b\d{4,}\b"), "NUM"),
     (re.compile(r"\s+"), " "),
@@ -241,9 +242,11 @@ def cluster_failures(
             cluster.example_messages.append(msg)
         # Keep shortest non-empty as canonical.
         if msg and msg != "(no message)":
-            if (not cluster.canonical_message
-                    or cluster.canonical_message == "(no message)"
-                    or len(msg) < len(cluster.canonical_message)):
+            if (
+                not cluster.canonical_message
+                or cluster.canonical_message == "(no message)"
+                or len(msg) < len(cluster.canonical_message)
+            ):
                 cluster.canonical_message = msg
 
     return sorted(clusters.values(), key=lambda c: -c.count)

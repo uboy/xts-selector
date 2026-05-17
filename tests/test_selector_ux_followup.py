@@ -62,7 +62,9 @@ class SelectorUxFollowupTests(unittest.TestCase):
         self.assertIn("phase: assembling build guidance", output)
         self.assertNotIn("file_1.cpp", output)
 
-    def test_build_progress_callback_keeps_per_file_messages_for_small_inputs(self) -> None:
+    def test_build_progress_callback_keeps_per_file_messages_for_small_inputs(
+        self,
+    ) -> None:
         callback = build_progress_callback(True, 2)
         buffer = io.StringIO()
         with redirect_stderr(buffer):
@@ -83,9 +85,22 @@ class SelectorUxFollowupTests(unittest.TestCase):
         report["results"] = [
             {
                 "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp",
-                "signals": {"modules": [], "symbols": [], "project_hints": [], "method_hints": [], "type_hints": [], "family_tokens": []},
+                "signals": {
+                    "modules": [],
+                    "symbols": [],
+                    "project_hints": [],
+                    "method_hints": [],
+                    "type_hints": [],
+                    "family_tokens": [],
+                },
                 "effective_variants_mode": "both",
-                "relevance_summary": {"mode": "all", "shown": 0, "total_after": 0, "total_before": 0, "filtered_out": 0},
+                "relevance_summary": {
+                    "mode": "all",
+                    "shown": 0,
+                    "total_after": 0,
+                    "total_before": 0,
+                    "filtered_out": 0,
+                },
                 "coverage_families": [],
                 "coverage_capabilities": [],
                 "projects": [],
@@ -135,9 +150,22 @@ class SelectorUxFollowupTests(unittest.TestCase):
         report["results"] = [
             {
                 "changed_file": f"foundation/arkui/ace_engine/frameworks/core/file_{index}.cpp",
-                "signals": {"modules": [], "symbols": [], "project_hints": [], "method_hints": [], "type_hints": [], "family_tokens": []},
+                "signals": {
+                    "modules": [],
+                    "symbols": [],
+                    "project_hints": [],
+                    "method_hints": [],
+                    "type_hints": [],
+                    "family_tokens": [],
+                },
                 "effective_variants_mode": "both",
-                "relevance_summary": {"mode": "all", "shown": 0, "total_after": 0, "total_before": 0, "filtered_out": 0},
+                "relevance_summary": {
+                    "mode": "all",
+                    "shown": 0,
+                    "total_after": 0,
+                    "total_before": 0,
+                    "filtered_out": 0,
+                },
                 "coverage_families": [],
                 "coverage_capabilities": [],
                 "projects": [],
@@ -154,7 +182,10 @@ class SelectorUxFollowupTests(unittest.TestCase):
         self.assertIn("Changed Files Summary", output)
         self.assertIn("Changed Files Note", output)
         self.assertIn("compact (auto-enabled for 9 changed files)", output)
-        self.assertNotIn("Changed File: foundation/arkui/ace_engine/frameworks/core/file_1.cpp", output)
+        self.assertNotIn(
+            "Changed File: foundation/arkui/ace_engine/frameworks/core/file_1.cpp",
+            output,
+        )
 
 
 if __name__ == "__main__":

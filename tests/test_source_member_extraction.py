@@ -4,6 +4,7 @@ Tests for Phase 2 P2-003: source member extraction in api_lineage.
 Run:
     python3 -m unittest tests.test_source_member_extraction -v
 """
+
 from __future__ import annotations
 
 import unittest
@@ -148,17 +149,23 @@ class BuildSourceMemberIndexTests(unittest.TestCase):
             button_dir = sdk_api / "arkui"
             button_dir.mkdir()
             ets_file = button_dir / "ButtonModifier.static.d.ets"
-            ets_file.write_text("""
+            ets_file.write_text(
+                """
                 export declare interface ButtonAttribute {
                     role(value: string): this;
                     padding(value: number): this;
                 }
                 export function createButton(): void;
-            """, encoding="utf-8")
+            """,
+                encoding="utf-8",
+            )
 
             result = build_source_member_index(Path(tmp))
             self.assertIn("ButtonAttribute", result)
-            self.assertEqual(result["ButtonAttribute"]["file"], "interface/sdk-js/api/arkui/ButtonModifier.static.d.ets")
+            self.assertEqual(
+                result["ButtonAttribute"]["file"],
+                "interface/sdk-js/api/arkui/ButtonModifier.static.d.ets",
+            )
             self.assertIn("role", result["ButtonAttribute"]["methods"])
             self.assertIn("padding", result["ButtonAttribute"]["methods"])
 
@@ -186,7 +193,9 @@ class ApiLineageMapSourceMemberIndexTests(unittest.TestCase):
         self.assertIn("ButtonAttribute", d["source_member_index"])
         entry = d["source_member_index"]["ButtonAttribute"]
         self.assertIn("role", entry["methods"])
-        self.assertEqual(entry["file"], "interface/sdk-js/api/arkui/Button.static.d.ets")
+        self.assertEqual(
+            entry["file"], "interface/sdk-js/api/arkui/Button.static.d.ets"
+        )
 
     def test_from_dict_restores_source_member_index(self) -> None:
         """from_dict must restore source_member_index."""
@@ -196,7 +205,9 @@ class ApiLineageMapSourceMemberIndexTests(unittest.TestCase):
         self.assertIn("ButtonAttribute", restored.source_member_index)
         entry = restored.source_member_index["ButtonAttribute"]
         self.assertIn("role", entry["methods"])
-        self.assertEqual(entry["file"], "interface/sdk-js/api/arkui/Button.static.d.ets")
+        self.assertEqual(
+            entry["file"], "interface/sdk-js/api/arkui/Button.static.d.ets"
+        )
 
     def test_from_dict_handles_missing_source_member_index(self) -> None:
         """from_dict must produce empty source_member_index when key is absent."""

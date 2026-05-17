@@ -70,12 +70,16 @@ class SelectionCandidate:
     def from_dict(cls, data: dict) -> SelectionCandidate:
         us = data.get("usage_signature")
         return cls(
-            api_entity_id=ApiEntityId.from_dict(data["api_entity_id"]) if "api_entity_id" in data else ApiEntityId(),
+            api_entity_id=ApiEntityId.from_dict(data["api_entity_id"])
+            if "api_entity_id" in data
+            else ApiEntityId(),
             consumer_file_id=data.get("consumer_file_id"),
             consumer_project_id=data.get("consumer_project_id"),
             runnable_target_id=data.get("runnable_target_id"),
             usage_signature=ApiUsageSignature.from_dict(us) if us else None,
-            coverage_equivalence=data.get("coverage_equivalence", "unresolved_coverage"),
+            coverage_equivalence=data.get(
+                "coverage_equivalence", "unresolved_coverage"
+            ),
             evidence_chain=tuple(data.get("evidence_chain", [])),
             source_impact_confidence=data.get("source_impact_confidence", "unknown"),
             consumer_usage_confidence=data.get("consumer_usage_confidence", "unknown"),

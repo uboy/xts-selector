@@ -1,4 +1,5 @@
 """Tests for select_curated_prs stratified sampling."""
+
 from __future__ import annotations
 
 import json
@@ -19,18 +20,22 @@ def _write_batch_results(path: Path, results: list[dict]) -> Path:
 
 def _make_pr_result(pr_number: int, bucket: str) -> dict:
     if bucket == "canonical_hit":
-        entries = [{
-            "changed_file": "a.cpp",
-            "affected_apis": ["some_api"],
-            "consumer_projects": ["test_project"],
-            "canonical_affected_apis": ["canonical_api"],
-        }]
+        entries = [
+            {
+                "changed_file": "a.cpp",
+                "affected_apis": ["some_api"],
+                "consumer_projects": ["test_project"],
+                "canonical_affected_apis": ["canonical_api"],
+            }
+        ]
     elif bucket == "target_resolved":
-        entries = [{
-            "changed_file": "a.cpp",
-            "affected_apis": ["some_api"],
-            "consumer_projects": ["test_project"],
-        }]
+        entries = [
+            {
+                "changed_file": "a.cpp",
+                "affected_apis": ["some_api"],
+                "consumer_projects": ["test_project"],
+            }
+        ]
     else:
         entries = []
 
@@ -72,15 +77,21 @@ class TestSelectCuratedPrs:
             results.append(_make_pr_result(i, "zero_targets"))
         batch_file = _write_batch_results(tmp_path / "batch.json", results)
 
-        result = select_curated_prs(pr_list, batch_file, total_sample_size=30, min_per_bucket=5)
+        result = select_curated_prs(
+            pr_list, batch_file, total_sample_size=30, min_per_bucket=5
+        )
         assert len(result["selected_prs"]) == 30
         assert result["bucket_counts"]["canonical_hit"] >= 5
         assert result["bucket_counts"]["target_resolved"] >= 5
         assert result["bucket_counts"]["zero_targets"] >= 5
 
     def test_insufficient_prs_raises(self, tmp_path: Path):
-        pr_list = _write_pr_list(tmp_path / "pr_list.txt", ["https://gitcode.com/ace/ace_engine/pull/1"])
-        batch_file = _write_batch_results(tmp_path / "batch.json", [_make_pr_result(1, "canonical_hit")])
+        pr_list = _write_pr_list(
+            tmp_path / "pr_list.txt", ["https://gitcode.com/ace/ace_engine/pull/1"]
+        )
+        batch_file = _write_batch_results(
+            tmp_path / "batch.json", [_make_pr_result(1, "canonical_hit")]
+        )
 
         with pytest.raises(ValueError, match="Not enough PRs"):
             select_curated_prs(pr_list, batch_file, total_sample_size=30)
@@ -101,7 +112,9 @@ class TestSelectCuratedPrs:
         results = [_make_pr_result(i, "target_resolved") for i in range(1, 11)]
         batch_file = _write_batch_results(tmp_path / "batch.json", results)
 
-        result = select_curated_prs(pr_list, batch_file, total_sample_size=5, min_per_bucket=1)
+        result = select_curated_prs(
+            pr_list, batch_file, total_sample_size=5, min_per_bucket=1
+        )
         assert all(p <= 10 for p in result["selected_prs"])
 
     def test_bucket_sizes_populated(self, tmp_path: Path):
@@ -110,7 +123,9 @@ class TestSelectCuratedPrs:
         results = [_make_pr_result(i, "target_resolved") for i in range(1, 21)]
         batch_file = _write_batch_results(tmp_path / "batch.json", results)
 
-        result = select_curated_prs(pr_list, batch_file, total_sample_size=10, min_per_bucket=1)
+        result = select_curated_prs(
+            pr_list, batch_file, total_sample_size=10, min_per_bucket=1
+        )
         assert "bucket_sizes" in result
         assert "canonical_hit" in result["bucket_sizes"]
         assert "target_resolved" in result["bucket_sizes"]

@@ -1,4 +1,5 @@
 """Tests for native_interface_resolver."""
+
 from __future__ import annotations
 
 from arkui_xts_selector.indexing.native_interface_resolver import (

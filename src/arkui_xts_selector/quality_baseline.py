@@ -3,6 +3,7 @@
 Captures the current state of selector, root repo, and workspace paths
 so that quality runs are reproducible and auditable.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -17,20 +18,37 @@ def _git_info(repo_path: Path) -> dict[str, Any]:
     """Collect git state for a repository."""
     info: dict[str, Any] = {}
     try:
-        info["commit"] = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"],
-            cwd=repo_path, stderr=subprocess.DEVNULL,
-        ).decode().strip()
-        info["branch"] = subprocess.check_output(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=repo_path, stderr=subprocess.DEVNULL,
-        ).decode().strip()
-        dirty = subprocess.check_output(
-            ["git", "status", "--porcelain"],
-            cwd=repo_path, stderr=subprocess.DEVNULL,
-        ).decode().strip()
+        info["commit"] = (
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo_path,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
+        info["branch"] = (
+            subprocess.check_output(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                cwd=repo_path,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
+        dirty = (
+            subprocess.check_output(
+                ["git", "status", "--porcelain"],
+                cwd=repo_path,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .strip()
+        )
         info["dirty"] = bool(dirty)
-        info["dirty_files"] = [l.split(maxsplit=1)[-1] for l in dirty.splitlines()] if dirty else []
+        info["dirty_files"] = (
+            [l.split(maxsplit=1)[-1] for l in dirty.splitlines()] if dirty else []
+        )
     except (subprocess.CalledProcessError, FileNotFoundError):
         info["commit"] = "unknown"
         info["branch"] = "unknown"
@@ -75,7 +93,9 @@ def generate_baseline_metadata(
     config_dir = selector_root / "config"
     config_hashes: dict[str, str | None] = {
         "fanout_targets.json": _file_hash(config_dir / "fanout_targets.json"),
-        "broad_infrastructure_files.json": _file_hash(config_dir / "broad_infrastructure_files.json"),
+        "broad_infrastructure_files.json": _file_hash(
+            config_dir / "broad_infrastructure_files.json"
+        ),
     }
 
     metadata: dict[str, Any] = {

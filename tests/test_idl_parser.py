@@ -7,9 +7,9 @@ Tests cover:
 - Malformed input handling
 - Empty file handling
 """
+
 from pathlib import Path
 
-import pytest
 
 from arkui_xts_selector.indexing.idl_parser import (
     IdlInterface,

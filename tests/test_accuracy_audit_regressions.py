@@ -4,6 +4,7 @@ These tests describe expected behavior for characteristic AceEngine input files.
 Tests that are marked xfail describe known current gaps that will be fixed in
 later phases.
 """
+
 from __future__ import annotations
 
 import json
@@ -30,12 +31,14 @@ def _get_case(case_id: str) -> dict:
 
 # --- Naming-only .h files should not claim exact API or low risk ---
 
+
 class TestNamingOnlyHeaders:
     """Headers resolved via naming convention should not claim exact API."""
 
     def test_button_event_hub_h_naming_resolved(self):
         """button_event_hub.h resolves via naming (parser_level=2) but not exact API."""
         from arkui_xts_selector.indexing.cpp_naming_resolver import _extract_component
+
         result = _extract_component(
             "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_event_hub.h"
         )
@@ -45,6 +48,7 @@ class TestNamingOnlyHeaders:
     def test_menu_pattern_h_naming_resolved(self):
         """menu_pattern.h resolves via naming."""
         from arkui_xts_selector.indexing.cpp_naming_resolver import _extract_component
+
         result = _extract_component(
             "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/menu/menu_pattern.h"
         )
@@ -54,13 +58,17 @@ class TestNamingOnlyHeaders:
 
 # --- Subsystem files should not claim component family ---
 
+
 class TestSubsystemFiles:
     """Manager/animation/gesture files should resolve as subsystem, not component."""
 
-    @pytest.mark.xfail(reason="P12-T2.2: manager suffix not in naming patterns yet", strict=True)
+    @pytest.mark.xfail(
+        reason="P12-T2.2: manager suffix not in naming patterns yet", strict=True
+    )
     def test_manager_resolves_as_subsystem(self):
         """select_overlay_manager.cpp should resolve but not as exact component."""
         from arkui_xts_selector.indexing.cpp_naming_resolver import _extract_component
+
         result = _extract_component(
             "foundation/arkui/ace_engine/frameworks/core/components_ng/manager/select_overlay/select_overlay_manager.cpp"
         )
@@ -71,6 +79,7 @@ class TestSubsystemFiles:
     def test_animation_not_component(self):
         """animator.cpp is NOT under pattern/ and should not resolve as component."""
         from arkui_xts_selector.indexing.cpp_naming_resolver import _extract_component
+
         result = _extract_component(
             "foundation/arkui/ace_engine/frameworks/core/animation/animator.cpp"
         )
@@ -81,6 +90,7 @@ class TestSubsystemFiles:
     def test_gesture_recognizer_not_component(self):
         """multi_fingers_recognizer.cpp should not resolve as component."""
         from arkui_xts_selector.indexing.cpp_naming_resolver import _extract_component
+
         result = _extract_component(
             "foundation/arkui/ace_engine/frameworks/core/gestures/multi_fingers_recognizer.cpp"
         )
@@ -90,13 +100,18 @@ class TestSubsystemFiles:
 
 # --- Broad infra rules should not return uncapped targets ---
 
+
 class TestBroadInfraFallback:
     """Broad infrastructure fallback should be bounded."""
 
     def test_idlize_matches_broad_rule(self):
         """idlize .tgz should match broad_infra rule."""
-        from arkui_xts_selector.indexing.broad_infra import match_changed_file, load_rules
+        from arkui_xts_selector.indexing.broad_infra import (
+            match_changed_file,
+            load_rules,
+        )
         from pathlib import Path
+
         rules_path = Path("config/broad_infrastructure_files.json")
         rules = load_rules(rules_path)
         result = match_changed_file(
@@ -108,8 +123,12 @@ class TestBroadInfraFallback:
 
     def test_dynamic_component_ets_matches_broad(self):
         """dynamicComponent.ets in koala src/ should match broad rule."""
-        from arkui_xts_selector.indexing.broad_infra import match_changed_file, load_rules
+        from arkui_xts_selector.indexing.broad_infra import (
+            match_changed_file,
+            load_rules,
+        )
         from pathlib import Path
+
         rules_path = Path("config/broad_infrastructure_files.json")
         rules = load_rules(rules_path)
         result = match_changed_file(
@@ -122,13 +141,18 @@ class TestBroadInfraFallback:
 
 # --- Advanced component files should not resolve to unrelated families ---
 
+
 class TestAdvancedComponents:
     """Advanced component authored files should not resolve to imageText/symbolGlyph."""
 
-    @pytest.mark.xfail(reason="P12-T4.1: no advanced component resolver yet — .ets returns None from _extract_component which is correct", strict=False)
+    @pytest.mark.xfail(
+        reason="P12-T4.1: no advanced component resolver yet — .ets returns None from _extract_component which is correct",
+        strict=False,
+    )
     def test_chipgroup_not_imageText(self):
         """chipgroup.ets should not resolve to imageText or symbolGlyph."""
         from arkui_xts_selector.indexing.cpp_naming_resolver import _extract_component
+
         # This file is not C++ - should go through different resolver
         # Currently returns None which is acceptable but not ideal
         result = _extract_component(
@@ -141,16 +165,20 @@ class TestAdvancedComponents:
 
 # --- Risk level assertions ---
 
+
 class TestRiskLevels:
     """Verify risk levels are not too optimistic for naming-only evidence."""
 
-    @pytest.mark.xfail(reason="P12-T1.1: naming-only cannot default to low risk", strict=True)
+    @pytest.mark.xfail(
+        reason="P12-T1.1: naming-only cannot default to low risk", strict=True
+    )
     def test_naming_only_not_low_risk(self):
         """Files resolved only via naming convention should not report low risk."""
         # This will be enforced via ImpactCandidate in Phase 1
         # Currently naming resolver doesn't set risk - it's set by pr_resolver
         # After Phase 1: naming-only evidence -> source_confidence=medium, FN risk=medium
         from arkui_xts_selector.indexing.cpp_naming_resolver import _extract_component
+
         result = _extract_component(
             "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_event_hub.h"
         )
@@ -160,6 +188,7 @@ class TestRiskLevels:
 
 
 # --- Fixture validation ---
+
 
 class TestFixtureIntegrity:
     """Validate fixture files are well-formed."""

@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Any
 
 from .daily_prebuilt import (
-    DEFAULT_DAILY_CACHE_ROOT,
     PreparedDailyArtifact,
     list_daily_tags,
     is_placeholder_metadata,
@@ -47,8 +46,12 @@ def run_list_tags_mode(args: argparse.Namespace, app_config: "AppConfig") -> int
 
     date_range_note = ""
     if after_date or before_date:
-        date_range_note = f", date filter: {after_date or '...'} – {before_date or 'today'}"
-    print(f"Listing {count} most recent {label} tags (component={component}, branch={branch}{date_range_note}):")
+        date_range_note = (
+            f", date filter: {after_date or '...'} – {before_date or 'today'}"
+        )
+    print(
+        f"Listing {count} most recent {label} tags (component={component}, branch={branch}{date_range_note}):"
+    )
     try:
         builds = list_daily_tags(
             component=component,
@@ -95,7 +98,9 @@ def write_and_render_utility_report(
     json_to_stdout: bool,
     json_output_path: Path | None,
 ) -> None:
-    written_json_path = _report_json.write_json_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)
+    written_json_path = _report_json.write_json_report(
+        report, json_to_stdout=json_to_stdout, json_output_path=json_output_path
+    )
     if json_to_stdout:
         return
     print("utility_mode: daily_artifacts")
@@ -105,7 +110,16 @@ def write_and_render_utility_report(
         print(f"{name}: {status}")
         if payload.get("error"):
             print(f"  error: {payload['error']}")
-        for key in ("tag", "component", "role", "package_kind", "cache_root", "archive_path", "extracted_root", "manifest_path"):
+        for key in (
+            "tag",
+            "component",
+            "role",
+            "package_kind",
+            "cache_root",
+            "archive_path",
+            "extracted_root",
+            "manifest_path",
+        ):
             value = payload.get(key)
             if value:
                 print(f"  {key}: {value}")
@@ -129,12 +143,22 @@ def run_benchmark_mode(args: argparse.Namespace, app_config: AppConfig) -> int:
     """
     from .benchmark import BenchmarkRunner, BenchmarkResult
 
-    fixtures_dir = Path(args.benchmark_fixtures_dir) if args.benchmark_fixtures_dir else None
+    fixtures_dir = (
+        Path(args.benchmark_fixtures_dir) if args.benchmark_fixtures_dir else None
+    )
     if not fixtures_dir:
-        fixtures_dir = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "canonical_corpus"
+        fixtures_dir = (
+            Path(__file__).resolve().parents[1]
+            / "tests"
+            / "fixtures"
+            / "canonical_corpus"
+        )
 
     if not fixtures_dir.exists():
-        print(f"error: benchmark fixtures directory not found: {fixtures_dir}", file=sys.stderr)
+        print(
+            f"error: benchmark fixtures directory not found: {fixtures_dir}",
+            file=sys.stderr,
+        )
         return 2
 
     runner = BenchmarkRunner(fixtures_dir)
@@ -154,12 +178,14 @@ def run_benchmark_mode(args: argparse.Namespace, app_config: AppConfig) -> int:
         ws = _workspace()
         if ws is None:
             # No workspace available — skip evaluation but still report structure
-            results.append(BenchmarkResult(
-                case_name=case.name,
-                family=case.family,
-                pass_fail=False,
-                notes=f"SKIPPED: workspace not available for case {case.name!r}",
-            ))
+            results.append(
+                BenchmarkResult(
+                    case_name=case.name,
+                    family=case.family,
+                    pass_fail=False,
+                    notes=f"SKIPPED: workspace not available for case {case.name!r}",
+                )
+            )
             continue
 
         # Run selector for this case
@@ -176,12 +202,14 @@ def run_benchmark_mode(args: argparse.Namespace, app_config: AppConfig) -> int:
             result = runner.evaluate(case, report)
             results.append(result)
         except RuntimeError as exc:
-            results.append(BenchmarkResult(
-                case_name=case.name,
-                family=case.family,
-                pass_fail=False,
-                notes=f"ERROR: {exc}",
-            ))
+            results.append(
+                BenchmarkResult(
+                    case_name=case.name,
+                    family=case.family,
+                    pass_fail=False,
+                    notes=f"ERROR: {exc}",
+                )
+            )
 
     # Print summary
     print("\n=== Benchmark Results ===")
@@ -194,7 +222,7 @@ def run_benchmark_mode(args: argparse.Namespace, app_config: AppConfig) -> int:
         if result.recall < 0.9 and result.recall > 0:
             print(f"    WARNING: recall {result.recall:.2f} below 0.9 threshold")
         if result.recall == 0.0:
-            print(f"    SKIPPED (no workspace)")
+            print("    SKIPPED (no workspace)")
         if result.notes.startswith("ERROR"):
             print(f"    ERROR: {result.notes}")
         if result.notes.startswith("SKIPPED"):
@@ -202,7 +230,9 @@ def run_benchmark_mode(args: argparse.Namespace, app_config: AppConfig) -> int:
         if not result.pass_fail:
             overall_pass = False
 
-    print(f"\nTotal: {len(results)} cases, {'ALL PASS' if overall_pass else 'SOME FAILED'}")
+    print(
+        f"\nTotal: {len(results)} cases, {'ALL PASS' if overall_pass else 'SOME FAILED'}"
+    )
     return 0 if overall_pass else 1
 
 
@@ -224,8 +254,12 @@ def run_inspect_mode(args: argparse.Namespace, app_config: AppConfig) -> int:
             "source_files": sorted(lineage_map.api_to_sources.get(entity, set())),
             "families": sorted(lineage_map.api_to_families.get(entity, set())),
             "surfaces": sorted(lineage_map.api_to_surfaces.get(entity, set())),
-            "consumer_files": sorted(lineage_map.api_to_consumer_files.get(entity, set())),
-            "consumer_projects": sorted(lineage_map.api_to_consumer_projects.get(entity, set())),
+            "consumer_files": sorted(
+                lineage_map.api_to_consumer_files.get(entity, set())
+            ),
+            "consumer_projects": sorted(
+                lineage_map.api_to_consumer_projects.get(entity, set())
+            ),
         }
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
@@ -239,8 +273,12 @@ def run_inspect_mode(args: argparse.Namespace, app_config: AppConfig) -> int:
             "consumer_projects": [],
         }
         for api in result["api_entities"]:
-            result["consumer_files"].extend(lineage_map.api_to_consumer_files.get(api, set()))
-            result["consumer_projects"].extend(lineage_map.api_to_consumer_projects.get(api, set()))
+            result["consumer_files"].extend(
+                lineage_map.api_to_consumer_files.get(api, set())
+            )
+            result["consumer_projects"].extend(
+                lineage_map.api_to_consumer_projects.get(api, set())
+            )
         result["consumer_files"] = sorted(set(result["consumer_files"]))
         result["consumer_projects"] = sorted(set(result["consumer_projects"]))
         print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -250,7 +288,9 @@ def run_inspect_mode(args: argparse.Namespace, app_config: AppConfig) -> int:
         project = args.inspect_consumer_project
         result = {
             "consumer_project": project,
-            "api_entities": sorted(lineage_map.consumer_project_to_apis.get(project, set())),
+            "api_entities": sorted(
+                lineage_map.consumer_project_to_apis.get(project, set())
+            ),
             "source_files": [],
         }
         for api in result["api_entities"]:
@@ -288,39 +328,63 @@ def run_utility_mode(
     exit_code = 0
 
     if args.download_daily_tests:
-        _progress.emit_progress(progress_enabled, f"downloading daily tests {app_config.daily_build_tag or ''}".strip())
+        _progress.emit_progress(
+            progress_enabled,
+            f"downloading daily tests {app_config.daily_build_tag or ''}".strip(),
+        )
         try:
             prepared = _progress.prepare_daily_prebuilt_from_config(app_config)
             if prepared is None:
-                raise ValueError("daily build tag is required; provide --daily-build-tag")
+                raise ValueError(
+                    "daily build tag is required; provide --daily-build-tag"
+                )
             report["operations"]["download_daily_tests"] = {
                 **prepared.to_dict(),
                 "role": "tests",
                 "package_kind": "full",
                 "status": "ready" if prepared.acts_out_root else "extracted",
-                "primary_root": str(prepared.acts_out_root) if prepared.acts_out_root else "",
+                "primary_root": str(prepared.acts_out_root)
+                if prepared.acts_out_root
+                else "",
             }
         except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
-            report["operations"]["download_daily_tests"] = {"status": "failed", "error": str(exc)}
+            report["operations"]["download_daily_tests"] = {
+                "status": "failed",
+                "error": str(exc),
+            }
             exit_code = 2
 
     firmware_prepared: PreparedDailyArtifact | None = None
     if args.download_daily_sdk:
-        _progress.emit_progress(progress_enabled, f"downloading daily sdk {app_config.sdk_build_tag or ''}".strip())
+        _progress.emit_progress(
+            progress_enabled,
+            f"downloading daily sdk {app_config.sdk_build_tag or ''}".strip(),
+        )
         try:
             prepared_sdk = _progress.prepare_daily_sdk_from_config(app_config)
             report["operations"]["download_daily_sdk"] = prepared_sdk.to_dict()
         except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
-            report["operations"]["download_daily_sdk"] = {"status": "failed", "error": str(exc)}
+            report["operations"]["download_daily_sdk"] = {
+                "status": "failed",
+                "error": str(exc),
+            }
             exit_code = 2
 
     if args.download_daily_firmware or args.flash_daily_firmware:
-        _progress.emit_progress(progress_enabled, f"downloading daily firmware {app_config.firmware_build_tag or ''}".strip())
+        _progress.emit_progress(
+            progress_enabled,
+            f"downloading daily firmware {app_config.firmware_build_tag or ''}".strip(),
+        )
         try:
             firmware_prepared = _progress.prepare_daily_firmware_from_config(app_config)
-            report["operations"]["download_daily_firmware"] = firmware_prepared.to_dict()
+            report["operations"]["download_daily_firmware"] = (
+                firmware_prepared.to_dict()
+            )
         except (OSError, ValueError, FileNotFoundError, urllib.error.URLError) as exc:
-            report["operations"]["download_daily_firmware"] = {"status": "failed", "error": str(exc)}
+            report["operations"]["download_daily_firmware"] = {
+                "status": "failed",
+                "error": str(exc),
+            }
             exit_code = 2
 
     if args.flash_daily_firmware:
@@ -329,31 +393,59 @@ def run_utility_mode(
             if firmware_prepared is None:
                 raise ValueError("firmware package is not prepared")
             if firmware_prepared.primary_root is None:
-                raise ValueError("no flashable image root was discovered in the firmware package")
+                raise ValueError(
+                    "no flashable image root was discovered in the firmware package"
+                )
             flash_result = flash_image_bundle(
                 image_root=firmware_prepared.primary_root,
-                flash_py_path=str(app_config.flash_py_path) if app_config.flash_py_path else None,
+                flash_py_path=str(app_config.flash_py_path)
+                if app_config.flash_py_path
+                else None,
                 hdc_path=str(app_config.hdc_path) if app_config.hdc_path else None,
                 device=app_config.device,
-                progress_callback=(lambda message: _progress.emit_subprogress(progress_enabled, "flash", message)),
+                progress_callback=(
+                    lambda message: _progress.emit_subprogress(
+                        progress_enabled, "flash", message
+                    )
+                ),
             )
             report["operations"]["flash_daily_firmware"] = flash_result.to_dict()
             if flash_result.status != "completed":
                 exit_code = max(exit_code, 1)
-        except (OSError, ValueError, FileNotFoundError, RuntimeError, subprocess.TimeoutExpired) as exc:
-            report["operations"]["flash_daily_firmware"] = {"status": "failed", "error": str(exc)}
+        except (
+            OSError,
+            ValueError,
+            FileNotFoundError,
+            RuntimeError,
+            subprocess.TimeoutExpired,
+        ) as exc:
+            report["operations"]["flash_daily_firmware"] = {
+                "status": "failed",
+                "error": str(exc),
+            }
             exit_code = max(exit_code, 2)
 
     if app_config.flash_firmware_path is not None:
-        _progress.emit_progress(progress_enabled, f"flashing local firmware {app_config.flash_firmware_path}")
+        _progress.emit_progress(
+            progress_enabled,
+            f"flashing local firmware {app_config.flash_firmware_path}",
+        )
         try:
-            image_root = _progress.resolve_local_firmware_root(app_config.flash_firmware_path)
+            image_root = _progress.resolve_local_firmware_root(
+                app_config.flash_firmware_path
+            )
             flash_result = flash_image_bundle(
                 image_root=image_root,
-                flash_py_path=str(app_config.flash_py_path) if app_config.flash_py_path else None,
+                flash_py_path=str(app_config.flash_py_path)
+                if app_config.flash_py_path
+                else None,
                 hdc_path=str(app_config.hdc_path) if app_config.hdc_path else None,
                 device=app_config.device,
-                progress_callback=(lambda message: _progress.emit_subprogress(progress_enabled, "flash", message)),
+                progress_callback=(
+                    lambda message: _progress.emit_subprogress(
+                        progress_enabled, "flash", message
+                    )
+                ),
             )
             report["operations"]["flash_local_firmware"] = {
                 **flash_result.to_dict(),
@@ -361,7 +453,13 @@ def run_utility_mode(
             }
             if flash_result.status != "completed":
                 exit_code = max(exit_code, 1)
-        except (OSError, ValueError, FileNotFoundError, RuntimeError, subprocess.TimeoutExpired) as exc:
+        except (
+            OSError,
+            ValueError,
+            FileNotFoundError,
+            RuntimeError,
+            subprocess.TimeoutExpired,
+        ) as exc:
             report["operations"]["flash_local_firmware"] = {
                 "status": "failed",
                 "requested_path": str(app_config.flash_firmware_path),
@@ -369,7 +467,9 @@ def run_utility_mode(
             }
             exit_code = max(exit_code, 2)
 
-    write_and_render_utility_report(report, json_to_stdout=json_to_stdout, json_output_path=json_output_path)
+    write_and_render_utility_report(
+        report, json_to_stdout=json_to_stdout, json_output_path=json_output_path
+    )
     return exit_code
 
 

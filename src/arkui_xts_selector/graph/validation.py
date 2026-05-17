@@ -84,21 +84,25 @@ def validate_graph(graph: Graph) -> ValidationResult:
     for edge in graph.edges.values():
         # 1. Edge references missing node
         if edge.from_node not in node_ids:
-            result.errors.append(ValidationFinding(
-                severity="error",
-                rule="missing_from_node",
-                message=f"Edge '{edge.edge_id}' references missing from_node '{edge.from_node}'",
-                edge_id=edge.edge_id,
-                detail={"missing_id": edge.from_node},
-            ))
+            result.errors.append(
+                ValidationFinding(
+                    severity="error",
+                    rule="missing_from_node",
+                    message=f"Edge '{edge.edge_id}' references missing from_node '{edge.from_node}'",
+                    edge_id=edge.edge_id,
+                    detail={"missing_id": edge.from_node},
+                )
+            )
         if edge.to_node not in node_ids:
-            result.errors.append(ValidationFinding(
-                severity="error",
-                rule="missing_to_node",
-                message=f"Edge '{edge.edge_id}' references missing to_node '{edge.to_node}'",
-                edge_id=edge.edge_id,
-                detail={"missing_id": edge.to_node},
-            ))
+            result.errors.append(
+                ValidationFinding(
+                    severity="error",
+                    rule="missing_to_node",
+                    message=f"Edge '{edge.edge_id}' references missing to_node '{edge.to_node}'",
+                    edge_id=edge.edge_id,
+                    detail={"missing_id": edge.to_node},
+                )
+            )
 
         # 2. api_entity without kind (check the target node)
         if edge.edge_type == "declares":
@@ -106,12 +110,14 @@ def validate_graph(graph: Graph) -> ValidationResult:
             if target_node and target_node.node_type == "api_entity":
                 data = target_node.data
                 if not data.get("kind"):
-                    result.errors.append(ValidationFinding(
-                        severity="error",
-                        rule="api_entity_without_kind",
-                        message=f"api_entity node '{target_node.node_id}' has no kind",
-                        node_id=target_node.node_id,
-                    ))
+                    result.errors.append(
+                        ValidationFinding(
+                            severity="error",
+                            rule="api_entity_without_kind",
+                            message=f"api_entity node '{target_node.node_id}' has no kind",
+                            node_id=target_node.node_id,
+                        )
+                    )
 
         # 3. Artifact-provenance edge used as semantic evidence.
         # Apply to ANY edge whose evidence.provenance == "artifact",
@@ -124,50 +130,62 @@ def validate_graph(graph: Graph) -> ValidationResult:
             edge.source_impact_confidence != "unknown"
             or edge.consumer_usage_confidence != "unknown"
         ):
-            result.errors.append(ValidationFinding(
-                severity="error",
-                rule="artifact_as_semantic_evidence",
-                message=(
-                    f"Artifact-backed edge '{edge.edge_id}' "
-                    f"(type={edge.edge_type!r}, provenance="
-                    f"{edge.evidence.provenance!r}) must not set "
-                    "source_impact_confidence or consumer_usage_confidence"
-                ),
-                edge_id=edge.edge_id,
-                detail={
-                    "edge_type": edge.edge_type,
-                    "provenance": edge.evidence.provenance,
-                    "source_impact_confidence": edge.source_impact_confidence,
-                    "consumer_usage_confidence": edge.consumer_usage_confidence,
-                },
-            ))
+            result.errors.append(
+                ValidationFinding(
+                    severity="error",
+                    rule="artifact_as_semantic_evidence",
+                    message=(
+                        f"Artifact-backed edge '{edge.edge_id}' "
+                        f"(type={edge.edge_type!r}, provenance="
+                        f"{edge.evidence.provenance!r}) must not set "
+                        "source_impact_confidence or consumer_usage_confidence"
+                    ),
+                    edge_id=edge.edge_id,
+                    detail={
+                        "edge_type": edge.edge_type,
+                        "provenance": edge.evidence.provenance,
+                        "source_impact_confidence": edge.source_impact_confidence,
+                        "consumer_usage_confidence": edge.consumer_usage_confidence,
+                    },
+                )
+            )
 
         # 4. Generic fan-out edge missing generic=true
         if edge.edge_type == "fanout_accessor" and not edge.generic:
-            result.errors.append(ValidationFinding(
-                severity="error",
-                rule="fanout_missing_generic",
-                message=f"Fan-out edge '{edge.edge_id}' must have generic=true",
-                edge_id=edge.edge_id,
-            ))
+            result.errors.append(
+                ValidationFinding(
+                    severity="error",
+                    rule="fanout_missing_generic",
+                    message=f"Fan-out edge '{edge.edge_id}' must have generic=true",
+                    edge_id=edge.edge_id,
+                )
+            )
 
         # 5. Config-rule edge missing config_rule_id
         if edge.evidence.provenance == "config_rule" and not edge.config_rule_id:
-            result.errors.append(ValidationFinding(
-                severity="error",
-                rule="config_rule_missing_id",
-                message=f"Config-rule edge '{edge.edge_id}' missing config_rule_id",
-                edge_id=edge.edge_id,
-            ))
+            result.errors.append(
+                ValidationFinding(
+                    severity="error",
+                    rule="config_rule_missing_id",
+                    message=f"Config-rule edge '{edge.edge_id}' missing config_rule_id",
+                    edge_id=edge.edge_id,
+                )
+            )
 
         # 6. Parser edge missing source file
-        if edge.evidence.provenance == "parser" and not edge.source_file and not edge.evidence.file_path:
-            result.warnings.append(ValidationFinding(
-                severity="warning",
-                rule="parser_missing_source_file",
-                message=f"Parser edge '{edge.edge_id}' has no source file",
-                edge_id=edge.edge_id,
-            ))
+        if (
+            edge.evidence.provenance == "parser"
+            and not edge.source_file
+            and not edge.evidence.file_path
+        ):
+            result.warnings.append(
+                ValidationFinding(
+                    severity="warning",
+                    rule="parser_missing_source_file",
+                    message=f"Parser edge '{edge.edge_id}' has no source file",
+                    edge_id=edge.edge_id,
+                )
+            )
 
         # 7. Strong uses_api consumer confidence without evidence
         if edge.edge_type == "uses_api" and edge.consumer_usage_confidence == "strong":
@@ -179,15 +197,17 @@ def validate_graph(graph: Graph) -> ValidationResult:
                 or ev.provenance in ("parser", "import", "config_rule")
             )
             if not has_evidence:
-                result.errors.append(ValidationFinding(
-                    severity="error",
-                    rule="strong_uses_api_no_evidence",
-                    message=(
-                        f"uses_api edge '{edge.edge_id}' claims strong consumer "
-                        "confidence but has no parser/import/member/call evidence"
-                    ),
-                    edge_id=edge.edge_id,
-                ))
+                result.errors.append(
+                    ValidationFinding(
+                        severity="error",
+                        rule="strong_uses_api_no_evidence",
+                        message=(
+                            f"uses_api edge '{edge.edge_id}' claims strong consumer "
+                            "confidence but has no parser/import/member/call evidence"
+                        ),
+                        edge_id=edge.edge_id,
+                    )
+                )
 
     return result
 
@@ -202,12 +222,14 @@ def _check_canonical_id_collisions(graph: Graph, result: ValidationResult) -> No
 
     for canonical, node_ids in api_nodes.items():
         if len(node_ids) > 1:
-            result.errors.append(ValidationFinding(
-                severity="error",
-                rule="canonical_id_collision",
-                message=f"Canonical id collision: {canonical} used by {len(node_ids)} nodes",
-                detail={"canonical_id": canonical, "node_ids": node_ids},
-            ))
+            result.errors.append(
+                ValidationFinding(
+                    severity="error",
+                    rule="canonical_id_collision",
+                    message=f"Canonical id collision: {canonical} used by {len(node_ids)} nodes",
+                    detail={"canonical_id": canonical, "node_ids": node_ids},
+                )
+            )
 
 
 def validate_must_run_candidate(
@@ -261,26 +283,30 @@ def validate_must_run_candidate(
 
     # Extra rule: parser_level=0 alone never produces must_run.
     if parser_levels and all(p == 0 for p in parser_levels):
-        findings.append(ValidationFinding(
-            severity="error",
-            rule="must_run_parser_level_zero",
-            message="parser_level=0 evidence cannot produce must_run candidate alone",
-            detail={"parser_levels": list(parser_levels)},
-        ))
+        findings.append(
+            ValidationFinding(
+                severity="error",
+                rule="must_run_parser_level_zero",
+                message="parser_level=0 evidence cannot produce must_run candidate alone",
+                detail={"parser_levels": list(parser_levels)},
+            )
+        )
 
     for rule in violates_must_run_gate(inputs):
-        findings.append(ValidationFinding(
-            severity="error",
-            rule=rule,
-            message=f"must_run gate violation: {rule}",
-            detail={
-                "coverage_equivalence": coverage_equivalence,
-                "source_impact_confidence": source_impact_confidence,
-                "consumer_usage_confidence": consumer_usage_confidence,
-                "usage_kind": usage_kind,
-                "api_kind": api_kind,
-            },
-        ))
+        findings.append(
+            ValidationFinding(
+                severity="error",
+                rule=rule,
+                message=f"must_run gate violation: {rule}",
+                detail={
+                    "coverage_equivalence": coverage_equivalence,
+                    "source_impact_confidence": source_impact_confidence,
+                    "consumer_usage_confidence": consumer_usage_confidence,
+                    "usage_kind": usage_kind,
+                    "api_kind": api_kind,
+                },
+            )
+        )
 
     return findings
 
@@ -296,12 +322,14 @@ def validate_hunk_precision_claim(
     A hunk-level precision claim requires span evidence.
     """
     if claims_hunk_precision and not has_span_evidence:
-        return [ValidationFinding(
-            severity="error",
-            rule="hunk_precision_no_span",
-            message="Hunk-level precision claim without span evidence",
-            edge_id=edge_id,
-        )]
+        return [
+            ValidationFinding(
+                severity="error",
+                rule="hunk_precision_no_span",
+                message="Hunk-level precision claim without span evidence",
+                edge_id=edge_id,
+            )
+        ]
     return []
 
 
@@ -313,10 +341,12 @@ def validate_alias_edge(
 ) -> list[ValidationFinding]:
     """Validate that an alias edge points to a target, not replaces identity."""
     if alias_replaces_identity:
-        return [ValidationFinding(
-            severity="error",
-            rule="alias_replaces_identity",
-            message=f"Alias '{alias}' replaces identity instead of pointing to target '{target_canonical}'",
-            detail={"alias": alias, "target": target_canonical},
-        )]
+        return [
+            ValidationFinding(
+                severity="error",
+                rule="alias_replaces_identity",
+                message=f"Alias '{alias}' replaces identity instead of pointing to target '{target_canonical}'",
+                detail={"alias": alias, "target": target_canonical},
+            )
+        ]
     return []

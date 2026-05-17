@@ -6,7 +6,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .hdc_transport import build_hdc_command, build_hdc_env, build_hdc_shell_command, ensure_hdc_wrapper
+from .hdc_transport import (
+    build_hdc_command,
+    build_hdc_shell_command,
+    ensure_hdc_wrapper,
+)
 
 
 def compact_token(value: str) -> str:
@@ -85,13 +89,35 @@ def build_aa_test_command(
     is_static = "static" in compact_token(project_path)
     if is_static:
         return build_hdc_shell_command(
-            ["shell", "aa", "test", "-b", bundle_name, "-m", module_name or "entry", "-s", "unittest", "OpenHarmonyTestRunner"],
+            [
+                "shell",
+                "aa",
+                "test",
+                "-b",
+                bundle_name,
+                "-m",
+                module_name or "entry",
+                "-s",
+                "unittest",
+                "OpenHarmonyTestRunner",
+            ],
             hdc_path=hdc_path,
             hdc_endpoint=hdc_endpoint,
             device=device,
         )
     return build_hdc_shell_command(
-        ["shell", "aa", "test", "-p", bundle_name, "-b", bundle_name, "-s", "unittest", "OpenHarmonyTestRunner"],
+        [
+            "shell",
+            "aa",
+            "test",
+            "-p",
+            bundle_name,
+            "-b",
+            bundle_name,
+            "-s",
+            "unittest",
+            "OpenHarmonyTestRunner",
+        ],
         hdc_path=hdc_path,
         hdc_endpoint=hdc_endpoint,
         device=device,
@@ -146,6 +172,7 @@ def build_hdc_install_command(
         device=device,
     )
     from .hdc_transport import render_shell_command, render_hdc_env_prefix
+
     return f"{render_hdc_env_prefix(hdc_path)}{render_shell_command(args)}"
 
 
@@ -223,7 +250,11 @@ def build_xdevice_command(
     res_path = root / "resource"
     if report_path is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        report_path_value = root / "xdevice_reports" / f"{timestamp}_{_safe_report_fragment(module_name)}"
+        report_path_value = (
+            root
+            / "xdevice_reports"
+            / f"{timestamp}_{_safe_report_fragment(module_name)}"
+        )
     else:
         report_path_value = report_path
     args = [
@@ -258,7 +289,9 @@ def build_runtest_command(build_target: str, device: str | None) -> str | None:
     return f"./test/xts/acts/runtest.sh device={device_value} module={build_target} runonly=TRUE"
 
 
-def infer_product_out_dir(repo_root: Path, product_name: str | None, acts_out_root: Path | None) -> Path | None:
+def infer_product_out_dir(
+    repo_root: Path, product_name: str | None, acts_out_root: Path | None
+) -> Path | None:
     if product_name:
         return (repo_root / "out" / product_name).resolve()
     if acts_out_root:
@@ -277,7 +310,9 @@ def tail_text(path: Path, line_count: int = 80) -> str:
     return "\n".join(text.splitlines()[-line_count:])
 
 
-def inspect_product_build(repo_root: Path, product_name: str | None, acts_out_root: Path | None) -> dict:
+def inspect_product_build(
+    repo_root: Path, product_name: str | None, acts_out_root: Path | None
+) -> dict:
     out_dir = infer_product_out_dir(repo_root, product_name, acts_out_root)
     if not out_dir:
         return {
@@ -303,7 +338,11 @@ def inspect_product_build(repo_root: Path, product_name: str | None, acts_out_ro
     elif "COMPILE Failed!" in build_tail or "OHOSException" in build_tail:
         status = "failed"
         reason = "Product build log ends with a compile failure."
-    elif out_dir.exists() and build_log.exists() and (images_dir.exists() or ohos_ets_dir.exists()):
+    elif (
+        out_dir.exists()
+        and build_log.exists()
+        and (images_dir.exists() or ohos_ets_dir.exists())
+    ):
         status = "present"
         reason = "Product build outputs are present; no failure marker was found in the inspected logs."
 
@@ -323,7 +362,13 @@ def inspect_product_build(repo_root: Path, product_name: str | None, acts_out_ro
     }
 
 
-def build_guidance(repo_root: Path, built_artifacts: dict, product_build: dict, app_config: Any, selected_build_targets: list[str]) -> dict | None:
+def build_guidance(
+    repo_root: Path,
+    built_artifacts: dict,
+    product_build: dict,
+    app_config: Any,
+    selected_build_targets: list[str],
+) -> dict | None:
     product_name = getattr(app_config, "product_name", None) or "rk3568"
     system_size = getattr(app_config, "system_size", None) or "standard"
     xts_suitetype = getattr(app_config, "xts_suitetype", None)
@@ -334,8 +379,14 @@ def build_guidance(repo_root: Path, built_artifacts: dict, product_build: dict, 
     if xts_suitetype:
         acts_base = f"{acts_base} xts_suitetype={xts_suitetype}"
 
-    needs_code_build = product_build.get("status") in {"missing", "failed", "partial", "unknown"} and not prebuilt_ready
-    needs_acts_build = not (built_artifacts["testcases_dir_exists"] and built_artifacts["module_info_exists"])
+    needs_code_build = (
+        product_build.get("status") in {"missing", "failed", "partial", "unknown"}
+        and not prebuilt_ready
+    )
+    needs_acts_build = not (
+        built_artifacts["testcases_dir_exists"]
+        and built_artifacts["module_info_exists"]
+    )
     if not needs_code_build and not needs_acts_build:
         return None
 
@@ -345,7 +396,9 @@ def build_guidance(repo_root: Path, built_artifacts: dict, product_build: dict, 
     ]
     reasons = []
     if needs_code_build:
-        reasons.append(product_build.get("reason", "Product build is missing or failed."))
+        reasons.append(
+            product_build.get("reason", "Product build is missing or failed.")
+        )
     if needs_acts_build:
         if prebuilt_note:
             reasons.append(prebuilt_note)

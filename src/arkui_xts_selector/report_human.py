@@ -38,7 +38,6 @@ from .run_store import (
 )
 from .scoring import split_scope_groups
 from .tokens import compact_token
-from . import ranking_rules as _rr
 
 # Module-level constants (from cli.py)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -46,11 +45,6 @@ COMMAND_PREFIX_ENV = "ARKUI_XTS_SELECTOR_COMMAND_PREFIX"
 COMMAND_MODE_ENV = "ARKUI_XTS_SELECTOR_COMMAND_MODE"
 
 # Import constants from ranking_rules for mutable global access
-from .ranking_rules import (
-    GENERIC_COVERAGE_TOKENS,
-    GENERIC_PATH_TOKENS,
-    GENERIC_SCOPE_TOKENS,
-)
 
 # Import constants from constants module
 from .constants import (
@@ -115,7 +109,16 @@ def _add_table_column(table: Table, header: str) -> None:
     kwargs: dict[str, object] = {"overflow": "fold", "vertical": "top"}
     if compact in {"#", "sel", "score", "rc"}:
         kwargs.update({"justify": "right", "no_wrap": True, "width": 3})
-    elif compact in {"variant", "bucket", "confidence", "status", "tool", "device", "step", "priority"}:
+    elif compact in {
+        "variant",
+        "bucket",
+        "confidence",
+        "status",
+        "tool",
+        "device",
+        "step",
+        "priority",
+    }:
         kwargs.update({"no_wrap": True, "max_width": 12})
     elif compact in {"key", "item", "type", "scope", "newcoverage", "totalcoverage"}:
         kwargs.update({"max_width": 16})
@@ -130,7 +133,11 @@ def _add_table_column(table: Table, header: str) -> None:
     table.add_column(title, **kwargs)
 
 
-def _print_human_table(headers: list[str], rows: list[list[object]] | list[tuple[object, ...]], indent: int = 0) -> None:
+def _print_human_table(
+    headers: list[str],
+    rows: list[list[object]] | list[tuple[object, ...]],
+    indent: int = 0,
+) -> None:
     console = _human_console()
     table = Table(
         box=box.ROUNDED,
@@ -161,7 +168,9 @@ def _print_actionable_command_list(title: str, items: list[dict[str, object]]) -
         if not command or command == "-" or command in seen_commands:
             continue
         seen_commands.add(command)
-        title_text = _single_line_comment_text(item.get("label") or item.get("step") or item.get("title"))
+        title_text = _single_line_comment_text(
+            item.get("label") or item.get("step") or item.get("title")
+        )
         status_text = _single_line_comment_text(item.get("status"))
         why_text = _single_line_comment_text(item.get("why"))
         details_text = _single_line_comment_text(item.get("details"))
@@ -333,7 +342,9 @@ def _uses_wrapper_commands() -> bool:
     return len(tokens) >= 2 and tokens[:2] == ["ohos", "xts"]
 
 
-def _wrapper_or_direct_command_tokens(wrapper_subcommand: str | None = None) -> list[object]:
+def _wrapper_or_direct_command_tokens(
+    wrapper_subcommand: str | None = None,
+) -> list[object]:
     tokens: list[object] = list(_selector_command_prefix_tokens())
     if _uses_wrapper_commands() and wrapper_subcommand:
         tokens.append(wrapper_subcommand)
@@ -372,11 +383,15 @@ def _wrapper_device_flash_command_tokens() -> list[object]:
     return tokens
 
 
-def _showing_summary_text(relevance_summary: dict[str, object], shown_count: int) -> str:
+def _showing_summary_text(
+    relevance_summary: dict[str, object], shown_count: int
+) -> str:
     shown = int(relevance_summary.get("shown", shown_count))
     total_after = int(relevance_summary.get("total_after", shown_count))
     total_before = int(relevance_summary.get("total_before", total_after))
-    filtered_out = int(relevance_summary.get("filtered_out", max(total_before - total_after, 0)))
+    filtered_out = int(
+        relevance_summary.get("filtered_out", max(total_before - total_after, 0))
+    )
     if shown >= total_after:
         text = f"all {shown} matching tests"
     else:
@@ -390,9 +405,13 @@ def _showing_summary_text(relevance_summary: dict[str, object], shown_count: int
     return text
 
 
-def _daily_selector_arg(flag: str, build_tag: str | None, build_date: str | None) -> list[str]:
+def _daily_selector_arg(
+    flag: str, build_tag: str | None, build_date: str | None
+) -> list[str]:
     normalized_tag = str(build_tag or "").strip()
-    normalized_date = str(build_date or "").strip() or derive_date_from_tag(normalized_tag)
+    normalized_date = str(build_date or "").strip() or derive_date_from_tag(
+        normalized_tag
+    )
     if normalized_tag:
         result = [flag, normalized_tag]
         if normalized_date:
@@ -402,15 +421,21 @@ def _daily_selector_arg(flag: str, build_tag: str | None, build_date: str | None
 
 
 @lru_cache(maxsize=32)
-def _latest_daily_selector_metadata(component: str, branch: str, component_role: str) -> tuple[str, str]:
+def _latest_daily_selector_metadata(
+    component: str, branch: str, component_role: str
+) -> tuple[str, str]:
     normalized_component = str(component or "").strip()
     normalized_branch = str(branch or "").strip() or "master"
-    candidates = daily_component_candidates(normalized_component, component_role=component_role)
+    candidates = daily_component_candidates(
+        normalized_component, component_role=component_role
+    )
     newest_tag = ""
     newest_date = ""
     for candidate in candidates:
         try:
-            builds = list_daily_tags(component=candidate, branch=normalized_branch, count=1)
+            builds = list_daily_tags(
+                component=candidate, branch=normalized_branch, count=1
+            )
         except Exception:
             continue
         if not builds:
@@ -431,10 +456,16 @@ def _daily_selector_hint_args(
     branch: str,
     component_role: str,
 ) -> list[str]:
-    normalized_tag = "" if is_placeholder_metadata(build_tag) else str(build_tag or "").strip()
-    normalized_date = "" if is_placeholder_metadata(build_date) else str(build_date or "").strip()
+    normalized_tag = (
+        "" if is_placeholder_metadata(build_tag) else str(build_tag or "").strip()
+    )
+    normalized_date = (
+        "" if is_placeholder_metadata(build_date) else str(build_date or "").strip()
+    )
     if not normalized_tag and not normalized_date:
-        normalized_tag, normalized_date = _latest_daily_selector_metadata(component, branch, component_role)
+        normalized_tag, normalized_date = _latest_daily_selector_metadata(
+            component, branch, component_role
+        )
     return _daily_selector_arg(flag, normalized_tag or None, normalized_date or None)
 
 
@@ -448,18 +479,28 @@ def _cache_state_text(cache_used: bool, cache_file: object | None) -> str:
 def _preparation_summary(report: dict) -> str:
     built = report.get("built_artifacts", {})
     daily_prebuilt = report.get("daily_prebuilt", {})
-    has_acts = bool(built.get("testcases_dir_exists")) and bool(built.get("module_info_exists"))
+    has_acts = bool(built.get("testcases_dir_exists")) and bool(
+        built.get("module_info_exists")
+    )
     if has_acts or daily_prebuilt.get("acts_out_root"):
         return "ready"
     return "missing"
 
 
-def _base_selector_run_command(report: dict, app_config: AppConfig, args: argparse.Namespace) -> list[object]:
+def _base_selector_run_command(
+    report: dict, app_config: AppConfig, args: argparse.Namespace
+) -> list[object]:
     if _uses_wrapper_commands():
         run_command: list[object] = _wrapper_or_direct_command_tokens("run")
     else:
-        run_command = [*_wrapper_or_direct_command_tokens(), "--repo-root", app_config.repo_root]
-    selector_report_path = str(report.get("selector_run", {}).get("selector_report_path", "")).strip()
+        run_command = [
+            *_wrapper_or_direct_command_tokens(),
+            "--repo-root",
+            app_config.repo_root,
+        ]
+    selector_report_path = str(
+        report.get("selector_run", {}).get("selector_report_path", "")
+    ).strip()
     if selector_report_path:
         run_command.extend(["--from-report", selector_report_path])
     else:
@@ -474,7 +515,9 @@ def _base_selector_run_command(report: dict, app_config: AppConfig, args: argpar
         for code_query in getattr(args, "code_query", []):
             run_command.extend(["--code-query", code_query])
         if getattr(args, "changed_files_from", None):
-            run_command.extend(["--changed-files-from", getattr(args, "changed_files_from")])
+            run_command.extend(
+                ["--changed-files-from", getattr(args, "changed_files_from")]
+            )
         if getattr(args, "git_diff", None):
             run_command.extend(["--git-diff", getattr(args, "git_diff")])
         if getattr(args, "pr_url", None):
@@ -491,12 +534,24 @@ def _base_selector_run_command(report: dict, app_config: AppConfig, args: argpar
             run_command.extend(["--git-host-url", getattr(args, "git_host_url")])
         if getattr(args, "gitcode_api_url", None):
             run_command.extend(["--gitcode-api-url", getattr(args, "gitcode_api_url")])
-        run_command.extend(["--variants", getattr(args, "variants", "auto"), "--relevance-mode", getattr(args, "relevance_mode", "all")])
+        run_command.extend(
+            [
+                "--variants",
+                getattr(args, "variants", "auto"),
+                "--relevance-mode",
+                getattr(args, "relevance_mode", "all"),
+            ]
+        )
         if getattr(args, "top_projects", 0) > 0:
             run_command.extend(["--top-projects", getattr(args, "top_projects")])
         if getattr(args, "keep_per_signature", 0):
-            run_command.extend(["--keep-per-signature", getattr(args, "keep_per_signature")])
-    if app_config.runtime_state_root and app_config.runtime_state_root != default_runtime_state_root():
+            run_command.extend(
+                ["--keep-per-signature", getattr(args, "keep_per_signature")]
+            )
+    if (
+        app_config.runtime_state_root
+        and app_config.runtime_state_root != default_runtime_state_root()
+    ):
         run_command.extend(["--runtime-state-root", app_config.runtime_state_root])
     if app_config.server_host:
         run_command.extend(["--server-host", app_config.server_host])
@@ -520,13 +575,20 @@ def _base_selector_run_command(report: dict, app_config: AppConfig, args: argpar
     return run_command
 
 
-def _repeat_this_run_command_tokens(report: dict, app_config: AppConfig, args: argparse.Namespace) -> list[object]:
+def _repeat_this_run_command_tokens(
+    report: dict, app_config: AppConfig, args: argparse.Namespace
+) -> list[object]:
     """Shell tokens to replay the current run: same report, devices, HDC, and run flags."""
     command = list(_base_selector_run_command(report, app_config, args))
     if not _uses_wrapper_commands():
         command.append("--run-now")
     command.extend(["--run-tool", str(getattr(args, "run_tool", "auto") or "auto")])
-    command.extend(["--run-priority", str(getattr(args, "run_priority", "recommended") or "recommended")])
+    command.extend(
+        [
+            "--run-priority",
+            str(getattr(args, "run_priority", "recommended") or "recommended"),
+        ]
+    )
     rtp = int(getattr(args, "run_top_targets", 0) or 0)
     if rtp > 0:
         command.extend(["--run-top-targets", str(rtp)])
@@ -542,7 +604,10 @@ def _repeat_this_run_command_tokens(report: dict, app_config: AppConfig, args: a
     dlt = float(getattr(app_config, "device_lock_timeout", 30.0) or 30.0)
     if dlt != 30.0:
         command.extend(["--device-lock-timeout", str(dlt)])
-    run_label = str(getattr(args, "run_label", None) or "").strip() or str(getattr(app_config, "run_label", None) or "").strip()
+    run_label = (
+        str(getattr(args, "run_label", None) or "").strip()
+        or str(getattr(app_config, "run_label", None) or "").strip()
+    )
     if run_label:
         command.extend(["--run-label", run_label])
     return command
@@ -559,10 +624,16 @@ def _run_priority_target_count(coverage: dict[str, object], priority: str) -> in
     return recommended_count + optional_count
 
 
-def _build_compare_command(base_label: str, target_label: str, run_store_root: Path | None) -> str:
+def _build_compare_command(
+    base_label: str, target_label: str, run_store_root: Path | None
+) -> str:
     if _uses_wrapper_commands():
-        return _shell_join([*_wrapper_or_direct_command_tokens("compare"), base_label, target_label])
-    resolved_run_store = (run_store_root or default_run_store_root(PROJECT_ROOT)).resolve()
+        return _shell_join(
+            [*_wrapper_or_direct_command_tokens("compare"), base_label, target_label]
+        )
+    resolved_run_store = (
+        run_store_root or default_run_store_root(PROJECT_ROOT)
+    ).resolve()
     return _shell_join(
         [
             "python3",
@@ -578,7 +649,9 @@ def _build_compare_command(base_label: str, target_label: str, run_store_root: P
     )
 
 
-def _find_compare_base_label(run_store_root: Path | None, current_label: str | None) -> str | None:
+def _find_compare_base_label(
+    run_store_root: Path | None, current_label: str | None
+) -> str | None:
     current = str(current_label or "").strip()
     if not current:
         return None
@@ -616,12 +689,18 @@ def _find_compare_base_label(run_store_root: Path | None, current_label: str | N
     return None
 
 
-def build_coverage_run_commands(report: dict, app_config: AppConfig, args: argparse.Namespace) -> list[dict[str, str]]:
+def build_coverage_run_commands(
+    report: dict, app_config: AppConfig, args: argparse.Namespace
+) -> list[dict[str, str]]:
     coverage = report.get("coverage_recommendations", {})
     commands: list[dict[str, str]] = []
     for priority, label, why in (
         ("required", "Run required batch", "Only strongest unique coverage."),
-        ("recommended", "Run recommended batch", "Strong plus additional unique coverage."),
+        (
+            "recommended",
+            "Run recommended batch",
+            "Strong plus additional unique coverage.",
+        ),
         ("all", "Run full batch", "Includes duplicate fallback coverage."),
     ):
         target_count = _run_priority_target_count(coverage, priority)
@@ -636,7 +715,9 @@ def build_coverage_run_commands(report: dict, app_config: AppConfig, args: argpa
         if getattr(args, "parallel_jobs", 1) > 1:
             command.extend(["--parallel-jobs", getattr(args, "parallel_jobs", 1)])
         if getattr(app_config, "shard_mode", "mirror") != "mirror":
-            command.extend(["--shard-mode", getattr(app_config, "shard_mode", "mirror")])
+            command.extend(
+                ["--shard-mode", getattr(app_config, "shard_mode", "mirror")]
+            )
         if getattr(args, "run_timeout", 0.0) > 0:
             command.extend(["--run-timeout", getattr(args, "run_timeout", 0.0)])
         if priority == "required":
@@ -658,20 +739,36 @@ def build_coverage_run_commands(report: dict, app_config: AppConfig, args: argpa
     return commands
 
 
-def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespace) -> list[dict[str, str]]:
+def build_next_steps(
+    report: dict, app_config: AppConfig, args: argparse.Namespace
+) -> list[dict[str, str]]:
     sdk_root_value = str(report.get("sdk_api_root") or "").strip()
     sdk_root_exists = bool(sdk_root_value) and Path(sdk_root_value).exists()
-    run_only_flow = bool(getattr(args, "from_report", None) or getattr(args, "last_report", False))
+    run_only_flow = bool(
+        getattr(args, "from_report", None) or getattr(args, "last_report", False)
+    )
     built_artifacts = report.get("built_artifacts", {})
-    has_acts_artifacts = bool(built_artifacts.get("testcases_dir_exists")) and bool(built_artifacts.get("module_info_exists"))
+    has_acts_artifacts = bool(built_artifacts.get("testcases_dir_exists")) and bool(
+        built_artifacts.get("module_info_exists")
+    )
     daily_prebuilt_ready = bool(getattr(app_config, "daily_prebuilt_ready", False))
     coverage = report.get("coverage_recommendations", {})
-    selector_run = report.get("selector_run", {}) if isinstance(report.get("selector_run"), dict) else {}
-    current_run_label = str(selector_run.get("label") or app_config.run_label or "").strip()
+    selector_run = (
+        report.get("selector_run", {})
+        if isinstance(report.get("selector_run"), dict)
+        else {}
+    )
+    current_run_label = str(
+        selector_run.get("label") or app_config.run_label or ""
+    ).strip()
     required_target_count = len(coverage.get("required_target_keys", []))
     recommended_target_count = len(coverage.get("recommended_target_keys", []))
-    selected_targets = int(report.get("execution_overview", {}).get("selected_target_count", 0))
-    run_blocked = recommended_target_count <= 0 or (not has_acts_artifacts and not daily_prebuilt_ready)
+    selected_targets = int(
+        report.get("execution_overview", {}).get("selected_target_count", 0)
+    )
+    run_blocked = recommended_target_count <= 0 or (
+        not has_acts_artifacts and not daily_prebuilt_ready
+    )
     run_block_reason = (
         "No runnable targets were selected."
         if recommended_target_count <= 0
@@ -693,7 +790,9 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
     if not run_only_flow:
         steps.append(
             {
-                "step": "Switch SDK For Selection" if sdk_root_exists else "Download SDK For Selection",
+                "step": "Switch SDK For Selection"
+                if sdk_root_exists
+                else "Download SDK For Selection",
                 "status": "optional",
                 "why": (
                     "Optional: use this only to rescore the selector against another SDK build. It is not required to run selected tests."
@@ -702,7 +801,11 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
                 ),
                 "command": _shell_join(
                     [
-                        *(_wrapper_download_command_tokens("sdk") if _uses_wrapper_commands() else _wrapper_or_direct_command_tokens(None)),
+                        *(
+                            _wrapper_download_command_tokens("sdk")
+                            if _uses_wrapper_commands()
+                            else _wrapper_or_direct_command_tokens(None)
+                        ),
                         *([] if _uses_wrapper_commands() else ["--download-daily-sdk"]),
                         "--sdk-component",
                         app_config.sdk_component,
@@ -723,7 +826,9 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
     steps.append(
         {
             "step": "Download tests",
-            "status": "recommended" if not has_acts_artifacts and not daily_prebuilt_ready else "optional",
+            "status": "recommended"
+            if not has_acts_artifacts and not daily_prebuilt_ready
+            else "optional",
             "why": (
                 "ACTS artifacts are missing."
                 if not has_acts_artifacts and not daily_prebuilt_ready
@@ -731,7 +836,11 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             ),
             "command": _shell_join(
                 [
-                    *(_wrapper_download_command_tokens("tests") if _uses_wrapper_commands() else _wrapper_or_direct_command_tokens(None)),
+                    *(
+                        _wrapper_download_command_tokens("tests")
+                        if _uses_wrapper_commands()
+                        else _wrapper_or_direct_command_tokens(None)
+                    ),
                     *([] if _uses_wrapper_commands() else ["--download-daily-tests"]),
                     "--daily-component",
                     app_config.daily_component,
@@ -756,8 +865,16 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             "why": "Use this when you need a matching daily firmware image package.",
             "command": _shell_join(
                 [
-                    *(_wrapper_download_command_tokens("firmware") if _uses_wrapper_commands() else _wrapper_or_direct_command_tokens(None)),
-                    *([] if _uses_wrapper_commands() else ["--download-daily-firmware"]),
+                    *(
+                        _wrapper_download_command_tokens("firmware")
+                        if _uses_wrapper_commands()
+                        else _wrapper_or_direct_command_tokens(None)
+                    ),
+                    *(
+                        []
+                        if _uses_wrapper_commands()
+                        else ["--download-daily-firmware"]
+                    ),
                     "--firmware-component",
                     app_config.firmware_component,
                     "--firmware-branch",
@@ -781,7 +898,11 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
             "why": "Download and flash a daily firmware package to the connected device.",
             "command": _shell_join(
                 [
-                    *(_wrapper_device_flash_command_tokens() if _uses_wrapper_commands() else _wrapper_or_direct_command_tokens(None)),
+                    *(
+                        _wrapper_device_flash_command_tokens()
+                        if _uses_wrapper_commands()
+                        else _wrapper_or_direct_command_tokens(None)
+                    ),
                     *([] if _uses_wrapper_commands() else ["--flash-daily-firmware"]),
                     "--firmware-component",
                     app_config.firmware_component,
@@ -821,9 +942,24 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
     )
 
     for priority, label, count, why in (
-        ("required", "Run required tests", required_target_count, f"{required_target_count} strongest unique target(s) are ready to run."),
-        ("recommended", "Run recommended tests", recommended_target_count, f"{recommended_target_count} unique target(s) are ready to run."),
-        ("all", "Run all coverage", _run_priority_target_count(coverage, "all"), f"{_run_priority_target_count(coverage, 'all')} total target(s), including duplicates, are ready to run."),
+        (
+            "required",
+            "Run required tests",
+            required_target_count,
+            f"{required_target_count} strongest unique target(s) are ready to run.",
+        ),
+        (
+            "recommended",
+            "Run recommended tests",
+            recommended_target_count,
+            f"{recommended_target_count} unique target(s) are ready to run.",
+        ),
+        (
+            "all",
+            "Run all coverage",
+            _run_priority_target_count(coverage, "all"),
+            f"{_run_priority_target_count(coverage, 'all')} total target(s), including duplicates, are ready to run.",
+        ),
     ):
         command = _base_selector_run_command(report, app_config, args)
         if not _uses_wrapper_commands():
@@ -836,18 +972,26 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
         if getattr(args, "parallel_jobs", 1) > 1:
             command.extend(["--parallel-jobs", getattr(args, "parallel_jobs", 1)])
         if getattr(app_config, "shard_mode", "mirror") != "mirror":
-            command.extend(["--shard-mode", getattr(app_config, "shard_mode", "mirror")])
+            command.extend(
+                ["--shard-mode", getattr(app_config, "shard_mode", "mirror")]
+            )
         if getattr(args, "run_timeout", 0.0) > 0:
             command.extend(["--run-timeout", getattr(args, "run_timeout", 0.0)])
         steps.append(
             {
                 "step": label,
                 "status": "blocked" if run_blocked or count <= 0 else "ready",
-                "why": run_block_reason if run_blocked else (why if count > 0 else "No targets available in this priority tier."),
+                "why": run_block_reason
+                if run_blocked
+                else (
+                    why if count > 0 else "No targets available in this priority tier."
+                ),
                 "command": _shell_join(command),
             }
         )
-    compare_base_label = _find_compare_base_label(app_config.run_store_root, current_run_label)
+    compare_base_label = _find_compare_base_label(
+        app_config.run_store_root, current_run_label
+    )
     recommended_run_command = ""
     if compare_base_label:
         recommended_run_command = ""
@@ -869,7 +1013,9 @@ def build_next_steps(report: dict, app_config: AppConfig, args: argparse.Namespa
                 "step": "Compare with base run",
                 "status": "follow-up",
                 "why": f"Use this after the run finishes to compare the new results against the saved base run '{compare_base_label}'.",
-                "command": _build_compare_command(compare_base_label, current_run_label, app_config.run_store_root),
+                "command": _build_compare_command(
+                    compare_base_label, current_run_label, app_config.run_store_root
+                ),
             }
         )
     return steps
@@ -882,7 +1028,10 @@ def print_executive_summary(report: dict, json_report_path: Path | None = None) 
     changed_file_count = sum(
         1
         for result in results
-        if str((result.get("source_profile") or result.get("source") or {}).get("type", "")) == "changed_file"
+        if str(
+            (result.get("source_profile") or result.get("source") or {}).get("type", "")
+        )
+        == "changed_file"
     )
 
     seen_families: set[str] = set()
@@ -901,8 +1050,12 @@ def print_executive_summary(report: dict, json_report_path: Path | None = None) 
     required_targets = list(coverage.get("required", []))
     recommended_targets = list(coverage.get("recommended_additional", []))
     optional_targets = list(coverage.get("optional_duplicates", []))
-    est_required = _format_duration_seconds(coverage.get("estimated_required_duration_s"))
-    est_recommended = _format_duration_seconds(coverage.get("estimated_recommended_duration_s"))
+    est_required = _format_duration_seconds(
+        coverage.get("estimated_required_duration_s")
+    )
+    est_recommended = _format_duration_seconds(
+        coverage.get("estimated_recommended_duration_s")
+    )
     est_all = _format_duration_seconds(coverage.get("estimated_all_duration_s"))
     coverage_commands = list(report.get("coverage_run_commands", []))
     selected_tests_path = str(report.get("selected_tests_json_path", "")).strip()
@@ -931,9 +1084,15 @@ def print_executive_summary(report: dict, json_report_path: Path | None = None) 
     if info_lines:
         print()
 
-    total_suites = len(required_targets) + len(recommended_targets) + len(optional_targets)
+    total_suites = (
+        len(required_targets) + len(recommended_targets) + len(optional_targets)
+    )
     if total_suites > 0:
-        total_duration = est_all if est_all != "-" else (est_recommended if est_recommended != "-" else "-")
+        total_duration = (
+            est_all
+            if est_all != "-"
+            else (est_recommended if est_recommended != "-" else "-")
+        )
         duration_note = f", {total_duration} estimated" if total_duration != "-" else ""
         suite_suffix = "s" if total_suites != 1 else ""
         print(f"TESTS TO RUN ({total_suites} suite{suite_suffix}{duration_note})")
@@ -943,7 +1102,11 @@ def print_executive_summary(report: dict, json_report_path: Path | None = None) 
         if required_targets:
             print(f" {'MUST RUN':<10}  {len(required_targets):>6}  {est_required:>10}")
         if recommended_targets:
-            high_duration = est_recommended if est_recommended != "-" and not required_targets else "-"
+            high_duration = (
+                est_recommended
+                if est_recommended != "-" and not required_targets
+                else "-"
+            )
             print(f" {'HIGH':<10}  {len(recommended_targets):>6}  {high_duration:>10}")
         if optional_targets:
             print(f" {'OPTIONAL':<10}  {len(optional_targets):>6}  {'':>10}")
@@ -973,16 +1136,24 @@ def print_executive_summary(report: dict, json_report_path: Path | None = None) 
     print()
 
 
-def print_human(report: dict, cache_used: bool | None = None, json_report_path: Path | None = None) -> None:
+def print_human(
+    report: dict, cache_used: bool | None = None, json_report_path: Path | None = None
+) -> None:
     selected_tests_json_path = str(report.get("selected_tests_json_path", "")).strip()
     unique_run_targets = collect_unique_run_targets(report)
-    selected_target_count = len(report.get("execution_overview", {}).get("selected_target_keys", []))
-    compact_changed_file_sections = len(report.get("results", [])) >= HUMAN_COMPACT_CHANGED_FILE_THRESHOLD
+    selected_target_count = len(
+        report.get("execution_overview", {}).get("selected_target_keys", [])
+    )
+    compact_changed_file_sections = (
+        len(report.get("results", [])) >= HUMAN_COMPACT_CHANGED_FILE_THRESHOLD
+    )
 
     def _selected_run_target_groups() -> list[dict]:
         selected_keys = {
             str(item).strip()
-            for item in report.get("execution_overview", {}).get("selected_target_keys", [])
+            for item in report.get("execution_overview", {}).get(
+                "selected_target_keys", []
+            )
             if str(item).strip()
         }
         if not selected_keys:
@@ -1024,10 +1195,16 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         if selected_tests_json_path:
             summary_rows.append(("Selected Tests JSON", selected_tests_json_path))
         if report.get("execution_artifact_index_path"):
-            summary_rows.append(("Execution Artifact Index", report["execution_artifact_index_path"]))
+            summary_rows.append(
+                ("Execution Artifact Index", report["execution_artifact_index_path"])
+            )
         if report.get("execution_xdevice_reports_root"):
-            summary_rows.append(("XDevice Reports Root", report["execution_xdevice_reports_root"]))
-        requested_names = list(report.get("execution_overview", {}).get("requested_test_names", []))
+            summary_rows.append(
+                ("XDevice Reports Root", report["execution_xdevice_reports_root"])
+            )
+        requested_names = list(
+            report.get("execution_overview", {}).get("requested_test_names", [])
+        )
         if requested_names:
             summary_rows.append(("Requested Names", _human_join(requested_names)))
         if report.get("requested_devices"):
@@ -1043,8 +1220,14 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         if selected_groups:
             print("Selected Tests")
             test_rows: list[list[object]] = []
-            display_limit = HUMAN_RUN_TARGET_DISPLAY_LIMIT if len(selected_groups) > HUMAN_RUN_TARGET_DISPLAY_LIMIT else None
-            display_groups = selected_groups[:display_limit] if display_limit else selected_groups
+            display_limit = (
+                HUMAN_RUN_TARGET_DISPLAY_LIMIT
+                if len(selected_groups) > HUMAN_RUN_TARGET_DISPLAY_LIMIT
+                else None
+            )
+            display_groups = (
+                selected_groups[:display_limit] if display_limit else selected_groups
+            )
             for index, group in enumerate(display_groups, start=1):
                 target = group.get("representative", {})
                 first_plan = (target.get("execution_plan") or [{}])[0]
@@ -1062,15 +1245,26 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         or "-",
                         first_result.get("status")
                         or first_plan.get("status")
-                        or ("selected" if target.get("selected_for_execution") else "pending"),
+                        or (
+                            "selected"
+                            if target.get("selected_for_execution")
+                            else "pending"
+                        ),
                     ]
                 )
-            _print_human_table(["#", "Suite", "Artifacts", "Tool", "Device", "Status"], test_rows, indent=2)
+            _print_human_table(
+                ["#", "Suite", "Artifacts", "Tool", "Device", "Status"],
+                test_rows,
+                indent=2,
+            )
             print()
             if display_limit and len(selected_groups) > display_limit:
                 note_rows: list[tuple[object, object]] = [
                     ("Visible", f"{display_limit} of {len(selected_groups)}"),
-                    ("Note", "Full selected suite list remains in selected_tests.json."),
+                    (
+                        "Note",
+                        "Full selected suite list remains in selected_tests.json.",
+                    ),
                 ]
                 if selected_tests_json_path:
                     note_rows.append(("JSON", selected_tests_json_path))
@@ -1105,9 +1299,19 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                 )
             )
             if preflight.get("errors"):
-                execution_rows.append(("preflight_errors", _human_preview(preflight.get("errors", [])[:5], limit=5)))
+                execution_rows.append(
+                    (
+                        "preflight_errors",
+                        _human_preview(preflight.get("errors", [])[:5], limit=5),
+                    )
+                )
             if preflight.get("warnings"):
-                execution_rows.append(("preflight_warnings", _human_preview(preflight.get("warnings", [])[:5], limit=5)))
+                execution_rows.append(
+                    (
+                        "preflight_warnings",
+                        _human_preview(preflight.get("warnings", [])[:5], limit=5),
+                    )
+                )
         if report.get("execution_summary"):
             summary = report["execution_summary"]
             execution_rows.append(
@@ -1165,7 +1369,9 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         result.get("status", "-"),
                         result.get("selected_tool") or "-",
                         _format_duration_seconds(result.get("duration_s")),
-                        "-" if result.get("returncode") is None else result.get("returncode"),
+                        "-"
+                        if result.get("returncode") is None
+                        else result.get("returncode"),
                         _format_case_summary(result.get("case_summary")),
                         result.get("result_path") or "-",
                     ]
@@ -1173,13 +1379,27 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         if result_rows:
             print("Execution Results")
             _print_human_table(
-                ["#", "Suite", "Device", "Status", "Tool", "Duration", "RC", "Case Summary", "Result Path"],
+                [
+                    "#",
+                    "Suite",
+                    "Device",
+                    "Status",
+                    "Tool",
+                    "Duration",
+                    "RC",
+                    "Case Summary",
+                    "Result Path",
+                ],
                 result_rows,
                 indent=2,
             )
             print()
         if plan_rows and (not result_rows or report.get("execution_interrupted")):
-            print("Execution Plan" if not report.get("execution_interrupted") else "Remaining Execution Plan")
+            print(
+                "Execution Plan"
+                if not report.get("execution_interrupted")
+                else "Remaining Execution Plan"
+            )
             _print_human_table(
                 ["#", "Suite", "Device", "Status", "Tool", "Reason"],
                 plan_rows,
@@ -1189,7 +1409,13 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
 
         next_steps = list(report.get("next_steps") or [])
         if next_steps:
-            status_rank = {"recommended": 0, "ready": 1, "follow-up": 2, "optional": 3, "blocked": 4}
+            status_rank = {
+                "recommended": 0,
+                "ready": 1,
+                "follow-up": 2,
+                "optional": 3,
+                "blocked": 4,
+            }
 
             def _next_step_sort_key(item: dict[str, object]) -> tuple[object, ...]:
                 step = str(item.get("step", ""))
@@ -1207,7 +1433,9 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         ordered_targets = list(recommendations.get("ordered_targets", []))
         required_targets = list(recommendations.get("required", []))
         recommended_targets = list(recommendations.get("recommended", []))
-        recommended_additional_targets = list(recommendations.get("recommended_additional", []))
+        recommended_additional_targets = list(
+            recommendations.get("recommended_additional", [])
+        )
         optional_targets = list(recommendations.get("optional_duplicates", []))
         source_count = int(recommendations.get("source_count", 0) or 0)
         candidate_count = int(recommendations.get("candidate_count", 0) or 0)
@@ -1220,14 +1448,24 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         ):
             return
 
-        def _coverage_label_items(target: dict[str, object], primary_only: bool) -> list[str]:
-            capabilities = list(target.get("new_capabilities" if primary_only else "covered_capabilities", []))
+        def _coverage_label_items(
+            target: dict[str, object], primary_only: bool
+        ) -> list[str]:
+            capabilities = list(
+                target.get(
+                    "new_capabilities" if primary_only else "covered_capabilities", []
+                )
+            )
             if capabilities:
                 return [str(item) for item in capabilities if str(item).strip()]
-            families = list(target.get("new_families" if primary_only else "covered_families", []))
+            families = list(
+                target.get("new_families" if primary_only else "covered_families", [])
+            )
             if families:
                 return [str(item) for item in families if str(item).strip()]
-            sources = target.get("new_sources" if primary_only else "covered_sources", [])
+            sources = target.get(
+                "new_sources" if primary_only else "covered_sources", []
+            )
             return [
                 f"{item.get('type')}={item.get('value')}"
                 for item in sources
@@ -1240,9 +1478,24 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             ("Required", len(required_targets)),
             ("Recommended", len(recommended_additional_targets)),
             ("Optional Duplicates", len(optional_targets)),
-            ("Est. Required", _format_duration_seconds(recommendations.get("estimated_required_duration_s"))),
-            ("Est. Recommended", _format_duration_seconds(recommendations.get("estimated_recommended_duration_s"))),
-            ("Est. Full", _format_duration_seconds(recommendations.get("estimated_all_duration_s"))),
+            (
+                "Est. Required",
+                _format_duration_seconds(
+                    recommendations.get("estimated_required_duration_s")
+                ),
+            ),
+            (
+                "Est. Recommended",
+                _format_duration_seconds(
+                    recommendations.get("estimated_recommended_duration_s")
+                ),
+            ),
+            (
+                "Est. Full",
+                _format_duration_seconds(
+                    recommendations.get("estimated_all_duration_s")
+                ),
+            ),
         ]
         uncovered_sources = recommendations.get("uncovered_sources", [])
         unavailable_targets = list(recommendations.get("unavailable_targets", []))
@@ -1251,7 +1504,10 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                 (
                     "Uncovered",
                     _human_preview(
-                        [f"{item.get('type')}={item.get('value')}" for item in uncovered_sources],
+                        [
+                            f"{item.get('type')}={item.get('value')}"
+                            for item in uncovered_sources
+                        ],
                         limit=6,
                     ),
                 )
@@ -1271,7 +1527,7 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         "command": item.get("command", "-"),
                     }
                     for item in batch_run_commands
-                ]
+                ],
             )
 
         def _print_coverage_group(
@@ -1285,7 +1541,11 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                 return
             print(title)
             rows: list[list[object]] = []
-            display_targets = targets[:display_limit] if display_limit and display_limit > 0 else targets
+            display_targets = (
+                targets[:display_limit]
+                if display_limit and display_limit > 0
+                else targets
+            )
             for index, target in enumerate(display_targets, start=1):
                 rows.append(
                     [
@@ -1297,12 +1557,25 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         target.get("variant") or target.get("surface") or "-",
                         target.get("bucket", "-"),
                         _format_estimate_label(target),
-                        _human_preview(_coverage_label_items(target, primary_only=True), limit=4),
+                        _human_preview(
+                            _coverage_label_items(target, primary_only=True), limit=4
+                        ),
                         target.get("coverage_reason", "-"),
                     ]
                 )
             _print_human_table(
-                ["#", "Suite", "New Coverage", "Total Coverage", "Scope", "Surface", "Priority", "Est.", "Covers", "Why First"],
+                [
+                    "#",
+                    "Suite",
+                    "New Coverage",
+                    "Total Coverage",
+                    "Scope",
+                    "Surface",
+                    "Priority",
+                    "Est.",
+                    "Covers",
+                    "Why First",
+                ],
                 rows,
                 indent=2,
             )
@@ -1318,8 +1591,11 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                     ],
                 )
             print()
+
         _print_coverage_group("Required Run Order", required_targets)
-        _print_coverage_group("Recommended Additional Coverage", recommended_additional_targets)
+        _print_coverage_group(
+            "Recommended Additional Coverage", recommended_additional_targets
+        )
         _print_coverage_group(
             "Optional Duplicate Coverage",
             optional_targets,
@@ -1331,7 +1607,10 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             rows = [
                 [
                     index,
-                    item.get("build_target") or item.get("xdevice_module_name") or item.get("project") or "-",
+                    item.get("build_target")
+                    or item.get("xdevice_module_name")
+                    or item.get("project")
+                    or "-",
                     item.get("artifact_reason") or "-",
                 ]
                 for index, item in enumerate(unavailable_targets, start=1)
@@ -1339,7 +1618,9 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             _print_human_table(["#", "Suite", "Why Skipped"], rows, indent=2)
             print()
 
-    def print_run_targets(targets: list[dict], relevance_summary: dict[str, object] | None = None) -> None:
+    def print_run_targets(
+        targets: list[dict], relevance_summary: dict[str, object] | None = None
+    ) -> None:
         if not targets:
             return
         primary_targets, broader_targets = split_scope_groups(targets)
@@ -1351,8 +1632,14 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             target_rows: list[list[object]] = []
             plan_rows: list[list[object]] = []
             result_rows: list[list[object]] = []
-            display_limit = HUMAN_RUN_TARGET_DISPLAY_LIMIT if len(grouped_targets) > HUMAN_RUN_TARGET_DISPLAY_LIMIT else None
-            display_targets = grouped_targets[:display_limit] if display_limit else grouped_targets
+            display_limit = (
+                HUMAN_RUN_TARGET_DISPLAY_LIMIT
+                if len(grouped_targets) > HUMAN_RUN_TARGET_DISPLAY_LIMIT
+                else None
+            )
+            display_targets = (
+                grouped_targets[:display_limit] if display_limit else grouped_targets
+            )
             for index, target in enumerate(display_targets, start=1):
                 target_rows.append(
                     [
@@ -1364,7 +1651,11 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         target.get("bucket", "-"),
                         _format_estimate_label(target),
                         _human_preview(
-                            ([target.get("artifact_reason")] if target.get("artifact_status") == "missing" else [])
+                            (
+                                [target.get("artifact_reason")]
+                                if target.get("artifact_status") == "missing"
+                                else []
+                            )
                             + list(target.get("scope_reasons", [])),
                             limit=2,
                         ),
@@ -1391,14 +1682,26 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                             result.get("status", "-"),
                             result.get("selected_tool") or "-",
                             _format_duration_seconds(result.get("duration_s")),
-                            "-" if result.get("returncode") is None else result.get("returncode"),
+                            "-"
+                            if result.get("returncode") is None
+                            else result.get("returncode"),
                             _format_case_summary(result.get("case_summary")),
                             _tail_hint(result),
                             result.get("result_path") or "-",
                         ]
                     )
             _print_human_table(
-                ["#", "Suite", "Artifacts", "Scope", "Surface", "Priority", "Est.", "Why First", "Project"],
+                [
+                    "#",
+                    "Suite",
+                    "Artifacts",
+                    "Scope",
+                    "Surface",
+                    "Priority",
+                    "Est.",
+                    "Why First",
+                    "Project",
+                ],
                 target_rows,
                 indent=2,
             )
@@ -1411,27 +1714,60 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                 if selected_tests_json_path:
                     note_rows.append(("JSON", selected_tests_json_path))
                 _print_key_value_section(f"{group_title} Note", note_rows)
-            missing_targets = [target for target in grouped_targets if str(target.get("artifact_status") or "") == "missing"]
+            missing_targets = [
+                target
+                for target in grouped_targets
+                if str(target.get("artifact_status") or "") == "missing"
+            ]
             if missing_targets:
                 _print_actionable_command_list(
                     "Unavailable Suites",
                     [
                         {
                             "label": _suite_label(target),
-                            "why": target.get("artifact_reason") or "suite is absent from the active ACTS artifacts",
+                            "why": target.get("artifact_reason")
+                            or "suite is absent from the active ACTS artifacts",
                             "command": "",
                         }
                         for target in missing_targets
                     ],
                 )
-            show_plan = bool(result_rows) or any(row[2] != "pending" for row in plan_rows)
+            show_plan = bool(result_rows) or any(
+                row[2] != "pending" for row in plan_rows
+            )
             if plan_rows and show_plan:
                 print("Execution Plan")
-                _print_human_table(["#", "Device", "Status", "Tool", "Available", "Reason", "Result Path"], plan_rows, indent=2)
+                _print_human_table(
+                    [
+                        "#",
+                        "Device",
+                        "Status",
+                        "Tool",
+                        "Available",
+                        "Reason",
+                        "Result Path",
+                    ],
+                    plan_rows,
+                    indent=2,
+                )
                 print()
             if result_rows:
                 print("Execution Results")
-                _print_human_table(["#", "Device", "Status", "Tool", "Duration", "RC", "Case Summary", "Hint", "Result Path"], result_rows, indent=2)
+                _print_human_table(
+                    [
+                        "#",
+                        "Device",
+                        "Status",
+                        "Tool",
+                        "Duration",
+                        "RC",
+                        "Case Summary",
+                        "Hint",
+                        "Result Path",
+                    ],
+                    result_rows,
+                    indent=2,
+                )
                 print()
 
         if primary_targets:
@@ -1444,7 +1780,10 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
     def print_projects(projects: list[dict]) -> None:
         if not projects:
             return
-        def _print_project_group(group_title: str, grouped_projects: list[dict]) -> None:
+
+        def _print_project_group(
+            group_title: str, grouped_projects: list[dict]
+        ) -> None:
             if not grouped_projects:
                 return
             file_rows: list[list[object]] = []
@@ -1461,7 +1800,11 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                     )
             if file_rows:
                 print(group_title)
-                _print_human_table(["#", "Project", "File Score", "File", "Why It Matched"], file_rows, indent=2)
+                _print_human_table(
+                    ["#", "Project", "File Score", "File", "Why It Matched"],
+                    file_rows,
+                    indent=2,
+                )
                 print()
 
         primary_projects, broader_projects = split_scope_groups(projects)
@@ -1492,7 +1835,10 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         selector_run = report["selector_run"]
         summary_rows.extend(
             [
-                ("selector_run", f"label={selector_run.get('label', '-')}, status={selector_run.get('status', '-')}, run_dir={selector_run.get('run_dir', '-')}"),
+                (
+                    "selector_run",
+                    f"label={selector_run.get('label', '-')}, status={selector_run.get('status', '-')}, run_dir={selector_run.get('run_dir', '-')}",
+                ),
                 ("selector_run_manifest", selector_run.get("manifest_path", "-")),
             ]
         )
@@ -1577,7 +1923,9 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         guidance = report["build_guidance"]
         command_rows: list[list[object]] = []
         if guidance.get("code_build_required"):
-            command_rows.append(["product", guidance.get("full_code_build_command", "-")])
+            command_rows.append(
+                ["product", guidance.get("full_code_build_command", "-")]
+            )
         if guidance.get("acts_build_required"):
             command_rows.append(["acts", guidance.get("full_acts_build_command", "-")])
         for command in guidance.get("target_build_commands", [])[:5]:
@@ -1592,12 +1940,18 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                         "command": command,
                     }
                     for scope, command in command_rows
-                ]
+                ],
             )
 
     next_steps = report.get("next_steps", [])
     if next_steps:
-        status_rank = {"recommended": 0, "ready": 1, "follow-up": 2, "optional": 3, "blocked": 4}
+        status_rank = {
+            "recommended": 0,
+            "ready": 1,
+            "follow-up": 2,
+            "optional": 3,
+            "blocked": 4,
+        }
 
         def _next_step_sort_key_main(item: dict[str, object]) -> tuple[object, ...]:
             step = str(item.get("step", ""))
@@ -1608,23 +1962,34 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         _print_actionable_command_list("Next Steps", ordered_next_steps)
 
     if unique_run_targets:
-        runnable_inventory_count = sum(1 for group in unique_run_targets if _run_target_has_inventory(group))
-        unavailable_inventory_count = max(len(unique_run_targets) - runnable_inventory_count, 0)
+        runnable_inventory_count = sum(
+            1 for group in unique_run_targets if _run_target_has_inventory(group)
+        )
+        unavailable_inventory_count = max(
+            len(unique_run_targets) - runnable_inventory_count, 0
+        )
         runnable_rows: list[tuple[object, object]] = [
             ("Selected Inventory Entries", len(unique_run_targets)),
             ("Selected By Analysis", selected_target_count),
             ("Runnable In Current Inventory", runnable_inventory_count),
             (
                 "Meaning",
-                "\"Runnable Tests\" is shorthand only: selection comes from source/API analysis, and actual execution still depends on the current ACTS/build artifacts.",
+                '"Runnable Tests" is shorthand only: selection comes from source/API analysis, and actual execution still depends on the current ACTS/build artifacts.',
             ),
-            ("Manual Selection", "Use --run-test-name <name> or --run-test-names-file <file> with the run command."),
+            (
+                "Manual Selection",
+                "Use --run-test-name <name> or --run-test-names-file <file> with the run command.",
+            ),
         ]
         if unavailable_inventory_count > 0:
-            runnable_rows.append(("Unavailable In Current Inventory", unavailable_inventory_count))
+            runnable_rows.append(
+                ("Unavailable In Current Inventory", unavailable_inventory_count)
+            )
         if selected_tests_json_path:
             runnable_rows.append(("JSON", selected_tests_json_path))
-        requested_names = list(report.get("execution_overview", {}).get("requested_test_names", []))
+        requested_names = list(
+            report.get("execution_overview", {}).get("requested_test_names", [])
+        )
         if requested_names:
             runnable_rows.append(("Requested Names", _human_join(requested_names)))
         _print_key_value_section("Selected Test Inventory", runnable_rows)
@@ -1668,9 +2033,19 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             )
         )
         if preflight.get("errors"):
-            execution_rows.append(("preflight_errors", _human_preview(preflight.get("errors", [])[:5], limit=5)))
+            execution_rows.append(
+                (
+                    "preflight_errors",
+                    _human_preview(preflight.get("errors", [])[:5], limit=5),
+                )
+            )
         if preflight.get("warnings"):
-            execution_rows.append(("preflight_warnings", _human_preview(preflight.get("warnings", [])[:5], limit=5)))
+            execution_rows.append(
+                (
+                    "preflight_warnings",
+                    _human_preview(preflight.get("warnings", [])[:5], limit=5),
+                )
+            )
     if report.get("execution_summary"):
         summary = report["execution_summary"]
         execution_rows.append(
@@ -1705,7 +2080,11 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
     timings = report.get("timings_ms", {})
     if timings and report.get("debug_trace"):
         print("Timings (ms)")
-        _print_human_table(["Metric", "Value"], [[key, value] for key, value in timings.items()], indent=2)
+        _print_human_table(
+            ["Metric", "Value"],
+            [[key, value] for key, value in timings.items()],
+            indent=2,
+        )
         print()
 
     excluded_inputs = report.get("excluded_inputs", [])
@@ -1729,14 +2108,23 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
     if report["results"] and not show_source_evidence:
         _print_key_value_section(
             "Source Evidence",
-            [("Visibility", "hidden by default; use --show-source-evidence to inspect matching source files")],
+            [
+                (
+                    "Visibility",
+                    "hidden by default; use --show-source-evidence to inspect matching source files",
+                )
+            ],
         )
     if compact_changed_file_sections and report["results"]:
         print("Changed Files Summary")
         changed_summary_rows: list[list[object]] = []
         for index, item in enumerate(report["results"], start=1):
-            primary_projects, broader_projects = split_scope_groups(item.get("projects", []))
-            affected_apis = list(item.get("affected_api_entities", [])) or list(item.get("file_level_affected_api_entities", []))
+            primary_projects, broader_projects = split_scope_groups(
+                item.get("projects", [])
+            )
+            affected_apis = list(item.get("affected_api_entities", [])) or list(
+                item.get("file_level_affected_api_entities", [])
+            )
             changed_summary_rows.append(
                 [
                     index,
@@ -1750,13 +2138,25 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                 ]
             )
         _print_human_table(
-            ["#", "Changed File", "APIs", "Tests", "Run Targets", "Primary", "Broader", "Detail"],
+            [
+                "#",
+                "Changed File",
+                "APIs",
+                "Tests",
+                "Run Targets",
+                "Primary",
+                "Broader",
+                "Detail",
+            ],
             changed_summary_rows,
             indent=2,
         )
         print()
         compact_note_rows: list[tuple[object, object]] = [
-            ("Mode", f"compact (auto-enabled for {len(report['results'])} changed files)"),
+            (
+                "Mode",
+                f"compact (auto-enabled for {len(report['results'])} changed files)",
+            ),
             (
                 "Why",
                 "Per-file suite tables are omitted to keep multi-file PR output readable; full per-file detail remains in the JSON report.",
@@ -1770,12 +2170,22 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             continue
         signals = item["signals"]
         relevance_summary = item.get("relevance_summary", {})
-        primary_projects, broader_projects = split_scope_groups(item.get("projects", []))
+        primary_projects, broader_projects = split_scope_groups(
+            item.get("projects", [])
+        )
         changed_rows: list[tuple[object, object]] = [
-            ("Surface", item.get("effective_variants_mode", report.get("variants_mode", "auto"))),
+            (
+                "Surface",
+                item.get(
+                    "effective_variants_mode", report.get("variants_mode", "auto")
+                ),
+            ),
             ("Families", _human_preview(item.get("coverage_families", []))),
             ("Capabilities", _human_preview(item.get("coverage_capabilities", []))),
-            ("Relevance", relevance_summary.get("mode", report.get("relevance_mode", "all"))),
+            (
+                "Relevance",
+                relevance_summary.get("mode", report.get("relevance_mode", "all")),
+            ),
             (
                 "Showing",
                 _showing_summary_text(relevance_summary, len(item.get("projects", []))),
@@ -1791,20 +2201,45 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             changed_rows.append(
                 (
                     "Source-only Preview",
-                    _human_preview([entry.get("project", "-") for entry in source_only_consumers], limit=4),
+                    _human_preview(
+                        [entry.get("project", "-") for entry in source_only_consumers],
+                        limit=4,
+                    ),
                 )
             )
         if item.get("changed_symbols"):
-            changed_rows.append(("Changed Symbols", _human_preview(item.get("changed_symbols", []), limit=4)))
+            changed_rows.append(
+                (
+                    "Changed Symbols",
+                    _human_preview(item.get("changed_symbols", []), limit=4),
+                )
+            )
         if item.get("changed_ranges"):
-            changed_rows.append(("Changed Ranges", _human_preview(item.get("changed_ranges", []), limit=4)))
+            changed_rows.append(
+                (
+                    "Changed Ranges",
+                    _human_preview(item.get("changed_ranges", []), limit=4),
+                )
+            )
         if item.get("derived_source_symbols"):
-            changed_rows.append(("Derived Symbols", _human_preview(item.get("derived_source_symbols", []), limit=4)))
+            changed_rows.append(
+                (
+                    "Derived Symbols",
+                    _human_preview(item.get("derived_source_symbols", []), limit=4),
+                )
+            )
         if item.get("affected_api_entities"):
-            changed_rows.append(("Affected APIs", _human_preview(item.get("affected_api_entities", []), limit=4)))
+            changed_rows.append(
+                (
+                    "Affected APIs",
+                    _human_preview(item.get("affected_api_entities", []), limit=4),
+                )
+            )
         file_level_apis = list(item.get("file_level_affected_api_entities", []))
         if file_level_apis and file_level_apis != item.get("affected_api_entities", []):
-            changed_rows.append(("File-level APIs", _human_preview(file_level_apis, limit=4)))
+            changed_rows.append(
+                ("File-level APIs", _human_preview(file_level_apis, limit=4))
+            )
         function_coverage = list(item.get("function_coverage", []))
         if function_coverage:
             status_counts: dict[str, int] = {}
@@ -1821,7 +2256,9 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             changed_rows.append(
                 (
                     "Function Coverage",
-                    ", ".join(f"{key}={value}" for key, value in sorted(status_counts.items())),
+                    ", ".join(
+                        f"{key}={value}" for key, value in sorted(status_counts.items())
+                    ),
                 )
             )
             if not_covered_symbols:
@@ -1830,7 +2267,10 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
                 )
             if unresolved_symbols:
                 changed_rows.append(
-                    ("Unresolved Functions", _human_preview(unresolved_symbols, limit=4))
+                    (
+                        "Unresolved Functions",
+                        _human_preview(unresolved_symbols, limit=4),
+                    )
                 )
         if report.get("debug_trace"):
             changed_rows.extend(
@@ -1850,8 +2290,14 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             changed_rows.append(("Unresolved", item["unresolved_reason"]))
         if item.get("debug"):
             debug = item["debug"]
-            before = debug.get("candidate_projects_before_prefilter", debug.get("candidate_project_count", 0))
-            after = debug.get("candidate_projects_after_prefilter", debug.get("candidate_project_count", 0))
+            before = debug.get(
+                "candidate_projects_before_prefilter",
+                debug.get("candidate_project_count", 0),
+            )
+            after = debug.get(
+                "candidate_projects_after_prefilter",
+                debug.get("candidate_project_count", 0),
+            )
             changed_rows.append(
                 (
                     "debug",
@@ -1861,7 +2307,10 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         if report.get("debug_trace") and item.get("unresolved_debug"):
             debug = item["unresolved_debug"]
             changed_rows.append(
-                ("unresolved_debug", f"top_score={debug.get('top_score', '-')}, broad_common_hits={debug.get('broad_common_hits', '-')}")
+                (
+                    "unresolved_debug",
+                    f"top_score={debug.get('top_score', '-')}, broad_common_hits={debug.get('broad_common_hits', '-')}",
+                )
             )
         _print_key_value_section(f"Changed File: {item['changed_file']}", changed_rows)
         if not item["projects"]:
@@ -1874,8 +2323,14 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
 
     if report["unresolved_files"]:
         print("Unresolved Files")
-        has_reason_class = any(item.get("reason_class") for item in report["unresolved_files"])
-        headers = ["Changed File", "Reason", "Class"] if has_reason_class else ["Changed File", "Reason"]
+        has_reason_class = any(
+            item.get("reason_class") for item in report["unresolved_files"]
+        )
+        headers = (
+            ["Changed File", "Reason", "Class"]
+            if has_reason_class
+            else ["Changed File", "Reason"]
+        )
         rows = []
         for item in report["unresolved_files"]:
             base = [item.get("changed_file", "-"), item.get("reason", "-")]
@@ -1891,12 +2346,22 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
 
     for item in report["symbol_queries"]:
         relevance_summary = item.get("relevance_summary", {})
-        primary_projects, broader_projects = split_scope_groups(item.get("projects", []))
+        primary_projects, broader_projects = split_scope_groups(
+            item.get("projects", [])
+        )
         signal_rows: list[tuple[object, object]] = [
-            ("Surface", item.get("effective_variants_mode", report.get("variants_mode", "auto"))),
+            (
+                "Surface",
+                item.get(
+                    "effective_variants_mode", report.get("variants_mode", "auto")
+                ),
+            ),
             ("Families", _human_preview(item.get("coverage_families", []))),
             ("Capabilities", _human_preview(item.get("coverage_capabilities", []))),
-            ("Relevance", relevance_summary.get("mode", report.get("relevance_mode", "all"))),
+            (
+                "Relevance",
+                relevance_summary.get("mode", report.get("relevance_mode", "all")),
+            ),
             (
                 "Showing",
                 _showing_summary_text(relevance_summary, len(item.get("projects", []))),
@@ -1910,17 +2375,38 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             signal_rows.extend(
                 [
                     ("Symbols", _human_preview(item["signals"].get("symbols", []))),
-                    ("Weak Symbols", _human_preview(item["signals"].get("weak_symbols", []))),
-                    ("Project Hints", _human_preview(item["signals"].get("project_hints", []))),
-                    ("Method Hints", _human_preview(item["signals"].get("method_hints", []))),
-                    ("Type Hints", _human_preview(item["signals"].get("type_hints", []))),
-                    ("Member Hints", _human_preview(item["signals"].get("member_hints", []))),
+                    (
+                        "Weak Symbols",
+                        _human_preview(item["signals"].get("weak_symbols", [])),
+                    ),
+                    (
+                        "Project Hints",
+                        _human_preview(item["signals"].get("project_hints", [])),
+                    ),
+                    (
+                        "Method Hints",
+                        _human_preview(item["signals"].get("method_hints", [])),
+                    ),
+                    (
+                        "Type Hints",
+                        _human_preview(item["signals"].get("type_hints", [])),
+                    ),
+                    (
+                        "Member Hints",
+                        _human_preview(item["signals"].get("member_hints", [])),
+                    ),
                 ]
             )
         if item.get("debug"):
             debug = item["debug"]
-            before = debug.get("candidate_projects_before_prefilter", debug.get("candidate_project_count", 0))
-            after = debug.get("candidate_projects_after_prefilter", debug.get("candidate_project_count", 0))
+            before = debug.get(
+                "candidate_projects_before_prefilter",
+                debug.get("candidate_project_count", 0),
+            )
+            after = debug.get(
+                "candidate_projects_after_prefilter",
+                debug.get("candidate_project_count", 0),
+            )
             signal_rows.append(
                 (
                     "debug",
@@ -1929,8 +2415,12 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             )
         _print_key_value_section(f"Symbol Query: {item['query']}", signal_rows)
         evidence = item.get("code_search_evidence", {})
-        evidence_rows = [["exact", match] for match in evidence.get("exact_hits", [])[:5]]
-        evidence_rows.extend(["related", match] for match in evidence.get("related_hits", [])[:5])
+        evidence_rows = [
+            ["exact", match] for match in evidence.get("exact_hits", [])[:5]
+        ]
+        evidence_rows.extend(
+            ["related", match] for match in evidence.get("related_hits", [])[:5]
+        )
         if evidence_rows and report.get("debug_trace"):
             print("Code Search Evidence")
             _print_human_table(["Type", "Match"], evidence_rows, indent=2)
@@ -1944,7 +2434,9 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
             print_projects(item["projects"])
 
     for item in report["code_queries"]:
-        _print_key_value_section(f"Code Query: {item['query']}", [("matches", len(item.get("matches", [])))])
+        _print_key_value_section(
+            f"Code Query: {item['query']}", [("matches", len(item.get("matches", [])))]
+        )
         if not item["matches"]:
             print("No code matches found")
             print()
@@ -1961,4 +2453,3 @@ def print_human(report: dict, cache_used: bool | None = None, json_report_path: 
         print("Code Matches")
         _print_human_table(["#", "Score", "File", "Reasons"], match_rows, indent=2)
         print()
-

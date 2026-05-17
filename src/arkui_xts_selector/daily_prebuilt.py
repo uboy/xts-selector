@@ -12,7 +12,9 @@ from pathlib import Path
 from typing import Any
 
 
-DEFAULT_DAILY_API_URL = "https://dcp.openharmony.cn/api/daily_build/build/list/component"
+DEFAULT_DAILY_API_URL = (
+    "https://dcp.openharmony.cn/api/daily_build/build/list/component"
+)
 DEFAULT_DAILY_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
 DEFAULT_DAILY_CACHE_ROOT = Path("/tmp/arkui_xts_selector_daily_cache").resolve()
 DEFAULT_DAILY_COMPONENT = "dayu200_Dyn_Sta_XTS"
@@ -116,7 +118,9 @@ def derive_date_from_tag(tag: str) -> str:
     return ""
 
 
-def daily_component_candidates(component: str | None, component_role: str = "xts") -> list[str]:
+def daily_component_candidates(
+    component: str | None, component_role: str = "xts"
+) -> list[str]:
     raw = str(component or "").strip()
     if not raw:
         if component_role == "xts":
@@ -159,7 +163,9 @@ def fetch_daily_builds(
     if not date_token:
         raise ValueError("daily build date is required")
     if len(date_token) != 8 or not date_token.isdigit():
-        raise ValueError(f"daily build date must be YYYYMMDD or YYYY-MM-DD, got: {build_date}")
+        raise ValueError(
+            f"daily build date must be YYYYMMDD or YYYY-MM-DD, got: {build_date}"
+        )
 
     payload = {
         "projectName": "openharmony",
@@ -200,7 +206,11 @@ def fetch_daily_builds(
     builds: list[DailyBuildInfo] = []
     for item in data_list:
         build_start_time = str(item.get("buildStartTime", ""))
-        tag = build_start_time[:8] + "_" + build_start_time[8:] if len(build_start_time) >= 14 else build_start_time
+        tag = (
+            build_start_time[:8] + "_" + build_start_time[8:]
+            if len(build_start_time) >= 14
+            else build_start_time
+        )
         test_data = item.get("testData") or []
         test_success = ""
         test_report_urls: list[str] = []
@@ -372,9 +382,15 @@ def prepare_daily_package(
     archive_name = url_name if tag_token in url_name else f"{tag_token}_{url_name}"
     archive_path = build_root / archive_name
     legacy_archive_path = build_root / url_name
-    extracted_root = build_root / (extract_dir_name or ("image_bundle" if package_kind == "image" else "extracted"))
+    extracted_root = build_root / (
+        extract_dir_name or ("image_bundle" if package_kind == "image" else "extracted")
+    )
 
-    if archive_path != legacy_archive_path and not archive_path.exists() and legacy_archive_path.exists():
+    if (
+        archive_path != legacy_archive_path
+        and not archive_path.exists()
+        and legacy_archive_path.exists()
+    ):
         archive_path = legacy_archive_path
 
     if archive_path.exists() and archive_path.stat().st_size == 0:
@@ -432,7 +448,9 @@ def _response_header(response: Any, name: str) -> str:
     return ""
 
 
-def _detect_download_total_size(response: Any, existing_size: int, resume_supported: bool) -> int | None:
+def _detect_download_total_size(
+    response: Any, existing_size: int, resume_supported: bool
+) -> int | None:
     content_range = _response_header(response, "Content-Range")
     match = re.match(r"bytes\s+\d+-\d+/(\d+|\*)", content_range)
     if match and match.group(1).isdigit():

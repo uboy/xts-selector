@@ -11,12 +11,13 @@ The mapping is based on file role and naming conventions:
 
 Import boundary: standard library only.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
-from .ace_indexer import AceIndexEntry, AceIndexResult
+from .ace_indexer import AceIndexResult
 from .cpp_parser import CppMethod
 
 # ImportSdkIndexResult lazily to avoid circular imports
@@ -30,17 +31,26 @@ ConfidenceLevel = Literal["strong", "medium", "weak"]
 @dataclass(frozen=True)
 class SourceApiMapping:
     """A mapping from a source symbol to an API entity."""
+
     source_qualified: str  # Qualified C++ name (e.g., ButtonModelStatic::SetRole)
     api_public_name: str  # SDK API name (e.g., role)
     confidence: ConfidenceLevel  # Mapping confidence level
     file_role: str  # File role that produced this mapping
-    source_file_path: str  # Source file path (e.g., foundations/arkui/ace_engine/button.cpp)
-    method_line: int | None = None  # Start line of the method (for hunk-level filtering)
-    method_end_line: int | None = None  # End line of the method (for hunk-level filtering)
+    source_file_path: (
+        str  # Source file path (e.g., foundations/arkui/ace_engine/button.cpp)
+    )
+    method_line: int | None = (
+        None  # Start line of the method (for hunk-level filtering)
+    )
+    method_end_line: int | None = (
+        None  # End line of the method (for hunk-level filtering)
+    )
     api_id: str | None = None  # Canonical API id (e.g. ButtonAttribute.role)
     api_member_of: str | None = None  # Parent type (e.g. ButtonAttribute)
     ambiguity_state: str | None = None  # "unique" | "ambiguous" | "unresolved_parent"
-    body_changed: bool = True  # Whether function body was modified (vs comments/whitespace)
+    body_changed: bool = (
+        True  # Whether function body was modified (vs comments/whitespace)
+    )
     sdk_confirmed: bool = False  # True only when SDK index verified this mapping
     dispatch_kind: str = ""  # "direct", "common_inherited", "family_specific", ""
 
@@ -99,7 +109,9 @@ def build_source_to_api_mapping(
         # Process classes and their methods
         for cls in entry.classes:
             for method in cls.methods:
-                mapping = _map_method_by_role(method, role, family, file_path, sdk_index)
+                mapping = _map_method_by_role(
+                    method, role, family, file_path, sdk_index
+                )
                 if mapping:
                     # Downgrade confidence for declaration-only (header) methods
                     if method.is_declaration_only and mapping.confidence == "strong":
@@ -156,7 +168,9 @@ def build_source_to_api_mapping(
         for func_name in entry.free_functions:
             # Create a synthetic method for free functions
             synthetic_method = CppMethod(name=func_name)
-            mapping = _map_method_by_role(synthetic_method, role, family, file_path, sdk_index)
+            mapping = _map_method_by_role(
+                synthetic_method, role, family, file_path, sdk_index
+            )
             if mapping:
                 # Filter weak mappings against SDK registry
                 if sdk_index is not None and mapping.confidence == "weak":
@@ -201,22 +215,32 @@ def _map_method_by_role(
         SourceApiMapping or None if no mapping applies
     """
     method_name = method.name
-    qualified = method.qualified or f"{family}::{method_name}" if family else method_name
+    qualified = (
+        method.qualified or f"{family}::{method_name}" if family else method_name
+    )
 
     if role == "model_static":
-        return _map_model_static(method_name, qualified, role, file_path, family, sdk_index)
+        return _map_model_static(
+            method_name, qualified, role, file_path, family, sdk_index
+        )
 
     if role == "model_ng":
         return _map_model_ng(method_name, qualified, role, file_path, family, sdk_index)
 
     if role == "native_modifier":
-        return _map_native_modifier(method_name, qualified, role, file_path, family, sdk_index)
+        return _map_native_modifier(
+            method_name, qualified, role, file_path, family, sdk_index
+        )
 
     if role == "native_node_accessor":
-        return _map_native_node_accessor(method_name, qualified, role, file_path, family, sdk_index)
+        return _map_native_node_accessor(
+            method_name, qualified, role, file_path, family, sdk_index
+        )
 
     if role == "jsview_dynamic":
-        return _map_jsview_dynamic(method_name, qualified, role, file_path, family, sdk_index)
+        return _map_jsview_dynamic(
+            method_name, qualified, role, file_path, family, sdk_index
+        )
 
     if role == "pattern":
         return _map_pattern(method_name, qualified, role, file_path)
@@ -228,7 +252,7 @@ def _make_canonical_suffix(method_name: str, prefix: str) -> str | None:
     """Strip prefix and camelCase the result: SetRole -> role, SetButtonStyle -> buttonStyle."""
     if not method_name.startswith(prefix):
         return None
-    name = method_name[len(prefix):]
+    name = method_name[len(prefix) :]
     if not name:
         return None
     return name[0].lower() + name[1:]
@@ -255,7 +279,7 @@ def _strip_family_prefix_from_member(member: str, family: str) -> str | None:
     family_camel_lower = parts[0] + "".join(p.capitalize() for p in parts[1:])
     if not member.startswith(family_camel_lower):
         return None
-    rest = member[len(family_camel_lower):]
+    rest = member[len(family_camel_lower) :]
     if not rest or not rest[0].isupper():
         return None
     return rest[0].lower() + rest[1:]
@@ -288,6 +312,7 @@ def _resolve_canonical_id(
     # Blacklist check for internal/non-public methods
     if method_name:
         from .sdk_member_alias import is_blacklisted
+
         if is_blacklisted(method_name):
             return None, None, "blacklisted", [], False, ""
 
@@ -300,6 +325,7 @@ def _resolve_canonical_id(
     parent_override = None
     if method_name:
         from .sdk_member_alias import normalize_member, get_parent_override
+
         member_lookup = normalize_member(method_name, api_name)
         parent_override = get_parent_override(family, member_lookup)
         if parent_override:
@@ -346,11 +372,16 @@ def _resolve_canonical_id(
             else:
                 member_of = parent
             descendants = []
-            if member_of and hasattr(sdk_index, 'extends_graph'):
+            if member_of and hasattr(sdk_index, "extends_graph"):
                 descendants = sdk_index.find_descendants(member_of)
             # Determine dispatch_kind from the entry's member_of
-            common_parents = ("CommonMethod", "CommonAttribute", "CommonShapeMethod",
-                            "CommonTransition", "ContainerCommonMethod")
+            common_parents = (
+                "CommonMethod",
+                "CommonAttribute",
+                "CommonShapeMethod",
+                "CommonTransition",
+                "ContainerCommonMethod",
+            )
             if member_of in common_parents:
                 dispatch_kind = "common_inherited"
             else:
@@ -361,7 +392,14 @@ def _resolve_canonical_id(
     return None, parent, "unresolved_sdk", [], False, ""
 
 
-def _map_model_static(method_name: str, qualified: str, role: str, file_path: str, family: str | None = None, sdk_index: SdkIndexResult | None = None) -> SourceApiMapping | None:
+def _map_model_static(
+    method_name: str,
+    qualified: str,
+    role: str,
+    file_path: str,
+    family: str | None = None,
+    sdk_index: SdkIndexResult | None = None,
+) -> SourceApiMapping | None:
     """Map model_static method to API name.
 
     SetXxx() → Xxx (camelCase)
@@ -371,7 +409,9 @@ def _map_model_static(method_name: str, qualified: str, role: str, file_path: st
     if api_name is None:
         return None
 
-    api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
+    api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = (
+        _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
+    )
     return SourceApiMapping(
         source_qualified=qualified,
         api_public_name=api_name,
@@ -386,13 +426,22 @@ def _map_model_static(method_name: str, qualified: str, role: str, file_path: st
     )
 
 
-def _map_model_ng(method_name: str, qualified: str, role: str, file_path: str, family: str | None = None, sdk_index: SdkIndexResult | None = None) -> SourceApiMapping | None:
+def _map_model_ng(
+    method_name: str,
+    qualified: str,
+    role: str,
+    file_path: str,
+    family: str | None = None,
+    sdk_index: SdkIndexResult | None = None,
+) -> SourceApiMapping | None:
     """Map model_ng method to API name. Similar to model_static but for NG API."""
     api_name = _make_canonical_suffix(method_name, "Set")
     if api_name is None:
         return None
 
-    api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
+    api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = (
+        _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
+    )
     return SourceApiMapping(
         source_qualified=qualified,
         api_public_name=api_name,
@@ -407,7 +456,14 @@ def _map_model_ng(method_name: str, qualified: str, role: str, file_path: str, f
     )
 
 
-def _map_native_modifier(method_name: str, qualified: str, role: str, file_path: str, family: str | None = None, sdk_index: SdkIndexResult | None = None) -> SourceApiMapping | None:
+def _map_native_modifier(
+    method_name: str,
+    qualified: str,
+    role: str,
+    file_path: str,
+    family: str | None = None,
+    sdk_index: SdkIndexResult | None = None,
+) -> SourceApiMapping | None:
     """Map native modifier method to API name.
 
     SetXxx() → Xxx (strong), ResetXxx() → Xxx (medium)
@@ -415,7 +471,11 @@ def _map_native_modifier(method_name: str, qualified: str, role: str, file_path:
     for prefix, conf in [("Set", "strong"), ("Reset", "medium")]:
         api_name = _make_canonical_suffix(method_name, prefix)
         if api_name is not None:
-            api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
+            api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = (
+                _resolve_canonical_id(
+                    api_name, family, sdk_index, method_name=method_name
+                )
+            )
             return SourceApiMapping(
                 source_qualified=qualified,
                 api_public_name=api_name,
@@ -431,7 +491,14 @@ def _map_native_modifier(method_name: str, qualified: str, role: str, file_path:
     return None
 
 
-def _map_native_node_accessor(method_name: str, qualified: str, role: str, file_path: str, family: str | None = None, sdk_index: SdkIndexResult | None = None) -> SourceApiMapping | None:
+def _map_native_node_accessor(
+    method_name: str,
+    qualified: str,
+    role: str,
+    file_path: str,
+    family: str | None = None,
+    sdk_index: SdkIndexResult | None = None,
+) -> SourceApiMapping | None:
     """Map native node accessor method to API name.
 
     GetXxx() → Xxx (strong), SetXxx() → Xxx (medium)
@@ -439,7 +506,11 @@ def _map_native_node_accessor(method_name: str, qualified: str, role: str, file_
     for prefix, conf in [("Get", "strong"), ("Set", "medium")]:
         api_name = _make_canonical_suffix(method_name, prefix)
         if api_name is not None:
-            api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
+            api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = (
+                _resolve_canonical_id(
+                    api_name, family, sdk_index, method_name=method_name
+                )
+            )
             return SourceApiMapping(
                 source_qualified=qualified,
                 api_public_name=api_name,
@@ -455,13 +526,22 @@ def _map_native_node_accessor(method_name: str, qualified: str, role: str, file_
     return None
 
 
-def _map_jsview_dynamic(method_name: str, qualified: str, role: str, file_path: str, family: str | None = None, sdk_index: SdkIndexResult | None = None) -> SourceApiMapping | None:
+def _map_jsview_dynamic(
+    method_name: str,
+    qualified: str,
+    role: str,
+    file_path: str,
+    family: str | None = None,
+    sdk_index: SdkIndexResult | None = None,
+) -> SourceApiMapping | None:
     """Map JS view dynamic method to API name.
 
     JsXxx() → Xxx, Create() → create
     """
     if method_name == "Create":
-        api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id("create", family, sdk_index)
+        api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = (
+            _resolve_canonical_id("create", family, sdk_index)
+        )
         return SourceApiMapping(
             source_qualified=qualified,
             api_public_name="create",
@@ -477,7 +557,9 @@ def _map_jsview_dynamic(method_name: str, qualified: str, role: str, file_path: 
 
     api_name = _make_canonical_suffix(method_name, "Js")
     if api_name is not None:
-        api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
+        api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = (
+            _resolve_canonical_id(api_name, family, sdk_index, method_name=method_name)
+        )
         return SourceApiMapping(
             source_qualified=qualified,
             api_public_name=api_name,
@@ -495,8 +577,10 @@ def _map_jsview_dynamic(method_name: str, qualified: str, role: str, file_path: 
     for prefix, conf in [("Set", "medium"), ("Get", "medium"), ("JS", "medium")]:
         api_name = _make_canonical_suffix(method_name, prefix)
         if api_name is not None:
-            api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = _resolve_canonical_id(
-                api_name, family, sdk_index, method_name=method_name
+            api_id, member_of, ambiguity, _descendants, sdk_confirmed, dispatch_kind = (
+                _resolve_canonical_id(
+                    api_name, family, sdk_index, method_name=method_name
+                )
             )
             return SourceApiMapping(
                 source_qualified=qualified,
@@ -513,7 +597,9 @@ def _map_jsview_dynamic(method_name: str, qualified: str, role: str, file_path: 
     return None
 
 
-def _map_pattern(method_name: str, qualified: str, role: str, file_path: str) -> SourceApiMapping | None:
+def _map_pattern(
+    method_name: str, qualified: str, role: str, file_path: str
+) -> SourceApiMapping | None:
     """Map pattern method to API name.
 
     Pattern methods have lower confidence as they're internal implementation.

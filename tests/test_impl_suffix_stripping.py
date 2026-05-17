@@ -1,4 +1,5 @@
 """Tests for *Impl suffix stripping in canonical resolution."""
+
 from __future__ import annotations
 
 from arkui_xts_selector.indexing.source_to_api import _strip_impl_suffix

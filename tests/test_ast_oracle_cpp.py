@@ -2,13 +2,11 @@
 
 Tests verify method-level change detection using tree-sitter C++ parsing.
 """
+
 from __future__ import annotations
 
-import pytest
 
 from arkui_xts_selector.validation.ast_oracle import (
-    MethodChange,
-    MethodSnapshot,
     _diff_cpp,
     _extract_cpp_name,
     _hash_body,
@@ -273,7 +271,6 @@ class TestHashBody:
 
     def test_basic_body_hash(self):
         """Compute hash of simple function body."""
-        import tree_sitter
 
         from arkui_xts_selector.tree_sitter_parsers import _get_ts_cpp_parser
 
@@ -318,7 +315,6 @@ class TestNormalizeCppSignature:
 
     def test_simple_signature(self):
         """Normalize simple function signature."""
-        import tree_sitter
 
         from arkui_xts_selector.tree_sitter_parsers import _get_ts_cpp_parser
 
@@ -337,7 +333,6 @@ class TestExtractCppName:
 
     def test_simple_method_name(self):
         """Extract simple method name."""
-        import tree_sitter
 
         from arkui_xts_selector.tree_sitter_parsers import _get_ts_cpp_parser
 
@@ -345,14 +340,15 @@ class TestExtractCppName:
         code = b"void SetRole(int role);"
         tree = parser.parse(code)
 
-        method_name, qualified_name, parent_class = _extract_cpp_name(tree.root_node, None)
+        method_name, qualified_name, parent_class = _extract_cpp_name(
+            tree.root_node, None
+        )
         assert method_name is not None
         assert qualified_name is not None
         assert parent_class is None
 
     def test_class_method_name(self):
         """Extract method name within class context."""
-        import tree_sitter
 
         from arkui_xts_selector.tree_sitter_parsers import _get_ts_cpp_parser
 
@@ -369,7 +365,9 @@ class TestExtractCppName:
                 break
         assert func_decl is not None
 
-        method_name, qualified_name, parent_class = _extract_cpp_name(func_decl, "Button", code)
+        method_name, qualified_name, parent_class = _extract_cpp_name(
+            func_decl, "Button", code
+        )
         assert method_name is not None
         assert qualified_name == "Button::SetRole"
         assert parent_class == "Button"

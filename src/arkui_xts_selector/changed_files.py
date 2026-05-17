@@ -15,16 +15,17 @@ import re
 from pathlib import Path
 from typing import Iterable
 
-from .models import AppConfig, ChangedFileExclusionConfig
+from .models import ChangedFileExclusionConfig
 from .constants import DEFAULT_CHANGED_FILE_EXCLUSION_RULES, UNIFIED_DIFF_HUNK_RE
-from .tokens import compact_token
 from .workspace import discover_repo_root
 
 
 REPO_ROOT = discover_repo_root()
 
 
-def normalize_changed_files(values: Iterable[str], base_roots: Iterable[Path] | None = None) -> list[Path]:
+def normalize_changed_files(
+    values: Iterable[str], base_roots: Iterable[Path] | None = None
+) -> list[Path]:
     candidate_roots: list[Path] = []
     seen_roots: set[Path] = set()
     for root in list(base_roots or []) + [REPO_ROOT]:
@@ -43,8 +44,12 @@ def normalize_changed_files(values: Iterable[str], base_roots: Iterable[Path] | 
             result.append(path.resolve())
             continue
 
-        candidate_paths = [(root / raw).resolve() for root in candidate_roots] or [(REPO_ROOT / raw).resolve()]
-        existing = next((candidate for candidate in candidate_paths if candidate.exists()), None)
+        candidate_paths = [(root / raw).resolve() for root in candidate_roots] or [
+            (REPO_ROOT / raw).resolve()
+        ]
+        existing = next(
+            (candidate for candidate in candidate_paths if candidate.exists()), None
+        )
         result.append(existing or candidate_paths[0])
     return result
 
@@ -67,17 +72,23 @@ def parse_changed_ranges(
         end_raw: str
         if len(parts) == 2 and all(part.isdigit() for part in parts):
             if len(changed_file_list) != 1:
-                raise ValueError(f"Ambiguous changed range '{raw}': file path is required when multiple changed files are present.")
+                raise ValueError(
+                    f"Ambiguous changed range '{raw}': file path is required when multiple changed files are present."
+                )
             target_path = changed_file_list[0]
             start_raw, end_raw = parts
         elif len(parts) == 3 and parts[1].isdigit() and parts[2].isdigit():
             path_value, start_raw, end_raw = parts
-            normalized_paths = normalize_changed_files([path_value], base_roots=base_roots)
+            normalized_paths = normalize_changed_files(
+                [path_value], base_roots=base_roots
+            )
             if not normalized_paths:
                 raise ValueError(f"Unable to resolve changed range path from '{raw}'.")
             target_path = normalized_paths[0].resolve()
         else:
-            raise ValueError(f"Invalid changed range '{raw}'. Expected 'start:end' or 'path:start:end'.")
+            raise ValueError(
+                f"Invalid changed range '{raw}'. Expected 'start:end' or 'path:start:end'."
+            )
 
         start = max(1, int(start_raw))
         end = max(start, int(end_raw))
@@ -85,7 +96,9 @@ def parse_changed_ranges(
     return result
 
 
-def merge_changed_ranges(ranges: Iterable[tuple[int, int]] | None) -> list[tuple[int, int]]:
+def merge_changed_ranges(
+    ranges: Iterable[tuple[int, int]] | None,
+) -> list[tuple[int, int]]:
     normalized: list[tuple[int, int]] = []
     for start, end in ranges or []:
         start_line = max(1, int(start))
@@ -137,10 +150,15 @@ def span_overlaps_changed_ranges(
         return True
     start_line = offset_to_line_number(line_offsets, span_start)
     end_line = offset_to_line_number(line_offsets, max(span_start, span_end - 1))
-    return any(not (end_line < range_start or start_line > range_end) for range_start, range_end in normalized_ranges)
+    return any(
+        not (end_line < range_start or start_line > range_end)
+        for range_start, range_end in normalized_ranges
+    )
 
 
-def extract_text_in_changed_ranges(text: str, changed_ranges: list[tuple[int, int]] | None) -> str:
+def extract_text_in_changed_ranges(
+    text: str, changed_ranges: list[tuple[int, int]] | None
+) -> str:
     if not changed_ranges:
         return text
     lines = text.split("\n")
@@ -176,29 +194,39 @@ def extract_patch_text_from_pr_file_item(item: dict[str, object]) -> str:
     return ""
 
 
-def load_changed_file_exclusion_config(path_value: Path | None) -> ChangedFileExclusionConfig:
+def load_changed_file_exclusion_config(
+    path_value: Path | None,
+) -> ChangedFileExclusionConfig:
     from .file_io import load_json_if_exists
 
     data = load_json_if_exists(path_value)
-    configured_prefixes = data.get("path_prefixes", []) if isinstance(data, dict) else []
+    configured_prefixes = (
+        data.get("path_prefixes", []) if isinstance(data, dict) else []
+    )
     configured_rules = data.get("rules", []) if isinstance(data, dict) else []
     prefixes: list[str] = []
     rules: list[dict[str, object]] = []
-    for raw_rule in list(DEFAULT_CHANGED_FILE_EXCLUSION_RULES.get("rules", [])) + list(configured_rules):
+    for raw_rule in list(DEFAULT_CHANGED_FILE_EXCLUSION_RULES.get("rules", [])) + list(
+        configured_rules
+    ):
         if not isinstance(raw_rule, dict):
             continue
         path_prefix = raw_rule.get("path_prefix")
         if not isinstance(path_prefix, str):
             continue
-        normalized = path_prefix.replace('\\', '/').strip().lstrip('./').lower()
-        if normalized and not normalized.endswith('/'):
-            normalized += '/'
+        normalized = path_prefix.replace("\\", "/").strip().lstrip("./").lower()
+        if normalized and not normalized.endswith("/"):
+            normalized += "/"
         if not normalized or normalized in prefixes:
             continue
         prefixes.append(normalized)
         rules.append(
             {
-                "id": str(raw_rule.get("id") or normalized.rstrip('/').split('/')[-1] or "rule"),
+                "id": str(
+                    raw_rule.get("id")
+                    or normalized.rstrip("/").split("/")[-1]
+                    or "rule"
+                ),
                 "category": str(raw_rule.get("category") or "generic_exclusion"),
                 "path_prefix": normalized,
                 "description": str(raw_rule.get("description") or ""),
@@ -212,15 +240,15 @@ def load_changed_file_exclusion_config(path_value: Path | None) -> ChangedFileEx
     for value in configured_prefixes:
         if not isinstance(value, str):
             continue
-        normalized = value.replace('\\', '/').strip().lstrip('./').lower()
-        if normalized and not normalized.endswith('/'):
-            normalized += '/'
+        normalized = value.replace("\\", "/").strip().lstrip("./").lower()
+        if normalized and not normalized.endswith("/"):
+            normalized += "/"
         if not normalized or normalized in prefixes:
             continue
         prefixes.append(normalized)
         rules.append(
             {
-                "id": normalized.rstrip('/').split('/')[-1] or "legacy_prefix",
+                "id": normalized.rstrip("/").split("/")[-1] or "legacy_prefix",
                 "category": "legacy_prefix_exclusion",
                 "path_prefix": normalized,
                 "description": "Legacy path-prefix exclusion loaded from path_prefixes.",
@@ -232,9 +260,9 @@ def load_changed_file_exclusion_config(path_value: Path | None) -> ChangedFileEx
 
 def changed_file_match_keys(path: Path, git_repo_root: Path) -> set[str]:
     candidates: set[str] = set()
-    raw = str(path).replace('\\', '/').strip()
+    raw = str(path).replace("\\", "/").strip()
     if raw:
-        candidates.add(raw.lower().lstrip('./'))
+        candidates.add(raw.lower().lstrip("./"))
     resolved = path.resolve()
     for root in (REPO_ROOT, git_repo_root):
         try:
@@ -242,7 +270,7 @@ def changed_file_match_keys(path: Path, git_repo_root: Path) -> set[str]:
         except ValueError:
             continue
         if rel:
-            candidates.add(rel.lstrip('./'))
+            candidates.add(rel.lstrip("./"))
     return {item for item in candidates if item}
 
 
@@ -251,7 +279,7 @@ def describe_changed_file(path: Path, git_repo_root: Path) -> str:
     preferred = sorted(keys, key=len)
     if preferred:
         return preferred[0]
-    return str(path).replace('\\', '/')
+    return str(path).replace("\\", "/")
 
 
 def match_changed_file_exclusion(

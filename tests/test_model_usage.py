@@ -11,15 +11,17 @@ sys.path.insert(0, str(ROOT / "src"))
 from arkui_xts_selector.model.api import ApiEntityId
 from arkui_xts_selector.model.usage import (
     ApiUsageSignature,
-    CoverageEquivalenceClass,
 )
 
 
 class ApiUsageSignatureTests(unittest.TestCase):
     def _button_id(self) -> ApiEntityId:
         return ApiEntityId.from_parts(
-            namespace="arkui", surface="static", kind="component",
-            module="@ohos.arkui.component", public_name="Button",
+            namespace="arkui",
+            surface="static",
+            kind="component",
+            module="@ohos.arkui.component",
+            public_name="Button",
         )
 
     def test_harness_only_usage(self) -> None:
@@ -32,7 +34,9 @@ class ApiUsageSignatureTests(unittest.TestCase):
 
     def test_harness_only_is_not_import(self) -> None:
         """harness_only is distinct from import usage."""
-        sig1 = ApiUsageSignature(api_entity_id=self._button_id(), usage_kind="harness_only")
+        sig1 = ApiUsageSignature(
+            api_entity_id=self._button_id(), usage_kind="harness_only"
+        )
         sig2 = ApiUsageSignature(api_entity_id=self._button_id(), usage_kind="import")
         self.assertNotEqual(sig1.usage_kind, sig2.usage_kind)
 

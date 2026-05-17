@@ -12,7 +12,10 @@ from arkui_xts_selector.graph.adapters import (
     build_button_modifier_import_only_graph,
     build_button_modifier_static_graph,
 )
-from arkui_xts_selector.graph.comparison import ComparisonResult, compare_graph_selection
+from arkui_xts_selector.graph.comparison import (
+    ComparisonResult,
+    compare_graph_selection,
+)
 from arkui_xts_selector.graph.resolver import resolve_changed_file_to_tests
 from arkui_xts_selector.graph.schema import EdgeType
 
@@ -27,7 +30,9 @@ class GraphResolverTests(unittest.TestCase):
 
     def test_resolve_button_model_static_finds_button_modifier(self) -> None:
         """Build ButtonModifier graph, resolve for engine file path, verify at least 1 result with ButtonModifier api."""
-        changed_file = "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        changed_file = (
+            "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        )
         results = resolve_changed_file_to_tests(self.static_graph, changed_file)
         self.assertGreater(len(results), 0)
         # At least one result should reference ButtonModifier
@@ -37,7 +42,9 @@ class GraphResolverTests(unittest.TestCase):
 
     def test_resolve_finds_must_run_for_direct_consumer(self) -> None:
         """Same graph, verify at least one result is must_run."""
-        changed_file = "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        changed_file = (
+            "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        )
         results = resolve_changed_file_to_tests(self.static_graph, changed_file)
         buckets = [r.semantic_bucket for r in results]
         self.assertIn("must_run", buckets, "No must_run bucket found in results")
@@ -50,24 +57,33 @@ class GraphResolverTests(unittest.TestCase):
 
     def test_resolve_deduplicates_results(self) -> None:
         """If same api+project appears multiple times, dedup keeps highest score."""
-        changed_file = "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        changed_file = (
+            "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        )
         results = resolve_changed_file_to_tests(self.static_graph, changed_file)
 
         # Check that we don't have duplicate (api, project) pairs
         seen_keys = []
         for r in results:
-            key = (r.candidate.api_entity_id.canonical(), r.candidate.consumer_project_id or "")
+            key = (
+                r.candidate.api_entity_id.canonical(),
+                r.candidate.consumer_project_id or "",
+            )
             self.assertNotIn(key, seen_keys, f"Duplicate key found: {key}")
             seen_keys.append(key)
 
     def test_resolve_import_only_not_must_run(self) -> None:
         """Build import-only graph, resolve, verify no must_run."""
-        changed_file = "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        changed_file = (
+            "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        )
         results = resolve_changed_file_to_tests(self.import_only_graph, changed_file)
         buckets = [r.semantic_bucket for r in results]
         # Import-only should NOT produce must_run
         for bucket in buckets:
-            self.assertNotEqual(bucket, "must_run", "Import-only graph should not produce must_run")
+            self.assertNotEqual(
+                bucket, "must_run", "Import-only graph should not produce must_run"
+            )
 
 
 class ComparisonResultTests(unittest.TestCase):
@@ -80,10 +96,16 @@ class ComparisonResultTests(unittest.TestCase):
 
     def test_comparison_result_counts_buckets(self) -> None:
         """Run compare_graph_selection, verify must_run_count >= 1 for ButtonModifier graph."""
-        changed_file = "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        changed_file = (
+            "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        )
         comp = compare_graph_selection(self.static_graph, changed_file)
-        self.assertGreater(comp.graph_must_run_count, 0, "Expected at least one must_run candidate")
-        self.assertGreaterEqual(comp.graph_total_candidates, 1, "Expected at least one total candidate")
+        self.assertGreater(
+            comp.graph_must_run_count, 0, "Expected at least one must_run candidate"
+        )
+        self.assertGreaterEqual(
+            comp.graph_total_candidates, 1, "Expected at least one total candidate"
+        )
 
     def test_comparison_result_round_trip(self) -> None:
         """ComparisonResult to_dict/from_dict round-trip."""
@@ -142,7 +164,9 @@ class SourceEdgeTraversalTests(unittest.TestCase):
 
     def test_resolve_uses_source_edges_only(self) -> None:
         """Only source edge types (provides_static_modifier, implements, backs_component) are used to find affected APIs, not uses_api edges."""
-        changed_file = "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        changed_file = (
+            "frameworks/core/components_ng/pattern/button/button_model_static.cpp"
+        )
 
         # Count source edges from the engine file
         engine_file_id = f"engine_file:{changed_file}"
@@ -163,9 +187,13 @@ class SourceEdgeTraversalTests(unittest.TestCase):
                     uses_api_edges_count += 1
 
         # The graph should have source edges, not uses_api edges from engine_file
-        self.assertGreater(source_edges_count, 0, "Expected source edges from engine file")
+        self.assertGreater(
+            source_edges_count, 0, "Expected source edges from engine file"
+        )
         # uses_api edges should NOT originate from engine_file nodes
-        self.assertEqual(uses_api_edges_count, 0, "engine_file should not have uses_api edges")
+        self.assertEqual(
+            uses_api_edges_count, 0, "engine_file should not have uses_api edges"
+        )
 
 
 if __name__ == "__main__":

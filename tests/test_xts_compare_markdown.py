@@ -13,7 +13,9 @@ sys.path.insert(0, str(ROOT / "src"))
 from arkui_xts_selector.xts_compare.cli import build_parser, main
 
 
-def _write_summary_xml(path: Path, module: str, suite: str, case: str, passed: bool) -> None:
+def _write_summary_xml(
+    path: Path, module: str, suite: str, case: str, passed: bool
+) -> None:
     result = "true" if passed else "false"
     xml = (
         f'<testsuites name="{module}">'
@@ -38,13 +40,19 @@ class XtsCompareMarkdownOutputTests(unittest.TestCase):
         with TemporaryDirectory() as tmpdir:
             base_dir = Path(tmpdir) / "base"
             target_dir = Path(tmpdir) / "target"
-            _write_summary_xml(base_dir, "ActsButton", "ButtonSuite", "testCase", passed=True)
-            _write_summary_xml(target_dir, "ActsButton", "ButtonSuite", "testCase", passed=False)
+            _write_summary_xml(
+                base_dir, "ActsButton", "ButtonSuite", "testCase", passed=True
+            )
+            _write_summary_xml(
+                target_dir, "ActsButton", "ButtonSuite", "testCase", passed=False
+            )
 
             stdout = StringIO()
             stderr = StringIO()
             with redirect_stdout(stdout), redirect_stderr(stderr):
-                code = main(["--base", str(base_dir), "--target", str(target_dir), "--markdown"])
+                code = main(
+                    ["--base", str(base_dir), "--target", str(target_dir), "--markdown"]
+                )
 
         self.assertEqual(code, 1)
         self.assertIn("# XTS Compare:", stdout.getvalue())
@@ -56,12 +64,25 @@ class XtsCompareMarkdownOutputTests(unittest.TestCase):
             base_dir = Path(tmpdir) / "base"
             target_dir = Path(tmpdir) / "target"
             output_path = Path(tmpdir) / "report.md"
-            _write_summary_xml(base_dir, "ActsButton", "ButtonSuite", "testCase", passed=True)
-            _write_summary_xml(target_dir, "ActsButton", "ButtonSuite", "testCase", passed=False)
+            _write_summary_xml(
+                base_dir, "ActsButton", "ButtonSuite", "testCase", passed=True
+            )
+            _write_summary_xml(
+                target_dir, "ActsButton", "ButtonSuite", "testCase", passed=False
+            )
 
             stderr = StringIO()
             with redirect_stdout(StringIO()), redirect_stderr(stderr):
-                code = main(["--base", str(base_dir), "--target", str(target_dir), "-o", str(output_path)])
+                code = main(
+                    [
+                        "--base",
+                        str(base_dir),
+                        "--target",
+                        str(target_dir),
+                        "-o",
+                        str(output_path),
+                    ]
+                )
 
             self.assertEqual(code, 1)
             self.assertTrue(output_path.exists())
@@ -70,7 +91,9 @@ class XtsCompareMarkdownOutputTests(unittest.TestCase):
     def test_main_emits_single_run_markdown(self) -> None:
         with TemporaryDirectory() as tmpdir:
             run_dir = Path(tmpdir) / "run"
-            _write_summary_xml(run_dir, "ActsButton", "ButtonSuite", "testCase", passed=True)
+            _write_summary_xml(
+                run_dir, "ActsButton", "ButtonSuite", "testCase", passed=True
+            )
 
             stdout = StringIO()
             stderr = StringIO()
@@ -85,13 +108,26 @@ class XtsCompareMarkdownOutputTests(unittest.TestCase):
         with TemporaryDirectory() as tmpdir:
             base_dir = Path(tmpdir) / "base"
             target_dir = Path(tmpdir) / "target"
-            _write_summary_xml(base_dir, "ActsButton", "ButtonSuite", "testCase", passed=True)
-            _write_summary_xml(target_dir, "ActsButton", "ButtonSuite", "testCase", passed=False)
+            _write_summary_xml(
+                base_dir, "ActsButton", "ButtonSuite", "testCase", passed=True
+            )
+            _write_summary_xml(
+                target_dir, "ActsButton", "ButtonSuite", "testCase", passed=False
+            )
 
             stdout = StringIO()
             stderr = StringIO()
             with redirect_stdout(stdout), redirect_stderr(stderr):
-                code = main(["--base", str(base_dir), "--target", str(target_dir), "--json", "--markdown"])
+                code = main(
+                    [
+                        "--base",
+                        str(base_dir),
+                        "--target",
+                        str(target_dir),
+                        "--json",
+                        "--markdown",
+                    ]
+                )
 
         self.assertEqual(code, 2)
         self.assertIn("mutually exclusive", stderr.getvalue())

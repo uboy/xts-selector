@@ -12,12 +12,10 @@ from arkui_xts_selector.graph.adapters import (
     build_button_modifier_static_graph,
     ConsumerFileDescriptor,
     SourceFileDescriptor,
-    SdkDeclarationDescriptor,
     TargetDescriptor,
 )
 from arkui_xts_selector.graph.schema import EdgeType, Graph, NodeType
 from arkui_xts_selector.graph.validation import validate_graph
-from arkui_xts_selector.model.evidence import Evidence
 
 
 class ButtonModifierGraphAdapterTests(unittest.TestCase):
@@ -35,7 +33,8 @@ class ButtonModifierGraphAdapterTests(unittest.TestCase):
 
     def test_button_modifier_api_entity_exists(self) -> None:
         api_nodes = [
-            n for n in self.graph.nodes.values()
+            n
+            for n in self.graph.nodes.values()
             if n.node_type == NodeType.API_ENTITY.value
         ]
         self.assertEqual(len(api_nodes), 1)
@@ -44,7 +43,8 @@ class ButtonModifierGraphAdapterTests(unittest.TestCase):
     def test_source_edge_has_source_impact_confidence(self) -> None:
         """Source edges must set source_impact_confidence."""
         prov_edges = [
-            e for e in self.graph.edges.values()
+            e
+            for e in self.graph.edges.values()
             if e.edge_type == EdgeType.PROVIDES_STATIC_MODIFIER.value
         ]
         self.assertTrue(prov_edges)
@@ -54,7 +54,8 @@ class ButtonModifierGraphAdapterTests(unittest.TestCase):
     def test_consumer_edge_has_consumer_usage_confidence(self) -> None:
         """uses_api edge must set consumer_usage_confidence."""
         uses_edges = [
-            e for e in self.graph.edges.values()
+            e
+            for e in self.graph.edges.values()
             if e.edge_type == EdgeType.USES_API.value
         ]
         self.assertTrue(uses_edges)
@@ -64,7 +65,8 @@ class ButtonModifierGraphAdapterTests(unittest.TestCase):
     def test_file_level_precision_represented(self) -> None:
         """Source edges carry file-level precision."""
         prov_edges = [
-            e for e in self.graph.edges.values()
+            e
+            for e in self.graph.edges.values()
             if e.edge_type == EdgeType.PROVIDES_STATIC_MODIFIER.value
         ]
         for edge in prov_edges:
@@ -74,7 +76,8 @@ class ButtonModifierGraphAdapterTests(unittest.TestCase):
     def test_no_method_level_precision_without_span(self) -> None:
         """Source edges without span must not claim method-level precision."""
         prov_edges = [
-            e for e in self.graph.edges.values()
+            e
+            for e in self.graph.edges.values()
             if e.edge_type == EdgeType.PROVIDES_STATIC_MODIFIER.value
         ]
         for edge in prov_edges:
@@ -82,23 +85,30 @@ class ButtonModifierGraphAdapterTests(unittest.TestCase):
             self.assertLessEqual(edge.evidence.parser_level, 2)
             # No false span claims
             if edge.evidence.parser_level < 3:
-                self.assertIsNone(edge.evidence.line,
-                                  "Parser level <3 must not claim line precision on source edge")
+                self.assertIsNone(
+                    edge.evidence.line,
+                    "Parser level <3 must not claim line precision on source edge",
+                )
 
     def test_all_edges_reference_existing_nodes(self) -> None:
         node_ids = self.graph.node_ids()
         for edge in self.graph.edges.values():
-            self.assertIn(edge.from_node, node_ids,
-                          f"Edge '{edge.edge_id}' from_node '{edge.from_node}' missing")
-            self.assertIn(edge.to_node, node_ids,
-                          f"Edge '{edge.edge_id}' to_node '{edge.to_node}' missing")
+            self.assertIn(
+                edge.from_node,
+                node_ids,
+                f"Edge '{edge.edge_id}' from_node '{edge.from_node}' missing",
+            )
+            self.assertIn(
+                edge.to_node,
+                node_ids,
+                f"Edge '{edge.edge_id}' to_node '{edge.to_node}' missing",
+            )
 
     def test_graph_validation_passes(self) -> None:
         result = validate_graph(self.graph)
         if not result.ok:
             errors = "\n".join(
-                f"  [{f.severity}] {f.rule}: {f.message}"
-                for f in result.errors
+                f"  [{f.severity}] {f.rule}: {f.message}" for f in result.errors
             )
             self.fail(f"Adapter graph validation failed:\n{errors}")
 
@@ -119,7 +129,8 @@ class ButtonModifierGraphAdapterTests(unittest.TestCase):
     def test_artifact_edges_runnability_only(self) -> None:
         """Artifact edges must not set semantic confidence."""
         art_edges = [
-            e for e in self.graph.edges.values()
+            e
+            for e in self.graph.edges.values()
             if e.edge_type == EdgeType.PRODUCES_ARTIFACT.value
         ]
         for edge in art_edges:
@@ -132,28 +143,37 @@ class ButtonModifierGraphAdapterTests(unittest.TestCase):
         g = self.graph
 
         # Source -> modifier
-        prov = [e for e in g.edges.values()
-                if e.edge_type == EdgeType.PROVIDES_STATIC_MODIFIER.value]
+        prov = [
+            e
+            for e in g.edges.values()
+            if e.edge_type == EdgeType.PROVIDES_STATIC_MODIFIER.value
+        ]
         self.assertEqual(len(prov), 1)
 
         # Consumer -> modifier
-        uses = [e for e in g.edges.values()
-                if e.edge_type == EdgeType.USES_API.value]
+        uses = [e for e in g.edges.values() if e.edge_type == EdgeType.USES_API.value]
         self.assertEqual(len(uses), 1)
 
         # Consumer -> project
-        belongs = [e for e in g.edges.values()
-                   if e.edge_type == EdgeType.BELONGS_TO_PROJECT.value]
+        belongs = [
+            e
+            for e in g.edges.values()
+            if e.edge_type == EdgeType.BELONGS_TO_PROJECT.value
+        ]
         self.assertEqual(len(belongs), 1)
 
         # Project -> target
-        maps = [e for e in g.edges.values()
-                if e.edge_type == EdgeType.MAPS_TO_TARGET.value]
+        maps = [
+            e for e in g.edges.values() if e.edge_type == EdgeType.MAPS_TO_TARGET.value
+        ]
         self.assertEqual(len(maps), 1)
 
         # Target -> artifact
-        produces = [e for e in g.edges.values()
-                    if e.edge_type == EdgeType.PRODUCES_ARTIFACT.value]
+        produces = [
+            e
+            for e in g.edges.values()
+            if e.edge_type == EdgeType.PRODUCES_ARTIFACT.value
+        ]
         self.assertEqual(len(produces), 1)
 
     def test_deterministic_build(self) -> None:
@@ -202,12 +222,14 @@ class ButtonModifierGraphAdapterCustomParamsTests(unittest.TestCase):
             ),
         )
         artifact_nodes = [
-            n for n in graph.nodes.values()
+            n
+            for n in graph.nodes.values()
             if n.node_type == NodeType.BUILD_ARTIFACT.value
         ]
         self.assertEqual(len(artifact_nodes), 0)
         produces_edges = [
-            e for e in graph.edges.values()
+            e
+            for e in graph.edges.values()
             if e.edge_type == EdgeType.PRODUCES_ARTIFACT.value
         ]
         self.assertEqual(len(produces_edges), 0)

@@ -1,11 +1,14 @@
 """Tests for header declaration-only method extraction."""
+
 from __future__ import annotations
 
-from pathlib import Path
 
-import pytest
-
-from arkui_xts_selector.indexing.cpp_parser import CppMethod, CppClass, CppParseResult, _walk_ast
+from arkui_xts_selector.indexing.cpp_parser import (
+    CppMethod,
+    CppClass,
+    CppParseResult,
+    _walk_ast,
+)
 from arkui_xts_selector.tree_sitter_parsers import _get_ts_cpp_parser
 
 
@@ -40,12 +43,14 @@ def test_declaration_only_confidence_downgrade():
     from arkui_xts_selector.indexing.ace_indexer import AceIndexEntry, AceIndexResult
 
     decl_method = CppMethod(
-        name="SetRole", parent_class="ButtonModelStatic",
+        name="SetRole",
+        parent_class="ButtonModelStatic",
         qualified="ButtonModelStatic::SetRole",
         is_declaration_only=True,
     )
     defn_method = CppMethod(
-        name="SetWidth", parent_class="ButtonModelStatic",
+        name="SetWidth",
+        parent_class="ButtonModelStatic",
         qualified="ButtonModelStatic::SetWidth",
         is_declaration_only=False,
     )

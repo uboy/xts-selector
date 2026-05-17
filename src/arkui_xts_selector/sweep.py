@@ -8,13 +8,16 @@ looks like, and which file classes have the most gaps.
 Requires a pre-built ApiLineageMap (from api_lineage.build_api_lineage_map).
 Skips fan-out computation when lineage_map is None.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-_SOURCE_SUFFIXES: frozenset[str] = frozenset({".cpp", ".cc", ".cxx", ".h", ".hpp", ".ts", ".js"})
+_SOURCE_SUFFIXES: frozenset[str] = frozenset(
+    {".cpp", ".cc", ".cxx", ".h", ".hpp", ".ts", ".js"}
+)
 
 
 def classify_source_file(rel_path: str) -> str:
@@ -52,8 +55,8 @@ class SweepReport:
     total_files: int
     resolved: int
     abstained: int
-    error_buckets: dict[str, int]   # file_class -> abstained count
-    worst_fanout: list[dict]        # top-10 highest consumer_project_count
+    error_buckets: dict[str, int]  # file_class -> abstained count
+    worst_fanout: list[dict]  # top-10 highest consumer_project_count
     unresolved_distribution: dict[str, int]  # unresolved_class -> count
 
 
@@ -122,7 +125,9 @@ def sweep_ace_engine(
     results: list[SweepFileResult] = []
     for path in _iter_source_files(ace_engine_root):
         try:
-            rel_path = str(path.resolve().relative_to(repo_root.resolve())).replace("\\", "/")
+            rel_path = str(path.resolve().relative_to(repo_root.resolve())).replace(
+                "\\", "/"
+            )
         except ValueError:
             rel_path = str(path).replace("\\", "/")
 
@@ -130,7 +135,9 @@ def sweep_ace_engine(
 
         if lineage_map is not None:
             source_to_apis: dict = getattr(lineage_map, "source_to_apis", {})
-            api_to_consumer_projects: dict = getattr(lineage_map, "api_to_consumer_projects", {})
+            api_to_consumer_projects: dict = getattr(
+                lineage_map, "api_to_consumer_projects", {}
+            )
             api_entities: set[str] = set(source_to_apis.get(rel_path, set()))
             consumer_projects: set[str] = set()
             for entity in api_entities:

@@ -53,7 +53,9 @@ class UnresolvedCaseTests(unittest.TestCase):
         case = UnresolvedCase(reason_code="fallback_only_evidence")
         d = case.to_dict()
         self.assertNotIn("suggested_next_action", d)
-        case2 = UnresolvedCase(reason_code="fallback_only_evidence", suggested_next_action="check")
+        case2 = UnresolvedCase(
+            reason_code="fallback_only_evidence", suggested_next_action="check"
+        )
         d2 = case2.to_dict()
         self.assertIn("suggested_next_action", d2)
 

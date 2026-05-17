@@ -4,6 +4,7 @@ Tests for sweep.py: repository-wide ace_engine source file validation sweep.
 Run:
     python3 -m unittest tests.test_sweep -v
 """
+
 from __future__ import annotations
 
 import tempfile
@@ -25,63 +26,83 @@ class ClassifySourceFileTests(unittest.TestCase):
 
     def test_pattern_file(self) -> None:
         self.assertEqual(
-            classify_source_file("foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_model.cpp"),
+            classify_source_file(
+                "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_model.cpp"
+            ),
             "pattern",
         )
 
     def test_bridge_file(self) -> None:
         self.assertEqual(
-            classify_source_file("foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/jsview/js_button.cpp"),
+            classify_source_file(
+                "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/jsview/js_button.cpp"
+            ),
             "bridge",
         )
 
     def test_native_node_file(self) -> None:
         self.assertEqual(
-            classify_source_file("foundation/arkui/ace_engine/interfaces/native/node/button_node.cpp"),
+            classify_source_file(
+                "foundation/arkui/ace_engine/interfaces/native/node/button_node.cpp"
+            ),
             "native_node",
         )
 
     def test_accessor_file(self) -> None:
         self.assertEqual(
-            classify_source_file("foundation/arkui/ace_engine/interfaces/native/implementation/button_impl.cpp"),
+            classify_source_file(
+                "foundation/arkui/ace_engine/interfaces/native/implementation/button_impl.cpp"
+            ),
             "accessor",
         )
 
     def test_modifier_ark_modifier(self) -> None:
         self.assertEqual(
-            classify_source_file("foundation/arkui/ace_engine/frameworks/core/ark_modifier/button_modifier.cpp"),
+            classify_source_file(
+                "foundation/arkui/ace_engine/frameworks/core/ark_modifier/button_modifier.cpp"
+            ),
             "modifier",
         )
 
     def test_modifier_slash_modifier_dir(self) -> None:
         self.assertEqual(
-            classify_source_file("foundation/arkui/ace_engine/frameworks/core/modifier/button.cpp"),
+            classify_source_file(
+                "foundation/arkui/ace_engine/frameworks/core/modifier/button.cpp"
+            ),
             "modifier",
         )
 
     def test_unknown_file(self) -> None:
         self.assertEqual(
-            classify_source_file("foundation/arkui/ace_engine/frameworks/core/utils/string_utils.h"),
+            classify_source_file(
+                "foundation/arkui/ace_engine/frameworks/core/utils/string_utils.h"
+            ),
             "unknown",
         )
 
     def test_backslash_path_normalized(self) -> None:
         """Windows-style backslash paths should be normalized before matching."""
         self.assertEqual(
-            classify_source_file(r"foundation\arkui\ace_engine\frameworks\core\components_ng\pattern\slider\slider.h"),
+            classify_source_file(
+                r"foundation\arkui\ace_engine\frameworks\core\components_ng\pattern\slider\slider.h"
+            ),
             "pattern",
         )
 
     def test_case_insensitive_matching(self) -> None:
         """Path matching must be case-insensitive."""
         self.assertEqual(
-            classify_source_file("FOUNDATION/ARKUI/ACE_ENGINE/FRAMEWORKS/CORE/COMPONENTS_NG/PATTERN/text/text.h"),
+            classify_source_file(
+                "FOUNDATION/ARKUI/ACE_ENGINE/FRAMEWORKS/CORE/COMPONENTS_NG/PATTERN/text/text.h"
+            ),
             "pattern",
         )
 
     def test_pattern_takes_priority_over_unknown(self) -> None:
         """pattern/ in path yields 'pattern', even with other keywords absent."""
-        result = classify_source_file("some/path/components_ng/pattern/image/image_model.cpp")
+        result = classify_source_file(
+            "some/path/components_ng/pattern/image/image_model.cpp"
+        )
         self.assertEqual(result, "pattern")
 
 
@@ -117,9 +138,13 @@ class BuildSweepReportTests(unittest.TestCase):
 
     def test_resolved_count(self) -> None:
         results = [
-            self._make_result(status="resolved", api_entity_count=2, consumer_project_count=3),
+            self._make_result(
+                status="resolved", api_entity_count=2, consumer_project_count=3
+            ),
             self._make_result(status="abstained", unresolved_class="lineage_gap"),
-            self._make_result(status="resolved", api_entity_count=1, consumer_project_count=1),
+            self._make_result(
+                status="resolved", api_entity_count=1, consumer_project_count=1
+            ),
         ]
         report = _build_sweep_report(results)
         self.assertEqual(report.total_files, 3)
@@ -128,10 +153,21 @@ class BuildSweepReportTests(unittest.TestCase):
 
     def test_error_buckets_by_file_class(self) -> None:
         results = [
-            self._make_result(file_class="pattern", status="abstained", unresolved_class="lineage_gap"),
-            self._make_result(file_class="pattern", status="abstained", unresolved_class="lineage_gap"),
-            self._make_result(file_class="bridge", status="abstained", unresolved_class="lineage_gap"),
-            self._make_result(file_class="unknown", status="resolved", api_entity_count=1, consumer_project_count=1),
+            self._make_result(
+                file_class="pattern", status="abstained", unresolved_class="lineage_gap"
+            ),
+            self._make_result(
+                file_class="pattern", status="abstained", unresolved_class="lineage_gap"
+            ),
+            self._make_result(
+                file_class="bridge", status="abstained", unresolved_class="lineage_gap"
+            ),
+            self._make_result(
+                file_class="unknown",
+                status="resolved",
+                api_entity_count=1,
+                consumer_project_count=1,
+            ),
         ]
         report = _build_sweep_report(results)
         self.assertEqual(report.error_buckets.get("pattern"), 2)
@@ -151,9 +187,18 @@ class BuildSweepReportTests(unittest.TestCase):
 
     def test_worst_fanout_sorted_descending(self) -> None:
         results = [
-            self._make_result("a.cpp", status="resolved", api_entity_count=1, consumer_project_count=5),
-            self._make_result("b.cpp", status="resolved", api_entity_count=2, consumer_project_count=20),
-            self._make_result("c.cpp", status="resolved", api_entity_count=3, consumer_project_count=1),
+            self._make_result(
+                "a.cpp", status="resolved", api_entity_count=1, consumer_project_count=5
+            ),
+            self._make_result(
+                "b.cpp",
+                status="resolved",
+                api_entity_count=2,
+                consumer_project_count=20,
+            ),
+            self._make_result(
+                "c.cpp", status="resolved", api_entity_count=3, consumer_project_count=1
+            ),
         ]
         report = _build_sweep_report(results)
         counts = [r["consumer_project_count"] for r in report.worst_fanout]
@@ -175,8 +220,15 @@ class BuildSweepReportTests(unittest.TestCase):
 
     def test_worst_fanout_excludes_abstained(self) -> None:
         results = [
-            self._make_result("resolved.cpp", status="resolved", api_entity_count=1, consumer_project_count=100),
-            self._make_result("abstained.cpp", status="abstained", unresolved_class="lineage_gap"),
+            self._make_result(
+                "resolved.cpp",
+                status="resolved",
+                api_entity_count=1,
+                consumer_project_count=100,
+            ),
+            self._make_result(
+                "abstained.cpp", status="abstained", unresolved_class="lineage_gap"
+            ),
         ]
         report = _build_sweep_report(results)
         paths = [r["rel_path"] for r in report.worst_fanout]
@@ -213,13 +265,28 @@ class SweepReportToDictTests(unittest.TestCase):
             resolved=resolved,
             abstained=total - resolved,
             error_buckets={"pattern": 2, "bridge": 1},
-            worst_fanout=[{"rel_path": "a.cpp", "file_class": "pattern", "api_entity_count": 1, "consumer_project_count": 5}],
+            worst_fanout=[
+                {
+                    "rel_path": "a.cpp",
+                    "file_class": "pattern",
+                    "api_entity_count": 1,
+                    "consumer_project_count": 5,
+                }
+            ],
             unresolved_distribution={"lineage_gap": 3},
         )
 
     def test_required_keys_present(self) -> None:
         d = sweep_report_to_dict(self._make_report())
-        for key in ("total_files", "resolved", "abstained", "resolution_rate", "error_buckets", "worst_fanout", "unresolved_distribution"):
+        for key in (
+            "total_files",
+            "resolved",
+            "abstained",
+            "resolution_rate",
+            "error_buckets",
+            "worst_fanout",
+            "unresolved_distribution",
+        ):
             self.assertIn(key, d)
 
     def test_resolution_rate_computed(self) -> None:
@@ -290,12 +357,21 @@ class SweepAceEngineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir)
             ace_root = repo_root / "foundation" / "arkui" / "ace_engine"
-            pattern_dir = ace_root / "frameworks" / "core" / "components_ng" / "pattern" / "button"
+            pattern_dir = (
+                ace_root
+                / "frameworks"
+                / "core"
+                / "components_ng"
+                / "pattern"
+                / "button"
+            )
             pattern_dir.mkdir(parents=True)
             (pattern_dir / "button_model.cpp").write_text("// placeholder")
             (pattern_dir / "button_model.h").write_text("// placeholder")
 
-            report = sweep_ace_engine(repo_root, ace_engine_root=ace_root, lineage_map=None)
+            report = sweep_ace_engine(
+                repo_root, ace_engine_root=ace_root, lineage_map=None
+            )
 
         self.assertEqual(report.total_files, 2)
         self.assertEqual(report.resolved, 0)
@@ -311,7 +387,9 @@ class SweepAceEngineTests(unittest.TestCase):
             (ace_root / "config.json").write_text("{}")
             (ace_root / "button.cpp").write_text("// code")
 
-            report = sweep_ace_engine(repo_root, ace_engine_root=ace_root, lineage_map=None)
+            report = sweep_ace_engine(
+                repo_root, ace_engine_root=ace_root, lineage_map=None
+            )
 
         self.assertEqual(report.total_files, 1)
 
@@ -324,7 +402,9 @@ class SweepAceEngineTests(unittest.TestCase):
             for ext in (".cpp", ".cc", ".cxx", ".h", ".hpp", ".ts", ".js"):
                 (ace_root / f"file{ext}").write_text("// x")
 
-            report = sweep_ace_engine(repo_root, ace_engine_root=ace_root, lineage_map=None)
+            report = sweep_ace_engine(
+                repo_root, ace_engine_root=ace_root, lineage_map=None
+            )
 
         self.assertEqual(report.total_files, 7)
 
@@ -338,7 +418,9 @@ class SweepAceEngineTests(unittest.TestCase):
             src_file.write_text("// code")
 
             # Compute the rel_path as sweep_ace_engine would
-            rel_path = str(src_file.resolve().relative_to(repo_root.resolve())).replace("\\", "/")
+            rel_path = str(src_file.resolve().relative_to(repo_root.resolve())).replace(
+                "\\", "/"
+            )
 
             class FakeLineageMap:
                 source_to_apis = {rel_path: {"Button", "ButtonAttribute"}}
@@ -347,7 +429,9 @@ class SweepAceEngineTests(unittest.TestCase):
                     "ButtonAttribute": {"proj/a"},
                 }
 
-            report = sweep_ace_engine(repo_root, ace_engine_root=ace_root, lineage_map=FakeLineageMap())
+            report = sweep_ace_engine(
+                repo_root, ace_engine_root=ace_root, lineage_map=FakeLineageMap()
+            )
 
         self.assertEqual(report.total_files, 1)
         self.assertEqual(report.resolved, 1)
@@ -369,7 +453,9 @@ class SweepAceEngineTests(unittest.TestCase):
                 source_to_apis: dict = {}
                 api_to_consumer_projects: dict = {}
 
-            report = sweep_ace_engine(repo_root, ace_engine_root=ace_root, lineage_map=FakeLineageMap())
+            report = sweep_ace_engine(
+                repo_root, ace_engine_root=ace_root, lineage_map=FakeLineageMap()
+            )
 
         self.assertEqual(report.abstained, 1)
         self.assertEqual(report.unresolved_distribution.get("lineage_gap"), 1)
@@ -390,11 +476,21 @@ class SweepAceEngineTests(unittest.TestCase):
         """Files in components_ng/pattern/ are classified as 'pattern'."""
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir)
-            pattern_dir = repo_root / "ace" / "frameworks" / "core" / "components_ng" / "pattern" / "slider"
+            pattern_dir = (
+                repo_root
+                / "ace"
+                / "frameworks"
+                / "core"
+                / "components_ng"
+                / "pattern"
+                / "slider"
+            )
             pattern_dir.mkdir(parents=True)
             src_file = pattern_dir / "slider.cpp"
             src_file.write_text("x")
-            rel_path = str(src_file.resolve().relative_to(repo_root.resolve())).replace("\\", "/")
+            rel_path = str(src_file.resolve().relative_to(repo_root.resolve())).replace(
+                "\\", "/"
+            )
 
             class FakeLineageMap:
                 source_to_apis = {rel_path: {"Slider"}}

@@ -48,12 +48,16 @@ class DailyPrebuiltDiscoveryTests(unittest.TestCase):
             strong = root / "pkg/out/rk3568/suites/acts"
 
             (weak / "testcases").mkdir(parents=True)
-            (weak / "testcases/module_info.list").write_text("ActsWeak\n", encoding="utf-8")
+            (weak / "testcases/module_info.list").write_text(
+                "ActsWeak\n", encoding="utf-8"
+            )
             (weak / "testcases/ActsWeak.json").write_text("{}", encoding="utf-8")
 
             (strong / "testcases").mkdir(parents=True)
             (strong / "resource").mkdir(parents=True)
-            (strong / "testcases/module_info.list").write_text("ActsStrong\n", encoding="utf-8")
+            (strong / "testcases/module_info.list").write_text(
+                "ActsStrong\n", encoding="utf-8"
+            )
             (strong / "testcases/ActsStrongA.json").write_text("{}", encoding="utf-8")
             (strong / "testcases/ActsStrongB.json").write_text("{}", encoding="utf-8")
 
@@ -76,7 +80,9 @@ class DailyBuildResolutionTests(unittest.TestCase):
             "arkui_xts_selector.daily_prebuilt.fetch_daily_builds",
             return_value=[expected],
         ) as mocked_fetch:
-            resolved = resolve_daily_build(component=DEFAULT_DAILY_COMPONENT, build_tag="20260403_120242")
+            resolved = resolve_daily_build(
+                component=DEFAULT_DAILY_COMPONENT, build_tag="20260403_120242"
+            )
 
         self.assertEqual(resolved.tag, expected.tag)
         mocked_fetch.assert_called_once_with(
@@ -87,7 +93,9 @@ class DailyBuildResolutionTests(unittest.TestCase):
             timeout=mock.ANY,
         )
 
-    def test_resolve_daily_build_tries_xts_component_for_plain_board_alias(self) -> None:
+    def test_resolve_daily_build_tries_xts_component_for_plain_board_alias(
+        self,
+    ) -> None:
         expected = DailyBuildInfo(
             tag="20260404_120510",
             component="dayu200_Dyn_Sta_XTS",
@@ -100,7 +108,9 @@ class DailyBuildResolutionTests(unittest.TestCase):
             "arkui_xts_selector.daily_prebuilt.fetch_daily_builds",
             return_value=[expected],
         ) as mocked_fetch:
-            resolved = resolve_daily_build(component="dayu200", build_tag="20260404_120510")
+            resolved = resolve_daily_build(
+                component="dayu200", build_tag="20260404_120510"
+            )
 
         self.assertEqual(resolved.component, "dayu200_Dyn_Sta_XTS")
         mocked_fetch.assert_called_once_with(
@@ -139,7 +149,9 @@ class DailyBuildResolutionTests(unittest.TestCase):
             timeout=mock.ANY,
         )
 
-    def test_resolve_daily_build_selects_latest_available_build_for_date_without_tag(self) -> None:
+    def test_resolve_daily_build_selects_latest_available_build_for_date_without_tag(
+        self,
+    ) -> None:
         older = DailyBuildInfo(
             tag="20260404_120100",
             component=DEFAULT_SDK_COMPONENT,
@@ -169,7 +181,9 @@ class DailyBuildResolutionTests(unittest.TestCase):
 
         self.assertEqual(resolved.tag, newer.tag)
 
-    def test_list_daily_tags_tries_xts_component_candidates_for_plain_board_alias(self) -> None:
+    def test_list_daily_tags_tries_xts_component_candidates_for_plain_board_alias(
+        self,
+    ) -> None:
         build = DailyBuildInfo(
             tag="20260410_120510",
             component="dayu200_Dyn_Sta_XTS",
@@ -184,7 +198,10 @@ class DailyBuildResolutionTests(unittest.TestCase):
                 return [build]
             return []
 
-        with mock.patch("arkui_xts_selector.daily_prebuilt.fetch_daily_builds", side_effect=fake_fetch):
+        with mock.patch(
+            "arkui_xts_selector.daily_prebuilt.fetch_daily_builds",
+            side_effect=fake_fetch,
+        ):
             tags = list_daily_tags(
                 component="dayu200",
                 branch="master",
@@ -199,7 +216,9 @@ class DailyBuildResolutionTests(unittest.TestCase):
 
 
 class DailyPrebuiltPreparationTests(unittest.TestCase):
-    def test_prepare_daily_prebuilt_uses_cached_archive_and_discovers_acts_root(self) -> None:
+    def test_prepare_daily_prebuilt_uses_cached_archive_and_discovers_acts_root(
+        self,
+    ) -> None:
         build = DailyBuildInfo(
             tag="20260403_120242",
             component="dayu200",
@@ -217,16 +236,22 @@ class DailyPrebuiltPreparationTests(unittest.TestCase):
 
             with tarfile.open(archive_path, "w:gz") as archive:
                 module_info_payload = b"ActsButtonTest\n"
-                module_info = tarfile.TarInfo("payload/out/rk3568/suites/acts/testcases/module_info.list")
+                module_info = tarfile.TarInfo(
+                    "payload/out/rk3568/suites/acts/testcases/module_info.list"
+                )
                 module_info.size = len(module_info_payload)
                 archive.addfile(module_info, io.BytesIO(module_info_payload))
 
                 testcase_payload = b"{}"
-                testcase = tarfile.TarInfo("payload/out/rk3568/suites/acts/testcases/ActsButton.json")
+                testcase = tarfile.TarInfo(
+                    "payload/out/rk3568/suites/acts/testcases/ActsButton.json"
+                )
                 testcase.size = len(testcase_payload)
                 archive.addfile(testcase, io.BytesIO(testcase_payload))
 
-                resource_dir = tarfile.TarInfo("payload/out/rk3568/suites/acts/resource")
+                resource_dir = tarfile.TarInfo(
+                    "payload/out/rk3568/suites/acts/resource"
+                )
                 resource_dir.type = tarfile.DIRTYPE
                 archive.addfile(resource_dir)
 
@@ -258,20 +283,29 @@ class DailyPrebuiltPreparationTests(unittest.TestCase):
             def fake_download(_url: str, target: Path, timeout: float = 120.0) -> None:
                 with tarfile.open(target, "w:gz") as archive:
                     module_info_payload = b"ActsButtonTest\n"
-                    module_info = tarfile.TarInfo("payload/out/rk3568/suites/acts/testcases/module_info.list")
+                    module_info = tarfile.TarInfo(
+                        "payload/out/rk3568/suites/acts/testcases/module_info.list"
+                    )
                     module_info.size = len(module_info_payload)
                     archive.addfile(module_info, io.BytesIO(module_info_payload))
 
                     testcase_payload = b"{}"
-                    testcase = tarfile.TarInfo("payload/out/rk3568/suites/acts/testcases/ActsButton.json")
+                    testcase = tarfile.TarInfo(
+                        "payload/out/rk3568/suites/acts/testcases/ActsButton.json"
+                    )
                     testcase.size = len(testcase_payload)
                     archive.addfile(testcase, io.BytesIO(testcase_payload))
 
-                    resource_dir = tarfile.TarInfo("payload/out/rk3568/suites/acts/resource")
+                    resource_dir = tarfile.TarInfo(
+                        "payload/out/rk3568/suites/acts/resource"
+                    )
                     resource_dir.type = tarfile.DIRTYPE
                     archive.addfile(resource_dir)
 
-            with mock.patch("arkui_xts_selector.daily_prebuilt._download_file", side_effect=fake_download) as mocked_download:
+            with mock.patch(
+                "arkui_xts_selector.daily_prebuilt._download_file",
+                side_effect=fake_download,
+            ) as mocked_download:
                 prepared = prepare_daily_prebuilt(build=build, cache_root=cache_root)
 
         self.assertEqual(mocked_download.call_count, 1)
@@ -295,17 +329,23 @@ class DailyPrebuiltPreparationTests(unittest.TestCase):
 
             with tarfile.open(archive_path, "w:gz") as archive:
                 sdk_file_payload = b"export interface ButtonModifier {}"
-                sdk_file = tarfile.TarInfo("payload/interface/sdk-js/api/arkui/ButtonModifier.d.ts")
+                sdk_file = tarfile.TarInfo(
+                    "payload/interface/sdk-js/api/arkui/ButtonModifier.d.ts"
+                )
                 sdk_file.size = len(sdk_file_payload)
                 archive.addfile(sdk_file, io.BytesIO(sdk_file_payload))
 
                 component_payload = b"export struct Button {}"
-                component_file = tarfile.TarInfo("payload/interface/sdk-js/api/arkui/component/button.static.d.ets")
+                component_file = tarfile.TarInfo(
+                    "payload/interface/sdk-js/api/arkui/component/button.static.d.ets"
+                )
                 component_file.size = len(component_payload)
                 archive.addfile(component_file, io.BytesIO(component_payload))
 
                 ohos_payload = b"export interface promptAction {}"
-                ohos_file = tarfile.TarInfo("payload/interface/sdk-js/api/@ohos.promptAction.d.ts")
+                ohos_file = tarfile.TarInfo(
+                    "payload/interface/sdk-js/api/@ohos.promptAction.d.ts"
+                )
                 ohos_file.size = len(ohos_payload)
                 archive.addfile(ohos_file, io.BytesIO(ohos_payload))
 
@@ -315,7 +355,9 @@ class DailyPrebuiltPreparationTests(unittest.TestCase):
         self.assertIsNotNone(prepared.primary_root)
         self.assertTrue(str(prepared.primary_root).endswith("interface/sdk-js/api"))
 
-    def test_prepare_daily_firmware_uses_image_package_and_discovers_image_root(self) -> None:
+    def test_prepare_daily_firmware_uses_image_package_and_discovers_image_root(
+        self,
+    ) -> None:
         build = DailyBuildInfo(
             tag="20260404_120244",
             component=DEFAULT_FIRMWARE_COMPONENT,
@@ -361,7 +403,9 @@ class DailyPrebuiltPreparationTests(unittest.TestCase):
 
     def test_download_file_resumes_from_partial_archive_with_warning(self) -> None:
         class FakeResponse:
-            def __init__(self, payload: bytes, status: int, headers: dict[str, str] | None = None) -> None:
+            def __init__(
+                self, payload: bytes, status: int, headers: dict[str, str] | None = None
+            ) -> None:
                 self._payload = io.BytesIO(payload)
                 self.status = status
                 self.headers = headers or {}
@@ -381,7 +425,9 @@ class DailyPrebuiltPreparationTests(unittest.TestCase):
             partial.write_bytes(b"abc")
 
             stderr = io.StringIO()
-            with mock.patch("urllib.request.urlopen", return_value=FakeResponse(b"def", 206)):
+            with mock.patch(
+                "urllib.request.urlopen", return_value=FakeResponse(b"def", 206)
+            ):
                 with redirect_stderr(stderr):
                     _download_file("https://example.invalid/artifact.tar.gz", target)
 
@@ -391,7 +437,9 @@ class DailyPrebuiltPreparationTests(unittest.TestCase):
 
     def test_download_file_restarts_when_server_ignores_range_request(self) -> None:
         class FakeResponse:
-            def __init__(self, payload: bytes, status: int, headers: dict[str, str] | None = None) -> None:
+            def __init__(
+                self, payload: bytes, status: int, headers: dict[str, str] | None = None
+            ) -> None:
                 self._payload = io.BytesIO(payload)
                 self.status = status
                 self.headers = headers or {}
@@ -411,7 +459,9 @@ class DailyPrebuiltPreparationTests(unittest.TestCase):
             partial.write_bytes(b"old-bytes")
 
             stderr = io.StringIO()
-            with mock.patch("urllib.request.urlopen", return_value=FakeResponse(b"fresh-bytes", 200)):
+            with mock.patch(
+                "urllib.request.urlopen", return_value=FakeResponse(b"fresh-bytes", 200)
+            ):
                 with redirect_stderr(stderr):
                     _download_file("https://example.invalid/artifact.tar.gz", target)
 
@@ -421,7 +471,9 @@ class DailyPrebuiltPreparationTests(unittest.TestCase):
 
     def test_download_file_prints_progress_line(self) -> None:
         class FakeResponse:
-            def __init__(self, payload: bytes, status: int, headers: dict[str, str] | None = None) -> None:
+            def __init__(
+                self, payload: bytes, status: int, headers: dict[str, str] | None = None
+            ) -> None:
                 self._payload = io.BytesIO(payload)
                 self.status = status
                 self.headers = headers or {}
@@ -441,7 +493,9 @@ class DailyPrebuiltPreparationTests(unittest.TestCase):
             stderr = io.StringIO()
             with mock.patch(
                 "urllib.request.urlopen",
-                return_value=FakeResponse(payload, 200, headers={"Content-Length": str(len(payload))}),
+                return_value=FakeResponse(
+                    payload, 200, headers={"Content-Length": str(len(payload))}
+                ),
             ):
                 with redirect_stderr(stderr):
                     _download_file("https://example.invalid/artifact.tar.gz", target)
@@ -461,8 +515,19 @@ class DailyPrebuiltCliTests(unittest.TestCase):
             "sdk_api_root": "/tmp/repo/sdk",
             "git_repo_root": "/tmp/repo/foundation/arkui/ace_engine",
             "acts_out_root": "/tmp/repo/out/release/suites/acts",
-            "product_build": {"status": "missing", "out_dir_exists": False, "build_log_exists": False, "error_log_exists": False, "error_log_size": 0},
-            "built_artifacts": {"status": "missing", "testcases_dir_exists": False, "module_info_exists": False, "testcase_json_count": 0},
+            "product_build": {
+                "status": "missing",
+                "out_dir_exists": False,
+                "build_log_exists": False,
+                "error_log_exists": False,
+                "error_log_size": 0,
+            },
+            "built_artifacts": {
+                "status": "missing",
+                "testcases_dir_exists": False,
+                "module_info_exists": False,
+                "testcase_json_count": 0,
+            },
             "built_artifact_index": {},
             "cache_used": False,
             "variants_mode": "auto",
@@ -496,7 +561,9 @@ class DailyPrebuiltCliTests(unittest.TestCase):
             def fake_prepare(app_config):
                 app_config.daily_prebuilt = prepared
                 app_config.daily_prebuilt_ready = True
-                app_config.daily_prebuilt_note = "Using prebuilt ACTS artifacts from daily build 20260403_120242."
+                app_config.daily_prebuilt_note = (
+                    "Using prebuilt ACTS artifacts from daily build 20260403_120242."
+                )
                 app_config.acts_out_root = prebuilt_root
                 return prepared
 
@@ -513,13 +580,33 @@ class DailyPrebuiltCliTests(unittest.TestCase):
                 "--json",
             ]
             with mock.patch.object(sys, "argv", argv):
-                with mock.patch("arkui_xts_selector.cli.prepare_daily_prebuilt_from_config", side_effect=fake_prepare), \
-                     mock.patch("arkui_xts_selector.cli.load_or_build_projects", return_value=([], False)), \
-                     mock.patch("arkui_xts_selector.cli.load_sdk_index", return_value=SdkIndex()), \
-                     mock.patch("arkui_xts_selector.cli.build_content_modifier_index", return_value=ContentModifierIndex()), \
-                     mock.patch("arkui_xts_selector.cli.load_mapping_config", return_value=MappingConfig()), \
-                     mock.patch("arkui_xts_selector.cli.format_report", return_value=minimal_report), \
-                     redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                with (
+                    mock.patch(
+                        "arkui_xts_selector.cli.prepare_daily_prebuilt_from_config",
+                        side_effect=fake_prepare,
+                    ),
+                    mock.patch(
+                        "arkui_xts_selector.cli.load_or_build_projects",
+                        return_value=([], False),
+                    ),
+                    mock.patch(
+                        "arkui_xts_selector.cli.load_sdk_index", return_value=SdkIndex()
+                    ),
+                    mock.patch(
+                        "arkui_xts_selector.cli.build_content_modifier_index",
+                        return_value=ContentModifierIndex(),
+                    ),
+                    mock.patch(
+                        "arkui_xts_selector.cli.load_mapping_config",
+                        return_value=MappingConfig(),
+                    ),
+                    mock.patch(
+                        "arkui_xts_selector.cli.format_report",
+                        return_value=minimal_report,
+                    ),
+                    redirect_stdout(io.StringIO()),
+                    redirect_stderr(io.StringIO()),
+                ):
                     code = main()
 
             manifests = sorted(run_store_root.rglob("run_manifest.json"))
@@ -527,7 +614,9 @@ class DailyPrebuiltCliTests(unittest.TestCase):
             self.assertEqual(len(manifests), 1)
             payload = json.loads(manifests[0].read_text(encoding="utf-8"))
             self.assertEqual(payload["daily_prebuilt"]["tag"], "20260403_120242")
-            self.assertEqual(payload["daily_prebuilt"]["acts_out_root"], str(prebuilt_root))
+            self.assertEqual(
+                payload["daily_prebuilt"]["acts_out_root"], str(prebuilt_root)
+            )
 
     def test_has_local_acts_artifacts_detects_module_info(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -554,14 +643,18 @@ class DailyPrebuiltCliTests(unittest.TestCase):
 
             self.assertFalse(_has_local_acts_artifacts(acts_root))
 
-    def test_sync_prebuilt_acts_to_local_root_replaces_destination_and_cleans_cache(self) -> None:
+    def test_sync_prebuilt_acts_to_local_root_replaces_destination_and_cleans_cache(
+        self,
+    ) -> None:
         with TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             source = root / "cache/extracted/out/rk3568/suites/acts"
             destination = root / "repo/out/release/suites/acts"
             source_testcases = source / "testcases"
             source_testcases.mkdir(parents=True, exist_ok=True)
-            (source_testcases / "module_info.list").write_text("ActsA\n", encoding="utf-8")
+            (source_testcases / "module_info.list").write_text(
+                "ActsA\n", encoding="utf-8"
+            )
             destination.mkdir(parents=True, exist_ok=True)
             (destination / "stale.txt").write_text("stale", encoding="utf-8")
 
@@ -617,15 +710,26 @@ class DailyPrebuiltCliTests(unittest.TestCase):
             "--json",
         ]
         with mock.patch.object(sys, "argv", argv):
-            with mock.patch("arkui_xts_selector.progress.prepare_daily_sdk_from_config", return_value=prepared_sdk), \
-                 mock.patch("arkui_xts_selector.cli.load_or_build_projects") as mocked_projects, \
-                 redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()):
+            with (
+                mock.patch(
+                    "arkui_xts_selector.progress.prepare_daily_sdk_from_config",
+                    return_value=prepared_sdk,
+                ),
+                mock.patch(
+                    "arkui_xts_selector.cli.load_or_build_projects"
+                ) as mocked_projects,
+                redirect_stdout(io.StringIO()) as stdout,
+                redirect_stderr(io.StringIO()),
+            ):
                 code = main()
 
         payload = json.loads(stdout.getvalue())
         self.assertEqual(code, 0)
         self.assertEqual(payload["mode"], "utility")
-        self.assertEqual(payload["operations"]["download_daily_sdk"]["component"], DEFAULT_SDK_COMPONENT)
+        self.assertEqual(
+            payload["operations"]["download_daily_sdk"]["component"],
+            DEFAULT_SDK_COMPONENT,
+        )
         mocked_projects.assert_not_called()
 
     def test_main_supports_flash_local_firmware_utility_mode(self) -> None:
@@ -646,19 +750,35 @@ class DailyPrebuiltCliTests(unittest.TestCase):
                 "command": ["python3", "flash.py"],
             }
             with mock.patch.object(sys, "argv", argv):
-                with mock.patch("arkui_xts_selector.progress.resolve_local_firmware_root", return_value=firmware_root), \
-                     mock.patch("arkui_xts_selector.utility_modes.flash_image_bundle", return_value=flash_result), \
-                     mock.patch("arkui_xts_selector.cli.load_or_build_projects") as mocked_projects, \
-                     redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()):
+                with (
+                    mock.patch(
+                        "arkui_xts_selector.progress.resolve_local_firmware_root",
+                        return_value=firmware_root,
+                    ),
+                    mock.patch(
+                        "arkui_xts_selector.utility_modes.flash_image_bundle",
+                        return_value=flash_result,
+                    ),
+                    mock.patch(
+                        "arkui_xts_selector.cli.load_or_build_projects"
+                    ) as mocked_projects,
+                    redirect_stdout(io.StringIO()) as stdout,
+                    redirect_stderr(io.StringIO()),
+                ):
                     code = main()
 
         payload = json.loads(stdout.getvalue())
         self.assertEqual(code, 0)
         self.assertEqual(payload["mode"], "utility")
-        self.assertEqual(payload["operations"]["flash_local_firmware"]["requested_path"], str(firmware_root))
+        self.assertEqual(
+            payload["operations"]["flash_local_firmware"]["requested_path"],
+            str(firmware_root),
+        )
         mocked_projects.assert_not_called()
 
-    def test_main_prints_flash_subprogress_for_local_firmware_utility_mode(self) -> None:
+    def test_main_prints_flash_subprogress_for_local_firmware_utility_mode(
+        self,
+    ) -> None:
         with TemporaryDirectory() as tmpdir:
             firmware_root = Path(tmpdir) / "image_bundle"
             firmware_root.mkdir()
@@ -671,7 +791,9 @@ class DailyPrebuiltCliTests(unittest.TestCase):
             def fake_flash_image_bundle(**kwargs):
                 progress_callback = kwargs.get("progress_callback")
                 if progress_callback is not None:
-                    progress_callback("loader device ready: location=11, serial=1160102420220046")
+                    progress_callback(
+                        "loader device ready: location=11, serial=1160102420220046"
+                    )
                     progress_callback("write progress 35%")
                 flash_result = mock.Mock()
                 flash_result.status = "completed"
@@ -683,14 +805,28 @@ class DailyPrebuiltCliTests(unittest.TestCase):
                 return flash_result
 
             with mock.patch.object(sys, "argv", argv):
-                with mock.patch("arkui_xts_selector.progress.resolve_local_firmware_root", return_value=firmware_root), \
-                     mock.patch("arkui_xts_selector.utility_modes.flash_image_bundle", side_effect=fake_flash_image_bundle), \
-                     mock.patch("arkui_xts_selector.cli.load_or_build_projects") as mocked_projects, \
-                     redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()) as stderr:
+                with (
+                    mock.patch(
+                        "arkui_xts_selector.progress.resolve_local_firmware_root",
+                        return_value=firmware_root,
+                    ),
+                    mock.patch(
+                        "arkui_xts_selector.utility_modes.flash_image_bundle",
+                        side_effect=fake_flash_image_bundle,
+                    ),
+                    mock.patch(
+                        "arkui_xts_selector.cli.load_or_build_projects"
+                    ) as mocked_projects,
+                    redirect_stdout(io.StringIO()) as stdout,
+                    redirect_stderr(io.StringIO()) as stderr,
+                ):
                     code = main()
 
         self.assertEqual(code, 0)
-        self.assertIn("flash: loader device ready: location=11, serial=1160102420220046", stderr.getvalue())
+        self.assertIn(
+            "flash: loader device ready: location=11, serial=1160102420220046",
+            stderr.getvalue(),
+        )
         self.assertIn("flash: write progress 35%", stderr.getvalue())
         self.assertIn("flash_local_firmware: completed", stdout.getvalue())
         mocked_projects.assert_not_called()
@@ -713,8 +849,13 @@ class DailyPrebuiltCliTests(unittest.TestCase):
             "/tmp/ignored.json",
         ]
         with mock.patch.object(sys, "argv", argv):
-            with mock.patch("arkui_xts_selector.utility_modes.list_daily_tags", return_value=[build]):
-                with redirect_stdout(io.StringIO()) as stdout, redirect_stderr(io.StringIO()):
+            with mock.patch(
+                "arkui_xts_selector.utility_modes.list_daily_tags", return_value=[build]
+            ):
+                with (
+                    redirect_stdout(io.StringIO()) as stdout,
+                    redirect_stderr(io.StringIO()),
+                ):
                     code = main()
 
         self.assertEqual(code, 0)

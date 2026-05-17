@@ -11,6 +11,7 @@ class TestExtractComponent:
     @pytest.fixture(autouse=True)
     def _import(self):
         from arkui_xts_selector.indexing.cpp_naming_resolver import _extract_component
+
         self.fn = _extract_component
 
     # --- _modifier.cpp ---
@@ -24,10 +25,13 @@ class TestExtractComponent:
         assert self.fn("rich_editor_overlay_modifier.cpp") == "rich_editor"
 
     def test_modifier_full_path(self):
-        assert self.fn(
-            "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/"
-            "slider/slider_content_modifier.cpp"
-        ) == "slider"
+        assert (
+            self.fn(
+                "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/"
+                "slider/slider_content_modifier.cpp"
+            )
+            == "slider"
+        )
 
     # --- _content_modifier.cpp (variant of modifier) ---
     def test_content_modifier(self):
@@ -41,9 +45,10 @@ class TestExtractComponent:
         assert self.fn("button_pattern.cpp") == "button"
 
     def test_pattern_full_path(self):
-        assert self.fn(
-            "frameworks/core/components_ng/pattern/menu/menu_pattern.cpp"
-        ) == "menu"
+        assert (
+            self.fn("frameworks/core/components_ng/pattern/menu/menu_pattern.cpp")
+            == "menu"
+        )
 
     # --- _layout_algorithm.cpp ---
     def test_layout_algorithm(self):
@@ -114,9 +119,10 @@ class TestExtractComponent:
     def test_nested_drag_subdir(self):
         """Files in sub-directories like rich_editor_drag/ resolve to rich_editor_drag by naming.
         The co-location resolver handles the rich_editor parent mapping separately."""
-        assert self.fn(
-            "rich_editor_drag/rich_editor_drag_overlay_modifier.cpp"
-        ) == "rich_editor_drag"
+        assert (
+            self.fn("rich_editor_drag/rich_editor_drag_overlay_modifier.cpp")
+            == "rich_editor_drag"
+        )
 
 
 class TestResolveToTestDir:
@@ -125,6 +131,7 @@ class TestResolveToTestDir:
     @pytest.fixture(autouse=True)
     def _import(self):
         from arkui_xts_selector.indexing.cpp_naming_resolver import _resolve_to_test_dir
+
         self.fn = _resolve_to_test_dir
 
     def test_button(self, xts_root):
@@ -159,7 +166,10 @@ class TestResolveByDirectoryCoLocation:
 
     @pytest.fixture(autouse=True)
     def _import(self):
-        from arkui_xts_selector.indexing.cpp_naming_resolver import _resolve_by_directory_co_location
+        from arkui_xts_selector.indexing.cpp_naming_resolver import (
+            _resolve_by_directory_co_location,
+        )
+
         self.fn = _resolve_by_directory_co_location
 
     def test_menu_pattern(self, xts_root):
@@ -196,7 +206,10 @@ class TestNamingResolverIntegration:
 
     @pytest.fixture(autouse=True)
     def _import(self):
-        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_changed_cpp_file
+        from arkui_xts_selector.indexing.cpp_naming_resolver import (
+            resolve_changed_cpp_file,
+        )
+
         self.fn = resolve_changed_cpp_file
 
     def test_modifier_file(self, xts_root):
@@ -208,6 +221,7 @@ class TestNamingResolverIntegration:
         assert len(result) >= 1
         # All results should be directories
         from pathlib import Path
+
         for p in result:
             assert Path(p).is_dir()
 
@@ -226,6 +240,7 @@ class TestNamingResolverIntegration:
 
 # --- Fixtures ---
 
+
 @pytest.fixture
 def xts_root():
     """Real XTS root path, skip if not available."""
@@ -243,7 +258,10 @@ class TestCppFamilyCandidate:
     """Tests for resolve_cpp_family_candidate (Phase 2, Task 2.2)."""
 
     def test_button_pattern_returns_component_family(self):
-        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        from arkui_xts_selector.indexing.cpp_naming_resolver import (
+            resolve_cpp_family_candidate,
+        )
+
         c = resolve_cpp_family_candidate(
             "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp"
         )
@@ -254,7 +272,10 @@ class TestCppFamilyCandidate:
         assert c.false_negative_risk == "medium"
 
     def test_button_event_hub_header_returns_component_family(self):
-        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        from arkui_xts_selector.indexing.cpp_naming_resolver import (
+            resolve_cpp_family_candidate,
+        )
+
         c = resolve_cpp_family_candidate(
             "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_event_hub.h"
         )
@@ -264,7 +285,10 @@ class TestCppFamilyCandidate:
         assert c.false_negative_risk == "medium"
 
     def test_manager_returns_subsystem(self):
-        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        from arkui_xts_selector.indexing.cpp_naming_resolver import (
+            resolve_cpp_family_candidate,
+        )
+
         c = resolve_cpp_family_candidate(
             "foundation/arkui/ace_engine/frameworks/core/components_ng/manager/select_overlay/select_overlay_manager.cpp"
         )
@@ -274,19 +298,28 @@ class TestCppFamilyCandidate:
 
     def test_animation_returns_none(self):
         """animation/ dir is not under components_ng pattern/ - returns None."""
-        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        from arkui_xts_selector.indexing.cpp_naming_resolver import (
+            resolve_cpp_family_candidate,
+        )
+
         c = resolve_cpp_family_candidate(
             "foundation/arkui/ace_engine/frameworks/core/animation/animator.cpp"
         )
         assert c is None
 
     def test_random_file_returns_none(self):
-        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        from arkui_xts_selector.indexing.cpp_naming_resolver import (
+            resolve_cpp_family_candidate,
+        )
+
         c = resolve_cpp_family_candidate("some/random/file.cpp")
         assert c is None
 
     def test_never_returns_exact_api(self):
-        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        from arkui_xts_selector.indexing.cpp_naming_resolver import (
+            resolve_cpp_family_candidate,
+        )
+
         c = resolve_cpp_family_candidate(
             "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/rich_editor/rich_editor_modifier.cpp"
         )
@@ -294,7 +327,10 @@ class TestCppFamilyCandidate:
         assert c.impact_kind != "exact_api"
 
     def test_never_returns_low_risk(self):
-        from arkui_xts_selector.indexing.cpp_naming_resolver import resolve_cpp_family_candidate
+        from arkui_xts_selector.indexing.cpp_naming_resolver import (
+            resolve_cpp_family_candidate,
+        )
+
         c = resolve_cpp_family_candidate(
             "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/button/button_pattern.cpp"
         )

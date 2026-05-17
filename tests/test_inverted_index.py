@@ -8,6 +8,7 @@ Tests verify:
 - _find_test_project returns None when no Test.json exists
 - Inverted index builds from SDK + ETS fixtures with real entries
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -152,7 +153,6 @@ class TestInvertedIndexFromFixtures:
 
     def test_inverted_index_from_fixtures(self, fixtures_dir):
         """Build inverted index from fixtures and verify entries exist."""
-        import arkui_xts_selector
 
         # Paths
         ets_tests_dir = fixtures_dir / "ets_tests"
@@ -174,7 +174,9 @@ class TestInvertedIndexFromFixtures:
 
         # Should have some API names indexed
         api_names = index.all_api_names()
-        assert len(api_names) > 0, f"Expected at least one API name, got {len(api_names)}"
+        assert len(api_names) > 0, (
+            f"Expected at least one API name, got {len(api_names)}"
+        )
 
         # Verify we can look up consumers for Button
         button_consumers = index.consumers_for_name("Button")
@@ -192,7 +194,6 @@ class TestInvertedIndexFromFixtures:
 
     def test_inverted_index_resolves_api_entity_ids(self, fixtures_dir):
         """Verify API entity IDs are resolved from SDK index."""
-        import arkui_xts_selector
 
         # Paths
         ets_tests_dir = fixtures_dir / "ets_tests"
@@ -215,7 +216,9 @@ class TestInvertedIndexFromFixtures:
 
         # Look up consumers using the resolved ApiEntityId
         button_consumers = index.consumers_for(button_entry.api_id)
-        assert len(button_consumers) > 0, f"Expected consumers for {button_entry.api_id.canonical()}"
+        assert len(button_consumers) > 0, (
+            f"Expected consumers for {button_entry.api_id.canonical()}"
+        )
 
 
 class TestInvertedIndexEdgeCases:
@@ -266,7 +269,7 @@ class TestInvertedIndexEdgeCases:
 @pytest.fixture
 def fixtures_dir():
     """Return the fixtures directory path."""
-    from pathlib import Path
     import arkui_xts_selector
+
     module_dir = Path(arkui_xts_selector.__file__).parent
     return module_dir.parent.parent / "tests" / "fixtures"

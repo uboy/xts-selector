@@ -1,4 +1,5 @@
 """pytest shared configuration: project root on sys.path so `scripts.X` imports work."""
+
 import sys
 from pathlib import Path
 

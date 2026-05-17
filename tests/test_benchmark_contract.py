@@ -21,6 +21,7 @@ Example:
     ARKUI_XTS_SELECTOR_RUN_INTEGRATION=1 \\
     python3 -m unittest tests/test_benchmark_contract.py
 """
+
 from __future__ import annotations
 
 import json
@@ -38,16 +39,14 @@ sys.path.insert(0, str(ROOT / "src"))
 # Workspace discovery
 # ---------------------------------------------------------------------------
 
+
 def _env(key: str) -> str | None:
     return os.environ.get(key) or None
 
 
 def _workspace() -> dict | None:
     """Return workspace paths if available, else None (tests will be skipped)."""
-    repo_root_str = (
-        _env("ARKUI_XTS_SELECTOR_REPO_ROOT")
-        or _env("REPO_ROOT")
-    )
+    repo_root_str = _env("ARKUI_XTS_SELECTOR_REPO_ROOT") or _env("REPO_ROOT")
     if not repo_root_str:
         # Try to discover from default ohos_master location
         candidate = Path("/data/home/dmazur/proj/ohos_master")
@@ -60,7 +59,9 @@ def _workspace() -> dict | None:
     xts_root = Path(_env("XTS_ROOT") or str(repo_root / "test/xts/acts/arkui"))
     sdk_api_root = Path(_env("SDK_API_ROOT") or str(repo_root / "interface/sdk-js/api"))
     git_root = Path(_env("GIT_ROOT") or str(repo_root / "foundation/arkui/ace_engine"))
-    acts_out_root = Path(_env("ACTS_OUT_ROOT") or str(repo_root.parent / "out/release/suites/acts"))
+    acts_out_root = Path(
+        _env("ACTS_OUT_ROOT") or str(repo_root.parent / "out/release/suites/acts")
+    )
 
     if not xts_root.exists() or not sdk_api_root.exists():
         return None
@@ -77,6 +78,7 @@ def _workspace() -> dict | None:
 # ---------------------------------------------------------------------------
 # Fixture helpers
 # ---------------------------------------------------------------------------
+
 
 def _load_fixture_lines(fixture_dir: Path, filename: str) -> list[str]:
     """Load non-empty, non-comment lines from a fixture file."""
@@ -95,15 +97,23 @@ def _load_fixture_lines(fixture_dir: Path, filename: str) -> list[str]:
 # Runner
 # ---------------------------------------------------------------------------
 
+
 def _run_selector(ws: dict, extra_args: list[str]) -> dict:
     """Run the selector CLI and return parsed JSON output."""
     cmd = [
-        sys.executable, "-m", "arkui_xts_selector.cli",
-        "--repo-root", str(ws["repo_root"]),
-        "--xts-root", str(ws["xts_root"]),
-        "--sdk-api-root", str(ws["sdk_api_root"]),
-        "--git-root", str(ws["git_root"]),
-        "--acts-out-root", str(ws["acts_out_root"]),
+        sys.executable,
+        "-m",
+        "arkui_xts_selector.cli",
+        "--repo-root",
+        str(ws["repo_root"]),
+        "--xts-root",
+        str(ws["xts_root"]),
+        "--sdk-api-root",
+        str(ws["sdk_api_root"]),
+        "--git-root",
+        str(ws["git_root"]),
+        "--acts-out-root",
+        str(ws["acts_out_root"]),
         "--json",
         *extra_args,
     ]
@@ -159,6 +169,7 @@ def _top_project_paths(report: dict, top_n: int = 5) -> list[str]:
 # Base class
 # ---------------------------------------------------------------------------
 
+
 class WorkspaceAwareTestCase(unittest.TestCase):
     """Base class that skips tests when workspace is unavailable."""
 
@@ -181,6 +192,7 @@ class WorkspaceAwareTestCase(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # Scenario 1: ButtonModifier --variants static
 # ---------------------------------------------------------------------------
+
 
 class ButtonModifierBenchmarkTests(WorkspaceAwareTestCase):
     """
@@ -206,11 +218,17 @@ class ButtonModifierBenchmarkTests(WorkspaceAwareTestCase):
     TOP_N_EXPLICIT_RANKING = 150
 
     def _get_report(self) -> dict:
-        return _run_selector(self.ws, [
-            "--symbol-query", "ButtonModifier",
-            "--variants", "static",
-            "--top-projects", str(self.TOP_N_RECALL),
-        ])
+        return _run_selector(
+            self.ws,
+            [
+                "--symbol-query",
+                "ButtonModifier",
+                "--variants",
+                "static",
+                "--top-projects",
+                str(self.TOP_N_RECALL),
+            ],
+        )
 
     def test_output_is_not_empty(self) -> None:
         """Selector must return at least some results for ButtonModifier."""
@@ -292,7 +310,8 @@ class ButtonModifierBenchmarkTests(WorkspaceAwareTestCase):
         False positives in top-5 erode developer trust in the tool.
         """
         must_not_have = [
-            line for line in _load_fixture_lines(self.FIXTURE_DIR, "must_not_have.txt")
+            line
+            for line in _load_fixture_lines(self.FIXTURE_DIR, "must_not_have.txt")
             if not line.startswith("#")
         ]
         if not must_not_have:
@@ -309,7 +328,7 @@ class ButtonModifierBenchmarkTests(WorkspaceAwareTestCase):
 
         if violations:
             self.fail(
-                f"NOISE in top-5: unrelated suites appeared in top results:\n"
+                "NOISE in top-5: unrelated suites appeared in top results:\n"
                 + "\n".join(f"  - {v}" for v in violations)
             )
 
@@ -335,6 +354,7 @@ class ButtonModifierBenchmarkTests(WorkspaceAwareTestCase):
 # ---------------------------------------------------------------------------
 # Scenario 2: menu_item_pattern.cpp --variants auto
 # ---------------------------------------------------------------------------
+
 
 class MenuItemChangedFileBenchmarkTests(WorkspaceAwareTestCase):
     """
@@ -366,11 +386,17 @@ class MenuItemChangedFileBenchmarkTests(WorkspaceAwareTestCase):
         return self.CHANGED_FILE
 
     def _get_report(self) -> dict:
-        return _run_selector(self.ws, [
-            "--changed-file", self._get_changed_file_path(),
-            "--variants", "auto",
-            "--top-projects", "100",
-        ])
+        return _run_selector(
+            self.ws,
+            [
+                "--changed-file",
+                self._get_changed_file_path(),
+                "--variants",
+                "auto",
+                "--top-projects",
+                "100",
+            ],
+        )
 
     def test_does_not_crash(self) -> None:
         """Selector must not crash for menu_item_pattern.cpp."""
@@ -447,10 +473,10 @@ class MenuItemChangedFileBenchmarkTests(WorkspaceAwareTestCase):
 
         if violations:
             self.fail(
-                f"RANKING NOISE: unrelated suites dominate top-5 for menu_item_pattern.cpp:\n"
+                "RANKING NOISE: unrelated suites dominate top-5 for menu_item_pattern.cpp:\n"
                 + "\n".join(f"  - {v}" for v in violations)
                 + "\n\nTop-5 paths:\n"
-                + "\n".join(f"  {i+1}. {p}" for i, p in enumerate(top_paths))
+                + "\n".join(f"  {i + 1}. {p}" for i, p in enumerate(top_paths))
             )
 
     def test_no_false_precision_in_unresolved(self) -> None:
@@ -487,6 +513,7 @@ class MenuItemChangedFileBenchmarkTests(WorkspaceAwareTestCase):
 # Scenario 3: content_modifier_helper_accessor.cpp --variants auto
 # ---------------------------------------------------------------------------
 
+
 class ContentModifierChangedFileBenchmarkTests(WorkspaceAwareTestCase):
     """
     Benchmark for content_modifier_helper_accessor.cpp — the native bridge
@@ -520,11 +547,17 @@ class ContentModifierChangedFileBenchmarkTests(WorkspaceAwareTestCase):
         return self.CHANGED_FILE
 
     def _get_report(self) -> dict:
-        return _run_selector(self.ws, [
-            "--changed-file", self._get_changed_file_path(),
-            "--variants", "static",
-            "--top-projects", str(self.TOP_N),
-        ])
+        return _run_selector(
+            self.ws,
+            [
+                "--changed-file",
+                self._get_changed_file_path(),
+                "--variants",
+                "static",
+                "--top-projects",
+                str(self.TOP_N),
+            ],
+        )
 
     def test_does_not_crash(self) -> None:
         """Selector must not crash for content_modifier_helper_accessor.cpp."""
@@ -599,11 +632,17 @@ class QueryConsistencyTests(WorkspaceAwareTestCase):
     """
 
     def _query(self, symbol: str) -> list[dict]:
-        report = _run_selector(self.ws, [
-            "--symbol-query", symbol,
-            "--variants", "static",
-            "--top-projects", "500",
-        ])
+        report = _run_selector(
+            self.ws,
+            [
+                "--symbol-query",
+                symbol,
+                "--variants",
+                "static",
+                "--top-projects",
+                "500",
+            ],
+        )
         projects = []
         for sq in report.get("symbol_queries", []):
             projects.extend(sq.get("projects", []))
@@ -614,7 +653,9 @@ class QueryConsistencyTests(WorkspaceAwareTestCase):
         button_projects = self._query("Button")
         modifier_projects = self._query("ButtonModifier")
         self.assertGreater(len(button_projects), 0, "Button query returned nothing")
-        self.assertGreater(len(modifier_projects), 0, "ButtonModifier query returned nothing")
+        self.assertGreater(
+            len(modifier_projects), 0, "ButtonModifier query returned nothing"
+        )
 
     def test_button_and_buttonmodifier_high_overlap(self) -> None:
         """

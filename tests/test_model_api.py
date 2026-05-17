@@ -13,7 +13,6 @@ from arkui_xts_selector.model.api import (
     ApiEntity,
     ApiEntityId,
     ApiEntityKind,
-    ApiSurfaceKind,
     ApiDeclarationRef,
     EvidenceRef,
     _encode,
@@ -27,8 +26,15 @@ class ApiEntityKindTests(unittest.TestCase):
 
     def test_required_kinds_exist(self) -> None:
         names = {m.value for m in ApiEntityKind}
-        for name in ("component", "modifier", "attribute", "event_or_method",
-                      "module", "configuration", "helper_family"):
+        for name in (
+            "component",
+            "modifier",
+            "attribute",
+            "event_or_method",
+            "module",
+            "configuration",
+            "helper_family",
+        ):
             self.assertIn(name, names, f"Missing ApiEntityKind.{name}")
 
 
@@ -187,12 +193,18 @@ class ApiEntityIdAmbiguityTests(unittest.TestCase):
     def test_ambiguous_representation(self) -> None:
         """A query resolving to multiple canonical ids can be represented."""
         btn1 = ApiEntityId.from_parts(
-            namespace="arkui", surface="static", kind="component",
-            module="@ohos.arkui.component", public_name="Button",
+            namespace="arkui",
+            surface="static",
+            kind="component",
+            module="@ohos.arkui.component",
+            public_name="Button",
         )
         btn2 = ApiEntityId.from_parts(
-            namespace="arkui", surface="dynamic", kind="component",
-            module="@ohos.arkui.node", public_name="Button",
+            namespace="arkui",
+            surface="dynamic",
+            kind="component",
+            module="@ohos.arkui.node",
+            public_name="Button",
         )
         self.assertNotEqual(btn1.canonical(), btn2.canonical())
         # An ambiguous query result can simply be a list of candidates
@@ -227,8 +239,11 @@ class ApiEntityTests(unittest.TestCase):
     def test_round_trip(self) -> None:
         entity = ApiEntity(
             id=ApiEntityId.from_parts(
-                namespace="arkui", surface="static", kind="component",
-                module="@ohos.arkui.component", public_name="Button",
+                namespace="arkui",
+                surface="static",
+                kind="component",
+                module="@ohos.arkui.component",
+                public_name="Button",
             ),
             public_name="Button",
             kind="component",
@@ -257,8 +272,11 @@ class ApiAliasTests(unittest.TestCase):
     def test_alias_does_not_replace_identity(self) -> None:
         """An alias points to a target but the target retains its own identity."""
         target = ApiEntityId.from_parts(
-            namespace="arkui", surface="static", kind="component",
-            module="@ohos.arkui.component", public_name="Button",
+            namespace="arkui",
+            surface="static",
+            kind="component",
+            module="@ohos.arkui.component",
+            public_name="Button",
         )
         alias = ApiAlias(
             alias="Btn",
@@ -274,8 +292,11 @@ class ApiAliasTests(unittest.TestCase):
 
     def test_round_trip(self) -> None:
         target = ApiEntityId.from_parts(
-            namespace="arkui", surface="static", kind="modifier",
-            module="@ohos.arkui.component.Button", public_name="ButtonModifier",
+            namespace="arkui",
+            surface="static",
+            kind="modifier",
+            module="@ohos.arkui.component.Button",
+            public_name="ButtonModifier",
         )
         alias = ApiAlias(
             alias="ButtonModifier",

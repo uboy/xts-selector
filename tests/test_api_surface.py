@@ -1,7 +1,6 @@
 import sys
 import unittest
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -48,19 +47,25 @@ class ApiSurfaceTests(unittest.TestCase):
 
     def test_classify_ace_engine_surface_detects_dynamic_bridge_layer(self) -> None:
         profile = classify_ace_engine_surface(
-            Path("foundation/arkui/ace_engine/frameworks/bridge/common/dom/dom_button.cpp"),
+            Path(
+                "foundation/arkui/ace_engine/frameworks/bridge/common/dom/dom_button.cpp"
+            ),
             "",
         )
         self.assertEqual(profile.surface, DYNAMIC)
 
     def test_classify_ace_engine_surface_detects_common_backend_layer(self) -> None:
         profile = classify_ace_engine_surface(
-            Path("foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/slider_pattern.cpp"),
+            Path(
+                "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/slider_pattern.cpp"
+            ),
             "",
         )
         self.assertEqual(profile.surface, COMMON)
 
-    def test_classify_ace_engine_surface_detects_static_core_interface_by_semantics(self) -> None:
+    def test_classify_ace_engine_surface_detects_static_core_interface_by_semantics(
+        self,
+    ) -> None:
         text = """
 #include "toggle_model_static.h"
 void Foo()
@@ -70,7 +75,9 @@ void Foo()
 }
 """.strip()
         profile = classify_ace_engine_surface(
-            Path("foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/helper.cpp"),
+            Path(
+                "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/helper.cpp"
+            ),
             text,
         )
         self.assertEqual(profile.surface, STATIC)

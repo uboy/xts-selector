@@ -9,7 +9,7 @@ This module does NOT affect production behavior.
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from arkui_xts_selector.graph.resolver import resolve_changed_file_to_tests
 from arkui_xts_selector.graph.schema import Graph
@@ -76,13 +76,15 @@ def compare_graph_selection(
     for r in results:
         bucket = r.semantic_bucket
         buckets[bucket] = buckets.get(bucket, 0) + 1
-        selections.append({
-            "api": r.candidate.api_entity_id.canonical(),
-            "bucket": bucket,
-            "project": r.candidate.consumer_project_id,
-            "coverage": r.candidate.coverage_equivalence,
-            "score": r.order_score,
-        })
+        selections.append(
+            {
+                "api": r.candidate.api_entity_id.canonical(),
+                "bucket": bucket,
+                "project": r.candidate.consumer_project_id,
+                "coverage": r.candidate.coverage_equivalence,
+                "score": r.order_score,
+            }
+        )
 
     return ComparisonResult(
         changed_file=changed_file_path,

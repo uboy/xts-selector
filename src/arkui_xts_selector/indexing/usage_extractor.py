@@ -6,6 +6,7 @@ accesses, and modifier patterns.
 
 Import boundary: standard library only.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ ConfidenceLevel = Literal["strong", "medium", "weak", "unknown"]
 @dataclass(frozen=True)
 class ApiUsage:
     """A mapped API usage from an ETS file."""
+
     api_name: str
     usage_type: str  # construction, chained_method, property_access, etc.
     confidence: ConfidenceLevel
@@ -77,7 +79,9 @@ def _map_construction_to_api(usage) -> ApiUsage | None:
     )
 
 
-def _map_chained_method_to_api(usage: str, component_name: str | None = None) -> ApiUsage | None:
+def _map_chained_method_to_api(
+    usage: str, component_name: str | None = None
+) -> ApiUsage | None:
     """Map a chained method to an API entity.
 
     .type(ButtonType.Capsule) -> ButtonAttribute.type
@@ -161,13 +165,17 @@ def _infer_component_from_chained_methods(usages: tuple) -> str | None:
     """
     # Look for a construction usage followed by chained methods
     for i, usage in enumerate(usages):
-        if (hasattr(usage, "usage_type") and
-            usage.usage_type == "construction" and
-            hasattr(usage, "symbol_name")):
+        if (
+            hasattr(usage, "usage_type")
+            and usage.usage_type == "construction"
+            and hasattr(usage, "symbol_name")
+        ):
             # Check if there are chained methods after this
             for j in range(i + 1, len(usages)):
-                if (hasattr(usages[j], "usage_type") and
-                    usages[j].usage_type == "chained_method"):
+                if (
+                    hasattr(usages[j], "usage_type")
+                    and usages[j].usage_type == "chained_method"
+                ):
                     # This construction likely precedes these methods
                     return usage.symbol_name
     return None

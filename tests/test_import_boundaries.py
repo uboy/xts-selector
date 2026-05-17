@@ -110,7 +110,7 @@ def _project_top_segments(imports: set[str]) -> set[str]:
     segments: set[str] = set()
     for imp in imports:
         if imp.startswith(_PREFIX):
-            tail = imp[len(_PREFIX):]
+            tail = imp[len(_PREFIX) :]
             top = tail.split(".")[0]
             if top:
                 segments.add(top)
@@ -122,34 +122,84 @@ def _project_top_segments(imports: set[str]) -> set[str]:
 # ---------------------------------------------------------------------------
 
 _FORBIDDEN_FOR_MODEL = {
-    "cli", "report_human", "report_json", "report_build",
-    "report_next_steps", "execution", "project_index", "signal_inference",
-    "signal_scoring", "scoring", "coverage_planner", "coverage_keys",
-    "ranking_rules", "graph", "source_profile", "changed_files",
-    "git_host", "progress", "utility_modes", "benchmark",
-    "consumer_semantics", "api_lineage", "api_surface",
-    "tree_sitter_parsers", "symbol_tracing", "mapping_config",
+    "cli",
+    "report_human",
+    "report_json",
+    "report_build",
+    "report_next_steps",
+    "execution",
+    "project_index",
+    "signal_inference",
+    "signal_scoring",
+    "scoring",
+    "coverage_planner",
+    "coverage_keys",
+    "ranking_rules",
+    "graph",
+    "source_profile",
+    "changed_files",
+    "git_host",
+    "progress",
+    "utility_modes",
+    "benchmark",
+    "consumer_semantics",
+    "api_lineage",
+    "api_surface",
+    "tree_sitter_parsers",
+    "symbol_tracing",
+    "mapping_config",
 }
 
 _FORBIDDEN_FOR_GRAPH = {
-    "cli", "report_human", "report_json", "report_build",
-    "report_next_steps", "execution", "project_index", "signal_inference",
-    "signal_scoring", "scoring", "coverage_planner", "coverage_keys",
-    "ranking", "ranking_rules", "source_profile", "changed_files",
-    "git_host", "progress", "utility_modes", "benchmark",
-    "consumer_semantics", "api_lineage", "api_surface",
-    "tree_sitter_parsers", "symbol_tracing", "mapping_config",
+    "cli",
+    "report_human",
+    "report_json",
+    "report_build",
+    "report_next_steps",
+    "execution",
+    "project_index",
+    "signal_inference",
+    "signal_scoring",
+    "scoring",
+    "coverage_planner",
+    "coverage_keys",
+    "ranking",
+    "ranking_rules",
+    "source_profile",
+    "changed_files",
+    "git_host",
+    "progress",
+    "utility_modes",
+    "benchmark",
+    "consumer_semantics",
+    "api_lineage",
+    "api_surface",
+    "tree_sitter_parsers",
+    "symbol_tracing",
+    "mapping_config",
 }
 
 _FORBIDDEN_FOR_RANKING = {
-    "cli", "graph", "report_human", "report_json", "execution",
-    "project_index", "scoring", "signal_inference",
+    "cli",
+    "graph",
+    "report_human",
+    "report_json",
+    "execution",
+    "project_index",
+    "scoring",
+    "signal_inference",
 }
 
 _FORBIDDEN_FOR_REPORTING = {
-    "signal_inference", "signal_scoring", "scoring",
-    "project_index", "coverage_planner", "changed_files",
-    "git_host", "ranking_rules", "source_profile",
+    "signal_inference",
+    "signal_scoring",
+    "scoring",
+    "project_index",
+    "coverage_planner",
+    "changed_files",
+    "git_host",
+    "ranking_rules",
+    "source_profile",
 }
 
 
@@ -218,7 +268,9 @@ class ImportBoundaryTests(unittest.TestCase):
             from arkui_xts_selector.cli import main_entry
         """)
         with tempfile.NamedTemporaryFile(
-            suffix=".py", mode="w", delete=False,
+            suffix=".py",
+            mode="w",
+            delete=False,
         ) as f:
             f.write(src)
             path = f.name
@@ -227,13 +279,15 @@ class ImportBoundaryTests(unittest.TestCase):
             imports = _get_imports_from_path(path)
             segments = _project_top_segments(imports)
             self.assertIn(
-                "cli", segments,
+                "cli",
+                segments,
                 f"Framework failed to detect 'cli' import; got segments: {segments}",
             )
             # Also verify the violation would be caught by _check_package
             bad = segments & _FORBIDDEN_FOR_MODEL
             self.assertIn(
-                "cli", bad,
+                "cli",
+                bad,
                 f"Framework failed to flag 'cli' as forbidden for model; "
                 f"intersection: {bad}",
             )

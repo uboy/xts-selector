@@ -9,13 +9,13 @@ component names, then finds matching XTS test directories.
 
 Used by pr_resolver.py as step 1b (after broad infra, before SDK API mapping).
 """
+
 from __future__ import annotations
 
 import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 
 @dataclass(frozen=True)
@@ -28,6 +28,7 @@ class CppNamingMatch:
         confidence: Evidence strength - "medium" for standard patterns, "low" for new/subsystem patterns.
         parser_level: 2 for standard patterns (reliable), 1 for subsystem patterns (less reliable).
     """
+
     component: str
     pattern_id: str
     confidence: str  # "medium" for standard patterns, "low" for new/subsystem patterns
@@ -37,15 +38,43 @@ class CppNamingMatch:
 # Fallback hardcoded patterns (used only if config file is missing)
 _FALLBACK_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
     # Specific compound suffixes first (longest match first)
-    (re.compile(r"^([\w]+)_content_modifier\.\w+$"), "_content_modifier", "content_modifier"),
-    (re.compile(r"^([\w]+)_overlay_modifier\.\w+$"), "_overlay_modifier", "overlay_modifier"),
-    (re.compile(r"^([\w]+)_drag_overlay_modifier\.\w+$"), "_overlay_modifier", "drag_overlay_modifier"),
-    (re.compile(r"^([\w]+)_drag_paint_method\.\w+$"), "_paint_method", "drag_paint_method"),
-    (re.compile(r"^([\w]+)_gesture_event_hub\.\w+$"), "_event_hub", "gesture_event_hub"),
+    (
+        re.compile(r"^([\w]+)_content_modifier\.\w+$"),
+        "_content_modifier",
+        "content_modifier",
+    ),
+    (
+        re.compile(r"^([\w]+)_overlay_modifier\.\w+$"),
+        "_overlay_modifier",
+        "overlay_modifier",
+    ),
+    (
+        re.compile(r"^([\w]+)_drag_overlay_modifier\.\w+$"),
+        "_overlay_modifier",
+        "drag_overlay_modifier",
+    ),
+    (
+        re.compile(r"^([\w]+)_drag_paint_method\.\w+$"),
+        "_paint_method",
+        "drag_paint_method",
+    ),
+    (
+        re.compile(r"^([\w]+)_gesture_event_hub\.\w+$"),
+        "_event_hub",
+        "gesture_event_hub",
+    ),
     # Standard suffixes
-    (re.compile(r"^([\w]+)_layout_algorithm\.\w+$"), "_layout_algorithm", "layout_algorithm"),
+    (
+        re.compile(r"^([\w]+)_layout_algorithm\.\w+$"),
+        "_layout_algorithm",
+        "layout_algorithm",
+    ),
     (re.compile(r"^([\w]+)_paint_method\.\w+$"), "_paint_method", "paint_method"),
-    (re.compile(r"^([\w]+)_accessibility_property\.\w+$"), "_accessibility_property", "accessibility_property"),
+    (
+        re.compile(r"^([\w]+)_accessibility_property\.\w+$"),
+        "_accessibility_property",
+        "accessibility_property",
+    ),
     (re.compile(r"^([\w]+)_model_static\.\w+$"), "_model_static", "model_static"),
     (re.compile(r"^([\w]+)_model_ng\.\w+$"), "_model_ng", "model_ng"),
     (re.compile(r"^([\w]+)_event_hub\.\w+$"), "_event_hub", "event_hub"),
@@ -55,7 +84,9 @@ _FALLBACK_PATTERNS: list[tuple[re.Pattern[str], str, str]] = [
 ]
 
 
-def load_naming_patterns(path: Path | None = None) -> list[tuple[re.Pattern[str], str, str]]:
+def load_naming_patterns(
+    path: Path | None = None,
+) -> list[tuple[re.Pattern[str], str, str]]:
     """Load naming patterns from config file.
 
     Args:
@@ -72,7 +103,11 @@ def load_naming_patterns(path: Path | None = None) -> list[tuple[re.Pattern[str]
         # Resolve from package directory:
         # src/arkui_xts_selector/indexing/ → arkui_xts_selector/ → src/ → repo_root/config/
         package_file = Path(__file__).resolve()
-        path = package_file.parent.parent.parent.parent / "config" / "cpp_naming_patterns.json"
+        path = (
+            package_file.parent.parent.parent.parent
+            / "config"
+            / "cpp_naming_patterns.json"
+        )
 
     if not path.exists():
         # Config file not found, use fallback patterns
@@ -81,7 +116,7 @@ def load_naming_patterns(path: Path | None = None) -> list[tuple[re.Pattern[str]
     try:
         with path.open("r", encoding="utf-8") as f:
             config = json.load(f)
-    except (json.JSONDecodeError, OSError) as e:
+    except (json.JSONDecodeError, OSError):
         # Config file exists but can't be read, use fallback
         return _FALLBACK_PATTERNS
 
@@ -145,6 +180,7 @@ def _extract_component(file_path: str) -> str | None:
         None
     """
     import os
+
     basename = os.path.basename(file_path)
 
     if not basename or basename.startswith("."):
@@ -342,7 +378,9 @@ def resolve_cpp_family_candidate(file_path: str) -> "ImpactCandidate | None":
     if _MANAGER_DIR_RE.search(normalized):
         # Extract a reasonable family name from the manager path
         # e.g., components_ng/manager/select_overlay/... -> "select_overlay"
-        manager_match = re.search(r"components_ng/manager/([\w]+(?:_[\w]+)*)/", normalized)
+        manager_match = re.search(
+            r"components_ng/manager/([\w]+(?:_[\w]+)*)/", normalized
+        )
         family = manager_match.group(1) if manager_match else "manager"
 
         return ImpactCandidate(
@@ -364,6 +402,7 @@ def resolve_cpp_family_candidate(file_path: str) -> "ImpactCandidate | None":
 
         # Extract pattern info from filename if available
         import os
+
         basename = os.path.basename(file_path)
 
         pattern_id = None
@@ -387,6 +426,7 @@ def resolve_cpp_family_candidate(file_path: str) -> "ImpactCandidate | None":
 
     # Check for naming convention match only (not under pattern directory)
     import os
+
     basename = os.path.basename(file_path)
 
     if not basename or basename.startswith("."):
@@ -416,6 +456,7 @@ def resolve_cpp_family_candidate(file_path: str) -> "ImpactCandidate | None":
 def _walk_depth(root: Path, max_depth: int = 4):
     """os.walk with depth limit."""
     import os
+
     root_str = str(root)
     base_depth = root_str.rstrip("/").count("/")
 

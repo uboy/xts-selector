@@ -1,18 +1,17 @@
 """Tests for audit recorder and analyzer (Phase 11, T11.12-T11.14)."""
+
 from __future__ import annotations
 
 import json
-import tempfile
 from datetime import date, timedelta
-from pathlib import Path
 
-import pytest
 
 from arkui_xts_selector.audit.recorder import record_run, load_audit_entries
 from arkui_xts_selector.audit.analyzer import compute_fn_rate, format_fn_rate_report
 
 
 # ── Recorder tests ───────────────────────────────────────────────────
+
 
 class TestRecorder:
     def test_record_creates_file(self, tmp_path):
@@ -79,6 +78,7 @@ class TestRecorder:
 
 # ── Load entries tests ───────────────────────────────────────────────
 
+
 class TestLoadEntries:
     def test_empty_dir(self, tmp_path):
         entries = load_audit_entries(tmp_path)
@@ -95,7 +95,9 @@ class TestLoadEntries:
 
         # Write recent entry
         recent_file = tmp_path / f"{recent_date}.jsonl"
-        recent_file.write_text(json.dumps({"pr_number": 2, "timestamp": recent_date}) + "\n")
+        recent_file.write_text(
+            json.dumps({"pr_number": 2, "timestamp": recent_date}) + "\n"
+        )
 
         entries = load_audit_entries(tmp_path, days=30)
         assert len(entries) == 1
@@ -103,6 +105,7 @@ class TestLoadEntries:
 
 
 # ── Analyzer tests ───────────────────────────────────────────────────
+
 
 class TestAnalyzer:
     def test_empty_audit(self, tmp_path):
@@ -149,8 +152,9 @@ class TestAnalyzer:
             "fallback_applied": True,
             "fallback_level": "rescue",
         }
-        record_run(1, ["a"], ["a", "b"], ["b"],
-                   selector_report=report_data, audit_dir=tmp_path)
+        record_run(
+            1, ["a"], ["a", "b"], ["b"], selector_report=report_data, audit_dir=tmp_path
+        )
         report = compute_fn_rate(tmp_path)
         assert "critical" in report.breakdown_by_risk
 

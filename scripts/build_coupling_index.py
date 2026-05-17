@@ -15,40 +15,43 @@ Usage:
         --min-confidence 0.3 \
         --top-k 10
 """
+
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import subprocess
-import sys
 import time
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
 
-_TEST_FILE_RE = re.compile(
-    r"(ace_ets_module_|ace_c_arkui|test/xts/acts/arkui)"
-)
-_ACE_PATH_RE = re.compile(
-    r"^foundation/arkui/ace_engine/"
-)
+_TEST_FILE_RE = re.compile(r"(ace_ets_module_|ace_c_arkui|test/xts/acts/arkui)")
+_ACE_PATH_RE = re.compile(r"^foundation/arkui/ace_engine/")
 
 
 def _run_git(repo_root: str, args: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["git", "-C", repo_root, *args],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
 
 def _collect_merge_commits(repo_root: str, max_prs: int) -> list[str]:
     """Collect recent merge commit hashes."""
-    result = _run_git(repo_root, [
-        "log", "--merges", "--format=%H", f"-{max_prs}",
-    ])
+    result = _run_git(
+        repo_root,
+        [
+            "log",
+            "--merges",
+            "--format=%H",
+            f"-{max_prs}",
+        ],
+    )
     if result.returncode != 0:
         return []
     return [h for h in result.stdout.strip().splitlines() if h]
@@ -56,9 +59,16 @@ def _collect_merge_commits(repo_root: str, max_prs: int) -> list[str]:
 
 def _get_commit_files(repo_root: str, commit: str) -> tuple[list[str], list[str]]:
     """Get changed source and test files for a commit."""
-    result = _run_git(repo_root, [
-        "diff-tree", "--no-commit-id", "--name-only", "-r", commit,
-    ])
+    result = _run_git(
+        repo_root,
+        [
+            "diff-tree",
+            "--no-commit-id",
+            "--name-only",
+            "-r",
+            commit,
+        ],
+    )
     if result.returncode != 0:
         return [], []
     source_files: list[str] = []
@@ -131,12 +141,14 @@ def build_coupling_index(
                 continue
             confidence = co_count / count
             if confidence >= min_confidence:
-                candidates.append({
-                    "test_file": tn,
-                    "confidence": round(confidence, 4),
-                    "support": co_count,
-                    "last_seen": cochange_date[sf].get(tn, ""),
-                })
+                candidates.append(
+                    {
+                        "test_file": tn,
+                        "confidence": round(confidence, 4),
+                        "support": co_count,
+                        "last_seen": cochange_date[sf].get(tn, ""),
+                    }
+                )
         candidates.sort(key=lambda x: -x["confidence"])
         if candidates:
             entries[sf] = candidates[:top_k]
@@ -158,15 +170,25 @@ def build_coupling_index(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build git coupling index")
     parser.add_argument("--repo-root", required=True, help="OHOS repo root")
-    parser.add_argument("--output", default="local/coupling_index.json", help="Output file")
+    parser.add_argument(
+        "--output", default="local/coupling_index.json", help="Output file"
+    )
     parser.add_argument("--max-prs", type=int, default=2000, help="Max PRs to analyze")
-    parser.add_argument("--min-support", type=int, default=5, help="Min co-change count")
-    parser.add_argument("--min-confidence", type=float, default=0.3, help="Min P(test|source)")
+    parser.add_argument(
+        "--min-support", type=int, default=5, help="Min co-change count"
+    )
+    parser.add_argument(
+        "--min-confidence", type=float, default=0.3, help="Min P(test|source)"
+    )
     parser.add_argument("--top-k", type=int, default=10, help="Max tests per source")
     args = parser.parse_args()
 
     index = build_coupling_index(
-        args.repo_root, args.max_prs, args.min_support, args.min_confidence, args.top_k,
+        args.repo_root,
+        args.max_prs,
+        args.min_support,
+        args.min_confidence,
+        args.top_k,
     )
 
     output = Path(args.output)

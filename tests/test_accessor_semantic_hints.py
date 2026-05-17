@@ -34,17 +34,17 @@ class AccessorSemanticHintsTests(unittest.TestCase):
         with TemporaryDirectory() as tmpdir:
             source = Path(tmpdir) / "sub_tab_bar_style_accessor.cpp"
             source.write_text(
-                '\n'.join(
+                "\n".join(
                     [
                         '#include "core/interfaces/native/implementation/sub_tab_bar_style_peer.h"',
-                        'namespace OHOS::Ace::NG::GeneratedModifier {',
-                        'namespace SubTabBarStyleAccessor {',
-                        '}',
-                        'const GENERATED_ArkUISubTabBarStyleAccessor* GetSubTabBarStyleAccessor()',
-                        '{',
-                        '    return nullptr;',
-                        '}',
-                        '}',
+                        "namespace OHOS::Ace::NG::GeneratedModifier {",
+                        "namespace SubTabBarStyleAccessor {",
+                        "}",
+                        "const GENERATED_ArkUISubTabBarStyleAccessor* GetSubTabBarStyleAccessor()",
+                        "{",
+                        "    return nullptr;",
+                        "}",
+                        "}",
                     ]
                 ),
                 encoding="utf-8",
@@ -96,7 +96,9 @@ class AccessorSemanticHintsTests(unittest.TestCase):
         score, reasons = score_file(file_index, signals)
 
         self.assertEqual(score, 5)
-        self.assertTrue(project_has_non_lexical_evidence([], [(score, file_index, reasons)]))
+        self.assertTrue(
+            project_has_non_lexical_evidence([], [(score, file_index, reasons)])
+        )
 
 
 if __name__ == "__main__":

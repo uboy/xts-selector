@@ -6,6 +6,7 @@ based on statistical co-change patterns in merged PR history.
 The index is built offline by scripts/build_coupling_index.py and stored
 as local/coupling_index.json.
 """
+
 from __future__ import annotations
 
 import json
@@ -36,6 +37,7 @@ class CouplingIndex:
         entries = self._index.get(file_path)
         if not entries:
             import os
+
             basename = os.path.basename(file_path)
             entries = self._index.get(basename)
         if not entries:

@@ -31,6 +31,7 @@ ProgressCallback = Callable[[str], None]
 _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 _FLASH_PROGRESS_RE = re.compile(r"\((\d{1,3})%\)")
 
+
 @dataclass
 class RockchipDevice:
     location_id: str
@@ -89,7 +90,9 @@ def _emit_progress(progress_callback: ProgressCallback | None, message: str) -> 
     progress_callback(normalized)
 
 
-def _resolve_path_or_which(explicit: str | None, command: str, fallbacks: list[Path]) -> Path:
+def _resolve_path_or_which(
+    explicit: str | None, command: str, fallbacks: list[Path]
+) -> Path:
     if explicit:
         candidate = Path(explicit).expanduser().resolve()
         if candidate.exists():
@@ -202,7 +205,12 @@ def _consume_flash_output(
             progress_state["last_reported_percent"] = None
         progress_state["last_seen_percent"] = percent
         last_reported = progress_state.get("last_reported_percent")
-        if last_reported is None or percent == 100 or percent < last_reported or percent - last_reported >= 5:
+        if (
+            last_reported is None
+            or percent == 100
+            or percent < last_reported
+            or percent - last_reported >= 5
+        ):
             progress_state["last_reported_percent"] = percent
             _emit_progress(progress_callback, f"write progress {percent}%")
 
@@ -270,7 +278,12 @@ def _run_streaming_command(
     selector = selectors.DefaultSelector()
     selector.register(process.stdout, selectors.EVENT_READ)
     output_chunks: list[str] = []
-    progress_state: dict[str, Any] = {"buffer": "", "last_message": "", "last_seen_percent": None, "last_reported_percent": None}
+    progress_state: dict[str, Any] = {
+        "buffer": "",
+        "last_message": "",
+        "last_seen_percent": None,
+        "last_reported_percent": None,
+    }
     last_output_time = started
     last_heartbeat_time = started
 
@@ -306,13 +319,22 @@ def _run_streaming_command(
                     _consume_flash_output(text, progress_state, progress_callback)
                 break
 
-            if now - last_output_time >= idle_heartbeat_seconds and now - last_heartbeat_time >= idle_heartbeat_seconds:
+            if (
+                now - last_output_time >= idle_heartbeat_seconds
+                and now - last_heartbeat_time >= idle_heartbeat_seconds
+            ):
                 last_reported = progress_state.get("last_reported_percent")
                 elapsed_seconds = int(now - started)
                 if last_reported is not None:
-                    _emit_progress(progress_callback, f"still flashing... elapsed {elapsed_seconds}s, last progress {last_reported}%")
+                    _emit_progress(
+                        progress_callback,
+                        f"still flashing... elapsed {elapsed_seconds}s, last progress {last_reported}%",
+                    )
                 else:
-                    _emit_progress(progress_callback, f"still flashing... elapsed {elapsed_seconds}s")
+                    _emit_progress(
+                        progress_callback,
+                        f"still flashing... elapsed {elapsed_seconds}s",
+                    )
                 last_heartbeat_time = now
     finally:
         selector.close()
@@ -381,7 +403,10 @@ def ensure_loader_device(
     poll_interval_seconds: float = 2.0,
     progress_callback: ProgressCallback | None = None,
 ) -> RockchipDevice:
-    _emit_progress(progress_callback, "checking whether a Rockchip loader device is already visible")
+    _emit_progress(
+        progress_callback,
+        "checking whether a Rockchip loader device is already visible",
+    )
     existing = list_rockchip_devices(flash_tool_path)
     for item in existing:
         if item.mode.lower() == "loader":
@@ -396,12 +421,17 @@ def ensure_loader_device(
     if device:
         if device not in targets:
             raise RuntimeError(f"requested device is not visible through hdc: {device}")
-        _emit_progress(progress_callback, f"requesting bootloader mode for device {device}")
+        _emit_progress(
+            progress_callback, f"requesting bootloader mode for device {device}"
+        )
         boot_command = [str(hdc_path), "-t", device, "target", "boot", "-bootloader"]
     else:
         if not targets:
             raise RuntimeError("no hdc targets available for bootloader switch")
-        _emit_progress(progress_callback, f"requesting bootloader mode for the current HDC target ({targets[0]})")
+        _emit_progress(
+            progress_callback,
+            f"requesting bootloader mode for the current HDC target ({targets[0]})",
+        )
         boot_command = [str(hdc_path), "target", "boot", "-bootloader"]
 
     boot_result = _run_command(
@@ -411,12 +441,16 @@ def ensure_loader_device(
     )
     boot_output = (boot_result.stdout or "") + (boot_result.stderr or "")
     if boot_result.returncode != 0 or "[Fail]" in boot_output:
-        raise RuntimeError(boot_output.strip() or "failed to switch the device into bootloader")
+        raise RuntimeError(
+            boot_output.strip() or "failed to switch the device into bootloader"
+        )
 
     deadline = time.monotonic() + timeout_seconds
     last_seen: list[RockchipDevice] = []
     last_wait_report = 0.0
-    _emit_progress(progress_callback, "waiting for the device to appear in Rockchip Loader mode")
+    _emit_progress(
+        progress_callback, "waiting for the device to appear in Rockchip Loader mode"
+    )
     while time.monotonic() < deadline:
         time.sleep(poll_interval_seconds)
         last_seen = list_rockchip_devices(flash_tool_path)
@@ -430,10 +464,17 @@ def ensure_loader_device(
         elapsed = time.monotonic() - (deadline - timeout_seconds)
         if progress_callback is not None and elapsed - last_wait_report >= 5.0:
             last_wait_report = elapsed
-            _emit_progress(progress_callback, f"still waiting for loader mode... elapsed {int(elapsed)}s")
+            _emit_progress(
+                progress_callback,
+                f"still waiting for loader mode... elapsed {int(elapsed)}s",
+            )
     raise RuntimeError(
         "device did not appear in Rockchip Loader mode"
-        + (f"; last seen states: {[item.to_dict() for item in last_seen]}" if last_seen else "")
+        + (
+            f"; last seen states: {[item.to_dict() for item in last_seen]}"
+            if last_seen
+            else ""
+        )
     )
 
 
@@ -458,8 +499,17 @@ def flash_image_bundle(
         device=device,
         progress_callback=progress_callback,
     )
-    command = [sys.executable, str(resolved_flash_py_path), "-a", "-i", str(resolved_image_root)]
-    _emit_progress(progress_callback, f"starting flash.py all-images flow for {resolved_image_root}")
+    command = [
+        sys.executable,
+        str(resolved_flash_py_path),
+        "-a",
+        "-i",
+        str(resolved_image_root),
+    ]
+    _emit_progress(
+        progress_callback,
+        f"starting flash.py all-images flow for {resolved_image_root}",
+    )
     completed = _run_streaming_command(
         command,
         timeout=flash_timeout_seconds,

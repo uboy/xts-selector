@@ -2,20 +2,18 @@
 
 Tests _compute_fallback_decision, _expand_to_family_coverage, apply_fallback.
 """
+
 from __future__ import annotations
 
 import os
 import tempfile
 from pathlib import Path
 
-import pytest
 
 from arkui_xts_selector.indexing.broad_infra import BroadInfraMatch
 from arkui_xts_selector.indexing.pr_resolver import (
-    FallbackDecision,
     PrResolveEntry,
     PrResolveResult,
-    SelectionReason,
     _compute_aae_rate,
     _compute_fallback_decision,
     _expand_to_family_coverage,
@@ -24,6 +22,7 @@ from arkui_xts_selector.indexing.pr_resolver import (
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
+
 
 def _make_entry(
     changed_file: str = "test.cpp",
@@ -43,7 +42,9 @@ def _make_entry(
     )
 
 
-def _make_broad_match(risk: str = "critical", rule_id: str = "test_rule") -> BroadInfraMatch:
+def _make_broad_match(
+    risk: str = "critical", rule_id: str = "test_rule"
+) -> BroadInfraMatch:
     return BroadInfraMatch(
         rule_id=rule_id,
         rationale="test",
@@ -62,40 +63,52 @@ def _make_xts_root(dirs: list[str]) -> Path:
 
 # ── _compute_aae_rate ────────────────────────────────────────────────
 
+
 class TestComputeAAERate:
     def test_empty_entries(self):
         r = PrResolveResult()
         assert _compute_aae_rate(r) == 0.0
 
     def test_no_coverage(self):
-        r = PrResolveResult(entries=(
-            _make_entry("a.cpp"),
-            _make_entry("b.cpp"),
-        ))
+        r = PrResolveResult(
+            entries=(
+                _make_entry("a.cpp"),
+                _make_entry("b.cpp"),
+            )
+        )
         assert _compute_aae_rate(r) == 0.0
 
     def test_full_coverage(self):
-        r = PrResolveResult(entries=(
-            _make_entry("a.cpp", apis=("role",)),
-            _make_entry("b.cpp", consumers=("ace_ets_module_foo",)),
-        ))
+        r = PrResolveResult(
+            entries=(
+                _make_entry("a.cpp", apis=("role",)),
+                _make_entry("b.cpp", consumers=("ace_ets_module_foo",)),
+            )
+        )
         assert _compute_aae_rate(r) == 1.0
 
     def test_partial_coverage(self):
-        r = PrResolveResult(entries=(
-            _make_entry("a.cpp", apis=("role",)),
-            _make_entry("b.cpp"),
-            _make_entry("c.cpp", broad_infra=_make_broad_match()),
-        ))
-        assert abs(_compute_aae_rate(r) - 2/3) < 0.01
+        r = PrResolveResult(
+            entries=(
+                _make_entry("a.cpp", apis=("role",)),
+                _make_entry("b.cpp"),
+                _make_entry("c.cpp", broad_infra=_make_broad_match()),
+            )
+        )
+        assert abs(_compute_aae_rate(r) - 2 / 3) < 0.01
 
 
 # ── _compute_fallback_decision ───────────────────────────────────────
 
+
 class TestComputeFallbackDecision:
     def test_critical_risk_triggers_rescue(self):
         r = PrResolveResult(
-            entries=(_make_entry("frame_node.cpp", broad_infra=_make_broad_match("critical")),),
+            entries=(
+                _make_entry(
+                    "frame_node.cpp", broad_infra=_make_broad_match("critical")
+                ),
+            ),
             overall_false_negative_risk="critical",
         )
         d = _compute_fallback_decision(r)
@@ -150,14 +163,20 @@ class TestComputeFallbackDecision:
 
     def test_critical_with_xts_root_bounded_expansion(self):
         """Critical risk triggers rescue; expansion is bounded by fanout config."""
-        xts = _make_xts_root([
-            "ace_ets_module_button",
-            "ace_ets_module_image",
-            "ace_ets_module_layout_grid",
-        ])
+        xts = _make_xts_root(
+            [
+                "ace_ets_module_button",
+                "ace_ets_module_image",
+                "ace_ets_module_layout_grid",
+            ]
+        )
         try:
             r = PrResolveResult(
-                entries=(_make_entry("frame_node.cpp", broad_infra=_make_broad_match("critical")),),
+                entries=(
+                    _make_entry(
+                        "frame_node.cpp", broad_infra=_make_broad_match("critical")
+                    ),
+                ),
                 overall_false_negative_risk="critical",
             )
             d = _compute_fallback_decision(r, xts_root=xts)
@@ -167,11 +186,16 @@ class TestComputeFallbackDecision:
             assert len(d.extra_targets) <= 60
         finally:
             import shutil
+
             shutil.rmtree(xts, ignore_errors=True)
 
     def test_no_xts_root_no_expansion(self):
         r = PrResolveResult(
-            entries=(_make_entry("frame_node.cpp", broad_infra=_make_broad_match("critical")),),
+            entries=(
+                _make_entry(
+                    "frame_node.cpp", broad_infra=_make_broad_match("critical")
+                ),
+            ),
             overall_false_negative_risk="critical",
         )
         d = _compute_fallback_decision(r, xts_root=None)
@@ -182,18 +206,25 @@ class TestComputeFallbackDecision:
 
 # ── _expand_to_family_coverage ────────────────────────────────────────
 
+
 class TestExpandToFamilyCoverage:
     def test_broad_infra_bounded_expansion(self):
         """Broad infra no longer returns ALL dirs — uses bounded fanout or empty."""
-        xts = _make_xts_root([
-            "ace_ets_module_button",
-            "ace_ets_module_image",
-            "ace_ets_module_text",
-            "not_a_test_dir",
-        ])
+        xts = _make_xts_root(
+            [
+                "ace_ets_module_button",
+                "ace_ets_module_image",
+                "ace_ets_module_text",
+                "not_a_test_dir",
+            ]
+        )
         try:
             r = PrResolveResult(
-                entries=(_make_entry("frame_node.cpp", broad_infra=_make_broad_match("critical")),),
+                entries=(
+                    _make_entry(
+                        "frame_node.cpp", broad_infra=_make_broad_match("critical")
+                    ),
+                ),
             )
             expanded = _expand_to_family_coverage(r, xts)
             # With unknown fanout_id "all", returns empty (bounded behavior)
@@ -202,22 +233,27 @@ class TestExpandToFamilyCoverage:
             assert "not_a_test_dir" not in expanded
         finally:
             import shutil
+
             shutil.rmtree(xts, ignore_errors=True)
 
     def test_family_prefix_matching(self):
         """Family prefix matching is bounded by fanout config or hard cap."""
-        xts = _make_xts_root([
-            "ace_ets_module_grid",
-            "ace_ets_module_grid_item",
-            "ace_ets_module_image",
-            "ace_ets_module_text",
-        ])
+        xts = _make_xts_root(
+            [
+                "ace_ets_module_grid",
+                "ace_ets_module_grid_item",
+                "ace_ets_module_image",
+                "ace_ets_module_text",
+            ]
+        )
         try:
             r = PrResolveResult(
-                entries=(_make_entry(
-                    "grid_pattern.cpp",
-                    consumers=("ace_ets_module_grid",),
-                ),),
+                entries=(
+                    _make_entry(
+                        "grid_pattern.cpp",
+                        consumers=("ace_ets_module_grid",),
+                    ),
+                ),
             )
             expanded = _expand_to_family_coverage(r, xts)
             # grid family should match at least grid itself
@@ -226,6 +262,7 @@ class TestExpandToFamilyCoverage:
             assert "ace_ets_module_image" not in expanded
         finally:
             import shutil
+
             shutil.rmtree(xts, ignore_errors=True)
 
     def test_no_entries_returns_empty(self):
@@ -236,17 +273,23 @@ class TestExpandToFamilyCoverage:
             assert len(expanded) == 0
         finally:
             import shutil
+
             shutil.rmtree(xts, ignore_errors=True)
 
     def test_no_xts_root_returns_empty(self):
         r = PrResolveResult(
-            entries=(_make_entry("frame_node.cpp", broad_infra=_make_broad_match("critical")),),
+            entries=(
+                _make_entry(
+                    "frame_node.cpp", broad_infra=_make_broad_match("critical")
+                ),
+            ),
         )
         expanded = _expand_to_family_coverage(r, None)
         assert len(expanded) == 0
 
 
 # ── apply_fallback ────────────────────────────────────────────────────
+
 
 class TestApplyFallback:
     def test_no_fallback_needed_returns_same(self):
@@ -260,14 +303,20 @@ class TestApplyFallback:
         assert result.entries == original.entries
 
     def test_critical_applies_rescue(self):
-        xts = _make_xts_root([
-            "ace_ets_module_button",
-            "ace_ets_module_image",
-            "ace_ets_module_text",
-        ])
+        xts = _make_xts_root(
+            [
+                "ace_ets_module_button",
+                "ace_ets_module_image",
+                "ace_ets_module_text",
+            ]
+        )
         try:
             original = PrResolveResult(
-                entries=(_make_entry("frame_node.cpp", broad_infra=_make_broad_match("critical")),),
+                entries=(
+                    _make_entry(
+                        "frame_node.cpp", broad_infra=_make_broad_match("critical")
+                    ),
+                ),
                 overall_false_negative_risk="critical",
             )
             result = apply_fallback(original, xts_root=xts)
@@ -278,6 +327,7 @@ class TestApplyFallback:
             assert "critical risk" in result.fallback_reason
         finally:
             import shutil
+
             shutil.rmtree(xts, ignore_errors=True)
 
     def test_safety_net_applies(self):
@@ -295,15 +345,19 @@ class TestApplyFallback:
 
     def test_extra_targets_exclude_existing(self):
         """Extra targets from expansion exclude entries already in consumer_projects."""
-        xts = _make_xts_root([
-            "ace_ets_module_button",
-            "ace_ets_module_button_static",
-            "ace_ets_module_image",
-        ])
+        xts = _make_xts_root(
+            [
+                "ace_ets_module_button",
+                "ace_ets_module_button_static",
+                "ace_ets_module_image",
+            ]
+        )
         try:
             original = PrResolveResult(
                 entries=(
-                    _make_entry("frame_node.cpp", broad_infra=_make_broad_match("critical")),
+                    _make_entry(
+                        "frame_node.cpp", broad_infra=_make_broad_match("critical")
+                    ),
                     _make_entry("btn.cpp", consumers=("ace_ets_module_button",)),
                 ),
                 overall_false_negative_risk="critical",
@@ -313,6 +367,7 @@ class TestApplyFallback:
             assert "ace_ets_module_button" not in result.fallback_extra_targets
         finally:
             import shutil
+
             shutil.rmtree(xts, ignore_errors=True)
 
     def test_fallback_preserves_original_fields(self):

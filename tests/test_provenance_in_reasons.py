@@ -1,7 +1,6 @@
 """Tests for per-target provenance in SelectionReason."""
-from __future__ import annotations
 
-from pathlib import Path
+from __future__ import annotations
 
 
 class TestProvenanceInReasons:
@@ -10,7 +9,9 @@ class TestProvenanceInReasons:
         from arkui_xts_selector.indexing.inverted_index import InvertedIndex
 
         result = resolve_pr_with_context(
-            changed_files=["frameworks/core/interfaces/native/implementation/button_modifier.cpp"],
+            changed_files=[
+                "frameworks/core/interfaces/native/implementation/button_modifier.cpp"
+            ],
             by_file={},
             inverted=InvertedIndex(),
             rules=[],

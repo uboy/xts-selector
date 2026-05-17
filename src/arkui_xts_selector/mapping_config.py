@@ -49,7 +49,9 @@ def build_content_modifier_index() -> ContentModifierIndex:
     for root in search_roots:
         if not root.exists():
             continue
-        for dirpath, dirnames, filenames in os.walk(root, topdown=True, onerror=lambda _exc: None):
+        for dirpath, dirnames, filenames in os.walk(
+            root, topdown=True, onerror=lambda _exc: None
+        ):
             dirnames[:] = [name for name in dirnames if name not in skip_dirs]
             for filename in filenames:
                 if filename not in patterns:
@@ -77,7 +79,9 @@ def build_content_modifier_index() -> ContentModifierIndex:
             index.families.add(family)
             add_family_symbol(index.family_to_symbols, family, raw)
             add_family_symbol(index.family_to_symbols, family, f"{raw}Modifier")
-            add_family_symbol(index.family_to_symbols, family, f"hook{raw}ContentModifier")
+            add_family_symbol(
+                index.family_to_symbols, family, f"hook{raw}ContentModifier"
+            )
     return index
 
 
@@ -116,7 +120,9 @@ def load_mapping_config(
 ) -> MappingConfig:
     path_rules_data = load_json_if_exists(path_rules_file)
     composite_data = load_json_if_exists(composite_mappings_file)
-    special_path_rules = merge_mapping_dict(SPECIAL_PATH_RULES, path_rules_data.get("special_path_rules", {}))
+    special_path_rules = merge_mapping_dict(
+        SPECIAL_PATH_RULES, path_rules_data.get("special_path_rules", {})
+    )
     # When config provides a full pattern_alias, replace rather than merge
     # to avoid conflicts. Fallback to hardcoded PATTERN_ALIAS when absent.
     config_pattern_alias = path_rules_data.get("pattern_alias", {})
@@ -135,7 +141,9 @@ def load_mapping_config(
                 for sym in symbols:
                     if sym not in existing:
                         pattern_alias[family] = pattern_alias[family] + [sym]
-    composite_mappings = merge_mapping_dict(DEFAULT_COMPOSITE_MAPPINGS, composite_data.get("composite_mappings", {}))
+    composite_mappings = merge_mapping_dict(
+        DEFAULT_COMPOSITE_MAPPINGS, composite_data.get("composite_mappings", {})
+    )
     return MappingConfig(
         special_path_rules=special_path_rules,
         pattern_alias=pattern_alias,

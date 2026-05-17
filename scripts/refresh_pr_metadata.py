@@ -11,10 +11,10 @@ Usage:
         --cache-dir local/pr_api_cache \\
         --git-host-config ~/.config/gitcode.ini
 """
+
 from __future__ import annotations
 
 import argparse
-import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -25,10 +25,8 @@ from arkui_xts_selector.git_host import (
     extract_pr_shas_from_api_response,
     infer_git_host_kind,
     load_ini_git_host_config,
-    parse_pr_number,
-    parse_owner_repo_from_pr,
 )
-from arkui_xts_selector.pr_cache import PrApiCache, PrCacheEntry
+from arkui_xts_selector.pr_cache import PrApiCache
 
 
 def _parse_pr_list_line(line: str) -> tuple[str, str, int] | None:
@@ -73,8 +71,12 @@ def _refresh_one_pr(
         return pr_number, "skipped", "not_cached"
 
     try:
-        response = fetch_pr_metadata_via_api(api_kind, api_url, token, owner, repo, str(pr_number))
-        base_sha, head_sha, base_ref, head_ref = extract_pr_shas_from_api_response(api_kind, response)
+        response = fetch_pr_metadata_via_api(
+            api_kind, api_url, token, owner, repo, str(pr_number)
+        )
+        base_sha, head_sha, base_ref, head_ref = extract_pr_shas_from_api_response(
+            api_kind, response
+        )
 
         if base_sha or head_sha:
             entry.base_sha = base_sha
@@ -104,18 +106,18 @@ def main():
         "--pr-list-file",
         type=Path,
         required=True,
-        help="File containing PR URLs (one per line)"
+        help="File containing PR URLs (one per line)",
     )
     parser.add_argument(
         "--cache-dir",
         type=Path,
         default=Path("local/pr_api_cache"),
-        help="Directory containing PR cache entries"
+        help="Directory containing PR cache entries",
     )
     parser.add_argument(
         "--git-host-config",
         type=Path,
-        help="Path to git host config file (e.g., ~/.config/gitcode.ini)"
+        help="Path to git host config file (e.g., ~/.config/gitcode.ini)",
     )
     args = parser.parse_args()
 
@@ -142,7 +144,9 @@ def main():
         )
 
     if not api_url or not token:
-        print("Error: API credentials required. Provide --git-host-config or set GITCODE_TOKEN")
+        print(
+            "Error: API credentials required. Provide --git-host-config or set GITCODE_TOKEN"
+        )
         sys.exit(1)
 
     api_kind = infer_git_host_kind("", api_url=api_url)
@@ -155,7 +159,9 @@ def main():
 
     print(f"Refreshing {len(prs)} PRs...")
     for owner, repo, pr_number in prs:
-        pr_num, status, detail = _refresh_one_pr(owner, repo, pr_number, cache, api_kind, api_url, token)
+        pr_num, status, detail = _refresh_one_pr(
+            owner, repo, pr_number, cache, api_kind, api_url, token
+        )
         if status == "updated":
             updated += 1
             print(f"  PR #{pr_num}: {detail}")

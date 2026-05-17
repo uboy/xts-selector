@@ -152,7 +152,9 @@ class RuntimeHistoryTests(unittest.TestCase):
                 "capability_keys": ["button"],
             }
             report = {
-                "results": [{"changed_file": "a.cpp", "run_targets": [required, recommended]}],
+                "results": [
+                    {"changed_file": "a.cpp", "run_targets": [required, recommended]}
+                ],
                 "symbol_queries": [],
                 "coverage_recommendations": {
                     "required": [required],
@@ -165,8 +167,12 @@ class RuntimeHistoryTests(unittest.TestCase):
 
             annotate_report_runtime_estimates(report, index, requested_tool="aa_test")
             coverage = report["coverage_recommendations"]
-            self.assertAlmostEqual(coverage["estimated_required_duration_s"], 10.0, places=2)
-            self.assertAlmostEqual(coverage["estimated_recommended_duration_s"], 30.0, places=2)
+            self.assertAlmostEqual(
+                coverage["estimated_required_duration_s"], 10.0, places=2
+            )
+            self.assertAlmostEqual(
+                coverage["estimated_recommended_duration_s"], 30.0, places=2
+            )
             self.assertAlmostEqual(coverage["estimated_all_duration_s"], 30.0, places=2)
 
 

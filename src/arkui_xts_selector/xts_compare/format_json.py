@@ -23,12 +23,10 @@ from .models import (
     SelectorProjectCorrelation,
     TaskInfoSummary,
     TestIdentity,
-    TestOutcome,
     TestTransition,
     TestResult,
     TimelineReport,
     TimelineRow,
-    TransitionKind,
 )
 
 
@@ -42,7 +40,9 @@ def _archive_notice_to_dict(notice: ArchiveEntryNotice) -> dict:
 def _archive_diagnostics_to_dict(info: ArchiveDiagnostics) -> dict:
     return {
         "source_type": info.source_type,
-        "skipped_entries": [_archive_notice_to_dict(notice) for notice in info.skipped_entries],
+        "skipped_entries": [
+            _archive_notice_to_dict(notice) for notice in info.skipped_entries
+        ],
     }
 
 
@@ -91,10 +91,7 @@ def _task_info_to_dict(info: TaskInfoSummary) -> dict:
     return {
         "session_id": info.session_id,
         "unsuccessful": {
-            module: [
-                {"suite": suite, "case": case}
-                for suite, case in entries
-            ]
+            module: [{"suite": suite, "case": case} for suite, case in entries]
             for module, entries in info.unsuccessful.items()
         },
     }
@@ -123,8 +120,7 @@ def _metadata_to_dict(meta: RunMetadata) -> dict:
         "modules_tested": meta.modules_tested,
         "task_info": _task_info_to_dict(meta.task_info),
         "module_infos": {
-            name: _module_info_to_dict(info)
-            for name, info in meta.module_infos.items()
+            name: _module_info_to_dict(info) for name, info in meta.module_infos.items()
         },
         "timestamp_source": meta.timestamp_source,
         "archive_diagnostics": _archive_diagnostics_to_dict(meta.archive_diagnostics),
@@ -208,8 +204,12 @@ def _selector_project_to_dict(project: SelectorProjectCorrelation) -> dict:
         "bucket": project.bucket,
         "variant": project.variant,
         "matched_modules": project.matched_modules,
-        "regressions": [_identity_to_dict(identity) for identity in project.regressions],
-        "improvements": [_identity_to_dict(identity) for identity in project.improvements],
+        "regressions": [
+            _identity_to_dict(identity) for identity in project.regressions
+        ],
+        "improvements": [
+            _identity_to_dict(identity) for identity in project.improvements
+        ],
         "predicted_but_no_change": project.predicted_but_no_change,
     }
 
@@ -218,12 +218,10 @@ def _selector_changed_file_to_dict(entry: SelectorChangedFileCorrelation) -> dic
     return {
         "changed_file": entry.changed_file,
         "predicted_projects": [
-            _selector_project_to_dict(project)
-            for project in entry.predicted_projects
+            _selector_project_to_dict(project) for project in entry.predicted_projects
         ],
         "regression_not_predicted": [
-            _identity_to_dict(identity)
-            for identity in entry.regression_not_predicted
+            _identity_to_dict(identity) for identity in entry.regression_not_predicted
         ],
     }
 
@@ -242,8 +240,7 @@ def report_to_dict(report: ComparisonReport) -> dict:
         "modules": [_module_comparison_to_dict(mc) for mc in report.modules],
         "root_causes": [_root_cause_to_dict(rc) for rc in report.root_causes],
         "performance_changes": [
-            _performance_change_to_dict(change)
-            for change in report.performance_changes
+            _performance_change_to_dict(change) for change in report.performance_changes
         ],
         "selector_correlations": [
             _selector_changed_file_to_dict(entry)
@@ -253,11 +250,17 @@ def report_to_dict(report: ComparisonReport) -> dict:
     }
 
 
-def single_run_to_dict(meta: RunMetadata, results: dict[TestIdentity, TestResult]) -> dict:
+def single_run_to_dict(
+    meta: RunMetadata, results: dict[TestIdentity, TestResult]
+) -> dict:
     """Convert a single run into a JSON-serializable dict."""
     ordered_results = sorted(
         results.values(),
-        key=lambda result: (result.identity.module, result.identity.suite, result.identity.case),
+        key=lambda result: (
+            result.identity.module,
+            result.identity.suite,
+            result.identity.case,
+        ),
     )
     summary = {
         "total_tests": meta.total_tests,

@@ -11,10 +11,10 @@ This module categorizes files by type to enable different handling strategies:
 
 Import boundary: standard library only.
 """
+
 from __future__ import annotations
 
 import re
-from pathlib import Path
 from typing import Literal
 
 FileCategory = Literal[

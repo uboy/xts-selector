@@ -7,7 +7,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from arkui_xts_selector.cli import TestFileIndex, TestProjectIndex, score_project, select_candidate_projects
+from arkui_xts_selector.cli import (
+    TestFileIndex,
+    TestProjectIndex,
+    score_project,
+    select_candidate_projects,
+)
 
 
 def _signals(
@@ -33,7 +38,9 @@ def _signals(
 
 class CandidatePrefilterTests(unittest.TestCase):
     def _assert_lossless(self, signals: dict, projects: list[TestProjectIndex]) -> None:
-        _all_projects, shortlisted = select_candidate_projects(projects, signals, "both")
+        _all_projects, shortlisted = select_candidate_projects(
+            projects, signals, "both"
+        )
         shortlisted_keys = {project.test_json for project in shortlisted}
         positive_keys = {
             project.test_json
@@ -50,7 +57,12 @@ class CandidatePrefilterTests(unittest.TestCase):
                 bundle_name=None,
                 path_key="module_project",
                 variant="static",
-                files=[TestFileIndex(relative_path="pages/index.ets", imports={"@ohos.arkui.UIContext"})],
+                files=[
+                    TestFileIndex(
+                        relative_path="pages/index.ets",
+                        imports={"@ohos.arkui.UIContext"},
+                    )
+                ],
             ),
             TestProjectIndex(
                 relative_root="method_project",
@@ -58,7 +70,12 @@ class CandidatePrefilterTests(unittest.TestCase):
                 bundle_name=None,
                 path_key="method_project",
                 variant="static",
-                files=[TestFileIndex(relative_path="pages/index.ets", member_calls={"contentModifier"})],
+                files=[
+                    TestFileIndex(
+                        relative_path="pages/index.ets",
+                        member_calls={"contentModifier"},
+                    )
+                ],
             ),
             TestProjectIndex(
                 relative_root="typed_project",
@@ -66,7 +83,11 @@ class CandidatePrefilterTests(unittest.TestCase):
                 bundle_name=None,
                 path_key="typed_project",
                 variant="static",
-                files=[TestFileIndex(relative_path="pages/index.ets", typed_modifier_bases={"button"})],
+                files=[
+                    TestFileIndex(
+                        relative_path="pages/index.ets", typed_modifier_bases={"button"}
+                    )
+                ],
             ),
             TestProjectIndex(
                 relative_root="security_project",
@@ -74,7 +95,11 @@ class CandidatePrefilterTests(unittest.TestCase):
                 bundle_name=None,
                 path_key="ace_ets_module_securityComponent_static",
                 variant="static",
-                files=[TestFileIndex(relative_path="pages/SecurityComponent/FocusBoxIndex.ets")],
+                files=[
+                    TestFileIndex(
+                        relative_path="pages/SecurityComponent/FocusBoxIndex.ets"
+                    )
+                ],
             ),
             TestProjectIndex(
                 relative_root="word_project",
@@ -82,7 +107,11 @@ class CandidatePrefilterTests(unittest.TestCase):
                 bundle_name=None,
                 path_key="word_project",
                 variant="static",
-                files=[TestFileIndex(relative_path="pages/index.ets", words={"locationbutton"})],
+                files=[
+                    TestFileIndex(
+                        relative_path="pages/index.ets", words={"locationbutton"}
+                    )
+                ],
             ),
             TestProjectIndex(
                 relative_root="negative_project",
@@ -90,7 +119,9 @@ class CandidatePrefilterTests(unittest.TestCase):
                 bundle_name=None,
                 path_key="negative_project",
                 variant="static",
-                files=[TestFileIndex(relative_path="pages/index.ets", words={"unrelated"})],
+                files=[
+                    TestFileIndex(relative_path="pages/index.ets", words={"unrelated"})
+                ],
             ),
         ]
 
@@ -107,7 +138,9 @@ class CandidatePrefilterTests(unittest.TestCase):
             bundle_name=None,
             path_key="ace_ets_module_misc_static",
             variant="static",
-            files=[TestFileIndex(relative_path="pages/SecurityComponent/FocusBoxIndex.ets")],
+            files=[
+                TestFileIndex(relative_path="pages/SecurityComponent/FocusBoxIndex.ets")
+            ],
         )
 
         _all_projects, shortlisted = select_candidate_projects(
@@ -116,7 +149,9 @@ class CandidatePrefilterTests(unittest.TestCase):
             "both",
         )
 
-        self.assertEqual([item.test_json for item in shortlisted], ["security_project/Test.json"])
+        self.assertEqual(
+            [item.test_json for item in shortlisted], ["security_project/Test.json"]
+        )
 
     def test_prefilter_falls_back_to_all_projects_when_shortlist_is_empty(self) -> None:
         projects = [
@@ -154,10 +189,17 @@ class CandidatePrefilterTests(unittest.TestCase):
             bundle_name=None,
             path_key="ace_ets_module_securityComponent_static",
             variant="static",
-            files=[TestFileIndex(relative_path="pages/SecurityComponent/FocusBoxIndex.ets", words={"savebutton"})],
+            files=[
+                TestFileIndex(
+                    relative_path="pages/SecurityComponent/FocusBoxIndex.ets",
+                    words={"savebutton"},
+                )
+            ],
         )
 
-        select_candidate_projects([project], _signals(project_hints={"securitycomponent"}), "both")
+        select_candidate_projects(
+            [project], _signals(project_hints={"securitycomponent"}), "both"
+        )
         restored = TestProjectIndex.from_dict(project.to_dict())
 
         self.assertTrue(restored.search_summary_ready)
@@ -166,7 +208,9 @@ class CandidatePrefilterTests(unittest.TestCase):
             _signals(project_hints={"securitycomponent"}),
             "both",
         )
-        self.assertEqual([item.test_json for item in shortlisted], ["security_project/Test.json"])
+        self.assertEqual(
+            [item.test_json for item in shortlisted], ["security_project/Test.json"]
+        )
 
 
 if __name__ == "__main__":

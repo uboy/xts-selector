@@ -22,10 +22,14 @@ from arkui_xts_selector.cli import (
 
 class WebSignalHardeningTests(unittest.TestCase):
     def test_web_pattern_does_not_pull_richtext_signal(self) -> None:
-        mapping_config = load_mapping_config(cli.default_path_rules_file(), cli.default_composite_mappings_file())
+        mapping_config = load_mapping_config(
+            cli.default_path_rules_file(), cli.default_composite_mappings_file()
+        )
         with TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir)
-            changed_file = repo_root / "frameworks/core/components_ng/pattern/web/web_pattern.cpp"
+            changed_file = (
+                repo_root / "frameworks/core/components_ng/pattern/web/web_pattern.cpp"
+            )
             changed_file.parent.mkdir(parents=True, exist_ok=True)
             changed_file.write_text("// web pattern\n", encoding="utf-8")
 
@@ -46,10 +50,14 @@ class WebSignalHardeningTests(unittest.TestCase):
         self.assertNotIn("RichText", signals["symbols"])
 
     def test_specific_web_suite_outranks_broad_web_plus_richtext_suite(self) -> None:
-        mapping_config = load_mapping_config(cli.default_path_rules_file(), cli.default_composite_mappings_file())
+        mapping_config = load_mapping_config(
+            cli.default_path_rules_file(), cli.default_composite_mappings_file()
+        )
         with TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir)
-            changed_file = repo_root / "frameworks/core/components_ng/pattern/web/web_pattern.cpp"
+            changed_file = (
+                repo_root / "frameworks/core/components_ng/pattern/web/web_pattern.cpp"
+            )
             changed_file.parent.mkdir(parents=True, exist_ok=True)
             changed_file.write_text("// web pattern\n", encoding="utf-8")
 

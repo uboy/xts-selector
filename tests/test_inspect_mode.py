@@ -7,6 +7,7 @@ for api-entity, source-file, and consumer-project lookups.
 Run:
     python3 -m unittest tests.test_inspect_mode -v
 """
+
 from __future__ import annotations
 
 import argparse
@@ -56,9 +57,9 @@ def _make_args(**kwargs) -> argparse.Namespace:
 def _write_fixture_map(runtime_state_root: Path) -> ApiLineageMap:
     """Write a minimal lineage map for testing."""
     m = ApiLineageMap()
-    m.source_to_apis["frameworks/core/components_ng/pattern/button/button_model.cpp"] = {
-        "ButtonAttribute.role"
-    }
+    m.source_to_apis[
+        "frameworks/core/components_ng/pattern/button/button_model.cpp"
+    ] = {"ButtonAttribute.role"}
     m.api_to_sources["ButtonAttribute.role"] = {
         "frameworks/core/components_ng/pattern/button/button_model.cpp"
     }
@@ -88,7 +89,11 @@ class InspectMissingMapTests(unittest.TestCase):
             app_config = _make_app_config(runtime_state_root, Path(tmpdir))
             args = _make_args()
 
-            with self.assertLogs("root", level="WARNING") if False else self._capture_stderr() as _:
+            with (
+                self.assertLogs("root", level="WARNING")
+                if False
+                else self._capture_stderr() as _
+            ):
                 exit_code = run_inspect_mode(args, app_config)
 
         self.assertEqual(exit_code, 2)
@@ -96,6 +101,7 @@ class InspectMissingMapTests(unittest.TestCase):
     def _capture_stderr(self):
         """Null context manager to avoid polluting test output with expected stderr."""
         import contextlib
+
         return contextlib.redirect_stderr(io.StringIO())
 
 
@@ -226,7 +232,9 @@ class InspectConsumerProjectTests(unittest.TestCase):
             runtime_state_root = Path(tmpdir) / ".runtime"
             _write_fixture_map(runtime_state_root)
             app_config = _make_app_config(runtime_state_root, Path(tmpdir))
-            args = _make_args(inspect_consumer_project="test/xts/acts/arkui/button_static")
+            args = _make_args(
+                inspect_consumer_project="test/xts/acts/arkui/button_static"
+            )
 
             buf = io.StringIO()
             with _redirect_stdout(buf):
@@ -234,7 +242,9 @@ class InspectConsumerProjectTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         result = json.loads(buf.getvalue())
-        self.assertEqual(result["consumer_project"], "test/xts/acts/arkui/button_static")
+        self.assertEqual(
+            result["consumer_project"], "test/xts/acts/arkui/button_static"
+        )
         self.assertIn("ButtonAttribute.role", result["api_entities"])
 
     def test_consumer_project_returns_source_files(self) -> None:
@@ -242,7 +252,9 @@ class InspectConsumerProjectTests(unittest.TestCase):
             runtime_state_root = Path(tmpdir) / ".runtime"
             _write_fixture_map(runtime_state_root)
             app_config = _make_app_config(runtime_state_root, Path(tmpdir))
-            args = _make_args(inspect_consumer_project="test/xts/acts/arkui/button_static")
+            args = _make_args(
+                inspect_consumer_project="test/xts/acts/arkui/button_static"
+            )
 
             buf = io.StringIO()
             with _redirect_stdout(buf):

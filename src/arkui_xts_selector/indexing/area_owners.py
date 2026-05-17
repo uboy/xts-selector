@@ -3,6 +3,7 @@
 Maps changed file paths to test targets via area ownership rules.
 Used as a late-stage fallback when more precise resolution fails.
 """
+
 from __future__ import annotations
 
 import json
@@ -28,11 +29,13 @@ def load_area_owners(path: Path | None = None) -> list[AreaRule]:
         return []
     rules: list[AreaRule] = []
     for area in data.get("areas", []):
-        rules.append(AreaRule(
-            path_pattern=area.get("path_pattern", ""),
-            owner_team=area.get("owner_team", ""),
-            default_targets=tuple(area.get("default_targets", [])),
-        ))
+        rules.append(
+            AreaRule(
+                path_pattern=area.get("path_pattern", ""),
+                owner_team=area.get("owner_team", ""),
+                default_targets=tuple(area.get("default_targets", [])),
+            )
+        )
     return rules
 
 

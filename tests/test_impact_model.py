@@ -1,12 +1,11 @@
 """Tests for ImpactCandidate model (Phase 1, Task 1.1)."""
+
 from __future__ import annotations
 
 import pytest
 
 from arkui_xts_selector.indexing.impact import (
     ImpactCandidate,
-    VALID_IMPACT_KINDS,
-    VALID_RELATION_SCOPES,
 )
 
 

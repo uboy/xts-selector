@@ -58,8 +58,6 @@ def path_component_tokens(path: str) -> set[str]:
 def path_signal_tokens(path: str) -> set[str]:
     tokens = set(path_component_tokens(path))
     tokens.update(
-        compact_token(part)
-        for part in tokenize_path_parts(path)
-        if compact_token(part)
+        compact_token(part) for part in tokenize_path_parts(path) if compact_token(part)
     )
     return {token for token in tokens if token}
