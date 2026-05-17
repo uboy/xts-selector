@@ -14,11 +14,12 @@ from types import SimpleNamespace
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+from arkui_xts_selector.constants import PATTERN_ALIAS
+
 from arkui_xts_selector.cli import (
     AppConfig,
     ContentModifierIndex,
     MappingConfig,
-    PATTERN_ALIAS,
     SdkIndex,
     apply_ranking_rules_config,
     build_coverage_run_commands,
