@@ -146,6 +146,9 @@ from .scoring import (
     candidate_bucket,
     filter_project_results_by_relevance,
     classify_project_scope,
+)
+from .gate_adapter import apply_must_run_gate
+from .scoring import (
     sort_project_results,
     matched_file_surfaces,
     should_keep_project_for_surface,
@@ -891,6 +894,9 @@ def format_report(
                 ],
             }
             _bucket = candidate_bucket(score, _nlx, evidence_profile=_evidence_profile)
+            _bucket, _gate_blockers = apply_must_run_gate(
+                _bucket, score, _nlx, _evidence_profile, project_reasons,
+            )
             scope_tier, specificity_score, scope_reasons = classify_project_scope(
                 project,
                 signals,
@@ -913,6 +919,8 @@ def format_report(
                 "scope_reasons": scope_reasons if debug_trace else scope_reasons[:3],
                 "confidence": confidence(score),
                 "bucket": _bucket,
+                "bucket_gate_passed": not _gate_blockers,
+                "bucket_gate_blockers": _gate_blockers,
                 "variant": project.variant,
                 "surface": project.surface,
                 "supported_surfaces": sorted(project.supported_surfaces),
@@ -1185,6 +1193,9 @@ def format_report(
                 ],
             }
             _bucket = candidate_bucket(score, _nlx, evidence_profile=_evidence_profile)
+            _bucket, _gate_blockers = apply_must_run_gate(
+                _bucket, score, _nlx, _evidence_profile, project_reasons,
+            )
             scope_tier, specificity_score, scope_reasons = classify_project_scope(
                 project,
                 signals,
@@ -1203,6 +1214,8 @@ def format_report(
                 "scope_reasons": scope_reasons if debug_trace else scope_reasons[:3],
                 "confidence": confidence(score),
                 "bucket": _bucket,
+                "bucket_gate_passed": not _gate_blockers,
+                "bucket_gate_blockers": _gate_blockers,
                 "variant": project.variant,
                 "surface": project.surface,
                 "supported_surfaces": sorted(project.supported_surfaces),
