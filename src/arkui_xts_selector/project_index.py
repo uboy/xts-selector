@@ -588,7 +588,8 @@ def load_sdk_index(sdk_api_root: Path) -> SdkIndex:
 
     for path in sorted(sdk_component_root.glob("*.static.d.ets")):
         base = path.name[: -len(".static.d.ets")]
-        symbol = snake_to_pascal(base)
+        # SDK filenames are camelCase; preserve inner caps instead of lowercasing.
+        symbol = base[0].upper() + base[1:] if base else ""
         if base not in {"common", "builder", "enums", "units", "resources"}:
             index.component_names.add(symbol)
             index.component_file_bases[compact_token(base)] = symbol
@@ -602,9 +603,15 @@ def load_sdk_index(sdk_api_root: Path) -> SdkIndex:
         else:
             symbol = base[: -len(".static.d.ets")]
         index.modifier_names.add(symbol)
-        index.modifier_file_bases[compact_token(symbol.replace("Modifier", ""))] = (
-            symbol
-        )
+        fam = compact_token(symbol.replace("Modifier", ""))
+        index.modifier_file_bases[fam] = symbol
+        # Components without a *.static.d.ets (e.g. Panel, Stepper) need their
+        # base name registered so dynamic_module_symbols returns it correctly.
+        if symbol.endswith("Modifier") and fam not in index.component_file_bases:
+            base_name = symbol[: -len("Modifier")]
+            if base_name:
+                index.component_names.add(base_name)
+                index.component_file_bases[fam] = base_name
 
     for path in sorted(sdk_api_root.glob("@ohos.*")):
         name = path.name

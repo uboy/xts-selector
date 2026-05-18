@@ -903,7 +903,9 @@ def _load_sdk_entities(
         family = compact_token(base)
         if not family:
             continue
-        symbol = snake_to_pascal(base)
+        # SDK filenames are camelCase (e.g. "dataPanel"), not snake_case.
+        # snake_to_pascal("dataPanel") → "Datapanel" (wrong); preserve inner caps.
+        symbol = base[0].upper() + base[1:] if base else ""
         component_symbols_by_family.setdefault(family, set()).add(symbol)
         family_to_api_symbols.setdefault(family, set()).add(symbol)
         lineage_map.record_source_api(path, symbol, family=family)
@@ -931,6 +933,12 @@ def _load_sdk_entities(
         family_to_api_symbols.setdefault(family, set()).add(symbol)
         lineage_map.record_source_api(path, symbol, family=family)
         lineage_map.record_api_surface(symbol, surface)
+        # Components that only have a Modifier file (no *.static.d.ets) need the
+        # base component name added explicitly, e.g. "Panel" from "PanelModifier".
+        if symbol.endswith("Modifier"):
+            base_name = symbol[: -len("Modifier")]
+            if base_name:
+                family_to_api_symbols.setdefault(family, set()).add(base_name)
 
     common_static_path = sdk_component_root / "common.static.d.ets"
     common_interfaces = _parse_interface_blocks(common_static_path)
@@ -1052,6 +1060,14 @@ def _iter_source_files(ace_engine_root: Path) -> Iterable[Path]:
                 yield path
 
 
+# Source directory names that don't map to a SDK family token directly.
+# Key: directory or compound file-prefix name (as it appears in the path).
+# Value: compact SDK family token.
+_DIR_TO_SDK_FAMILY: dict[str, str] = {
+    "text_field": "textinput",  # pattern/text_field/ → TextInput
+}
+
+
 def _match_source_families(
     rel_path: str, family_to_api_symbols: dict[str, set[str]]
 ) -> set[str]:
@@ -1062,9 +1078,33 @@ def _match_source_families(
 
     pattern_match = re.search(r"components_ng/pattern/([^/]+)/", rel_lower)
     if pattern_match:
-        family = compact_token(pattern_match.group(1))
+        dir_name = pattern_match.group(1)
+        family = compact_token(dir_name)
         if family in family_to_api_symbols:
             matched.add(family)
+        else:
+            # Directory name doesn't map directly; try explicit alias table.
+            alias = _DIR_TO_SDK_FAMILY.get(dir_name)
+            if alias and alias in family_to_api_symbols:
+                matched.add(alias)
+
+    # native/implementation/ file prefixes use underscored compound names that
+    # the generic tokenizer splits incorrectly, e.g. data_panel_modifier.cpp →
+    # ["data", "panel"] which wrongly matches the Panel family instead of DataPanel.
+    # Extract the full compound prefix and look it up directly.
+    native_impl_match = re.search(
+        r"native/implementation/([^/]+?)_(?:modifier|accessor|extender|peer|dialog|context)\.",
+        rel_lower,
+    )
+    if native_impl_match:
+        raw = native_impl_match.group(1)  # e.g. "data_panel", "text_input"
+        family = compact_token(raw)
+        if family in family_to_api_symbols:
+            matched.add(family)
+        else:
+            alias = _DIR_TO_SDK_FAMILY.get(raw)
+            if alias and alias in family_to_api_symbols:
+                matched.add(alias)
 
     for token in tokens:
         if token in family_to_api_symbols:

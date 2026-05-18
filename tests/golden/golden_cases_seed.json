@@ -4072,7 +4072,7 @@
     },
     {
       "case_id": "datapanel_pattern_file_074",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/data_panel/data_panel_pattern.cpp",
@@ -4129,11 +4129,11 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "datapanel_model_file_075",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/data_panel/data_panel_model.h",
@@ -4190,11 +4190,11 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "datapanel_modifier_file_076",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/data_panel_modifier.cpp",
@@ -4251,7 +4251,7 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "marquee_pattern_file_077",
@@ -4810,7 +4810,7 @@
     },
     {
       "case_id": "panel_pattern_file_086",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/panel/sliding_panel_pattern.cpp",
@@ -4867,11 +4867,11 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "panel_model_file_087",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/panel/sliding_panel_model.h",
@@ -4928,11 +4928,11 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "panel_modifier_file_088",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/node/panel_modifier.cpp",
@@ -4989,11 +4989,11 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "stepper_pattern_file_089",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/stepper_pattern.cpp",
@@ -5050,11 +5050,11 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "stepper_model_file_090",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/stepper_model.h",
@@ -5111,11 +5111,11 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "stepper_modifier_file_091",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/stepper_modifier.cpp",
@@ -5172,7 +5172,7 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "hyperlink_pattern_file_092",
@@ -5359,7 +5359,7 @@
     },
     {
       "case_id": "textarea_pattern_file_095",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text_area/text_area_pattern.h",
@@ -5416,11 +5416,11 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "textarea_modifier_file_096",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/text_area_modifier.cpp",
@@ -5477,11 +5477,11 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "datepicker_pattern_file_097",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/picker/datepicker_pattern.cpp",
@@ -5538,11 +5538,11 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "datepicker_model_file_098",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/picker/datepicker_model_ng.h",
@@ -5599,11 +5599,11 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "datepicker_modifier_file_099",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/date_picker_modifier.cpp",
@@ -5660,11 +5660,11 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "timepicker_pattern_file_100",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/time_picker/timepicker_column_pattern.cpp",
@@ -5721,11 +5721,11 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "timepicker_model_file_101",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/time_picker/timepicker_model.h",
@@ -5782,11 +5782,11 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "timepicker_modifier_file_102",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/time_picker_modifier.cpp",
@@ -5843,7 +5843,7 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "navigation_pattern_file_103",
@@ -6036,7 +6036,7 @@
     },
     {
       "case_id": "textinput_model_file_106",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text_field/text_field_model.h",
@@ -6093,11 +6093,11 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "textinput_modifier_file_107",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/text_input_modifier.cpp",
@@ -6154,7 +6154,7 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     },
     {
       "case_id": "blank_pattern_header_108",
@@ -6469,7 +6469,7 @@
     },
     {
       "case_id": "stepper_pattern_header_113",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/stepper_pattern.h",
@@ -6526,7 +6526,7 @@
           "description": "File-level change should not produce must_run bucket"
         }
       ],
-      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+      "notes": "Phase 5: selector gap fixed; all 4 root-cause bugs resolved"
     }
   ]
 }
