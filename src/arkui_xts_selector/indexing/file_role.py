@@ -45,7 +45,7 @@ _INFRASTRUCTURE_PATTERNS = [
 
 # Pattern directory pattern
 _PATTERN_DIR_PATTERN = re.compile(
-    r"frameworks/core/components_ng/pattern/([^/]+)/[^/]+\.(cpp|h)$"
+    r"frameworks/core/components_ng/pattern/(?:[^/]+/)*([^/]+)/[^/]+\.(cpp|h)$"
 )
 
 # Native modifier implementation pattern
@@ -75,11 +75,23 @@ def _is_infrastructure(rel_path: str) -> bool:
     return False
 
 
+_FILE_COMPONENT_RE = re.compile(
+    r"^([a-z][a-z0-9]*(?:_[a-z0-9]+)*)_(?:pattern|model|model_static|model_ng|modifier|node)\.(?:cpp|h)$"
+)
+
+
 def _classify_pattern_file(
     rel_path: str, family: str | None
 ) -> tuple[FileRole, str | None]:
     """Classify a file within the pattern directory."""
     filename = Path(rel_path).name.lower()
+
+    # Extract component name from filename when it differs from directory family.
+    # E.g. navdestination_pattern.cpp in navrouter/ → family=navdestination
+    m = _FILE_COMPONENT_RE.match(filename)
+    file_family = m.group(1) if m else family
+    if file_family and file_family != family:
+        family = file_family
 
     # Check filename suffixes to distinguish model types
     if filename.endswith("_model_static.cpp") or filename.endswith("_model_static.h"):

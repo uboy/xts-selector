@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Literal
 
 from .ace_indexer import AceIndexResult
 from .cpp_parser import CppMethod
+from .family_alias import normalize_family
 
 # ImportSdkIndexResult lazily to avoid circular imports
 if TYPE_CHECKING:
@@ -316,8 +317,8 @@ def _resolve_canonical_id(
         if is_blacklisted(method_name):
             return None, None, "blacklisted", [], False, ""
 
-    # Capitalize family: button -> Button, slider -> Slider
-    family_cap = family[0].upper() + family[1:] if family else ""
+    # Normalize family to SDK canonical name: button -> Button, navdestination -> NavDestination
+    family_cap = normalize_family(family) if family else ""
     parent = f"{family_cap}Attribute"
 
     # Apply SDK member alias normalization

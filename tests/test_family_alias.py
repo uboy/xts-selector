@@ -65,3 +65,18 @@ class TestNormalizeFamily:
 
     def test_with_theme_alias(self):
         assert normalize_family("with_theme") == "WithTheme"
+
+    def test_navdestination_single_word(self):
+        assert normalize_family("navdestination") == "NavDestination"
+
+    def test_nav_destination_multi_word(self):
+        assert normalize_family("nav_destination") == "NavDestination"
+
+    def test_menu_item(self):
+        assert normalize_family("menu_item") == "MenuItem"
+
+    def test_text_field_aliases_to_textinput(self):
+        assert normalize_family("text_field") == "TextInput"
+
+    def test_slider(self):
+        assert normalize_family("slider") == "Slider"

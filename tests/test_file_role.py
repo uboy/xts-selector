@@ -68,6 +68,27 @@ class TestClassifyModel:
         assert role == "model_other"
         assert family == "checkbox"
 
+    def test_classify_nested_pattern_dir_menu_item(self):
+        """Nested pattern dir (menu/menu_item) extracts family from filename."""
+        path = "frameworks/core/components_ng/pattern/menu/menu_item/menu_item_model.h"
+        role, family = classify(path)
+        assert role == "model_other"
+        assert family == "menu_item"
+
+    def test_classify_filename_family_navdestination(self):
+        """navdestination_pattern.cpp in navrouter/ extracts navdestination from filename."""
+        path = "frameworks/core/components_ng/pattern/navrouter/navdestination_pattern.cpp"
+        role, family = classify(path)
+        assert role == "pattern"
+        assert family == "navdestination"
+
+    def test_classify_text_field_model(self):
+        """text_field_model.cpp extracts text_field family."""
+        path = "frameworks/core/components_ng/pattern/text_field/text_field_model.cpp"
+        role, family = classify(path)
+        assert role == "model_other"
+        assert family == "text_field"
+
 
 class TestClassifyNativeModifier:
     """Test native modifier classification."""
