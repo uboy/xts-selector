@@ -1,7 +1,7 @@
 {
   "schema_version": "golden-test-cases-v3",
-  "generated_at": "2026-05-17",
-  "description": "Expanded golden corpus: 40 manual_verified + 12 needs_review. All manual_verified have >=2 evidence types (not path_layer).",
+  "generated_at": "2026-05-18",
+  "description": "Golden Seed v4: 113 cases (101 manual_verified, 12 needs_review)",
   "cases": [
     {
       "case_id": "button_pattern_file_001",
@@ -2756,6 +2756,3777 @@
       },
       "negative_expectations": [],
       "notes": ""
+    },
+    {
+      "case_id": "blank_pattern_file_053",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/blank/blank_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Blank",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Blank",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/blank.d.ts",
+              "note": "blank declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/blank/blank_pattern.h",
+              "note": "BlankPattern class declared in pattern header"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_blank_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Blank"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_blank_static"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Blank is a basic layout spacer component"
+    },
+    {
+      "case_id": "blank_model_file_054",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/blank/blank_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Blank",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Blank",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/blank.d.ts",
+              "note": "blank declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/blank/blank_model.h",
+              "note": "BlankModel declares Create and Set APIs for Blank"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_blank_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Blank"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_blank_static"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Blank model defines declarative API surface"
+    },
+    {
+      "case_id": "blank_modifier_file_055",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/blank_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Blank",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Blank",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/blank.d.ts",
+              "note": "blank declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/blank_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_blank_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Blank"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_blank_static"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Blank native modifier provides C++ property setters"
+    },
+    {
+      "case_id": "divider_pattern_file_056",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/divider/divider_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Divider",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Divider",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/divider.d.ts",
+              "note": "divider declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/divider/divider_pattern.h",
+              "note": "DividerPattern class declared"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_divider_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Divider"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_divider_static"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "divider_model_file_057",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/divider/divider_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Divider",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Divider",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/divider.d.ts",
+              "note": "divider declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/divider/divider_model.h",
+              "note": "DividerModel declares Create API"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_divider_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Divider"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_divider_static"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "divider_modifier_file_058",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/divider_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Divider",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Divider",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/divider.d.ts",
+              "note": "divider declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/divider_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_divider_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Divider"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_divider_static"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "column_model_file_059",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/linear_layout/column_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Column",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Column",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/column.d.ts",
+              "note": "column declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/linear_layout/column_model.h",
+              "note": "ColumnModel declares Create API for Column layout"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_column_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Column"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_column_static"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Column shares linear_layout pattern dir with Row"
+    },
+    {
+      "case_id": "column_modifier_file_060",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/column_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Column",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Column",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/column.d.ts",
+              "note": "column declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/column_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_column_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Column"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_column_static"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "row_model_file_061",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/linear_layout/row_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Row",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Row",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/row.d.ts",
+              "note": "row declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/linear_layout/row_model.h",
+              "note": "RowModel declares Create API for Row layout"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_row_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Row"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_column_static"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Row shares linear_layout pattern dir with Column"
+    },
+    {
+      "case_id": "row_modifier_file_062",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/row_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Row",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Row",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/row.d.ts",
+              "note": "row declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/row_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_row_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Row"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_column_static"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "stack_pattern_file_063",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stack/stack_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Stack",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Stack",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/stack.d.ts",
+              "note": "stack declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stack/stack_pattern.h",
+              "note": "StackPattern class declared"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_stack_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Stack"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Stack positions children on top of each other"
+    },
+    {
+      "case_id": "stack_model_file_064",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stack/stack_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Stack",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Stack",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/stack.d.ts",
+              "note": "stack declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stack/stack_model.h",
+              "note": "StackModel declares Create API"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_stack_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Stack"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "stack_modifier_file_065",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/stack_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Stack",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Stack",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/stack.d.ts",
+              "note": "stack declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/stack_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_stack_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Stack"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "flex_model_file_066",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/flex/flex_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Flex",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Flex",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/flex.d.ts",
+              "note": "flex declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/flex/flex_model.h",
+              "note": "FlexModel declares Create API for Flex container"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_flex_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Flex"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Flex layout container model"
+    },
+    {
+      "case_id": "flex_modifier_file_067",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/flex_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Flex",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Flex",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/flex.d.ts",
+              "note": "flex declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/flex_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_flex_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Flex"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "counter_pattern_file_068",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/counter/counter_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Counter",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Counter",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/counter.d.ts",
+              "note": "counter declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/counter/counter_pattern.h",
+              "note": "CounterPattern class declared"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/counter/bridge/arkts_native_counter_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Counter"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_counter"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Counter component for increment/decrement"
+    },
+    {
+      "case_id": "counter_model_file_069",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/counter/counter_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Counter",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Counter",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/counter.d.ts",
+              "note": "counter declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/counter/counter_model.h",
+              "note": "CounterModel declares Create API"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/counter/bridge/arkts_native_counter_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Counter"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_counter"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "counter_modifier_file_070",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/counter_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Counter",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Counter",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/counter.d.ts",
+              "note": "counter declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/counter_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/counter/bridge/arkts_native_counter_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Counter"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_counter"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "gauge_pattern_file_071",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/gauge/gauge_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Gauge",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Gauge",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/gauge.d.ts",
+              "note": "gauge declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/gauge/gauge_pattern.h",
+              "note": "GaugePattern class declared"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/gauge/bridge/arkts_native_gauge_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Gauge"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_gauge_contentModifier"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Gauge data visualization component"
+    },
+    {
+      "case_id": "gauge_model_file_072",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/gauge/gauge_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Gauge",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Gauge",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/gauge.d.ts",
+              "note": "gauge declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/gauge/gauge_model.h",
+              "note": "GaugeModel declares Create API"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/gauge/bridge/arkts_native_gauge_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Gauge"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_gauge_contentModifier"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "gauge_modifier_file_073",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/gauge_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Gauge",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Gauge",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/gauge.d.ts",
+              "note": "gauge declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/gauge_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/gauge/bridge/arkts_native_gauge_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Gauge"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_gauge_contentModifier"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "datapanel_pattern_file_074",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/data_panel/data_panel_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "DataPanel",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "DataPanel",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/data_panel.d.ts",
+              "note": "data_panel declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/data_panel/data_panel_pattern.h",
+              "note": "DataPanelPattern class declared"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/data_panel/bridge/arkts_native_data_panel_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "DataPanel"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "datapanel_model_file_075",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/data_panel/data_panel_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "DataPanel",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "DataPanel",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/data_panel.d.ts",
+              "note": "data_panel declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/data_panel/data_panel_model.h",
+              "note": "DataPanelModel declares Create API"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/data_panel/bridge/arkts_native_data_panel_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "DataPanel"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "datapanel_modifier_file_076",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/data_panel_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "DataPanel",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "DataPanel",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/data_panel.d.ts",
+              "note": "data_panel declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/data_panel_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/data_panel/bridge/arkts_native_data_panel_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "DataPanel"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "marquee_pattern_file_077",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/marquee/marquee_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Marquee",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Marquee",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/marquee.d.ts",
+              "note": "marquee declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/marquee/marquee_pattern.h",
+              "note": "MarqueePattern class declared"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/marquee/bridge/arkts_native_marquee_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Marquee"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Marquee scrolling text component"
+    },
+    {
+      "case_id": "marquee_model_file_078",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/marquee/marquee_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Marquee",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Marquee",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/marquee.d.ts",
+              "note": "marquee declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/marquee/marquee_model.h",
+              "note": "MarqueeModel declares Create API"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/marquee/bridge/arkts_native_marquee_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Marquee"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "marquee_modifier_file_079",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/marquee_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Marquee",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Marquee",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/marquee.d.ts",
+              "note": "marquee declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/marquee_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/marquee/bridge/arkts_native_marquee_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Marquee"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "rating_pattern_file_080",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/rating/rating_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Rating",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Rating",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/rating.d.ts",
+              "note": "rating declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/rating/rating_pattern.h",
+              "note": "RatingPattern class declared"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/rating/bridge/arkts_native_rating_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Rating"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Rating star component"
+    },
+    {
+      "case_id": "rating_model_file_081",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/rating/rating_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Rating",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Rating",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/rating.d.ts",
+              "note": "rating declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/rating/rating_model.h",
+              "note": "RatingModel declares Create API"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/rating/bridge/arkts_native_rating_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Rating"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "rating_modifier_file_082",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/rating_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Rating",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Rating",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/rating.d.ts",
+              "note": "rating declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/rating_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/rating/bridge/arkts_native_rating_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Rating"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "video_pattern_file_083",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/video/video_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Video",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Video",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/video.d.ts",
+              "note": "video declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/video/video_pattern.h",
+              "note": "VideoPattern class declared"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_video_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Video"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_video"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Video playback component"
+    },
+    {
+      "case_id": "video_model_file_084",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/video/video_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Video",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Video",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/video.d.ts",
+              "note": "video declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/video/video_model.h",
+              "note": "VideoModel declares Create API"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_video_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Video"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_video"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "video_modifier_file_085",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/video_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Video",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Video",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/video.d.ts",
+              "note": "video declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/video_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_video_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Video"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_video"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "panel_pattern_file_086",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/panel/sliding_panel_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Panel",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Panel",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/panel.d.ts",
+              "note": "panel declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/panel/sliding_panel_pattern.h",
+              "note": "SlidingPanelPattern class declared"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/panel/sliding_panel_model.h",
+              "note": "SlidingPanelModel declares Create API"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Panel"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "panel_model_file_087",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/panel/sliding_panel_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Panel",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Panel",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/panel.d.ts",
+              "note": "panel declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/panel/sliding_panel_model.h",
+              "note": "SlidingPanelModel declares Create API"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_panel_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Panel"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "panel_modifier_file_088",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/node/panel_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Panel",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Panel",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/panel.d.ts",
+              "note": "panel declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/node/panel_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_panel_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Panel"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "stepper_pattern_file_089",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/stepper_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Stepper",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Stepper",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/stepper.d.ts",
+              "note": "stepper declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/stepper_pattern.h",
+              "note": "StepperPattern class declared"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/bridge/arkts_native_stepper_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Stepper"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "stepper_model_file_090",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/stepper_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Stepper",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Stepper",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/stepper.d.ts",
+              "note": "stepper declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/stepper_model.h",
+              "note": "StepperModel declares Create API"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/bridge/arkts_native_stepper_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Stepper"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "stepper_modifier_file_091",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/stepper_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Stepper",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Stepper",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/stepper.d.ts",
+              "note": "stepper declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/stepper_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/bridge/arkts_native_stepper_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Stepper"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "hyperlink_pattern_file_092",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/hyperlink/hyperlink_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Hyperlink",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Hyperlink",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/hyperlink.d.ts",
+              "note": "hyperlink declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/hyperlink/hyperlink_pattern.h",
+              "note": "HyperlinkPattern class declared"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/hyperlink/bridge/arkts_native_hyperlink_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Hyperlink"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Hyperlink navigation component"
+    },
+    {
+      "case_id": "hyperlink_model_file_093",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/hyperlink/hyperlink_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Hyperlink",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Hyperlink",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/hyperlink.d.ts",
+              "note": "hyperlink declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/hyperlink/hyperlink_model.h",
+              "note": "HyperlinkModel declares Create API"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/hyperlink/bridge/arkts_native_hyperlink_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Hyperlink"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "hyperlink_modifier_file_094",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/hyperlink_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Hyperlink",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Hyperlink",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/hyperlink.d.ts",
+              "note": "hyperlink declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/hyperlink_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/hyperlink/bridge/arkts_native_hyperlink_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Hyperlink"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "textarea_pattern_file_095",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text_area/text_area_pattern.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "TextArea",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "TextArea",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/text_area.d.ts",
+              "note": "text_area declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text_area/text_area_pattern.h",
+              "note": "TextAreaPattern class declared (header-only pattern)"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_text_area_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "TextArea"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "textarea_modifier_file_096",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/text_area_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "TextArea",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "TextArea",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/text_area.d.ts",
+              "note": "text_area declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/text_area_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_text_area_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "TextArea"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "datepicker_pattern_file_097",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/picker/datepicker_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "DatePicker",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "DatePicker",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/date_picker.d.ts",
+              "note": "date_picker declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/picker/datepicker_pattern.h",
+              "note": "DatePickerPattern class declared"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_date_picker_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "DatePicker"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "datepicker_model_file_098",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/picker/datepicker_model_ng.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "DatePicker",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "DatePicker",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/date_picker.d.ts",
+              "note": "date_picker declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/picker/datepicker_model_ng.h",
+              "note": "DatePickerModelNG declares Create API"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_date_picker_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "DatePicker"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "datepicker_modifier_file_099",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/date_picker_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "DatePicker",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "DatePicker",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/date_picker.d.ts",
+              "note": "date_picker declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/date_picker_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_date_picker_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "DatePicker"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "timepicker_pattern_file_100",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/time_picker/timepicker_column_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "TimePicker",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "TimePicker",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/time_picker.d.ts",
+              "note": "time_picker declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/time_picker/timepicker_column_pattern.h",
+              "note": "TimePickerColumnPattern class declared"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/time_picker/bridge/arkts_native_timepicker_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "TimePicker"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "timepicker_model_file_101",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/time_picker/timepicker_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "TimePicker",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "TimePicker",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/time_picker.d.ts",
+              "note": "time_picker declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/time_picker/timepicker_model.h",
+              "note": "TimePickerModel declares Create API"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/time_picker/bridge/arkts_native_timepicker_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "TimePicker"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "timepicker_modifier_file_102",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/time_picker_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "TimePicker",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "TimePicker",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/time_picker.d.ts",
+              "note": "time_picker declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/time_picker_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/time_picker/bridge/arkts_native_timepicker_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "TimePicker"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "navigation_pattern_file_103",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/navigation/navigation_pattern.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Navigation",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Navigation",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/navigation.d.ts",
+              "note": "navigation declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/navigation/navigation_pattern.h",
+              "note": "NavigationPattern class declared"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_navigation_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Navigation"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_navigation"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Navigation is a core routing component"
+    },
+    {
+      "case_id": "navigation_model_file_104",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/navigation/navigation_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Navigation",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Navigation",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/navigation.d.ts",
+              "note": "navigation declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/navigation/navigation_model.h",
+              "note": "NavigationModel declares Create API"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_navigation_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Navigation"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_navigation"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "navigation_modifier_file_105",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/navigation_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Navigation",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Navigation",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/navigation.d.ts",
+              "note": "navigation declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/navigation_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_navigation_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Navigation"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_navigation"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "case_id": "textinput_model_file_106",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text_field/text_field_model.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "TextInput",
+        "layer": "model",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "TextInput",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/text_input.d.ts",
+              "note": "text_input declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text_field/text_field_model.h",
+              "note": "TextFieldModel declares Create API for TextInput"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_text_input_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "TextInput"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "textinput_modifier_file_107",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/text_input_modifier.cpp",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "TextInput",
+        "layer": "native_modifier",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "TextInput",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/text_input.d.ts",
+              "note": "text_input declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/text_input_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_text_input_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "TextInput"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
+    },
+    {
+      "case_id": "blank_pattern_header_108",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/blank/blank_pattern.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Blank",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Blank",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/blank.d.ts",
+              "note": "blank declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/blank/blank_pattern.h",
+              "note": "BlankPattern class definition with accessibility and event methods"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_blank_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Blank"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_blank_static"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Blank pattern header defines class interface"
+    },
+    {
+      "case_id": "divider_pattern_header_109",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/divider/divider_pattern.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Divider",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Divider",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/divider.d.ts",
+              "note": "divider declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/divider/divider_pattern.h",
+              "note": "DividerPattern class definition"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_divider_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Divider"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_divider_static"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Divider pattern header"
+    },
+    {
+      "case_id": "stack_pattern_header_110",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stack/stack_pattern.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Stack",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Stack",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/stack.d.ts",
+              "note": "stack declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stack/stack_pattern.h",
+              "note": "StackPattern class definition"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_stack_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Stack"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Stack pattern header"
+    },
+    {
+      "case_id": "flex_pattern_header_111",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/flex/flex_layout_pattern.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Flex",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Flex",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/flex.d.ts",
+              "note": "flex declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/flex/flex_layout_pattern.h",
+              "note": "FlexLayoutPattern class definition"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_flex_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Flex"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Flex layout pattern header (Flex uses FlexLayoutPattern class)"
+    },
+    {
+      "case_id": "counter_pattern_header_112",
+      "status": "manual_verified",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/counter/counter_pattern.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Counter",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Counter",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/counter.d.ts",
+              "note": "counter declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/counter/counter_pattern.h",
+              "note": "CounterPattern class definition"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/counter/bridge/arkts_native_counter_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Counter"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": [
+          "ace_ets_module_counter"
+        ]
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "Counter pattern header"
+    },
+    {
+      "case_id": "stepper_pattern_header_113",
+      "status": "needs_review",
+      "changed_input": {
+        "kind": "file",
+        "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/stepper_pattern.h",
+        "symbol": null,
+        "range": null
+      },
+      "source_classification": {
+        "component_family": "Stepper",
+        "layer": "pattern",
+        "surface": "shared",
+        "specificity": "file_level"
+      },
+      "expected_affected_apis": [
+        {
+          "api_name": "Stepper",
+          "api_kind": "component",
+          "surface": "shared",
+          "confidence": "strong",
+          "evidence": [
+            {
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/stepper.d.ts",
+              "note": "stepper declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/stepper_pattern.h",
+              "note": "StepperPattern class definition"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/bridge/arkts_native_stepper_bridge.cpp",
+              "note": "ArkTS native bridge for component"
+            }
+          ]
+        }
+      ],
+      "expected_bucket_constraints": {
+        "must_include_any_api": [
+          "Stepper"
+        ],
+        "must_not_must_run_api": [],
+        "max_bucket_if_only_path_evidence": "possible",
+        "allow_unresolved": false
+      },
+      "expected_xts": {
+        "must_include_projects": [],
+        "must_not_must_run_projects": [],
+        "optional_related_projects": []
+      },
+      "negative_expectations": [
+        {
+          "rule": "path_only_must_not_be_must_run",
+          "description": "File-level change should not produce must_run bucket"
+        }
+      ],
+      "notes": "selector_gap: expected API is SDK-visible and source path exists, but current selector does not resolve this family/layer yet; keep as needs_review until selector resolution is extended"
     }
   ]
 }
