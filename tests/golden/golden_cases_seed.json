@@ -1762,7 +1762,7 @@
             {
               "type": "path_layer",
               "path": "frameworks/core/components_ng/pattern/menu/menu_item/menu_item_model.h",
-              "note": "Selector gap: model files not indexed"
+              "note": "Model file resolved via family_alias normalization"
             }
           ]
         }
@@ -1781,7 +1781,7 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Selector gap: model files not indexed"
+      "notes": "Pipeline resolves menu_item→MenuItem via family_alias, but needs >=2 strong evidence types for manual_verified"
     },
     {
       "case_id": "textinput_model_file_006",
@@ -1946,7 +1946,7 @@
             {
               "type": "path_layer",
               "path": "frameworks/core/components_ng/pattern/navrouter/navdestination_pattern.cpp",
-              "note": "Naming mismatch: Navdestination vs NavDestination"
+              "note": "Pattern file resolved via filename-based family extraction + SDK alias"
             }
           ]
         }
@@ -1965,7 +1965,7 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Naming mismatch: Navdestination vs NavDestination"
+      "notes": "Pipeline resolves navdestination→NavDestination via filename+family_alias, but needs >=2 strong evidence types for manual_verified"
     },
     {
       "case_id": "slider_model_file_020",
