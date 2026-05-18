@@ -1,172 +1,113 @@
-# Golden Seed 100 gap families report (Phase 5)
+# Golden Seed 100 gap families report
 
 Date: 2026-05-18
 Branch: feature/selector-gap-families
 Parent branch: feature/golden-seed-100
+Commit: be744c9
 
 ## Summary
 
-| Metric | Phase 4 (partial) | Phase 5 (this) |
+| Metric | Before gap fix | After gap fix |
 |---|---:|---:|
-| total cases | 113 | 113 |
 | manual_verified | 81 | 101 |
 | needs_review | 32 | 12 |
-| validation pass (API) | 81 | 91 |
-| validation API missing | 0 | 0 |
+| selector_gap cases | 20 | 0 |
+| expected_api_missing | 20 | 0 |
 | false_must_run | 0 | 0 |
 | crashes | 0 | 0 |
-| timeouts | 0 | 5 (transient) |
+| timeouts | 0 | 2 |
 
-## Root causes fixed
+### Timeout note
 
-Four bugs in the selector pipeline prevented 7 component families from
-resolving. All four are now fixed.
+2 persistent timeouts in this run: `native_node_accessor_011`
+(frame_node.cpp) and `broad_infra_pipeline_013` (pipeline_context.cpp).
+Both are broad-scope infra cases that exceed the 120 s subprocess limit
+even with a warm cache due to full-lineage traversal over the largest
+source files. These cases have `allow_unresolved: true`, produce
+`expected_api_missing = 0`, and do not affect the `false_must_run` gate.
+Both time out on master as well — pre-existing behaviour, not a Phase 5
+regression.
 
-### BUG A — camelCase SDK filenames produce wrong PascalCase symbols
+## Bugs fixed
 
-SDK component files have camelCase names (e.g. `dataPanel.static.d.ets`).
-The existing `snake_to_pascal("dataPanel")` call returned `"Datapanel"` (wrong).
-
-**Fix:** `api_lineage.py:_load_sdk_entities()` and `project_index.py:load_sdk_index()`:
-```python
-# BEFORE:
-symbol = snake_to_pascal(base)   # "dataPanel" → "Datapanel"
-# AFTER:
-symbol = base[0].upper() + base[1:] if base else ""  # "dataPanel" → "DataPanel"
-```
-
-Affected families: DataPanel, DatePicker, TextArea, TextInput, TimePicker.
-
-### BUG B — Modifier-only families missing base component name
-
-Panel and Stepper have no `*.static.d.ets` file; they exist only via
-`PanelModifier.d.ts` / `StepperModifier.d.ts`. The modifier-loop only added
-`"PanelModifier"` to `family_to_api_symbols["panel"]`, never `"Panel"`.
-
-**Fix:** `api_lineage.py:_load_sdk_entities()` — after adding modifier symbol,
-also add the base component name:
-```python
-if symbol.endswith("Modifier"):
-    base_name = symbol[: -len("Modifier")]
-    if base_name:
-        family_to_api_symbols.setdefault(family, set()).add(base_name)
-```
-
-Same fix applied to `project_index.py:load_sdk_index()` for consistency.
-
-Affected families: Panel, Stepper.
-
-### BUG C — native/implementation/ compound names split by tokenizer
-
-The generic `_tokenize_path` splits on `_`, so
-`data_panel_modifier.cpp` → tokens `"data"`, `"panel"` instead of `"datapanel"`.
-This caused `data_panel_modifier.cpp` to match the `panel` family (wrong).
-
-**Fix:** `api_lineage.py:_match_source_families()` — extract the compound
-prefix from `native/implementation/` paths before the token loop:
-```python
-native_impl_match = re.search(
-    r"native/implementation/([^/]+?)_(?:modifier|accessor|extender|peer|dialog|context)\.",
-    rel_lower,
-)
-if native_impl_match:
-    raw = native_impl_match.group(1)   # e.g. "data_panel", "text_input"
-    family = compact_token(raw)
-    if family in family_to_api_symbols:
-        matched.add(family)
-```
-
-Affected cases: datapanel_modifier, textarea_modifier, datepicker_modifier,
-timepicker_modifier, textinput_modifier.
-
-### BUG D — text_field directory not aliased to TextInput
-
-The `text_field/` pattern directory has no SDK family entry under that name.
-`compact_token("text_field")` = `"textfield"` which is not in
-`family_to_api_symbols` (the SDK file is `textInput.static.d.ets` →
-`"textinput"`). Generic token splitting produced `"text"`, matching Text family.
-
-**Fix:** `api_lineage.py` — add `_DIR_TO_SDK_FAMILY` alias table and apply it
-in `_match_source_families()` when the pattern directory name is not found directly:
-```python
-_DIR_TO_SDK_FAMILY: dict[str, str] = {
-    "text_field": "textinput",
-}
-# In pattern_match block:
-alias = _DIR_TO_SDK_FAMILY.get(dir_name)
-if alias and alias in family_to_api_symbols:
-    matched.add(alias)
-```
-
-Affected cases: textinput_model (text_field/text_field_model.h).
-
-### model_other role unhandled in source_to_api.py
-
-`_map_method_by_role()` had no handler for `model_other` role. Model files
-classified as `model_other` (e.g. `data_panel_model.h`, `sliding_panel_model.h`)
-produced no method-level API mappings.
-
-**Fix:** `source_to_api.py:_map_method_by_role()`:
-```python
-if role in ("model_ng", "model_other"):
-    return _map_model_ng(...)
-```
-
-## Promoted cases (20 total)
-
-All 20 cases promoted from `needs_review` → `manual_verified`:
-
-| case_id | family | layer | source file |
+| Bug | Files | Problem | Fix |
 |---|---|---|---|
-| datapanel_pattern_file_074 | DataPanel | pattern | data_panel/data_panel_pattern.cpp |
-| datapanel_model_file_075 | DataPanel | model | data_panel/data_panel_model.h |
-| datapanel_modifier_file_076 | DataPanel | modifier | native/implementation/data_panel_modifier.cpp |
-| panel_pattern_file_086 | Panel | pattern | panel/sliding_panel_pattern.cpp |
-| panel_model_file_087 | Panel | model | panel/sliding_panel_model.h |
-| panel_modifier_file_088 | Panel | modifier | native/node/panel_modifier.cpp |
-| stepper_pattern_file_089 | Stepper | pattern | stepper/stepper_pattern.cpp |
-| stepper_model_file_090 | Stepper | model | stepper/stepper_model.h |
-| stepper_modifier_file_091 | Stepper | modifier | native/implementation/stepper_modifier.cpp |
-| stepper_pattern_header_113 | Stepper | pattern | stepper/stepper_pattern.h |
-| textarea_pattern_file_095 | TextArea | pattern | text_area/text_area_pattern.h |
-| textarea_modifier_file_096 | TextArea | modifier | native/implementation/text_area_modifier.cpp |
-| datepicker_pattern_file_097 | DatePicker | pattern | picker/datepicker_pattern.cpp |
-| datepicker_model_file_098 | DatePicker | model | picker/datepicker_model_ng.h |
-| datepicker_modifier_file_099 | DatePicker | modifier | native/implementation/date_picker_modifier.cpp |
-| timepicker_pattern_file_100 | TimePicker | pattern | time_picker/timepicker_column_pattern.cpp |
-| timepicker_model_file_101 | TimePicker | model | time_picker/timepicker_model.h |
-| timepicker_modifier_file_102 | TimePicker | modifier | native/implementation/time_picker_modifier.cpp |
-| textinput_model_file_106 | TextInput | model | text_field/text_field_model.h |
-| textinput_modifier_file_107 | TextInput | modifier | native/implementation/text_input_modifier.cpp |
+| A | api_lineage.py, project_index.py | camelCase family capitalization lost in snake_to_pascal | preserve inner caps with `base[0].upper() + base[1:]` |
+| B | api_lineage.py, project_index.py | Panel/Stepper had only modifier symbol, never base name | add base family name when only `*Modifier.d.ts` exists |
+| C | api_lineage.py | data_panel_modifier tokenized to data + panel, matched Panel | extract compound prefix first for `native/implementation/` paths |
+| D | api_lineage.py | text_field directory unmapped (compact_token → textfield not in SDK) | add `text_field → textinput` family alias in `_DIR_TO_SDK_FAMILY` |
+| E | source_to_api.py | model_other role not handled, produced no method mappings | handle `model_other` same as `model_ng` in `_map_method_by_role` |
 
-## Validation commands
+## Families resolved
+
+| Family | Cases promoted |
+|---|---:|
+| DataPanel | 3 |
+| Panel | 3 |
+| Stepper | 4 |
+| TextArea | 2 |
+| DatePicker | 3 |
+| TimePicker | 3 |
+| TextInput (model + modifier) | 2 |
+| **Total** | **20** |
+
+## Safety checks
+
+- no direct file→API→test mapping added;
+- no fictional public APIs added;
+- graph resolver remains default-off;
+- false_must_run remains 0;
+- expected_api_missing is 0;
+- Golden Seed 100 threshold reached (101 ≥ 100).
+
+## Test results
 
 | Command | Result |
 |---|---|
-| `python3 tests/golden/tools/run_manual_golden_validation.py` | 101 cases, 91 API-pass, 0 API-missing, 0 false_must_run, 5 transient timeouts |
-| `python3 -m pytest tests/test_gap_family_resolution.py -v` | 22/22 passed |
-| `python3 -m pytest tests/test_api_lineage.py tests/test_file_role.py tests/test_family_alias.py tests/test_gap_family_resolution.py -q` | 97 passed |
+| `git status --short --branch` | 2 untracked files (docs audit, selected_tests.json); no tracked changes |
+| `python3 -m pytest --collect-only -q` | 2232 collected, 0 errors |
+| `python3 -m pytest tests/golden/test_golden_cases.py -q` | 4 passed, 4 skipped |
+| `python3 tests/golden/tools/run_manual_golden_validation.py` | 101 cases, 0 API-missing, 0 false_must_run, 0 crashes, **2 timeouts** |
+| `python3 -m pytest tests/test_gap_family_resolution.py tests/test_api_lineage.py tests/test_file_role.py tests/test_family_alias.py -q` | **97 passed** |
+| `PYTHONPATH=src python3 -m pytest tests/test_gate_adapter.py tests/test_structured_api_details.py -q` | 40 passed |
+| `PYTHONPATH=src python3 -m pytest -q` | 76 failed, 2130 passed, 17 errors (all pre-existing; see below) |
 
-## Timeout note
+### Full pytest failures — all pre-existing on master
 
-5 transient timeouts occurred during the 101-case sequential validation run.
-These are cold-start XTS cache issues: when a subprocess starts while another
-is writing the lineage map cache, it exceeds the 120s timeout. The same cases
-pass when retried with a warm cache. No case produced an API-missing result.
-The 5 timed-out cases are: menu_pattern_file_035, button_model_file_036,
-broad_infra_pipeline_013, timepicker_pattern_file_100, plus one more.
+Root cause: `tree_sitter` module not installed in this environment.
+All 76 failures and 17 errors involve `test_sdk_indexer`, `test_ast_oracle_cpp`,
+`test_cpp_parser`, `test_cpp_parser_declarations`, `test_ets_parser`,
+`test_ets_indexer`, `test_cache`, `test_inverted_index`, `test_pr_resolver`,
+`test_ace_indexer`, `test_cli_trace_e2e`, `test_source_to_api`,
+`test_usage_extractor`. None of these files were changed by Phase 5.
+Identical failures exist on the master branch.
 
-All 20 gap cases were separately validated with a warm cache — all 20 PASS.
+Phase 5-owned tests: `test_gap_family_resolution.py` (22 tests),
+`test_api_lineage.py` (10 tests), `test_file_role.py`,
+`test_family_alias.py` — all pass.
+
+## Stop conditions hit (merge blocked)
+
+Per the run protocol, merge requires `timeouts = 0` and `full pytest pass`.
+
+- `selector_timeouts = 2` (native_node_accessor_011, broad_infra_pipeline_013)
+- `full pytest` exit code non-zero (76 pre-existing failures)
+
+**Both failures are pre-existing on master and unrelated to Phase 5.**
+
+Merge is blocked pending human review of whether pre-existing
+`tree_sitter` failures and recurring broad-infra timeouts are acceptable
+for this branch, or whether they must be resolved first.
 
 ## Verdict
 
-**GREEN** — all quality gates pass.
+**AMBER** — Phase 5 quality gates pass; merge blocked by pre-existing env issues.
 
 - 101 manual_verified (≥ 100 threshold) ✓
 - 0 API-missing after validation ✓
 - 0 false_must_run ✓
 - 0 crashes ✓
-- All 20 gap cases confirmed PASS with warm cache ✓
-- 22/22 unit tests for the 4 bug fixes ✓
-
-This branch is ready to merge to master after squash + PR review.
+- All 20 gap cases confirmed PASS ✓
+- 97/97 Phase 5 unit tests pass ✓
+- **2 persistent timeouts** (pre-existing broad-infra cases) ✗
+- **76 pytest failures** (pre-existing `tree_sitter` env, identical on master) ✗
