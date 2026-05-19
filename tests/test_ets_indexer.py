@@ -11,11 +11,15 @@ Tests verify:
 
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
 
 import pytest
 
 from arkui_xts_selector.indexing import EtsIndexError, EtsIndexResult, EtsTestEntry
+
+_TREE_SITTER_AVAILABLE = importlib.util.find_spec("tree_sitter") is not None
+_needs_ts = pytest.mark.skipif(not _TREE_SITTER_AVAILABLE, reason="tree_sitter not installed")
 
 
 class TestEtsIndexerFindsEtsFiles:
@@ -49,6 +53,7 @@ class TestEtsIndexerFindsEtsFiles:
         assert result.total_usages == 0
 
 
+@_needs_ts
 class TestButtonTestApiReferences:
     """Test API references extracted from button_test.ets."""
 
@@ -206,6 +211,7 @@ class TestApiReferencesExtraction:
                 f"Duplicate API references in {entry.file_path}"
             )
 
+    @_needs_ts
     def test_api_references_includes_property_access_types(self, fixtures_dir):
         """Property accesses should include the type part (e.g., ButtonType from ButtonType.Capsule)."""
         from arkui_xts_selector.indexing.ets_indexer import build_ets_index
@@ -307,6 +313,7 @@ class TestEntryClassification:
         assert bridge.is_consumer is False
         assert bridge.is_bridge is True
 
+    @_needs_ts
     def test_inverted_index_excludes_bridge_entries(self, fixtures_dir):
         """Inverted index only uses consumer entries, not bridge."""
         from arkui_xts_selector.indexing.ets_indexer import build_ets_index

@@ -10,8 +10,10 @@ Tests verify:
 
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
 
+import pytest
 
 from arkui_xts_selector.indexing.cpp_parser import (
     CppClass,
@@ -20,7 +22,11 @@ from arkui_xts_selector.indexing.cpp_parser import (
     parse_cpp_file,
 )
 
+_TREE_SITTER_AVAILABLE = importlib.util.find_spec("tree_sitter") is not None
+_needs_ts = pytest.mark.skipif(not _TREE_SITTER_AVAILABLE, reason="tree_sitter not installed")
 
+
+@_needs_ts
 class TestParseButtonPattern:
     """Test parsing button pattern header."""
 
@@ -52,6 +58,7 @@ class TestParseButtonPattern:
         assert "IsCurrentButtonPressed" in method_names
 
 
+@_needs_ts
 class TestParseButtonModelStatic:
     """Test parsing button model static implementation."""
 
@@ -82,6 +89,7 @@ class TestParseButtonModelStatic:
         assert "SetControlSize" in method_names
 
 
+@_needs_ts
 class TestParseButtonModifierImpl:
     """Test parsing button modifier implementation."""
 
@@ -110,6 +118,7 @@ class TestParseButtonModifierImpl:
         assert "ResetRole" in method_names
 
 
+@_needs_ts
 class TestParseButtonModifierNode:
     """Test parsing button modifier node accessor."""
 
@@ -138,6 +147,7 @@ class TestParseButtonModifierNode:
         assert "SetRole" in method_names
 
 
+@_needs_ts
 class TestParseJsButton:
     """Test parsing JS button implementation."""
 

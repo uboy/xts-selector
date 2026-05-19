@@ -43,6 +43,7 @@ def main():
     skipped = 0
     crashes = 0
     timeouts = 0
+    timeouts_measurement_only = 0
     api_observable = 0
     api_found = 0
     api_missing = 0
@@ -78,8 +79,13 @@ def main():
         if not result["success"]:
             err = result.get("error", "unknown")
             if "timeout" in err.lower():
-                entry["status"] = "timeout"
-                timeouts += 1
+                # allow_unresolved cases (broad-infra) are measurement-only: not a hard fail
+                if allow_unresolved:
+                    entry["status"] = "timeout_measurement_only"
+                    timeouts_measurement_only += 1
+                else:
+                    entry["status"] = "timeout"
+                    timeouts += 1
             else:
                 entry["status"] = "crash"
                 crashes += 1
@@ -188,6 +194,7 @@ def main():
         "skipped": skipped,
         "selector_crashes": crashes,
         "selector_timeouts": timeouts,
+        "selector_timeouts_measurement_only": timeouts_measurement_only,
         "expected_api_observable": api_observable,
         "expected_api_found": api_found,
         "expected_api_missing": api_missing,

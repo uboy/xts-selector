@@ -11,6 +11,7 @@ Tests verify:
 
 from __future__ import annotations
 
+import importlib.util
 import json
 from pathlib import Path
 import time
@@ -27,6 +28,9 @@ from arkui_xts_selector.indexing.cache import (
 from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult
 from arkui_xts_selector.indexing.ace_indexer import AceIndexResult
 from arkui_xts_selector.indexing.inverted_index import InvertedIndex, ConsumerEntry
+
+_TREE_SITTER_AVAILABLE = importlib.util.find_spec("tree_sitter") is not None
+_needs_ts = pytest.mark.skipif(not _TREE_SITTER_AVAILABLE, reason="tree_sitter not installed")
 
 
 class TestDirSignature:
@@ -123,6 +127,7 @@ class TestCacheFileOperations:
 class TestCachedSdkIndex:
     """Test SDK index caching."""
 
+    @_needs_ts
     def test_cached_sdk_index_builds_and_caches(self, tmp_path, monkeypatch):
         """First call builds index, second call loads from cache."""
         # Override CACHE_ROOT to use tmp_path
@@ -253,6 +258,7 @@ class TestCachedInvertedIndex:
 class TestCacheInvalidation:
     """Test cache invalidation behavior."""
 
+    @_needs_ts
     def test_cache_invalidates_on_file_change(self, tmp_path, monkeypatch):
         """Cache is invalidated when source files change."""
         monkeypatch.setattr("arkui_xts_selector.indexing.cache.CACHE_ROOT", tmp_path)
@@ -275,6 +281,7 @@ class TestCacheInvalidation:
         # Files scanned should be the same, but cache was invalidated
         assert result2.files_scanned == initial_files
 
+    @_needs_ts
     def test_cache_preserved_when_no_change(self, tmp_path, monkeypatch):
         """Cache is reused when source files unchanged."""
         monkeypatch.setattr("arkui_xts_selector.indexing.cache.CACHE_ROOT", tmp_path)

@@ -5,6 +5,9 @@ Tests verify method-level change detection using tree-sitter C++ parsing.
 
 from __future__ import annotations
 
+import importlib.util
+
+import pytest
 
 from arkui_xts_selector.validation.ast_oracle import (
     _diff_cpp,
@@ -14,7 +17,11 @@ from arkui_xts_selector.validation.ast_oracle import (
     _parse_cpp_methods,
 )
 
+_TREE_SITTER_AVAILABLE = importlib.util.find_spec("tree_sitter") is not None
+_needs_ts = pytest.mark.skipif(not _TREE_SITTER_AVAILABLE, reason="tree_sitter not installed")
 
+
+@_needs_ts
 class TestDiffCpp:
     """Test _diff_cpp function."""
 
@@ -266,6 +273,7 @@ public:
         assert len(changes) == 0
 
 
+@_needs_ts
 class TestHashBody:
     """Test _hash_body function."""
 
@@ -310,6 +318,7 @@ public:
             assert len(hash_val) == 64
 
 
+@_needs_ts
 class TestNormalizeCppSignature:
     """Test _normalize_cpp_signature function."""
 
@@ -328,6 +337,7 @@ class TestNormalizeCppSignature:
         assert "int" in sig
 
 
+@_needs_ts
 class TestExtractCppName:
     """Test _extract_cpp_name function."""
 
@@ -373,6 +383,7 @@ class TestExtractCppName:
         assert parent_class == "Button"
 
 
+@_needs_ts
 class TestParseCppMethods:
     """Test _parse_cpp_methods function."""
 

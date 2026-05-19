@@ -12,6 +12,7 @@ Tests verify:
 
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
 import pytest
 
@@ -28,6 +29,9 @@ from arkui_xts_selector.indexing.ace_indexer import build_ace_index
 from arkui_xts_selector.indexing.sdk_indexer import build_sdk_index
 from arkui_xts_selector.indexing.inverted_index import build_inverted_index
 from arkui_xts_selector.indexing.source_to_api import SourceApiMapping
+
+_TREE_SITTER_AVAILABLE = importlib.util.find_spec("tree_sitter") is not None
+_needs_ts = pytest.mark.skipif(not _TREE_SITTER_AVAILABLE, reason="tree_sitter not installed")
 
 
 class TestResolvePrEmptyFiles:
@@ -258,6 +262,7 @@ class TestResolvePrUnknownFileHighRiskOrig:
 class TestResolvePrWithButtonModelStatic:
     """Test full pipeline integration with real fixtures."""
 
+    @_needs_ts
     def test_resolve_pr_with_button_model_static(self):
         """Full pipeline with button_model_static.cpp as changed file."""
         # Build indices from fixtures
@@ -462,6 +467,7 @@ class TestFindMappingsForFile:
 class TestSelectionReasons:
     """Test T9.3: selection_reasons per consumer project."""
 
+    @_needs_ts
     def test_selection_reasons_with_real_fixtures(self):
         """selection_reasons populated with button_model_static.cpp fixture."""
         fixture_root = Path("tests/fixtures")
@@ -524,6 +530,7 @@ class TestSelectionReasons:
 class TestCoverageGap:
     """Test T9.6: coverage_gap field in PrResolveResult."""
 
+    @_needs_ts
     def test_coverage_gap_empty_when_all_covered(self):
         """coverage_gap is empty when all affected APIs have consumers."""
         # This is tested with fixtures where role/buttonStyle have consumers

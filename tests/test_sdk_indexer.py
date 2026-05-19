@@ -15,6 +15,7 @@ FIXTURE_DIR = ROOT / "tests" / "fixtures" / "sdk_registry"
 class SdkIndexButtonTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        pytest.importorskip("tree_sitter")
         cls.result = build_sdk_index(FIXTURE_DIR)
 
     def test_no_parse_errors(self):
@@ -57,6 +58,7 @@ class SdkIndexButtonTests(unittest.TestCase):
 class SdkIndexSliderTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        pytest.importorskip("tree_sitter")
         cls.result = build_sdk_index(FIXTURE_DIR)
 
     def test_slider_attribute_present(self):
@@ -69,6 +71,7 @@ class SdkIndexSliderTests(unittest.TestCase):
 class SdkIndexNavigationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        pytest.importorskip("tree_sitter")
         cls.result = build_sdk_index(FIXTURE_DIR)
 
     def test_navigation_attribute_present(self):
@@ -81,6 +84,7 @@ class SdkIndexNavigationTests(unittest.TestCase):
 class SdkIndexMenuItemTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        pytest.importorskip("tree_sitter")
         cls.result = build_sdk_index(FIXTURE_DIR)
 
     def test_menu_item_attribute_present(self):
@@ -115,6 +119,7 @@ class SdkIndexAmbiguityTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        pytest.importorskip("tree_sitter")
         cls.result = build_sdk_index(FIXTURE_DIR)
 
     def test_ambiguous_bare_member_returns_none(self):

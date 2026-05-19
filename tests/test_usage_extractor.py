@@ -10,11 +10,17 @@ Tests verify:
 
 from __future__ import annotations
 
+import importlib.util
+
 import pytest
 
 from arkui_xts_selector.indexing import ApiUsage
 
+_TREE_SITTER_AVAILABLE = importlib.util.find_spec("tree_sitter") is not None
+_needs_ts = pytest.mark.skipif(not _TREE_SITTER_AVAILABLE, reason="tree_sitter not installed")
 
+
+@_needs_ts
 class TestButtonUsageMapsToApi:
     """Test Button() usage maps to Button API entity."""
 
@@ -53,6 +59,7 @@ class TestButtonUsageMapsToApi:
                 assert usage.confidence == "strong"
 
 
+@_needs_ts
 class TestMethodChainMapsToAttribute:
     """Test chained methods map to attribute methods."""
 
@@ -109,6 +116,7 @@ class TestMethodChainMapsToAttribute:
             assert usage.confidence == "medium"
 
 
+@_needs_ts
 class TestPropertyAccessMapsToEnum:
     """Test property accesses map to enum types."""
 
@@ -146,6 +154,7 @@ class TestPropertyAccessMapsToEnum:
             assert usage.confidence == "strong"
 
 
+@_needs_ts
 class TestSliderUsageMapsToApi:
     """Test Slider() usage maps to Slider API entity."""
 
@@ -184,6 +193,7 @@ class TestSliderUsageMapsToApi:
         )
 
 
+@_needs_ts
 class TestNavigationUsageMapsToApi:
     """Test Navigation() usage maps to Navigation API entity."""
 

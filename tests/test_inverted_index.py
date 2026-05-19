@@ -11,6 +11,7 @@ Tests verify:
 
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
 import pytest
 
@@ -22,6 +23,9 @@ from arkui_xts_selector.indexing import (
 )
 from arkui_xts_selector.model.api import ApiEntityId
 from arkui_xts_selector.indexing.sdk_indexer import build_sdk_index
+
+_TREE_SITTER_AVAILABLE = importlib.util.find_spec("tree_sitter") is not None
+_needs_ts = pytest.mark.skipif(not _TREE_SITTER_AVAILABLE, reason="tree_sitter not installed")
 
 
 class TestInvertedIndexEmptyInput:
@@ -148,6 +152,7 @@ class TestFindTestProjectWithoutTestJson:
         assert result is None
 
 
+@_needs_ts
 class TestInvertedIndexFromFixtures:
     """Test building inverted index from SDK + ETS fixtures."""
 
@@ -224,6 +229,7 @@ class TestInvertedIndexFromFixtures:
 class TestInvertedIndexEdgeCases:
     """Test edge cases and error handling."""
 
+    @_needs_ts
     def test_inverted_index_handles_unknown_apis(self, tmp_path):
         """Unknown APIs not in SDK index still get indexed."""
         from arkui_xts_selector.indexing.sdk_indexer import SdkIndexResult

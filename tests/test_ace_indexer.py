@@ -9,8 +9,10 @@ Tests verify:
 
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
 
+import pytest
 
 from arkui_xts_selector.indexing.ace_indexer import (
     AceIndexEntry,
@@ -18,7 +20,11 @@ from arkui_xts_selector.indexing.ace_indexer import (
     build_ace_index,
 )
 
+_TREE_SITTER_AVAILABLE = importlib.util.find_spec("tree_sitter") is not None
+_needs_ts = pytest.mark.skipif(not _TREE_SITTER_AVAILABLE, reason="tree_sitter not installed")
 
+
+@_needs_ts
 class TestBuildAceIndex:
     """Test build_ace_index function."""
 

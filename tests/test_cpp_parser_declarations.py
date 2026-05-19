@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import importlib.util
+
+import pytest
 
 from arkui_xts_selector.indexing.cpp_parser import (
     CppMethod,
@@ -11,6 +14,9 @@ from arkui_xts_selector.indexing.cpp_parser import (
 )
 from arkui_xts_selector.tree_sitter_parsers import _get_ts_cpp_parser
 
+_TREE_SITTER_AVAILABLE = importlib.util.find_spec("tree_sitter") is not None
+_needs_ts = pytest.mark.skipif(not _TREE_SITTER_AVAILABLE, reason="tree_sitter not installed")
+
 
 def _parse_code(code: bytes) -> CppParseResult:
     parser, _ = _get_ts_cpp_parser()
@@ -18,6 +24,7 @@ def _parse_code(code: bytes) -> CppParseResult:
     return _walk_ast(tree.root_node, code)
 
 
+@_needs_ts
 def test_field_declaration_is_declaration_only():
     code = b"""
 class ButtonModelStatic {
@@ -72,6 +79,7 @@ def test_declaration_only_confidence_downgrade():
     assert role_map["width"].confidence == "strong"  # unchanged
 
 
+@_needs_ts
 def test_no_field_declaration_not_marked():
     code = b"""
 class Foo {

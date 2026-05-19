@@ -10,6 +10,9 @@ Tests verify:
 
 from __future__ import annotations
 
+import importlib.util
+
+import pytest
 
 from arkui_xts_selector.indexing.ace_indexer import (
     AceIndexEntry,
@@ -24,7 +27,11 @@ from arkui_xts_selector.indexing.source_to_api import (
 from arkui_xts_selector.model.api import ApiEntityId, ApiDeclarationRef
 from arkui_xts_selector.indexing.sdk_indexer import SdkIndexEntry, SdkIndexResult
 
+_TREE_SITTER_AVAILABLE = importlib.util.find_spec("tree_sitter") is not None
+_needs_ts = pytest.mark.skipif(not _TREE_SITTER_AVAILABLE, reason="tree_sitter not installed")
 
+
+@_needs_ts
 class TestBuildSourceToApiMapping:
     """Test build_source_to_api_mapping function."""
 

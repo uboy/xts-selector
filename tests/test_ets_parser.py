@@ -12,11 +12,17 @@ Tests verify:
 
 from __future__ import annotations
 
+import importlib.util
+
 import pytest
 
 from arkui_xts_selector.indexing import EtsImport, EtsParseResult, EtsUsage
 
+_TREE_SITTER_AVAILABLE = importlib.util.find_spec("tree_sitter") is not None
+_needs_ts = pytest.mark.skipif(not _TREE_SITTER_AVAILABLE, reason="tree_sitter not installed")
 
+
+@_needs_ts
 class TestButtonTestParsing:
     """Test parsing of button_test.ets fixture."""
 
@@ -106,6 +112,7 @@ class TestButtonTestParsing:
         )
 
 
+@_needs_ts
 class TestSliderTestParsing:
     """Test parsing of slider_test.ets fixture."""
 
@@ -143,6 +150,7 @@ class TestSliderTestParsing:
         )
 
 
+@_needs_ts
 class TestNavigationTestParsing:
     """Test parsing of navigation_test.ets fixture."""
 
@@ -192,6 +200,7 @@ class TestNavigationTestParsing:
 class TestChainedMethodExtraction:
     """Test chained method extraction logic."""
 
+    @_needs_ts
     def test_chained_method_has_correct_usage_type(self, fixtures_dir):
         """Chained methods have usage_type='chained_method'."""
         from arkui_xts_selector.indexing.ets_parser import parse_ets_file
@@ -220,6 +229,7 @@ class TestChainedMethodExtraction:
             assert usage.line > 0
 
 
+@_needs_ts
 class TestComponentDetection:
     """Test @Component struct detection."""
 
