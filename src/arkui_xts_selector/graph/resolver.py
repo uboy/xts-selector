@@ -18,8 +18,10 @@ Import boundary: model, graph schema, graph coverage_relation, standard library 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
 
+from arkui_xts_selector.coverage_equivalence import CoverageEquivalence
 from arkui_xts_selector.graph.coverage_relation import (
     build_selection_result,
     resolve_coverage_relations,
@@ -41,6 +43,12 @@ class ApiQueryResult:
     If no consumer edges exist the result carries a ``coverage_gap`` flag
     and zero ``selections``.  A coverage gap means the API is known in the
     graph but has no test consumer evidence — it MUST NOT produce must_run.
+
+    ``coverage_equivalences`` is the v1 typed list of CoverageEquivalence
+    records.  In v1, the resolver returns a single placeholder with
+    equivalence_level="none" until full usage-index integration provides
+    real evidence.  Callers MUST NOT promote to must_run based solely on this
+    placeholder.
     """
 
     api_name: str
@@ -48,6 +56,9 @@ class ApiQueryResult:
     selections: tuple[SelectionResult, ...]
     coverage_gap: bool  # True when matched API has no consumer usage evidence
     coverage_gap_reason: str = ""
+    # v1: typed coverage equivalence records (conservative placeholder until
+    # usage-index integration is wired in a later phase).
+    coverage_equivalences: tuple[CoverageEquivalence, ...] = ()
 
     def to_dict(self) -> dict:
         return {
@@ -76,6 +87,8 @@ class ApiQueryResult:
                 }
                 for s in self.selections
             ],
+            # v1 typed coverage equivalence records
+            "coverage_equivalences": [ce.to_dict() for ce in self.coverage_equivalences],
         }
 
 
@@ -109,6 +122,19 @@ def resolve_api_query(
         if node_public_name == api_name or node.label == api_name:
             matched_ids.append(node.node_id)
 
+    # v1 placeholder: conservative equivalence record.  equivalence_level="none"
+    # because we have no usage-index integration yet.  This sentinel MUST NOT
+    # be used to promote a candidate to must_run.
+    _v1_placeholder = CoverageEquivalence(
+        api_name=api_name,
+        usage_kind="unknown",
+        test_target="",
+        equivalence_level="none",
+        evidence_types=[],
+        confidence="weak",
+        limitations=["v1 placeholder: usage-index integration pending"],
+    )
+
     if not matched_ids:
         return ApiQueryResult(
             api_name=api_name,
@@ -116,6 +142,7 @@ def resolve_api_query(
             selections=(),
             coverage_gap=True,
             coverage_gap_reason=f"No api_entity node found for '{api_name}' in graph",
+            coverage_equivalences=(_v1_placeholder,),
         )
 
     all_results: list[SelectionResult] = []
@@ -146,6 +173,7 @@ def resolve_api_query(
             coverage_gap_reason=(
                 f"API '{api_name}' found in graph but has no consumer usage evidence (no uses_api edges)"
             ),
+            coverage_equivalences=(_v1_placeholder,),
         )
 
     deduplicated = _deduplicate_results(all_results)
@@ -154,6 +182,7 @@ def resolve_api_query(
         matched_api_ids=tuple(matched_ids),
         selections=tuple(deduplicated),
         coverage_gap=False,
+        coverage_equivalences=(_v1_placeholder,),
     )
 
 
