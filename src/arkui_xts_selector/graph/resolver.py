@@ -49,6 +49,23 @@ class ApiQueryResult:
     equivalence_level="none" until full usage-index integration provides
     real evidence.  Callers MUST NOT promote to must_run based solely on this
     placeholder.
+
+    Usage-index evidence (v1)
+    -------------------------
+    When a usage_index is supplied to ``resolve_api_query``, the result is
+    enriched with:
+
+    * ``usage_evidence`` — list of raw UsageEntry dicts for the queried
+      api_name.  These are textual heuristics; they carry NO coverage
+      equivalence and MUST NOT produce must_run.
+    * ``usage_suggested_targets`` — deduplicated project paths extracted
+      from strong component_creation entries in usage_evidence.  Callers
+      may surface these as "recommended" hints but MUST NOT treat them as
+      must_run or coverage_equivalence evidence.
+    * ``usage_coverage_gap`` — always True in v1 (textual usage alone is
+      not coverage equivalence).
+
+    The existing ``coverage_gap`` / ``selections`` fields are unchanged.
     """
 
     api_name: str
@@ -60,8 +77,14 @@ class ApiQueryResult:
     # usage-index integration is wired in a later phase).
     coverage_equivalences: tuple[CoverageEquivalence, ...] = ()
 
+    # Usage-index evidence fields (populated only when usage_index != None)
+    usage_evidence: tuple[dict, ...] = ()
+    usage_suggested_targets: tuple[str, ...] = ()
+    # v1: textual usage alone never grants coverage equivalence
+    usage_coverage_gap: bool = True
+
     def to_dict(self) -> dict:
-        return {
+        d = {
             "api_name": self.api_name,
             "matched_api_ids": list(self.matched_api_ids),
             "coverage_gap": self.coverage_gap,
@@ -90,6 +113,12 @@ class ApiQueryResult:
             # v1 typed coverage equivalence records
             "coverage_equivalences": [ce.to_dict() for ce in self.coverage_equivalences],
         }
+        # Include usage-index fields only when evidence was actually supplied
+        if self.usage_evidence:
+            d["usage_evidence"] = list(self.usage_evidence)
+            d["usage_suggested_targets"] = list(self.usage_suggested_targets)
+            d["usage_coverage_gap"] = self.usage_coverage_gap
+        return d
 
 
 # ---------------------------------------------------------------------------
@@ -97,14 +126,77 @@ class ApiQueryResult:
 # ---------------------------------------------------------------------------
 
 
+def _query_usage_index(
+    usage_index: list[dict] | None,
+    api_name: str,
+) -> tuple[tuple[dict, ...], tuple[str, ...]]:
+    """Query the usage index for ``api_name`` and return (evidence, suggested_targets).
+
+    Rules (v1 — conservative):
+    - Only entries whose ``api_name`` exactly matches are considered.
+    - Strong component_creation entries → project path added to suggested_targets.
+    - Weak/ambiguous entries (confidence=weak/medium, usage_kind=unknown) → included
+      in evidence but NOT in suggested_targets (too ambiguous to surface as hints).
+    - No coverage_equivalence is granted; coverage_gap remains True.
+    - suggested_targets are ordered, deduplicated project paths — callers MUST
+      treat them as "recommended" at most, never must_run.
+    """
+    if not usage_index:
+        return (), ()
+
+    matched: list[dict] = [
+        e for e in usage_index if e.get("api_name") == api_name
+    ]
+    if not matched:
+        return (), ()
+
+    # Collect suggested targets only from strong component_creation entries
+    suggested_set: list[str] = []
+    seen_targets: set[str] = set()
+    for entry in matched:
+        usage_kind = entry.get("usage_kind", "")
+        confidence = entry.get("confidence", "")
+        project = entry.get("project", "")
+        path = entry.get("path", "")
+
+        if (
+            usage_kind == "component_creation"
+            and confidence == "strong"
+            and project
+        ):
+            target = project if not path else f"{project}/{path}".split("/")[0]
+            target = project  # use project-level granularity only
+            if target and target not in seen_targets:
+                seen_targets.add(target)
+                suggested_set.append(target)
+
+    return tuple(matched), tuple(suggested_set)
+
+
 def resolve_api_query(
     graph: Graph,
     api_name: str,
+    *,
+    usage_index: list[dict] | None = None,
 ) -> ApiQueryResult:
     """Resolve an explicit API name to XTS test selections via the graph.
 
     Safe mode: the caller specifies the exact API name.  This is narrower
     and higher-precision than file-level resolution.
+
+    Parameters
+    ----------
+    graph:
+        The API lineage graph.
+    api_name:
+        Exact API name to query (case-sensitive).
+    usage_index:
+        Optional list of UsageEntry dicts (as produced by
+        ``xts_usage_index.build_usage_index``).  When provided, the result
+        is enriched with ``usage_evidence`` and ``usage_suggested_targets``.
+        Usage evidence is textual heuristics only — it NEVER grants
+        coverage_equivalence and MUST NOT produce must_run.  If None,
+        behavior is identical to the pre-integration baseline.
 
     Rules:
     * Matches api_entity nodes whose ``public_name`` data field or ``label``
@@ -113,6 +205,8 @@ def resolve_api_query(
     * If api_entity nodes exist but have no uses_api edges → coverage_gap=True.
     * coverage_equivalence is still required for must_run; missing equivalence
       produces ``recommended`` or ``possible``, never fake must_run.
+    * Usage index evidence (v1): textual usage alone → usage_coverage_gap=True,
+      never must_run regardless of confidence level.
     """
     matched_ids: list[str] = []
     for node in graph.nodes.values():
@@ -135,6 +229,9 @@ def resolve_api_query(
         limitations=["v1 placeholder: usage-index integration pending"],
     )
 
+    # Query usage index regardless of graph match
+    usage_evidence, usage_suggested_targets = _query_usage_index(usage_index, api_name)
+
     if not matched_ids:
         return ApiQueryResult(
             api_name=api_name,
@@ -143,6 +240,9 @@ def resolve_api_query(
             coverage_gap=True,
             coverage_gap_reason=f"No api_entity node found for '{api_name}' in graph",
             coverage_equivalences=(_v1_placeholder,),
+            usage_evidence=usage_evidence,
+            usage_suggested_targets=usage_suggested_targets,
+            usage_coverage_gap=True,
         )
 
     all_results: list[SelectionResult] = []
@@ -174,6 +274,9 @@ def resolve_api_query(
                 f"API '{api_name}' found in graph but has no consumer usage evidence (no uses_api edges)"
             ),
             coverage_equivalences=(_v1_placeholder,),
+            usage_evidence=usage_evidence,
+            usage_suggested_targets=usage_suggested_targets,
+            usage_coverage_gap=True,
         )
 
     deduplicated = _deduplicate_results(all_results)
@@ -183,6 +286,9 @@ def resolve_api_query(
         selections=tuple(deduplicated),
         coverage_gap=False,
         coverage_equivalences=(_v1_placeholder,),
+        usage_evidence=usage_evidence,
+        usage_suggested_targets=usage_suggested_targets,
+        usage_coverage_gap=True,  # v1: always True — textual usage alone is not coverage equivalence
     )
 
 
