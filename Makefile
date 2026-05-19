@@ -1,14 +1,15 @@
-.PHONY: validate-collect validate-fast validate-golden validate-graph validate-full validate-measurement validate-env help
+.PHONY: validate-collect validate-fast validate-golden validate-graph validate-graph-builder validate-full validate-measurement validate-env help
 
 help:
 	@echo "Validation targets:"
-	@echo "  validate-env         - check required environment variables (roots must exist)"
-	@echo "  validate-collect     - collect only, 0 errors required"
-	@echo "  validate-fast        - collect + targeted unit tests (merge gate)"
-	@echo "  validate-golden      - golden schema + manual validation (merge gate, requires env)"
-	@echo "  validate-graph       - graph/usage/coverage tests"
-	@echo "  validate-full        - full pytest (tree_sitter optional deps skip)"
-	@echo "  validate-measurement - broad-infra measurement-only (non-blocking)"
+	@echo "  validate-env          - check required environment variables (roots must exist)"
+	@echo "  validate-collect      - collect only, 0 errors required"
+	@echo "  validate-fast         - collect + targeted unit tests (merge gate)"
+	@echo "  validate-golden       - golden schema + manual validation (merge gate, requires env)"
+	@echo "  validate-graph        - graph/usage/coverage tests"
+	@echo "  validate-graph-builder - real API graph builder tests"
+	@echo "  validate-full         - full pytest (tree_sitter optional deps skip)"
+	@echo "  validate-measurement  - broad-infra measurement-only (non-blocking)"
 
 validate-collect:
 	python3 -m pytest --collect-only -q
@@ -25,6 +26,9 @@ validate-golden: validate-env
 
 validate-graph:
 	PYTHONPATH=src python3 -m pytest tests/test_graph_api_symbol_modes.py tests/test_graph_validation.py tests/test_xts_usage_index.py tests/test_xts_usage_graph_link.py -q
+
+validate-graph-builder:
+	PYTHONPATH=src python3 -m pytest tests/test_real_api_graph_builder.py -q
 
 validate-full:
 	PYTHONPATH=src python3 -m pytest -q
