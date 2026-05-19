@@ -199,6 +199,51 @@ def _print_key_value_section(title: str, rows: list[tuple[object, object]]) -> N
     print()
 
 
+def _print_explanation_section(explanation: dict | None, indent: int = 2) -> None:
+    """Print a human-readable WHY section from an explanation dict.
+
+    Shows summary, evidence chain, limitations, and next actions.
+    Skipped silently when explanation is None or empty.
+    """
+    if not explanation:
+        return
+    summary = str(explanation.get("summary") or "").strip()
+    evidence_chain: list[str] = [
+        str(s).strip()
+        for s in (explanation.get("evidence_chain") or [])
+        if str(s).strip()
+    ]
+    limitations: list[str] = [
+        str(s).strip()
+        for s in (explanation.get("limitations") or [])
+        if str(s).strip()
+    ]
+    next_actions: list[str] = [
+        str(s).strip()
+        for s in (explanation.get("next_actions") or [])
+        if str(s).strip()
+    ]
+
+    rows: list[tuple[object, object]] = []
+    if summary:
+        rows.append(("Why", summary))
+    if evidence_chain:
+        for i, step in enumerate(evidence_chain, start=1):
+            rows.append((f"Step {i}", step))
+    if limitations:
+        for lim in limitations:
+            rows.append(("Limitation", lim))
+    if next_actions:
+        for action in next_actions:
+            rows.append(("Next Action", action))
+
+    if not rows:
+        return
+    print(f"{' ' * indent}Evidence")
+    _print_human_table(["Key", "Value"], rows)
+    print()
+
+
 def _format_case_summary(summary: dict | None) -> str:
     if not summary:
         return "-"
@@ -2313,6 +2358,7 @@ def print_human(
                 )
             )
         _print_key_value_section(f"Changed File: {item['changed_file']}", changed_rows)
+        _print_explanation_section(item.get("explanation"))
         if not item["projects"]:
             print("No candidate XTS projects found")
             print()
@@ -2414,6 +2460,7 @@ def print_human(
                 )
             )
         _print_key_value_section(f"Symbol Query: {item['query']}", signal_rows)
+        _print_explanation_section(item.get("explanation"))
         evidence = item.get("code_search_evidence", {})
         evidence_rows = [
             ["exact", match] for match in evidence.get("exact_hits", [])[:5]

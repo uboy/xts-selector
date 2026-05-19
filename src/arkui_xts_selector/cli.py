@@ -80,6 +80,10 @@ from .report_human import (
     build_next_steps,
     build_coverage_run_commands,
 )
+from .report_explanation import (
+    build_result_explanation,
+    build_project_entry_explanation,
+)
 from .coverage_planner import (
     build_global_coverage_recommendations,
     driver_module_name,
@@ -747,6 +751,7 @@ def format_report(
                     "matched_file_count": len(file_hits),
                     "project_reason_count": len(project_reasons),
                 }
+            project_entry["explanation"] = build_project_entry_explanation(project_entry)
             project_results.append(project_entry)
         # Abstention for broad infrastructure files: files in common/ or base_
         # paths that produce signals for many families AND match many projects
@@ -905,6 +910,7 @@ def format_report(
             report["lineage_gaps"].append(rel)
         report["source_only_consumers"].extend(source_only_consumers)
         report["coverage_gap"].extend(api_coverage["not_covered"])
+        result_item["explanation"] = build_result_explanation(result_item)
         report["results"].append(result_item)
     report["affected_api_entity_details"] = build_affected_api_entity_details(
         report["affected_api_entities"], sdk_index, api_lineage_map,
@@ -1045,6 +1051,7 @@ def format_report(
                     "matched_file_count": len(file_hits),
                     "project_reason_count": len(project_reasons),
                 }
+            project_entry["explanation"] = build_project_entry_explanation(project_entry)
             project_results.append(project_entry)
         sort_project_results(project_results)
         project_results = deduplicate_by_coverage_signature(
@@ -1121,6 +1128,7 @@ def format_report(
                 "candidate_projects_after_prefilter": len(candidate_projects),
                 "matched_project_count": len(display_project_results),
             }
+        symbol_item["explanation"] = build_result_explanation(symbol_item)
         report["symbol_queries"].append(symbol_item)
         selected_build_targets.extend(
             guess_build_target(item["project"]) for item in shown_project_results
