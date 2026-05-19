@@ -1,7 +1,7 @@
 {
   "schema_version": "golden-test-cases-v3",
   "generated_at": "2026-05-19",
-  "description": "Golden Seed v5: 212 cases (200 manual_verified, 12 needs_review)",
+  "description": "Golden Seed v5: 212 cases (212 manual_verified, 0 needs_review)",
   "cases": [
     {
       "case_id": "button_pattern_file_001",
@@ -1739,7 +1739,7 @@
     },
     {
       "case_id": "menuitem_model_file_003",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/menu/menu_item/menu_item_model.h",
@@ -1757,12 +1757,22 @@
           "api_name": "MenuItem",
           "api_kind": "component",
           "surface": "shared",
-          "confidence": "medium",
+          "confidence": "strong",
           "evidence": [
             {
-              "type": "path_layer",
-              "path": "frameworks/core/components_ng/pattern/menu/menu_item/menu_item_model.h",
-              "note": "Model file resolved via family_alias normalization"
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/menu_item.d.ts",
+              "note": "MenuItem declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/menu/menu_item/menu_item_model.h",
+              "note": "MenuItemModel class declared in model header"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/menu/bridge/menu_item/arkts_native_menu_item_bridge.cpp",
+              "note": "ArkTS native bridge for MenuItem component"
             }
           ]
         }
@@ -1781,11 +1791,11 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Pipeline resolves menu_item→MenuItem via family_alias, but needs >=2 strong evidence types for manual_verified"
+      "notes": "Promoted: selector resolves menu_item->MenuItem via family_alias; MenuItemModel class and SDK declaration confirmed"
     },
     {
       "case_id": "textinput_model_file_006",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text_field/text_field_model.h",
@@ -1803,12 +1813,17 @@
           "api_name": "TextInput",
           "api_kind": "component",
           "surface": "shared",
-          "confidence": "medium",
+          "confidence": "strong",
           "evidence": [
             {
-              "type": "path_layer",
-              "path": "frameworks/core/components_ng/pattern/text_field/text_field_model.h",
-              "note": "Selector gap: model files not indexed"
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/text_input.d.ts",
+              "note": "TextInput declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text_field/text_field_model.h",
+              "note": "TextFieldModel class declared in model header"
             }
           ]
         }
@@ -1827,11 +1842,11 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Selector gap: model files not indexed"
+      "notes": "Promoted: selector resolves text_field->TextInput via family_alias; TextFieldModel class and SDK declaration confirmed"
     },
     {
       "case_id": "navigation_native_modifier_004",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/node/navigation_modifier.cpp",
@@ -1849,12 +1864,22 @@
           "api_name": "Navigation",
           "api_kind": "component",
           "surface": "shared",
-          "confidence": "medium",
+          "confidence": "strong",
           "evidence": [
             {
-              "type": "path_layer",
-              "path": "frameworks/core/interfaces/native/node/navigation_modifier.cpp",
-              "note": "Path+API fixed, needs re-validation"
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/navigation.d.ts",
+              "note": "Navigation declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/node/navigation_modifier.cpp",
+              "note": "Native modifier/accessor in node layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_navigation_bridge.cpp",
+              "note": "ArkTS native bridge for Navigation component"
             }
           ]
         }
@@ -1873,11 +1898,11 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Path+API fixed, needs re-validation"
+      "notes": "Promoted: selector resolves navigation_modifier.cpp->Navigation; native modifier accessor and SDK declaration confirmed"
     },
     {
       "case_id": "navigation_pattern_file_016",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/navigation/navigation_pattern.cpp",
@@ -1895,12 +1920,22 @@
           "api_name": "Navigation",
           "api_kind": "component",
           "surface": "shared",
-          "confidence": "medium",
+          "confidence": "strong",
           "evidence": [
             {
-              "type": "path_layer",
-              "path": "frameworks/core/components_ng/pattern/navigation/navigation_pattern.cpp",
-              "note": "Path fixed, needs re-validation"
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/navigation.d.ts",
+              "note": "Navigation declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/navigation/navigation_pattern.h",
+              "note": "NavigationPattern class declared in pattern header"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_navigation_bridge.cpp",
+              "note": "ArkTS native bridge for Navigation component"
             }
           ]
         }
@@ -1919,11 +1954,11 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Path fixed, needs re-validation"
+      "notes": "Promoted: selector resolves navigation_pattern.cpp->Navigation; NavigationPattern class and SDK declaration confirmed"
     },
     {
       "case_id": "navdestination_pattern_file_017",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/navrouter/navdestination_pattern.cpp",
@@ -1941,12 +1976,22 @@
           "api_name": "NavDestination",
           "api_kind": "component",
           "surface": "shared",
-          "confidence": "medium",
+          "confidence": "strong",
           "evidence": [
             {
-              "type": "path_layer",
-              "path": "frameworks/core/components_ng/pattern/navrouter/navdestination_pattern.cpp",
-              "note": "Pattern file resolved via filename-based family extraction + SDK alias"
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/nav_destination.d.ts",
+              "note": "NavDestination declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/navrouter/navdestination_pattern.h",
+              "note": "NavDestinationPattern class declared in pattern header"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_nav_destination_bridge.cpp",
+              "note": "ArkTS native bridge for NavDestination component"
             }
           ]
         }
@@ -1965,11 +2010,11 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Pipeline resolves navdestination→NavDestination via filename+family_alias, but needs >=2 strong evidence types for manual_verified"
+      "notes": "Promoted: selector resolves navdestination_pattern.cpp->NavDestination; NavDestinationPattern class and SDK declaration confirmed"
     },
     {
       "case_id": "slider_model_file_020",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/slider_model.h",
@@ -1987,12 +2032,17 @@
           "api_name": "Slider",
           "api_kind": "component",
           "surface": "shared",
-          "confidence": "medium",
+          "confidence": "strong",
           "evidence": [
             {
-              "type": "path_layer",
-              "path": "frameworks/core/components_ng/pattern/slider/slider_model.h",
-              "note": "Selector gap: model files not indexed"
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/slider.d.ts",
+              "note": "Slider declared in SDK .d.ts"
+            },
+            {
+              "type": "source_class_or_method",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/slider_model.h",
+              "note": "SliderModel class declared in model header"
             }
           ]
         }
@@ -2011,11 +2061,11 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Selector gap: model files not indexed"
+      "notes": "Promoted: selector resolves slider_model.h->Slider; SliderModel class and SDK declaration confirmed"
     },
     {
       "case_id": "button_modifier_file_014",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/node/button_modifier.cpp",
@@ -2033,12 +2083,22 @@
           "api_name": "Button",
           "api_kind": "component",
           "surface": "shared",
-          "confidence": "medium",
+          "confidence": "strong",
           "evidence": [
             {
-              "type": "path_layer",
-              "path": "frameworks/core/interfaces/native/node/button_modifier.cpp",
-              "note": "Path+API fixed, needs re-validation"
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/button.d.ts",
+              "note": "Button declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/node/button_modifier.cpp",
+              "note": "Native modifier/accessor in node layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_button_bridge.cpp",
+              "note": "ArkTS native bridge for Button component"
             }
           ]
         }
@@ -2057,11 +2117,11 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Path+API fixed, needs re-validation"
+      "notes": "Promoted: selector resolves button_modifier.cpp->Button; native modifier accessor and SDK declaration confirmed"
     },
     {
       "case_id": "slider_modifier_file_015",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/slider_modifier.cpp",
@@ -2079,12 +2139,22 @@
           "api_name": "Slider",
           "api_kind": "component",
           "surface": "shared",
-          "confidence": "medium",
+          "confidence": "strong",
           "evidence": [
             {
-              "type": "path_layer",
-              "path": "frameworks/core/interfaces/native/implementation/slider_modifier.cpp",
-              "note": "Path+API fixed, needs re-validation"
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/slider.d.ts",
+              "note": "Slider declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/slider_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/slider/bridge/arkts_native_slider_bridge.cpp",
+              "note": "ArkTS native bridge for Slider component"
             }
           ]
         }
@@ -2103,11 +2173,11 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Path+API fixed, needs re-validation"
+      "notes": "Promoted: selector resolves slider_modifier.cpp->Slider; native modifier accessor and SDK declaration confirmed"
     },
     {
       "case_id": "textinput_modifier_file_021",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/text_input_modifier.cpp",
@@ -2125,12 +2195,22 @@
           "api_name": "TextInput",
           "api_kind": "component",
           "surface": "shared",
-          "confidence": "medium",
+          "confidence": "strong",
           "evidence": [
             {
-              "type": "path_layer",
-              "path": "frameworks/core/interfaces/native/implementation/text_input_modifier.cpp",
-              "note": "Path+API fixed, needs re-validation"
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/text_input.d.ts",
+              "note": "TextInput declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/text_input_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_text_input_bridge.cpp",
+              "note": "ArkTS native bridge for TextInput component"
             }
           ]
         }
@@ -2149,11 +2229,11 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Path+API fixed, needs re-validation"
+      "notes": "Promoted: selector resolves text_input_modifier.cpp->TextInput; native modifier accessor and SDK declaration confirmed"
     },
     {
       "case_id": "swiper_modifier_file_022",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/swiper_modifier.cpp",
@@ -2171,12 +2251,22 @@
           "api_name": "Swiper",
           "api_kind": "component",
           "surface": "shared",
-          "confidence": "medium",
+          "confidence": "strong",
           "evidence": [
             {
-              "type": "path_layer",
-              "path": "frameworks/core/interfaces/native/implementation/swiper_modifier.cpp",
-              "note": "Path+API fixed, needs re-validation"
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/swiper.d.ts",
+              "note": "Swiper declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/swiper_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_swiper_bridge.cpp",
+              "note": "ArkTS native bridge for Swiper component"
             }
           ]
         }
@@ -2195,11 +2285,11 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Path+API fixed, needs re-validation"
+      "notes": "Promoted: selector resolves swiper_modifier.cpp->Swiper; native modifier accessor and SDK declaration confirmed"
     },
     {
       "case_id": "image_modifier_file_023",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/image_modifier.cpp",
@@ -2217,12 +2307,22 @@
           "api_name": "Image",
           "api_kind": "component",
           "surface": "shared",
-          "confidence": "medium",
+          "confidence": "strong",
           "evidence": [
             {
-              "type": "path_layer",
-              "path": "frameworks/core/interfaces/native/implementation/image_modifier.cpp",
-              "note": "Path+API fixed, needs re-validation"
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/image.d.ts",
+              "note": "Image declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/image_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_image_bridge.cpp",
+              "note": "ArkTS native bridge for Image component"
             }
           ]
         }
@@ -2241,11 +2341,11 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Path+API fixed, needs re-validation"
+      "notes": "Promoted: selector resolves image_modifier.cpp->Image; native modifier accessor and SDK declaration confirmed"
     },
     {
       "case_id": "text_modifier_file_024",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/text_modifier.cpp",
@@ -2263,12 +2363,22 @@
           "api_name": "Text",
           "api_kind": "component",
           "surface": "shared",
-          "confidence": "medium",
+          "confidence": "strong",
           "evidence": [
             {
-              "type": "path_layer",
-              "path": "frameworks/core/interfaces/native/implementation/text_modifier.cpp",
-              "note": "Path+API fixed, needs re-validation"
+              "type": "sdk_declaration",
+              "path": "interface/sdk-js/api/@internal/component/ets/text.d.ts",
+              "note": "Text declared in SDK .d.ts"
+            },
+            {
+              "type": "native_modifier_accessor",
+              "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/text_modifier.cpp",
+              "note": "Native modifier/accessor in implementation layer"
+            },
+            {
+              "type": "bridge_symbol",
+              "path": "foundation/arkui/ace_engine/frameworks/bridge/declarative_frontend/engine/jsi/nativeModule/arkts_native_text_bridge.cpp",
+              "note": "ArkTS native bridge for Text component"
             }
           ]
         }
@@ -2287,7 +2397,7 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Path+API fixed, needs re-validation"
+      "notes": "Promoted: selector resolves text_modifier.cpp->Text; native modifier accessor and SDK declaration confirmed"
     },
     {
       "case_id": "radio_model_file_044",
