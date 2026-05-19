@@ -1699,6 +1699,37 @@ def parse_args() -> argparse.Namespace:
         help="Add graph-based selection results in JSON under 'graph_selection' key. Experimental, default off.",
     )
 
+    parser.add_argument(
+        "--demo-api",
+        metavar="API_NAME",
+        default=None,
+        help=(
+            "Generate a minimal ArkUI demo app snippet for the given SDK-visible component "
+            "name (e.g. Button, Slider, TextInput). Result is added to JSON output under "
+            "'demo_snippet'. Does not require --use-graph-resolver and does not affect "
+            "selector results."
+        ),
+    )
+    parser.add_argument(
+        "--demo-member",
+        metavar="MEMBER",
+        default=None,
+        help=(
+            "Optional attribute or event name to demonstrate with --demo-api "
+            "(e.g. 'fontSize', 'onClick'). Used with --demo-api only."
+        ),
+    )
+    parser.add_argument(
+        "--demo-kind",
+        metavar="KIND",
+        default="component_creation",
+        choices=["component_creation", "attribute", "event_or_method"],
+        help=(
+            "Usage kind for --demo-api. One of: component_creation (default), "
+            "attribute, event_or_method."
+        ),
+    )
+
     # Audit subcommand (Phase 11, T11.15)
     audit_parser = subparsers.add_parser("audit", help="Audit log operations")
     audit_sub = audit_parser.add_subparsers(dest="audit_command")
@@ -3217,6 +3248,27 @@ def main() -> int:
     artifact_index_path = write_execution_artifact_index(report, artifact_output_dir)
     if artifact_index_path is not None:
         report["execution_artifact_index_path"] = str(artifact_index_path)
+
+    # ---- Demo app snippet generation (opt-in, --demo-api) ----
+    if getattr(args, "demo_api", None):
+        try:
+            from .demo_app_generator import generate_demo_snippet as _gen_demo
+
+            _demo_result = _gen_demo(
+                api_name=args.demo_api,
+                usage_kind=getattr(args, "demo_kind", "component_creation"),
+                member=getattr(args, "demo_member", None),
+            )
+            report["demo_snippet"] = {
+                "api_name": _demo_result.api_name,
+                "sdk_visible": _demo_result.sdk_visible,
+                "snippet": _demo_result.snippet,
+                "imports": _demo_result.imports,
+                "limitations": _demo_result.limitations,
+            }
+        except Exception as _demo_exc:
+            report["demo_snippet"] = {"error": str(_demo_exc)}
+    # ---- End demo app snippet generation ----
 
     emit_progress(progress_enabled, "writing JSON report")
     written_json_path = write_json_report(
