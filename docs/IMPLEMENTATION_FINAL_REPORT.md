@@ -1,3 +1,5 @@
+> **SUPERSEDED** — This report covers a pre-Phase-5A implementation iteration (2026-05-08). Superseded by `docs/PHASE-5A-MERGE-REPORT-2026-05-18.md` and `docs/FULL-PROJECT-STATUS-AUDIT-2026-05-18.md`. Retained for historical reference.
+
 # Implementation Final Report — Canonical rate improvement
 
 Дата: 2026-05-08

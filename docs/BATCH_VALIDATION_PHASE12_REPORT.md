@@ -1,3 +1,5 @@
+> **SUPERSEDED** — Phase 12 batch validation (2026-05-05). Subsequent phases and the Phase-5A merge (2026-05-18) have superseded this work. Retained for historical reference.
+
 # Batch Validation Report: Phase 12 Accuracy Improvements
 
 **Date:** 2026-05-05
