@@ -182,6 +182,7 @@ def resolve_api_query(
     api_name: str,
     *,
     usage_index: list[dict] | None = None,
+    runnability_map: dict[str, str] | None = None,
 ) -> ApiQueryResult:
     """Resolve an explicit API name to XTS test selections via the graph.
 
@@ -201,6 +202,12 @@ def resolve_api_query(
         Usage evidence is textual heuristics only — it NEVER grants
         coverage_equivalence and MUST NOT produce must_run.  If None,
         behavior is identical to the pre-integration baseline.
+    runnability_map:
+        Optional ``{project: runnability_status}`` mapping produced by
+        ``runnability_map.build_runnability_map``.  When provided, known-runnable
+        projects can produce ``exact`` equivalence (instead of ``partial``).
+        When ``None``, all targets are treated as runnability-unknown and
+        equivalence stays at ``partial`` — safe conservative fallback.
 
     Rules:
     * Matches api_entity nodes whose ``public_name`` data field or ``label``
@@ -211,6 +218,9 @@ def resolve_api_query(
       produces ``recommended`` or ``possible``, never fake must_run.
     * Usage index evidence (v1): textual usage alone → usage_coverage_gap=True,
       never must_run regardless of confidence level.
+    * Runnability map (v1): ``exact`` equivalence only when runnability_status
+      == ``"runnable"``; all other statuses keep equivalence at ``partial`` or
+      lower.
     """
     matched_ids: list[str] = []
     for node in graph.nodes.values():
@@ -224,14 +234,24 @@ def resolve_api_query(
     usage_evidence, usage_suggested_targets = _query_usage_index(usage_index, api_name)
 
     # Derive real coverage equivalences from usage evidence (conservative).
-    # When usage_index is None or no entries match, the list is empty.
-    # Runnability map is not available at this layer; callers that have
-    # runnability information should pass it separately in future.
-    # Without runnability, strong+eligible kind entries become "partial" (not "exact").
+    # When runnability_map is provided, known-runnable projects yield "exact";
+    # when None, strong+eligible kind entries produce "partial" (not "exact").
+    # Build a plain {project: status_str} map for derive_coverage_equivalences.
+    _flat_runnability: dict[str, str] | None = None
+    if runnability_map is not None:
+        _flat_runnability = {}
+        for proj, state in runnability_map.items():
+            # Accept both RunnabilityState objects and plain strings
+            if hasattr(state, "status"):
+                _flat_runnability[proj] = state.status  # type: ignore[union-attr]
+            else:
+                _flat_runnability[proj] = str(state)
+
     _derived_equivalences: tuple[CoverageEquivalence, ...] = tuple(
         derive_coverage_equivalences(
             api_name=api_name,
             usage_entries=list(usage_evidence),
+            runnability_map=_flat_runnability,
         )
     )
 
