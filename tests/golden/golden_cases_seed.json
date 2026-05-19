@@ -1781,7 +1781,7 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Pipeline resolves menu_item\u2192MenuItem via family_alias, but needs >=2 strong evidence types for manual_verified"
+      "notes": "Pipeline resolves menu_item→MenuItem via family_alias, but needs >=2 strong evidence types for manual_verified"
     },
     {
       "case_id": "textinput_model_file_006",
@@ -1965,7 +1965,7 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "Pipeline resolves navdestination\u2192NavDestination via filename+family_alias, but needs >=2 strong evidence types for manual_verified"
+      "notes": "Pipeline resolves navdestination→NavDestination via filename+family_alias, but needs >=2 strong evidence types for manual_verified"
     },
     {
       "case_id": "slider_model_file_020",
@@ -8694,7 +8694,7 @@
     },
     {
       "case_id": "rich_editor_pattern_file_151",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/rich_editor/rich_editor_pattern.cpp",
@@ -8752,11 +8752,11 @@
           "description": "File-level pattern change should not produce must_run bucket"
         }
       ],
-      "notes": "RichEditor pattern layer [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "RichEditor pattern layer — selector resolves via richeditor family; fix: compound-path matching for pattern/rich_editor/"
     },
     {
       "case_id": "rich_editor_model_file_152",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/rich_editor/rich_editor_model_ng.cpp",
@@ -8804,7 +8804,7 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "RichEditor model layer [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "RichEditor model layer — selector resolves via richeditor family; fix: compound-path matching for pattern/rich_editor/"
     },
     {
       "case_id": "rich_editor_modifier_file_153",
@@ -9383,7 +9383,7 @@
     },
     {
       "case_id": "side_bar_pattern_file_163",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/side_bar/side_bar_container_pattern.cpp",
@@ -9441,11 +9441,11 @@
           "description": "File-level pattern change should not produce must_run bucket"
         }
       ],
-      "notes": "SideBarContainer pattern layer [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "SideBarContainer pattern layer — selector resolves via sidebar family with SideBarContainer symbol; fix: _SDK_FILENAME_SYMBOL_OVERRIDE for sidebar→SideBarContainer"
     },
     {
       "case_id": "side_bar_model_file_164",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/side_bar/side_bar_container_model_ng.cpp",
@@ -9493,7 +9493,7 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "SideBarContainer model layer [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "SideBarContainer model layer — selector resolves via sidebar family with SideBarContainer symbol; fix: _SDK_FILENAME_SYMBOL_OVERRIDE for sidebar→SideBarContainer"
     },
     {
       "case_id": "side_bar_modifier_file_165",
@@ -9554,7 +9554,7 @@
     },
     {
       "case_id": "xcomponent_pattern_file_166",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/xcomponent/xcomponent_pattern.cpp",
@@ -9612,11 +9612,11 @@
           "description": "File-level pattern change should not produce must_run bucket"
         }
       ],
-      "notes": "XComponent pattern layer [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "XComponent pattern layer — selector resolves via xcomponent family with XComponent symbol; fix: _SDK_FILENAME_SYMBOL_OVERRIDE for xcomponent→XComponent"
     },
     {
       "case_id": "xcomponent_model_file_167",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/xcomponent/xcomponent_model_ng.cpp",
@@ -9669,11 +9669,11 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "XComponent model layer [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "XComponent model layer — selector resolves via xcomponent family with XComponent symbol; fix: _SDK_FILENAME_SYMBOL_OVERRIDE for xcomponent→XComponent"
     },
     {
       "case_id": "grid_item_model_file_168",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/grid/grid_item_model_ng.cpp",
@@ -9721,7 +9721,7 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "GridItem model layer [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "GridItem model layer — selector resolves via griditem family; fix: compound-filename extraction in _match_source_families for pattern/grid/grid_item_*.cpp"
     },
     {
       "case_id": "grid_item_modifier_file_169",
@@ -9787,7 +9787,7 @@
     },
     {
       "case_id": "list_item_model_file_170",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/list/list_item_model_ng.cpp",
@@ -9835,7 +9835,7 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "ListItem model layer [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "ListItem model layer — selector resolves via listitem family; fix: compound-filename extraction in _match_source_families for pattern/list/list_item_*.cpp"
     },
     {
       "case_id": "list_item_modifier_file_171",
@@ -10015,7 +10015,7 @@
     },
     {
       "case_id": "xcomponent_modifier_file_174",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/x_component_modifier.cpp",
@@ -10073,7 +10073,7 @@
           "description": "File-level native modifier change should not produce must_run bucket"
         }
       ],
-      "notes": "XComponent native modifier layer [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "XComponent native modifier layer — selector resolves via xcomponent family with XComponent symbol; fix: _SDK_FILENAME_SYMBOL_OVERRIDE"
     },
     {
       "case_id": "canvas_pattern_file_175",
@@ -10367,7 +10367,7 @@
     },
     {
       "case_id": "symbol_glyph_model_file_180",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/symbol/symbol_model_ng.cpp",
@@ -10415,7 +10415,7 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "SymbolGlyph model layer [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "SymbolGlyph model layer — selector resolves via symbolglyph family; fix: _SDK_FILENAME_SYMBOL_OVERRIDE for symbolglyph→SymbolGlyph + symbol→symbolglyph dir alias"
     },
     {
       "case_id": "symbol_glyph_modifier_file_181",
@@ -10932,7 +10932,7 @@
     },
     {
       "case_id": "grid_item_pattern_file_190",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/grid/grid_item_pattern.h",
@@ -10990,11 +10990,11 @@
           "description": "File-level pattern change should not produce must_run bucket"
         }
       ],
-      "notes": "GridItem pattern layer (header) [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "GridItem pattern header — selector resolves via griditem family; fix: compound-filename extraction in _match_source_families"
     },
     {
       "case_id": "list_item_pattern_file_191",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/list/list_item_pattern.h",
@@ -11052,7 +11052,7 @@
           "description": "File-level pattern change should not produce must_run bucket"
         }
       ],
-      "notes": "ListItem pattern layer (header) [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "ListItem pattern header — selector resolves via listitem family; fix: compound-filename extraction in _match_source_families"
     },
     {
       "case_id": "relative_container_pattern_file_192",
@@ -11284,7 +11284,7 @@
     },
     {
       "case_id": "flow_item_model_file_196",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/waterflow/water_flow_item_model_ng.cpp",
@@ -11332,11 +11332,11 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "FlowItem model layer [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "FlowItem model layer — selector resolves via flowitem family (water_flow_item→flowitem); fix: compound-filename extraction with water_flow_item special case"
     },
     {
       "case_id": "flow_item_modifier_file_197",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/flow_item_modifier.cpp",
@@ -11389,7 +11389,7 @@
           "description": "File-level native modifier change should not produce must_run bucket"
         }
       ],
-      "notes": "FlowItem native modifier layer [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "FlowItem native modifier layer — selector resolves via flowitem family; fix: native/implementation/flow_item_modifier.cpp matches flowitem"
     },
     {
       "case_id": "web_pattern_file_198",
@@ -11569,7 +11569,7 @@
     },
     {
       "case_id": "waterflow_xts_evidence_201",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/waterflow/water_flow_pattern.h",
@@ -11627,11 +11627,11 @@
           "description": "File-level pattern change should not produce must_run bucket"
         }
       ],
-      "notes": "WaterFlow pattern layer (header file, XTS evidence) [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "WaterFlow pattern header — selector resolves via waterflow family with WaterFlow symbol; generic token matching already works"
     },
     {
       "case_id": "list_item_group_model_file_202",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/list/list_item_group_model_ng.cpp",
@@ -11684,7 +11684,7 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "ListItemGroup model layer [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "ListItemGroup model layer — selector resolves via listitemgroup family; fix: compound-filename extraction for list_item_group"
     },
     {
       "case_id": "list_item_group_modifier_file_203",
@@ -11988,7 +11988,7 @@
     },
     {
       "case_id": "tab_content_model_file_208",
-      "status": "needs_review",
+      "status": "manual_verified",
       "changed_input": {
         "kind": "file",
         "path": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/tabs/tab_content_model_ng.cpp",
@@ -12041,7 +12041,7 @@
         "optional_related_projects": []
       },
       "negative_expectations": [],
-      "notes": "TabContent model layer [selector_gap: demoted from manual_verified \u2014 selector does not resolve within 60s]"
+      "notes": "TabContent model layer — selector resolves via tabcontent family; fix: compound-filename extraction for tab_content"
     },
     {
       "case_id": "tab_content_modifier_file_209",

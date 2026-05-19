@@ -47,9 +47,21 @@ def _make_sdk_tree(tmp: Path) -> Path:
         "timePicker",
         "button",
         "text",
+        # Wave-2 gap families (casing-fix group):
+        "xcomponent",   # declares XComponent (not Xcomponent)
+        "sidebar",      # declares SideBarContainer (not Sidebar)
+        "symbolglyph",  # declares SymbolGlyph (not Symbolglyph)
+        # Wave-2 gap families (compound sub-family group):
+        "gridItem",     # GridItem  → griditem token
+        "listItem",     # ListItem  → listitem
+        "listItemGroup",# ListItemGroup → listitemgroup
+        "flowItem",     # FlowItem  → flowitem
+        "waterFlow",    # WaterFlow → waterflow
+        "tabContent",   # TabContent → tabcontent
+        "richEditor",   # RichEditor → richeditor
     ]:
         (component_dir / f"{name}.static.d.ets").write_text(
-            f"declare interface {name[0].upper() + name[1:]}Attribute {{}}\n"
+            f"export declare function {name[0].upper() + name[1:]}();\n"
         )
 
     # Modifier files — Panel and Stepper have NO *.static.d.ets
@@ -62,6 +74,7 @@ def _make_sdk_tree(tmp: Path) -> Path:
         "TextAreaModifier",
         "TextInputModifier",
         "TimePickerModifier",
+        "SideBarContainerModifier",
     ]:
         (arkui_dir / f"{mod}.d.ts").write_text(f"declare class {mod} {{}}\n")
 
@@ -300,3 +313,110 @@ class TestModelOtherRole:
         )
         assert result is not None
         assert result.api_public_name == "panelType"
+
+
+# ---------------------------------------------------------------------------
+# Wave-2 Gap Fixes: SDK symbol casing overrides
+# (xcomponent → XComponent, sidebar → SideBarContainer, symbolglyph → SymbolGlyph)
+# ---------------------------------------------------------------------------
+
+class TestWave2_CasingOverrides:
+    """_SDK_FILENAME_SYMBOL_OVERRIDE must fix all-lowercase SDK filenames."""
+
+    def _build_symbols(self, sdk_root: Path) -> dict[str, set[str]]:
+        lm = ApiLineageMap(metadata={})
+        _, _, family_to_api_symbols, _ = _load_sdk_entities(sdk_root, sdk_root, lm)
+        return family_to_api_symbols
+
+    def test_xcomponent_symbol_correct(self, tmp_path):
+        sdk = _make_sdk_tree(tmp_path)
+        syms = self._build_symbols(sdk)
+        assert "XComponent" in syms.get("xcomponent", set()), (
+            "xcomponent.static.d.ets must produce 'XComponent', not 'Xcomponent'"
+        )
+        assert "Xcomponent" not in syms.get("xcomponent", set())
+
+    def test_sidebar_symbol_correct(self, tmp_path):
+        sdk = _make_sdk_tree(tmp_path)
+        syms = self._build_symbols(sdk)
+        assert "SideBarContainer" in syms.get("sidebar", set()), (
+            "sidebar.static.d.ets must produce 'SideBarContainer', not 'Sidebar'"
+        )
+        assert "Sidebar" not in syms.get("sidebar", set())
+
+    def test_symbolglyph_symbol_correct(self, tmp_path):
+        sdk = _make_sdk_tree(tmp_path)
+        syms = self._build_symbols(sdk)
+        assert "SymbolGlyph" in syms.get("symbolglyph", set()), (
+            "symbolglyph.static.d.ets must produce 'SymbolGlyph', not 'Symbolglyph'"
+        )
+        assert "Symbolglyph" not in syms.get("symbolglyph", set())
+
+
+# ---------------------------------------------------------------------------
+# Wave-2 Gap Fixes: compound sub-family path matching
+# Files inside a parent-family directory that belong to a sub-family
+# (e.g. pattern/grid/grid_item_model_ng.cpp → griditem, not just grid)
+# ---------------------------------------------------------------------------
+
+class TestWave2_CompoundSubFamilyPaths:
+    """_match_source_families must return sub-family tokens for compound filenames."""
+
+    @pytest.fixture
+    def family_syms(self, tmp_path):
+        sdk = _make_sdk_tree(tmp_path)
+        lm = ApiLineageMap(metadata={})
+        _, _, syms, _ = _load_sdk_entities(sdk, sdk, lm)
+        return syms
+
+    def test_grid_item_model_matches_griditem(self, family_syms):
+        path = "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/grid/grid_item_model_ng.cpp"
+        matched = _match_source_families(path, family_syms)
+        assert "griditem" in matched, (
+            "grid_item_model_ng.cpp must match griditem family (not just grid)"
+        )
+
+    def test_list_item_model_matches_listitem(self, family_syms):
+        path = "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/list/list_item_model_ng.cpp"
+        matched = _match_source_families(path, family_syms)
+        assert "listitem" in matched, (
+            "list_item_model_ng.cpp must match listitem family"
+        )
+
+    def test_list_item_group_model_matches_listitemgroup(self, family_syms):
+        path = "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/list/list_item_group_model_ng.cpp"
+        matched = _match_source_families(path, family_syms)
+        assert "listitemgroup" in matched, (
+            "list_item_group_model_ng.cpp must match listitemgroup family"
+        )
+
+    def test_tab_content_model_matches_tabcontent(self, family_syms):
+        path = "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/tabs/tab_content_model_ng.cpp"
+        matched = _match_source_families(path, family_syms)
+        assert "tabcontent" in matched, (
+            "tab_content_model_ng.cpp must match tabcontent family"
+        )
+
+    def test_symbol_model_matches_symbolglyph(self, family_syms):
+        path = "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/symbol/symbol_model_ng.cpp"
+        matched = _match_source_families(path, family_syms)
+        assert "symbolglyph" in matched, (
+            "symbol_model_ng.cpp in pattern/symbol/ must match symbolglyph family"
+        )
+
+    def test_water_flow_item_model_matches_flowitem(self, family_syms):
+        path = "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/waterflow/water_flow_item_model_ng.cpp"
+        matched = _match_source_families(path, family_syms)
+        assert "flowitem" in matched, (
+            "water_flow_item_model_ng.cpp must match flowitem family (FlowItem)"
+        )
+
+    def test_grid_item_pattern_header_matches_griditem(self, family_syms):
+        path = "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/grid/grid_item_pattern.h"
+        matched = _match_source_families(path, family_syms)
+        assert "griditem" in matched
+
+    def test_list_item_pattern_header_matches_listitem(self, family_syms):
+        path = "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/list/list_item_pattern.h"
+        matched = _match_source_families(path, family_syms)
+        assert "listitem" in matched

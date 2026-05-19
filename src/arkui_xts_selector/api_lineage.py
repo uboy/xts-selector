@@ -35,6 +35,19 @@ SOURCE_FILE_SUFFIXES = {
     ".h",
 }
 SDK_COMPONENT_SKIP = {"common", "builder", "enums", "units", "resources"}
+
+# Override table for SDK component filenames where simple capitalisation of the
+# first letter produces the wrong public API name.  The key is the base name of
+# the *.static.d.ets file (no extension, no directory), value is the correct
+# component symbol as declared in the SDK (e.g. via ``export declare function``).
+_SDK_FILENAME_SYMBOL_OVERRIDE: dict[str, str] = {
+    # xcomponent.static.d.ets → declares "XComponent" (not "Xcomponent")
+    "xcomponent": "XComponent",
+    # sidebar.static.d.ets → declares "SideBarContainer" (not "Sidebar")
+    "sidebar": "SideBarContainer",
+    # symbolglyph.static.d.ets → declares "SymbolGlyph" (not "Symbolglyph")
+    "symbolglyph": "SymbolGlyph",
+}
 SOURCE_CONSUMER_ROOTS = (Path("foundation/arkui/ace_engine/examples"),)
 SOURCE_CONSUMER_SKIP_DIRS = {
     ".git",
@@ -905,7 +918,11 @@ def _load_sdk_entities(
             continue
         # SDK filenames are camelCase (e.g. "dataPanel"), not snake_case.
         # snake_to_pascal("dataPanel") → "Datapanel" (wrong); preserve inner caps.
-        symbol = base[0].upper() + base[1:] if base else ""
+        # A small number of files have all-lowercase names whose declared function
+        # doesn't match simple first-letter capitalisation; use override table.
+        symbol = _SDK_FILENAME_SYMBOL_OVERRIDE.get(base) or (
+            base[0].upper() + base[1:] if base else ""
+        )
         component_symbols_by_family.setdefault(family, set()).add(symbol)
         family_to_api_symbols.setdefault(family, set()).add(symbol)
         lineage_map.record_source_api(path, symbol, family=family)
@@ -1065,6 +1082,14 @@ def _iter_source_files(ace_engine_root: Path) -> Iterable[Path]:
 # Value: compact SDK family token.
 _DIR_TO_SDK_FAMILY: dict[str, str] = {
     "text_field": "textinput",  # pattern/text_field/ → TextInput
+    # pattern/symbol/ contains SymbolGlyph / SymbolSpan sources; the dir name
+    # "symbol" doesn't match any SDK family token, but "symbolglyph" does.
+    "symbol": "symbolglyph",
+    # pattern/waterflow/ is both the WaterFlow family and the source of
+    # WaterFlowItem (= FlowItem).  "waterflow" maps to WaterFlow already via
+    # the generic token path; alias it here to also match "flowitem".
+    # (The per-file compound-prefix extraction below handles water_flow_item
+    # separately, so this entry is mainly for the dir-level fallback.)
 }
 
 
@@ -1087,6 +1112,30 @@ def _match_source_families(
             alias = _DIR_TO_SDK_FAMILY.get(dir_name)
             if alias and alias in family_to_api_symbols:
                 matched.add(alias)
+
+        # Additionally, extract the compound file prefix for files whose name
+        # encodes a more-specific family than their parent directory.
+        # E.g. pattern/grid/grid_item_model_ng.cpp → prefix "grid_item" → griditem.
+        # Pattern/list/list_item_group_model_ng.cpp → "list_item_group" → listitemgroup.
+        # Pattern/tabs/tab_content_model_ng.cpp → "tab_content" → tabcontent.
+        # Pattern/waterflow/water_flow_item_model_ng.cpp → "water_flow_item" → special.
+        compound_file_match = re.search(
+            r"components_ng/pattern/[^/]+/([^/]+?)_(?:model_ng|model|pattern|modifier)\.",
+            rel_lower,
+        )
+        if compound_file_match:
+            raw_prefix = compound_file_match.group(1)
+            compound_family = compact_token(raw_prefix)
+            if compound_family and compound_family != family:
+                if compound_family in family_to_api_symbols:
+                    matched.add(compound_family)
+                else:
+                    compound_alias = _DIR_TO_SDK_FAMILY.get(raw_prefix)
+                    if compound_alias and compound_alias in family_to_api_symbols:
+                        matched.add(compound_alias)
+            # Special case: water_flow_item → flowitem (SDK family for FlowItem)
+            if raw_prefix == "water_flow_item" and "flowitem" in family_to_api_symbols:
+                matched.add("flowitem")
 
     # native/implementation/ file prefixes use underscored compound names that
     # the generic tokenizer splits incorrectly, e.g. data_panel_modifier.cpp →

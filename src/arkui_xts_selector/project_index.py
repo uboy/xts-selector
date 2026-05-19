@@ -14,6 +14,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from .api_lineage import _SDK_FILENAME_SYMBOL_OVERRIDE
 from .api_surface import classify_xts_project_surface
 from .file_indexing import (
     extract_member_hint_keys,
@@ -589,7 +590,11 @@ def load_sdk_index(sdk_api_root: Path) -> SdkIndex:
     for path in sorted(sdk_component_root.glob("*.static.d.ets")):
         base = path.name[: -len(".static.d.ets")]
         # SDK filenames are camelCase; preserve inner caps instead of lowercasing.
-        symbol = base[0].upper() + base[1:] if base else ""
+        # A small number of files have all-lowercase names whose declared function
+        # doesn't match simple first-letter capitalisation; use override table.
+        symbol = _SDK_FILENAME_SYMBOL_OVERRIDE.get(base) or (
+            base[0].upper() + base[1:] if base else ""
+        )
         if base not in {"common", "builder", "enums", "units", "resources"}:
             index.component_names.add(symbol)
             index.component_file_bases[compact_token(base)] = symbol
