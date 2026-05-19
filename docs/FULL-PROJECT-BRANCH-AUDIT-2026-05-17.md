@@ -1,3 +1,5 @@
+> **SUPERSEDED** — Branch audit from 2026-05-17. Superseded by `docs/FULL-PROJECT-STATUS-AUDIT-2026-05-18.md` which covers the full post-Phase-5A state. Retained for historical reference.
+
 # Full project and branch audit
 
 Generated: 2026-05-17

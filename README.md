@@ -36,6 +36,57 @@ This is not runtime coverage. It is a test selection helper.
 - phase-progress messages enabled by default and written to stderr
 - configurable changed-file exclusions for non-XTS paths such as `test/unittest` and `test/mock`
 
+## Current Safety Baseline
+
+- **101 manual_verified** golden cases; **0 false_must_run**.
+- `bucket_gate_passed`, `bucket_gate_blockers`, and `bucket_gate_summary` are present in JSON output.
+- `affected_api_entity_details` exists alongside the legacy `affected_api_entities` string array.
+- Golden Seed is trusted only when quality gates pass.
+- Graph resolver is **optional/shadow** — default-off for broad changed-file runs.
+- `tree_sitter` is an optional dependency; a skip guard is in place and tests degrade gracefully when it is absent.
+
+## How To Run Tests
+
+```bash
+# Collect only — verify 0 collection errors
+python3 -m pytest --collect-only -q
+
+# Golden corpus tests
+python3 -m pytest tests/golden/test_golden_cases.py -q
+
+# Full manual golden validation
+python3 tests/golden/tools/run_manual_golden_validation.py
+
+# Full suite
+python3 -m pytest -q
+
+# Focused tests for gate/bucket changes
+python3 -m pytest tests/test_gate_adapter.py -q
+python3 -m pytest tests/test_structured_api_details.py -q
+python3 -m pytest tests/test_bucket_gate_policy.py -q
+```
+
+Quality tools:
+
+```bash
+python3 tools/check_golden_quality.py          # golden corpus quality gate
+python3 tools/check_selector_json_contract.py  # JSON field contract
+python3 tools/check_no_direct_mappings.py      # heuristic scan for direct mappings
+```
+
+## Selector Output Buckets
+
+| Bucket | Meaning |
+|--------|---------|
+| `must_run` | Genuine coverage equivalence required — evidence chain + gate passed |
+| `recommended` | Strong evidence but not equivalence-proven |
+| `possible` | Weak or indirect evidence |
+
+Rules:
+- `path-only`, `import-only`, `artifact-only`, or `score-only` evidence cannot produce genuine `must_run`.
+- The graph resolver is the only path to genuine `must_run` with coverage equivalence.
+- When in doubt, prefer `needs_review` over false precision.
+
 ## Install For Development
 
 ```bash
