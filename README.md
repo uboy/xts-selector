@@ -38,12 +38,42 @@ This is not runtime coverage. It is a test selection helper.
 
 ## Current Safety Baseline
 
-- **101 manual_verified** golden cases; **0 false_must_run**.
+- **183 manual_verified** golden cases; **29 needs_review**; **0 false_must_run**.
 - `bucket_gate_passed`, `bucket_gate_blockers`, and `bucket_gate_summary` are present in JSON output.
 - `affected_api_entity_details` exists alongside the legacy `affected_api_entities` string array.
 - Golden Seed is trusted only when quality gates pass.
 - Graph resolver is **optional/shadow** — default-off for broad changed-file runs.
 - `tree_sitter` is an optional dependency; a skip guard is in place and tests degrade gracefully when it is absent.
+
+## Wave 1 Capabilities (2026-05-19)
+
+Wave 1 added the following modules alongside the existing production CLI:
+
+| Capability | Module | Status | Notes |
+|---|---|---|---|
+| Legacy file→family→test selection | `signal_inference.py`, `scoring.py`, `coverage_planner.py` | Stable | 183 golden verified |
+| Graph resolver — API query mode | `graph/resolver.py` `resolve_api_query()` | Beta | Not default; use `--use-graph-resolver` |
+| Graph resolver — symbol query mode | `graph/resolver.py` `resolve_changed_symbol_to_tests()` | Beta | Wired to resolver; not exposed as a standalone CLI flag yet |
+| Graph resolver — changed-file mode | `graph/resolver.py` via `--use-graph-resolver` | Alpha | Default-off for broad runs; validated through shadow tests |
+| XTS usage index v1 | `xts_usage_index.py` | Alpha | Textual heuristics; maps XTS `.ets`/`.ts` to SDK API usage |
+| Coverage equivalence model v1 | `coverage/` | Alpha | Conservative; proof limited to fixtures |
+| Evidence explanations in report | `report_explanation.py` | Stable | Backward-compatible; adds `explanation` to JSON results |
+
+### Wave 1 CLI workflow commands
+
+```bash
+# Standard changed-file selection (production)
+python3 -m arkui_xts_selector --changed-file <path/to/ace_engine/file.cpp>
+
+# Graph-backed selection (shadow, explicit opt-in)
+python3 -m arkui_xts_selector --changed-file <path> --use-graph-resolver
+
+# Build XTS usage index (developer/research tool)
+python3 tests/golden/tools/build_xts_usage_index.py
+
+# Full manual golden validation
+python3 tests/golden/tools/run_manual_golden_validation.py
+```
 
 ## How To Run Tests
 
@@ -81,6 +111,7 @@ python3 tools/check_no_direct_mappings.py      # heuristic scan for direct mappi
 | `must_run` | Genuine coverage equivalence required — evidence chain + gate passed |
 | `recommended` | Strong evidence but not equivalence-proven |
 | `possible` | Weak or indirect evidence |
+| `needs_review` | Manual check needed — insufficient evidence for automated placement |
 
 Rules:
 - `path-only`, `import-only`, `artifact-only`, or `score-only` evidence cannot produce genuine `must_run`.
@@ -403,12 +434,26 @@ The project has two coexisting layers:
    path-token heuristics, numeric scoring, and the `ApiLineageMap`
    parallel maps.
 
-2. **Shadow graph path** (under active development). New typed layers
-   live in `model/`, `graph/`, `ranking/`, and `indexing/`. They model
-   API entities, evidence, usage signatures, coverage equivalence,
-   bucket gates, and runnability separately. They are NOT yet used by
-   the default CLI; they are validated through fixtures, golden graph
-   JSON, and shadow tests.
+2. **Shadow graph path** (Wave 1 beta). New typed layers live in
+   `model/`, `graph/`, `ranking/`, and `indexing/`. They model API
+   entities, evidence, usage signatures, coverage equivalence, bucket
+   gates, and runnability separately. The graph resolver exposes two
+   new entry points added in Wave 1: `resolve_api_query()` (API name →
+   tests) and `resolve_changed_symbol_to_tests()` (symbol + optional
+   source file → tests). Both are accessible via `--use-graph-resolver`
+   but remain non-default for broad changed-file runs.
+
+3. **XTS usage index** (`xts_usage_index.py`). Textual heuristic scanner
+   that walks XTS `.ets`/`.ts`/`.js` sources and maps them to SDK-visible
+   ArkUI API usage. Produces an index with `api_name`, `usage_kind`,
+   `confidence`, `project`, `path`, `line`, and `evidence`. Currently
+   used as a research and planning tool; not yet integrated into the
+   default selection pipeline.
+
+4. **Evidence explanations** (`report_explanation.py`). Backward-compatible
+   addition that appends structured `explanation` fields to each JSON
+   result, including `summary`, `evidence_chain`, `limitations`, and
+   `next_actions`. No selection behavior is changed.
 
 The current target architecture for the shadow path is documented in
 [docs/TARGET_ARCHITECTURE.md](docs/TARGET_ARCHITECTURE.md). The graph
@@ -416,6 +461,11 @@ schema is in [docs/API_LINEAGE_GRAPH.md](docs/API_LINEAGE_GRAPH.md).
 The migration plan from legacy to graph-backed default is in
 [docs/REFACTORING_PLAN.md](docs/REFACTORING_PLAN.md) and
 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+
+Wave 1 feature reports:
+- [docs/GRAPH-RESOLVER-API-SYMBOL-READINESS-REPORT-2026-05-19.md](docs/GRAPH-RESOLVER-API-SYMBOL-READINESS-REPORT-2026-05-19.md) — graph resolver API/symbol modes
+- [docs/XTS-USAGE-INDEX-V1-REPORT-2026-05-19.md](docs/XTS-USAGE-INDEX-V1-REPORT-2026-05-19.md) — XTS usage index v1
+- [docs/REPORT-UX-EVIDENCE-EXPLANATIONS-2026-05-19.md](docs/REPORT-UX-EVIDENCE-EXPLANATIONS-2026-05-19.md) — evidence explanations
 
 A latest cross-check between docs and code is kept in
 [docs/PROJECT_PRECISE_TRACING_PLAYBOOK.md](docs/PROJECT_PRECISE_TRACING_PLAYBOOK.md);
