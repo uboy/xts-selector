@@ -21,7 +21,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List
 
-from arkui_xts_selector.coverage_equivalence import CoverageEquivalence
+from arkui_xts_selector.coverage_equivalence import (
+    CoverageEquivalence,
+    derive_coverage_equivalences,
+)
 from arkui_xts_selector.graph.coverage_relation import (
     build_selection_result,
     resolve_coverage_relations,
@@ -45,10 +48,11 @@ class ApiQueryResult:
     graph but has no test consumer evidence — it MUST NOT produce must_run.
 
     ``coverage_equivalences`` is the v1 typed list of CoverageEquivalence
-    records.  In v1, the resolver returns a single placeholder with
-    equivalence_level="none" until full usage-index integration provides
-    real evidence.  Callers MUST NOT promote to must_run based solely on this
-    placeholder.
+    records derived from usage evidence via ``derive_coverage_equivalences``.
+    When no usage evidence is available, the list is empty.  ``exact``
+    equivalence is only assigned when ALL conservative conditions are met
+    (strong confidence, eligible usage_kind, runnable runnability confirmed).
+    Callers MUST NOT promote to must_run without verifying equivalence_level.
 
     Usage-index evidence (v1)
     -------------------------
@@ -216,21 +220,20 @@ def resolve_api_query(
         if node_public_name == api_name or node.label == api_name:
             matched_ids.append(node.node_id)
 
-    # v1 placeholder: conservative equivalence record.  equivalence_level="none"
-    # because we have no usage-index integration yet.  This sentinel MUST NOT
-    # be used to promote a candidate to must_run.
-    _v1_placeholder = CoverageEquivalence(
-        api_name=api_name,
-        usage_kind="unknown",
-        test_target="",
-        equivalence_level="none",
-        evidence_types=[],
-        confidence="weak",
-        limitations=["v1 placeholder: usage-index integration pending"],
-    )
-
     # Query usage index regardless of graph match
     usage_evidence, usage_suggested_targets = _query_usage_index(usage_index, api_name)
+
+    # Derive real coverage equivalences from usage evidence (conservative).
+    # When usage_index is None or no entries match, the list is empty.
+    # Runnability map is not available at this layer; callers that have
+    # runnability information should pass it separately in future.
+    # Without runnability, strong+eligible kind entries become "partial" (not "exact").
+    _derived_equivalences: tuple[CoverageEquivalence, ...] = tuple(
+        derive_coverage_equivalences(
+            api_name=api_name,
+            usage_entries=list(usage_evidence),
+        )
+    )
 
     if not matched_ids:
         return ApiQueryResult(
@@ -239,7 +242,7 @@ def resolve_api_query(
             selections=(),
             coverage_gap=True,
             coverage_gap_reason=f"No api_entity node found for '{api_name}' in graph",
-            coverage_equivalences=(_v1_placeholder,),
+            coverage_equivalences=_derived_equivalences,
             usage_evidence=usage_evidence,
             usage_suggested_targets=usage_suggested_targets,
             usage_coverage_gap=True,
@@ -273,7 +276,7 @@ def resolve_api_query(
             coverage_gap_reason=(
                 f"API '{api_name}' found in graph but has no consumer usage evidence (no uses_api edges)"
             ),
-            coverage_equivalences=(_v1_placeholder,),
+            coverage_equivalences=_derived_equivalences,
             usage_evidence=usage_evidence,
             usage_suggested_targets=usage_suggested_targets,
             usage_coverage_gap=True,
@@ -285,10 +288,10 @@ def resolve_api_query(
         matched_api_ids=tuple(matched_ids),
         selections=tuple(deduplicated),
         coverage_gap=False,
-        coverage_equivalences=(_v1_placeholder,),
+        coverage_equivalences=_derived_equivalences,
         usage_evidence=usage_evidence,
         usage_suggested_targets=usage_suggested_targets,
-        usage_coverage_gap=True,  # v1: always True — textual usage alone is not coverage equivalence
+        usage_coverage_gap=True,  # v1: textual usage alone is not coverage equivalence
     )
 
 
