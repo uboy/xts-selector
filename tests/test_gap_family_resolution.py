@@ -420,3 +420,69 @@ class TestWave2_CompoundSubFamilyPaths:
         path = "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/list/list_item_pattern.h"
         matched = _match_source_families(path, family_syms)
         assert "listitem" in matched
+
+
+# ---------------------------------------------------------------------------
+# Wave-6 Gap Fix: pattern/indexer/ → AlphabetIndexer (alphabetindexer family)
+# The dir name "indexer" doesn't match the SDK family token "alphabetindexer".
+# Fix: _DIR_TO_SDK_FAMILY["indexer"] = "alphabetindexer"
+# ---------------------------------------------------------------------------
+
+class TestWave6_IndexerAlias:
+    """pattern/indexer/ directory must resolve to the alphabetindexer family."""
+
+    @pytest.fixture
+    def family_syms(self, tmp_path):
+        sdk = _make_sdk_tree(tmp_path)
+        # Add alphabetIndexer.static.d.ets (camelCase, matching real SDK filename)
+        comp_dir = tmp_path / "arkui" / "component"
+        (comp_dir / "alphabetIndexer.static.d.ets").write_text(
+            "export declare function AlphabetIndexer();\n"
+        )
+        arkui_dir = tmp_path / "arkui"
+        (arkui_dir / "AlphabetIndexerModifier.d.ts").write_text(
+            "declare class AlphabetIndexerModifier {}\n"
+        )
+        lm = ApiLineageMap(metadata={})
+        _, _, syms, _ = _load_sdk_entities(sdk, sdk, lm)
+        return syms
+
+    def test_alphabetindexer_family_present(self, family_syms):
+        assert "alphabetindexer" in family_syms, (
+            "alphabetIndexer.static.d.ets must create alphabetindexer family"
+        )
+
+    def test_alphabetindexer_symbols_correct(self, family_syms):
+        syms = family_syms.get("alphabetindexer", set())
+        assert "AlphabetIndexer" in syms, (
+            "AlphabetIndexer must be in family_to_api_symbols['alphabetindexer']"
+        )
+
+    def test_indexer_pattern_file_matches_alphabetindexer(self, family_syms):
+        path = "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/indexer/indexer_pattern.cpp"
+        matched = _match_source_families(path, family_syms)
+        assert "alphabetindexer" in matched, (
+            "pattern/indexer/indexer_pattern.cpp must resolve to alphabetindexer family"
+        )
+
+    def test_indexer_model_file_matches_alphabetindexer(self, family_syms):
+        path = "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/indexer/indexer_model_ng.cpp"
+        matched = _match_source_families(path, family_syms)
+        assert "alphabetindexer" in matched, (
+            "pattern/indexer/indexer_model_ng.cpp must resolve to alphabetindexer family"
+        )
+
+    def test_indexer_event_hub_matches_alphabetindexer(self, family_syms):
+        path = "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/indexer/indexer_event_hub.cpp"
+        matched = _match_source_families(path, family_syms)
+        assert "alphabetindexer" in matched, (
+            "Other files in pattern/indexer/ must resolve to alphabetindexer family"
+        )
+
+    def test_unrelated_index_path_does_not_match(self, family_syms):
+        """A file with 'index' in path but outside pattern/indexer/ must NOT match."""
+        path = "foundation/arkui/ace_engine/frameworks/core/some_module/index/index_utils.cpp"
+        matched = _match_source_families(path, family_syms)
+        assert "alphabetindexer" not in matched, (
+            "Unrelated path with 'index' token must not map to alphabetindexer"
+        )

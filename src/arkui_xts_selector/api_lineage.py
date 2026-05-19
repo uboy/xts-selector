@@ -1090,6 +1090,9 @@ _DIR_TO_SDK_FAMILY: dict[str, str] = {
     # the generic token path; alias it here to also match "flowitem".
     # (The per-file compound-prefix extraction below handles water_flow_item
     # separately, so this entry is mainly for the dir-level fallback.)
+    # pattern/indexer/ contains AlphabetIndexer sources; the dir name "indexer"
+    # doesn't match the SDK family token "alphabetindexer".
+    "indexer": "alphabetindexer",
 }
 
 
