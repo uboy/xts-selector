@@ -2822,6 +2822,12 @@ def main() -> int:
     report["timings_ms"]["total_runtime"] = round(
         (time.perf_counter() - runtime_started) * 1000, 3
     )
+    # ---- Changed-symbol warning (opt-in, requires --use-graph-resolver) ----
+    if changed_symbols and not args.use_graph_resolver:
+        print(
+            "warning: --changed-symbol requires --use-graph-resolver, ignoring symbol query",
+            file=sys.stderr,
+        )
     # ---- Graph-based resolver (Phase 7, experimental, under flag) ----
     if args.use_graph_resolver and changed_files:
         try:
@@ -2944,6 +2950,128 @@ def main() -> int:
         except Exception as exc:
             report["graph_selection"] = {"error": str(exc)}
     # ---- End graph-based resolver ----
+
+    # ---- Symbol-precision graph query (opt-in, --changed-symbol + --use-graph-resolver) ----
+    if args.use_graph_resolver and changed_symbols:
+        sym_query_started = time.perf_counter()
+        try:
+            from .graph.resolver import resolve_changed_symbol_to_tests
+            from .graph.schema import Graph
+
+            # Attempt to locate a persisted graph file in the runtime state root or
+            # config directory.  In production the graph is typically absent (no build
+            # step populates it yet), in which case we report unresolved gracefully.
+            _graph_path: Path | None = None
+            _graph_search_roots = [
+                app_config.runtime_state_root,
+                PROJECT_ROOT / "config",
+                PROJECT_ROOT,
+            ]
+            for _search_root in _graph_search_roots:
+                if _search_root is None:
+                    continue
+                _candidate = Path(_search_root) / "api_graph.json"
+                if _candidate.is_file():
+                    _graph_path = _candidate
+                    break
+
+            _sym_graph: Graph | None = None
+            _graph_load_error: str = ""
+            if _graph_path is not None:
+                try:
+                    import json as _json
+
+                    _sym_graph = Graph.from_dict(
+                        _json.loads(_graph_path.read_text(encoding="utf-8"))
+                    )
+                except Exception as _ge:
+                    _graph_load_error = str(_ge)
+
+            symbol_query_results: list[dict] = []
+            for _sym in changed_symbols:
+                # Derive source_file_path from changed_files when exactly one is given
+                _source_file: str | None = None
+                if len(changed_files) == 1:
+                    _source_file = str(changed_files[0])
+
+                if _sym_graph is not None:
+                    _selections = resolve_changed_symbol_to_tests(
+                        _sym_graph, _sym, source_file_path=_source_file
+                    )
+                    _unresolved = len(_selections) == 0
+                    _gap_reason = (
+                        f"no source-span evidence found for symbol '{_sym}' in graph"
+                        if _unresolved
+                        else ""
+                    )
+                    _has_must_run = any(
+                        s.semantic_bucket == "must_run" for s in _selections
+                    )
+                    _coverage_gap_note = (
+                        ""
+                        if not _unresolved and _has_must_run
+                        else (
+                            "coverage_equivalence not satisfied: no must_run produced"
+                            if not _unresolved
+                            else _gap_reason
+                        )
+                    )
+                    symbol_query_results.append(
+                        {
+                            "changed_symbol": _sym,
+                            "source_file": _source_file,
+                            "unresolved": _unresolved,
+                            "coverage_gap_reason": _coverage_gap_note,
+                            "selection_count": len(_selections),
+                            "must_run_count": sum(
+                                1
+                                for s in _selections
+                                if s.semantic_bucket == "must_run"
+                            ),
+                            "selections": [
+                                {
+                                    "api_entity_id": s.candidate.api_entity_id.canonical(),
+                                    "semantic_bucket": s.semantic_bucket,
+                                    "runnability_state": s.runnability_state,
+                                    "coverage_equivalence": s.candidate.coverage_equivalence,
+                                    "order_score": s.order_score,
+                                }
+                                for s in _selections
+                            ],
+                        }
+                    )
+                else:
+                    # No graph available — report unresolved
+                    _no_graph_reason = (
+                        f"graph not found (searched {[str(r) for r in _graph_search_roots if r]})"
+                        if not _graph_load_error
+                        else f"graph load error: {_graph_load_error}"
+                    )
+                    symbol_query_results.append(
+                        {
+                            "changed_symbol": _sym,
+                            "source_file": _source_file,
+                            "unresolved": True,
+                            "coverage_gap_reason": _no_graph_reason,
+                            "selection_count": 0,
+                            "must_run_count": 0,
+                            "selections": [],
+                        }
+                    )
+
+            report["symbol_query"] = {
+                "schema_version": "symbol-query-v1",
+                "changed_symbols": list(changed_symbols),
+                "graph_path": str(_graph_path) if _graph_path else None,
+                "results": symbol_query_results,
+            }
+            report["timings_ms"]["symbol_query_graph"] = round(
+                (time.perf_counter() - sym_query_started) * 1000, 3
+            )
+        except Exception as exc:
+            report["symbol_query"] = {"error": str(exc)}
+    # ---- End symbol-precision graph query ----
+
     report["json_output_mode"] = "stdout" if json_to_stdout else "file"
     report["requested_devices"] = list(app_config.devices)
     report["execution_server_host"] = app_config.server_host or ""
