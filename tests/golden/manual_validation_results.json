@@ -1,12 +1,12 @@
 {
   "summary": {
-    "total_manual_cases": 40,
-    "executed": 40,
+    "total_manual_cases": 101,
+    "executed": 101,
     "skipped": 0,
     "selector_crashes": 0,
-    "selector_timeouts": 0,
-    "expected_api_observable": 34,
-    "expected_api_found": 34,
+    "selector_timeouts": 2,
+    "expected_api_observable": 95,
+    "expected_api_found": 95,
     "expected_api_missing": 0,
     "false_must_run_count": 0,
     "report_missing_affected_api_field_count": 0
@@ -37,7 +37,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 47.3,
+      "elapsed_sec": 20.7,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -86,7 +86,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 45.9,
+      "elapsed_sec": 33.5,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -136,7 +136,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 32.7,
+      "elapsed_sec": 22.6,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -203,7 +203,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 28.3,
+      "elapsed_sec": 22.2,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -280,7 +280,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 26.0,
+      "elapsed_sec": 31.8,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -375,7 +375,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 60.2,
+      "elapsed_sec": 58.3,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -472,7 +472,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 27.9,
+      "elapsed_sec": 24.2,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -549,7 +549,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 34.1,
+      "elapsed_sec": 23.6,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -611,7 +611,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 38.6,
+      "elapsed_sec": 31.1,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -658,7 +658,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 36.4,
+      "elapsed_sec": 30.1,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -705,7 +705,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 67.0,
+      "elapsed_sec": 67.6,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -752,7 +752,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 33.1,
+      "elapsed_sec": 52.2,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -825,7 +825,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 26.6,
+      "elapsed_sec": 55.7,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -907,7 +907,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 31.1,
+      "elapsed_sec": 45.8,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -963,7 +963,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 44.7,
+      "elapsed_sec": 87.5,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -1013,7 +1013,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 27.9,
+      "elapsed_sec": 58.5,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -1067,7 +1067,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 37.0,
+      "elapsed_sec": 51.1,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -1118,7 +1118,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 35.6,
+      "elapsed_sec": 62.4,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -1193,7 +1193,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 33.0,
+      "elapsed_sec": 44.8,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -1292,7 +1292,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 27.2,
+      "elapsed_sec": 48.9,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -1411,7 +1411,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 43.3,
+      "elapsed_sec": 101.6,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -1535,7 +1535,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 29.3,
+      "elapsed_sec": 46.1,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -1640,7 +1640,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 26.1,
+      "elapsed_sec": 47.3,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -1716,7 +1716,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 36.6,
+      "elapsed_sec": 62.3,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -1765,7 +1765,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 29.2,
+      "elapsed_sec": 33.9,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -1799,29 +1799,11 @@
       "actual_must_run": [],
       "missing_expected_apis": [],
       "false_must_run": [],
-      "report_missing_fields": [
-        "graph_selection",
-        "affected_apis",
-        "selected_tests",
-        "selection_debug",
-        "bucket_gate_blockers",
-        "semantic_bucket",
-        "runnability_state"
-      ],
-      "status": "pass",
-      "elapsed_sec": 54.3,
-      "all_selected_targets": [],
-      "report_has_fields": {
-        "graph_selection": false,
-        "affected_apis": false,
-        "selected_tests": false,
-        "affected_api_entities": true,
-        "selection_debug": false,
-        "bucket_gate_blockers": false,
-        "semantic_bucket": false,
-        "runnability_state": false
-      },
-      "negative_expectation_violations": []
+      "report_missing_fields": [],
+      "status": "timeout",
+      "elapsed_sec": 120.5,
+      "error": "Selector timeout after 120s",
+      "stderr": ""
     },
     {
       "case_id": "dynamic_jsview_file_012",
@@ -1841,7 +1823,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 27.8,
+      "elapsed_sec": 43.5,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -1863,29 +1845,11 @@
       "actual_must_run": [],
       "missing_expected_apis": [],
       "false_must_run": [],
-      "report_missing_fields": [
-        "graph_selection",
-        "affected_apis",
-        "selected_tests",
-        "selection_debug",
-        "bucket_gate_blockers",
-        "semantic_bucket",
-        "runnability_state"
-      ],
-      "status": "pass",
-      "elapsed_sec": 63.5,
-      "all_selected_targets": [],
-      "report_has_fields": {
-        "graph_selection": false,
-        "affected_apis": false,
-        "selected_tests": false,
-        "affected_api_entities": true,
-        "selection_debug": false,
-        "bucket_gate_blockers": false,
-        "semantic_bucket": false,
-        "runnability_state": false
-      },
-      "negative_expectation_violations": []
+      "report_missing_fields": [],
+      "status": "timeout",
+      "elapsed_sec": 120.4,
+      "error": "Selector timeout after 120s",
+      "stderr": ""
     },
     {
       "case_id": "broad_infra_render_node_018",
@@ -1905,7 +1869,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 49.3,
+      "elapsed_sec": 105.6,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -1937,7 +1901,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 26.2,
+      "elapsed_sec": 45.6,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -1969,7 +1933,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 31.2,
+      "elapsed_sec": 38.7,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -2006,7 +1970,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 31.0,
+      "elapsed_sec": 57.2,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -2053,7 +2017,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 36.5,
+      "elapsed_sec": 63.2,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -2100,7 +2064,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 31.9,
+      "elapsed_sec": 49.9,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -2193,7 +2157,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 32.0,
+      "elapsed_sec": 51.2,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -2308,7 +2272,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 27.9,
+      "elapsed_sec": 49.7,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -2377,7 +2341,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 41.3,
+      "elapsed_sec": 97.5,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -2425,7 +2389,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 32.8,
+      "elapsed_sec": 43.6,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -2473,7 +2437,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 35.7,
+      "elapsed_sec": 60.9,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -2546,7 +2510,7 @@
         "runnability_state"
       ],
       "status": "pass",
-      "elapsed_sec": 25.0,
+      "elapsed_sec": 40.9,
       "all_selected_targets": [],
       "report_has_fields": {
         "graph_selection": false,
@@ -2591,6 +2555,3345 @@
           "TabsAttribute.scrollable",
           "TabsAttribute.vertical",
           "TabsModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "blank_pattern_file_053",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/blank/blank_pattern.cpp",
+      "expected_apis": [
+        "Blank"
+      ],
+      "actual_affected_apis": [
+        "Blank",
+        "BlankModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 57.3,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Blank"
+        ],
+        "missing": [],
+        "unexpected": [
+          "BlankModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "blank_model_file_054",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/blank/blank_model.h",
+      "expected_apis": [
+        "Blank"
+      ],
+      "actual_affected_apis": [
+        "Blank",
+        "BlankAttribute.color",
+        "BlankModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 36.6,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Blank"
+        ],
+        "missing": [],
+        "unexpected": [
+          "BlankAttribute.color",
+          "BlankModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "blank_modifier_file_055",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/blank_modifier.cpp",
+      "expected_apis": [
+        "Blank"
+      ],
+      "actual_affected_apis": [
+        "Blank",
+        "BlankAttribute.color",
+        "BlankModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 38.6,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Blank"
+        ],
+        "missing": [],
+        "unexpected": [
+          "BlankAttribute.color",
+          "BlankModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "divider_pattern_file_056",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/divider/divider_pattern.cpp",
+      "expected_apis": [
+        "Divider"
+      ],
+      "actual_affected_apis": [
+        "Divider",
+        "DividerAttribute.color",
+        "DividerAttribute.vertical",
+        "DividerModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 38.9,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Divider"
+        ],
+        "missing": [],
+        "unexpected": [
+          "DividerAttribute.color",
+          "DividerAttribute.vertical",
+          "DividerModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "divider_model_file_057",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/divider/divider_model.h",
+      "expected_apis": [
+        "Divider"
+      ],
+      "actual_affected_apis": [
+        "Divider",
+        "DividerModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 61.2,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Divider"
+        ],
+        "missing": [],
+        "unexpected": [
+          "DividerModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "divider_modifier_file_058",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/divider_modifier.cpp",
+      "expected_apis": [
+        "Divider"
+      ],
+      "actual_affected_apis": [
+        "Divider",
+        "DividerAttribute.vertical",
+        "DividerModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 37.2,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Divider"
+        ],
+        "missing": [],
+        "unexpected": [
+          "DividerAttribute.vertical",
+          "DividerModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "column_model_file_059",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/linear_layout/column_model.h",
+      "expected_apis": [
+        "Column"
+      ],
+      "actual_affected_apis": [
+        "Column",
+        "ColumnAttribute.alignItems",
+        "ColumnAttribute.justifyContent",
+        "ColumnModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 46.1,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Column"
+        ],
+        "missing": [],
+        "unexpected": [
+          "ColumnAttribute.alignItems",
+          "ColumnAttribute.justifyContent",
+          "ColumnModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "column_modifier_file_060",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/column_modifier.cpp",
+      "expected_apis": [
+        "Column"
+      ],
+      "actual_affected_apis": [
+        "Column",
+        "ColumnAttribute.alignItems",
+        "ColumnAttribute.justifyContent",
+        "ColumnModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 43.8,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Column"
+        ],
+        "missing": [],
+        "unexpected": [
+          "ColumnAttribute.alignItems",
+          "ColumnAttribute.justifyContent",
+          "ColumnModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "row_model_file_061",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/linear_layout/row_model.h",
+      "expected_apis": [
+        "Row"
+      ],
+      "actual_affected_apis": [
+        "Row",
+        "RowAttribute.alignItems",
+        "RowAttribute.justifyContent",
+        "RowModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 47.0,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Row"
+        ],
+        "missing": [],
+        "unexpected": [
+          "RowAttribute.alignItems",
+          "RowAttribute.justifyContent",
+          "RowModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "row_modifier_file_062",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/row_modifier.cpp",
+      "expected_apis": [
+        "Row"
+      ],
+      "actual_affected_apis": [
+        "Row",
+        "RowAttribute.alignItems",
+        "RowAttribute.justifyContent",
+        "RowModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 42.6,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Row"
+        ],
+        "missing": [],
+        "unexpected": [
+          "RowAttribute.alignItems",
+          "RowAttribute.justifyContent",
+          "RowModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "stack_pattern_file_063",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stack/stack_pattern.cpp",
+      "expected_apis": [
+        "Stack"
+      ],
+      "actual_affected_apis": [
+        "Stack",
+        "StackModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 64.4,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Stack"
+        ],
+        "missing": [],
+        "unexpected": [
+          "StackModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "stack_model_file_064",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stack/stack_model.h",
+      "expected_apis": [
+        "Stack"
+      ],
+      "actual_affected_apis": [
+        "Stack",
+        "StackAttribute.syncLoad",
+        "StackModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 30.3,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Stack"
+        ],
+        "missing": [],
+        "unexpected": [
+          "StackAttribute.syncLoad",
+          "StackModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "stack_modifier_file_065",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/stack_modifier.cpp",
+      "expected_apis": [
+        "Stack"
+      ],
+      "actual_affected_apis": [
+        "Stack",
+        "StackAttribute.syncLoad",
+        "StackModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 33.6,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Stack"
+        ],
+        "missing": [],
+        "unexpected": [
+          "StackAttribute.syncLoad",
+          "StackModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "flex_model_file_066",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/flex/flex_model.h",
+      "expected_apis": [
+        "Flex"
+      ],
+      "actual_affected_apis": [
+        "Flex",
+        "FlexModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 80.4,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Flex"
+        ],
+        "missing": [],
+        "unexpected": [
+          "FlexModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "flex_modifier_file_067",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/flex_modifier.cpp",
+      "expected_apis": [
+        "Flex"
+      ],
+      "actual_affected_apis": [
+        "Flex",
+        "FlexModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 31.1,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Flex"
+        ],
+        "missing": [],
+        "unexpected": [
+          "FlexModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "counter_pattern_file_068",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/counter/counter_pattern.cpp",
+      "expected_apis": [
+        "Counter"
+      ],
+      "actual_affected_apis": [
+        "Counter",
+        "CounterModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 27.7,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Counter"
+        ],
+        "missing": [],
+        "unexpected": [
+          "CounterModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "counter_model_file_069",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/counter/counter_model.h",
+      "expected_apis": [
+        "Counter"
+      ],
+      "actual_affected_apis": [
+        "Counter",
+        "CounterAttribute.enableDec",
+        "CounterAttribute.enableInc",
+        "CounterAttribute.onDec",
+        "CounterAttribute.onInc",
+        "CounterModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 19.9,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Counter"
+        ],
+        "missing": [],
+        "unexpected": [
+          "CounterAttribute.enableDec",
+          "CounterAttribute.enableInc",
+          "CounterAttribute.onDec",
+          "CounterAttribute.onInc",
+          "CounterModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "counter_modifier_file_070",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/counter_modifier.cpp",
+      "expected_apis": [
+        "Counter"
+      ],
+      "actual_affected_apis": [
+        "Counter",
+        "CounterModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 28.1,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Counter"
+        ],
+        "missing": [],
+        "unexpected": [
+          "CounterModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "gauge_pattern_file_071",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/gauge/gauge_pattern.cpp",
+      "expected_apis": [
+        "Gauge"
+      ],
+      "actual_affected_apis": [
+        "Gauge",
+        "GaugeModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 28.4,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Gauge"
+        ],
+        "missing": [],
+        "unexpected": [
+          "GaugeModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "gauge_model_file_072",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/gauge/gauge_model.h",
+      "expected_apis": [
+        "Gauge"
+      ],
+      "actual_affected_apis": [
+        "Gauge",
+        "GaugeModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 27.5,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Gauge"
+        ],
+        "missing": [],
+        "unexpected": [
+          "GaugeModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "gauge_modifier_file_073",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/gauge_modifier.cpp",
+      "expected_apis": [
+        "Gauge"
+      ],
+      "actual_affected_apis": [
+        "Gauge",
+        "GaugeModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 26.2,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Gauge"
+        ],
+        "missing": [],
+        "unexpected": [
+          "GaugeModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "datapanel_pattern_file_074",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/data_panel/data_panel_pattern.cpp",
+      "expected_apis": [
+        "DataPanel"
+      ],
+      "actual_affected_apis": [
+        "DataPanel",
+        "DataPanelModifier",
+        "Panel",
+        "PanelModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 37.5,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "DataPanel"
+        ],
+        "missing": [],
+        "unexpected": [
+          "DataPanelModifier",
+          "Panel",
+          "PanelModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "datapanel_model_file_075",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/data_panel/data_panel_model.h",
+      "expected_apis": [
+        "DataPanel"
+      ],
+      "actual_affected_apis": [
+        "DataPanel",
+        "DataPanelModifier",
+        "Panel",
+        "PanelModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 37.2,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "DataPanel"
+        ],
+        "missing": [],
+        "unexpected": [
+          "DataPanelModifier",
+          "Panel",
+          "PanelModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "datapanel_modifier_file_076",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/data_panel_modifier.cpp",
+      "expected_apis": [
+        "DataPanel"
+      ],
+      "actual_affected_apis": [
+        "DataPanel",
+        "DataPanelModifier",
+        "Panel",
+        "PanelModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 37.7,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "DataPanel"
+        ],
+        "missing": [],
+        "unexpected": [
+          "DataPanelModifier",
+          "Panel",
+          "PanelModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "marquee_pattern_file_077",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/marquee/marquee_pattern.cpp",
+      "expected_apis": [
+        "Marquee"
+      ],
+      "actual_affected_apis": [
+        "Marquee",
+        "MarqueeAttribute.fontColor",
+        "MarqueeAttribute.fontFamily",
+        "MarqueeAttribute.fontSize",
+        "MarqueeAttribute.fontWeight",
+        "MarqueeAttribute.marqueeUpdateStrategy",
+        "MarqueeModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 23.9,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Marquee"
+        ],
+        "missing": [],
+        "unexpected": [
+          "MarqueeAttribute.fontColor",
+          "MarqueeAttribute.fontFamily",
+          "MarqueeAttribute.fontSize",
+          "MarqueeAttribute.fontWeight",
+          "MarqueeAttribute.marqueeUpdateStrategy",
+          "MarqueeModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "marquee_model_file_078",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/marquee/marquee_model.h",
+      "expected_apis": [
+        "Marquee"
+      ],
+      "actual_affected_apis": [
+        "Marquee",
+        "MarqueeAttribute.allowScale",
+        "MarqueeAttribute.fontFamily",
+        "MarqueeAttribute.fontSize",
+        "MarqueeAttribute.fontWeight",
+        "MarqueeAttribute.marqueeUpdateStrategy",
+        "MarqueeAttribute.onBounce",
+        "MarqueeAttribute.onFinish",
+        "MarqueeAttribute.onStart",
+        "MarqueeAttribute.onStop",
+        "MarqueeModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 23.2,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Marquee"
+        ],
+        "missing": [],
+        "unexpected": [
+          "MarqueeAttribute.allowScale",
+          "MarqueeAttribute.fontFamily",
+          "MarqueeAttribute.fontSize",
+          "MarqueeAttribute.fontWeight",
+          "MarqueeAttribute.marqueeUpdateStrategy",
+          "MarqueeAttribute.onBounce",
+          "MarqueeAttribute.onFinish",
+          "MarqueeAttribute.onStart",
+          "MarqueeAttribute.onStop",
+          "MarqueeModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "marquee_modifier_file_079",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/marquee_modifier.cpp",
+      "expected_apis": [
+        "Marquee"
+      ],
+      "actual_affected_apis": [
+        "Marquee",
+        "MarqueeModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 26.9,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Marquee"
+        ],
+        "missing": [],
+        "unexpected": [
+          "MarqueeModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "rating_pattern_file_080",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/rating/rating_pattern.cpp",
+      "expected_apis": [
+        "Rating"
+      ],
+      "actual_affected_apis": [
+        "Rating",
+        "RatingModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 29.3,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Rating"
+        ],
+        "missing": [],
+        "unexpected": [
+          "RatingModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "rating_model_file_081",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/rating/rating_model.h",
+      "expected_apis": [
+        "Rating"
+      ],
+      "actual_affected_apis": [
+        "Rating",
+        "RatingModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 27.5,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Rating"
+        ],
+        "missing": [],
+        "unexpected": [
+          "RatingModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "rating_modifier_file_082",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/rating_modifier.cpp",
+      "expected_apis": [
+        "Rating"
+      ],
+      "actual_affected_apis": [
+        "Rating",
+        "RatingModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 27.1,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Rating"
+        ],
+        "missing": [],
+        "unexpected": [
+          "RatingModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "video_pattern_file_083",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/video/video_pattern.cpp",
+      "expected_apis": [
+        "Video"
+      ],
+      "actual_affected_apis": [
+        "Video",
+        "VideoAttribute.autoPlay",
+        "VideoAttribute.loop",
+        "VideoAttribute.muted",
+        "VideoAttribute.objectFit",
+        "VideoAttribute.surfaceBackgroundColor",
+        "VideoModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 21.1,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Video"
+        ],
+        "missing": [],
+        "unexpected": [
+          "VideoAttribute.autoPlay",
+          "VideoAttribute.loop",
+          "VideoAttribute.muted",
+          "VideoAttribute.objectFit",
+          "VideoAttribute.surfaceBackgroundColor",
+          "VideoModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "video_model_file_084",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/video/video_model.h",
+      "expected_apis": [
+        "Video"
+      ],
+      "actual_affected_apis": [
+        "Video",
+        "VideoAttribute.autoPlay",
+        "VideoAttribute.controls",
+        "VideoAttribute.loop",
+        "VideoAttribute.muted",
+        "VideoAttribute.objectFit",
+        "VideoAttribute.onError",
+        "VideoAttribute.onFinish",
+        "VideoAttribute.onPause",
+        "VideoAttribute.onPrepared",
+        "VideoAttribute.onSeeked",
+        "VideoAttribute.onSeeking",
+        "VideoAttribute.onStart",
+        "VideoAttribute.onStop",
+        "VideoAttribute.onUpdate",
+        "VideoAttribute.surfaceBackgroundColor",
+        "VideoModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 21.0,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Video"
+        ],
+        "missing": [],
+        "unexpected": [
+          "VideoAttribute.autoPlay",
+          "VideoAttribute.controls",
+          "VideoAttribute.loop",
+          "VideoAttribute.muted",
+          "VideoAttribute.objectFit",
+          "VideoAttribute.onError",
+          "VideoAttribute.onFinish",
+          "VideoAttribute.onPause",
+          "VideoAttribute.onPrepared",
+          "VideoAttribute.onSeeked",
+          "VideoAttribute.onSeeking",
+          "VideoAttribute.onStart",
+          "VideoAttribute.onStop",
+          "VideoAttribute.onUpdate",
+          "VideoAttribute.surfaceBackgroundColor",
+          "VideoModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "video_modifier_file_085",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/video_modifier.cpp",
+      "expected_apis": [
+        "Video"
+      ],
+      "actual_affected_apis": [
+        "Video",
+        "VideoAttribute.autoPlay",
+        "VideoAttribute.controls",
+        "VideoAttribute.loop",
+        "VideoAttribute.muted",
+        "VideoAttribute.objectFit",
+        "VideoAttribute.onError",
+        "VideoAttribute.onFinish",
+        "VideoAttribute.onPause",
+        "VideoAttribute.onPrepared",
+        "VideoAttribute.onSeeked",
+        "VideoAttribute.onSeeking",
+        "VideoAttribute.onStart",
+        "VideoAttribute.onStop",
+        "VideoAttribute.onUpdate",
+        "VideoAttribute.surfaceBackgroundColor",
+        "VideoModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 20.9,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Video"
+        ],
+        "missing": [],
+        "unexpected": [
+          "VideoAttribute.autoPlay",
+          "VideoAttribute.controls",
+          "VideoAttribute.loop",
+          "VideoAttribute.muted",
+          "VideoAttribute.objectFit",
+          "VideoAttribute.onError",
+          "VideoAttribute.onFinish",
+          "VideoAttribute.onPause",
+          "VideoAttribute.onPrepared",
+          "VideoAttribute.onSeeked",
+          "VideoAttribute.onSeeking",
+          "VideoAttribute.onStart",
+          "VideoAttribute.onStop",
+          "VideoAttribute.onUpdate",
+          "VideoAttribute.surfaceBackgroundColor",
+          "VideoModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "panel_pattern_file_086",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/panel/sliding_panel_pattern.cpp",
+      "expected_apis": [
+        "Panel"
+      ],
+      "actual_affected_apis": [
+        "Panel",
+        "PanelModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 23.8,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Panel"
+        ],
+        "missing": [],
+        "unexpected": [
+          "PanelModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "panel_model_file_087",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/panel/sliding_panel_model.h",
+      "expected_apis": [
+        "Panel"
+      ],
+      "actual_affected_apis": [
+        "Panel",
+        "PanelModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 23.9,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Panel"
+        ],
+        "missing": [],
+        "unexpected": [
+          "PanelModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "panel_modifier_file_088",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/node/panel_modifier.cpp",
+      "expected_apis": [
+        "Panel"
+      ],
+      "actual_affected_apis": [
+        "Panel",
+        "PanelModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 25.6,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Panel"
+        ],
+        "missing": [],
+        "unexpected": [
+          "PanelModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "stepper_pattern_file_089",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/stepper_pattern.cpp",
+      "expected_apis": [
+        "Stepper"
+      ],
+      "actual_affected_apis": [
+        "Stepper",
+        "StepperModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 30.5,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Stepper"
+        ],
+        "missing": [],
+        "unexpected": [
+          "StepperModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "stepper_model_file_090",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/stepper_model.h",
+      "expected_apis": [
+        "Stepper"
+      ],
+      "actual_affected_apis": [
+        "Stepper",
+        "StepperModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 27.5,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Stepper"
+        ],
+        "missing": [],
+        "unexpected": [
+          "StepperModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "stepper_modifier_file_091",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/stepper_modifier.cpp",
+      "expected_apis": [
+        "Stepper"
+      ],
+      "actual_affected_apis": [
+        "Stepper",
+        "StepperModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 27.8,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Stepper"
+        ],
+        "missing": [],
+        "unexpected": [
+          "StepperModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "hyperlink_pattern_file_092",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/hyperlink/hyperlink_pattern.cpp",
+      "expected_apis": [
+        "Hyperlink"
+      ],
+      "actual_affected_apis": [
+        "Hyperlink",
+        "HyperlinkAttribute.color",
+        "HyperlinkModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 22.1,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Hyperlink"
+        ],
+        "missing": [],
+        "unexpected": [
+          "HyperlinkAttribute.color",
+          "HyperlinkModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "hyperlink_model_file_093",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/hyperlink/hyperlink_model.h",
+      "expected_apis": [
+        "Hyperlink"
+      ],
+      "actual_affected_apis": [
+        "Hyperlink",
+        "HyperlinkAttribute.color",
+        "HyperlinkModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 21.3,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Hyperlink"
+        ],
+        "missing": [],
+        "unexpected": [
+          "HyperlinkAttribute.color",
+          "HyperlinkModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "hyperlink_modifier_file_094",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/hyperlink_modifier.cpp",
+      "expected_apis": [
+        "Hyperlink"
+      ],
+      "actual_affected_apis": [
+        "Hyperlink",
+        "HyperlinkModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 25.0,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Hyperlink"
+        ],
+        "missing": [],
+        "unexpected": [
+          "HyperlinkModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "textarea_pattern_file_095",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text_area/text_area_pattern.h",
+      "expected_apis": [
+        "TextArea"
+      ],
+      "actual_affected_apis": [
+        "Text",
+        "TextArea",
+        "TextAreaModifier",
+        "TextModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 62.5,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "TextArea"
+        ],
+        "missing": [],
+        "unexpected": [
+          "Text",
+          "TextAreaModifier",
+          "TextModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "textarea_modifier_file_096",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/text_area_modifier.cpp",
+      "expected_apis": [
+        "TextArea"
+      ],
+      "actual_affected_apis": [
+        "Text",
+        "TextArea",
+        "TextAreaModifier",
+        "TextAttribute.caretColor",
+        "TextAttribute.compressLeadingPunctuation",
+        "TextAttribute.copyOption",
+        "TextAttribute.ellipsisMode",
+        "TextAttribute.enableAutoSpacing",
+        "TextAttribute.enableHapticFeedback",
+        "TextAttribute.fallbackLineSpacing",
+        "TextAttribute.fontFamily",
+        "TextAttribute.fontFeature",
+        "TextAttribute.fontSize",
+        "TextAttribute.fontStyle",
+        "TextAttribute.fontWeight",
+        "TextAttribute.halfLeading",
+        "TextAttribute.heightAdaptivePolicy",
+        "TextAttribute.includeFontPadding",
+        "TextAttribute.letterSpacing",
+        "TextAttribute.lineBreakStrategy",
+        "TextAttribute.lineHeight",
+        "TextAttribute.lineSpacing",
+        "TextAttribute.maxFontScale",
+        "TextAttribute.minFontScale",
+        "TextAttribute.minLines",
+        "TextAttribute.onCopy",
+        "TextAttribute.onTextSelectionChange",
+        "TextAttribute.onWillCopy",
+        "TextAttribute.orphanCharOptimization",
+        "TextAttribute.selectedBackgroundColor",
+        "TextAttribute.selectedDragPreviewStyle",
+        "TextAttribute.textAlign",
+        "TextAttribute.textDirection",
+        "TextAttribute.textIndent",
+        "TextAttribute.textOverflow",
+        "TextAttribute.wordBreak",
+        "TextModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 40.0,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "TextArea"
+        ],
+        "missing": [],
+        "unexpected": [
+          "Text",
+          "TextAreaModifier",
+          "TextAttribute.caretColor",
+          "TextAttribute.compressLeadingPunctuation",
+          "TextAttribute.copyOption",
+          "TextAttribute.ellipsisMode",
+          "TextAttribute.enableAutoSpacing",
+          "TextAttribute.enableHapticFeedback",
+          "TextAttribute.fallbackLineSpacing",
+          "TextAttribute.fontFamily",
+          "TextAttribute.fontFeature",
+          "TextAttribute.fontSize",
+          "TextAttribute.fontStyle",
+          "TextAttribute.fontWeight",
+          "TextAttribute.halfLeading",
+          "TextAttribute.heightAdaptivePolicy",
+          "TextAttribute.includeFontPadding",
+          "TextAttribute.letterSpacing",
+          "TextAttribute.lineBreakStrategy",
+          "TextAttribute.lineHeight",
+          "TextAttribute.lineSpacing",
+          "TextAttribute.maxFontScale",
+          "TextAttribute.minFontScale",
+          "TextAttribute.minLines",
+          "TextAttribute.onCopy",
+          "TextAttribute.onTextSelectionChange",
+          "TextAttribute.onWillCopy",
+          "TextAttribute.orphanCharOptimization",
+          "TextAttribute.selectedBackgroundColor",
+          "TextAttribute.selectedDragPreviewStyle",
+          "TextAttribute.textAlign",
+          "TextAttribute.textDirection",
+          "TextAttribute.textIndent",
+          "TextAttribute.textOverflow",
+          "TextAttribute.wordBreak",
+          "TextModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "datepicker_pattern_file_097",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/picker/datepicker_pattern.cpp",
+      "expected_apis": [
+        "DatePicker"
+      ],
+      "actual_affected_apis": [
+        "DatePicker",
+        "DatePickerModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 27.6,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "DatePicker"
+        ],
+        "missing": [],
+        "unexpected": [
+          "DatePickerModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "datepicker_model_file_098",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/picker/datepicker_model_ng.h",
+      "expected_apis": [
+        "DatePicker"
+      ],
+      "actual_affected_apis": [
+        "DatePicker",
+        "DatePickerModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 27.6,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "DatePicker"
+        ],
+        "missing": [],
+        "unexpected": [
+          "DatePickerModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "datepicker_modifier_file_099",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/date_picker_modifier.cpp",
+      "expected_apis": [
+        "DatePicker"
+      ],
+      "actual_affected_apis": [
+        "DatePicker",
+        "DatePickerModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 24.3,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "DatePicker"
+        ],
+        "missing": [],
+        "unexpected": [
+          "DatePickerModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "timepicker_pattern_file_100",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/time_picker/timepicker_column_pattern.cpp",
+      "expected_apis": [
+        "TimePicker"
+      ],
+      "actual_affected_apis": [
+        "Column",
+        "ColumnModifier",
+        "TimePicker",
+        "TimePickerModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 48.8,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "TimePicker"
+        ],
+        "missing": [],
+        "unexpected": [
+          "Column",
+          "ColumnModifier",
+          "TimePickerModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "timepicker_model_file_101",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/time_picker/timepicker_model.h",
+      "expected_apis": [
+        "TimePicker"
+      ],
+      "actual_affected_apis": [
+        "TimePicker",
+        "TimePickerModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 38.4,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "TimePicker"
+        ],
+        "missing": [],
+        "unexpected": [
+          "TimePickerModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "timepicker_modifier_file_102",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/time_picker_modifier.cpp",
+      "expected_apis": [
+        "TimePicker"
+      ],
+      "actual_affected_apis": [
+        "TimePicker",
+        "TimePickerModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 39.5,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "TimePicker"
+        ],
+        "missing": [],
+        "unexpected": [
+          "TimePickerModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "navigation_pattern_file_103",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/navigation/navigation_pattern.cpp",
+      "expected_apis": [
+        "Navigation"
+      ],
+      "actual_affected_apis": [
+        "Navigation",
+        "NavigationAttribute.enableModeChangeAnimation",
+        "NavigationAttribute.enableVisibilityLifecycleWithContentCover",
+        "NavigationAttribute.hideNavBar",
+        "NavigationAttribute.mode",
+        "NavigationAttribute.navBarPosition",
+        "NavigationAttribute.systemBarStyle",
+        "NavigationAttribute.title",
+        "NavigationModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 21.0,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Navigation"
+        ],
+        "missing": [],
+        "unexpected": [
+          "NavigationAttribute.enableModeChangeAnimation",
+          "NavigationAttribute.enableVisibilityLifecycleWithContentCover",
+          "NavigationAttribute.hideNavBar",
+          "NavigationAttribute.mode",
+          "NavigationAttribute.navBarPosition",
+          "NavigationAttribute.systemBarStyle",
+          "NavigationAttribute.title",
+          "NavigationModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "navigation_model_file_104",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/navigation/navigation_model.h",
+      "expected_apis": [
+        "Navigation"
+      ],
+      "actual_affected_apis": [
+        "Navigation",
+        "NavigationAttribute.backButtonIcon",
+        "NavigationAttribute.enableDragBar",
+        "NavigationAttribute.enableModeChangeAnimation",
+        "NavigationAttribute.enableToolBarAdaptation",
+        "NavigationAttribute.enableVisibilityLifecycleWithContentCover",
+        "NavigationAttribute.hideBackButton",
+        "NavigationAttribute.hideNavBar",
+        "NavigationAttribute.hideTitleBar",
+        "NavigationAttribute.hideToolBar",
+        "NavigationAttribute.ignoreLayoutSafeArea",
+        "NavigationAttribute.minContentWidth",
+        "NavigationAttribute.navBarPosition",
+        "NavigationAttribute.navBarWidth",
+        "NavigationAttribute.navDestination",
+        "NavigationAttribute.onNavBarStateChange",
+        "NavigationAttribute.onNavigationModeChange",
+        "NavigationAttribute.onTitleModeChange",
+        "NavigationAttribute.recoverable",
+        "NavigationAttribute.systemBarStyle",
+        "NavigationAttribute.title",
+        "NavigationAttribute.titleMode",
+        "NavigationAttribute.toolbarConfiguration",
+        "NavigationModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 21.1,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Navigation"
+        ],
+        "missing": [],
+        "unexpected": [
+          "NavigationAttribute.backButtonIcon",
+          "NavigationAttribute.enableDragBar",
+          "NavigationAttribute.enableModeChangeAnimation",
+          "NavigationAttribute.enableToolBarAdaptation",
+          "NavigationAttribute.enableVisibilityLifecycleWithContentCover",
+          "NavigationAttribute.hideBackButton",
+          "NavigationAttribute.hideNavBar",
+          "NavigationAttribute.hideTitleBar",
+          "NavigationAttribute.hideToolBar",
+          "NavigationAttribute.ignoreLayoutSafeArea",
+          "NavigationAttribute.minContentWidth",
+          "NavigationAttribute.navBarPosition",
+          "NavigationAttribute.navBarWidth",
+          "NavigationAttribute.navDestination",
+          "NavigationAttribute.onNavBarStateChange",
+          "NavigationAttribute.onNavigationModeChange",
+          "NavigationAttribute.onTitleModeChange",
+          "NavigationAttribute.recoverable",
+          "NavigationAttribute.systemBarStyle",
+          "NavigationAttribute.title",
+          "NavigationAttribute.titleMode",
+          "NavigationAttribute.toolbarConfiguration",
+          "NavigationModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "navigation_modifier_file_105",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/navigation_modifier.cpp",
+      "expected_apis": [
+        "Navigation"
+      ],
+      "actual_affected_apis": [
+        "Navigation",
+        "NavigationAttribute.backButtonIcon",
+        "NavigationAttribute.enableDragBar",
+        "NavigationAttribute.enableModeChangeAnimation",
+        "NavigationAttribute.enableToolBarAdaptation",
+        "NavigationAttribute.enableVisibilityLifecycleWithContentCover",
+        "NavigationAttribute.hideBackButton",
+        "NavigationAttribute.hideNavBar",
+        "NavigationAttribute.hideTitleBar",
+        "NavigationAttribute.hideToolBar",
+        "NavigationAttribute.ignoreLayoutSafeArea",
+        "NavigationAttribute.minContentWidth",
+        "NavigationAttribute.navBarPosition",
+        "NavigationAttribute.navBarWidth",
+        "NavigationAttribute.onNavBarStateChange",
+        "NavigationAttribute.onNavigationModeChange",
+        "NavigationAttribute.onTitleModeChange",
+        "NavigationAttribute.recoverable",
+        "NavigationAttribute.systemBarStyle",
+        "NavigationAttribute.titleMode",
+        "NavigationAttribute.toolbarConfiguration",
+        "NavigationModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 20.8,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Navigation"
+        ],
+        "missing": [],
+        "unexpected": [
+          "NavigationAttribute.backButtonIcon",
+          "NavigationAttribute.enableDragBar",
+          "NavigationAttribute.enableModeChangeAnimation",
+          "NavigationAttribute.enableToolBarAdaptation",
+          "NavigationAttribute.enableVisibilityLifecycleWithContentCover",
+          "NavigationAttribute.hideBackButton",
+          "NavigationAttribute.hideNavBar",
+          "NavigationAttribute.hideTitleBar",
+          "NavigationAttribute.hideToolBar",
+          "NavigationAttribute.ignoreLayoutSafeArea",
+          "NavigationAttribute.minContentWidth",
+          "NavigationAttribute.navBarPosition",
+          "NavigationAttribute.navBarWidth",
+          "NavigationAttribute.onNavBarStateChange",
+          "NavigationAttribute.onNavigationModeChange",
+          "NavigationAttribute.onTitleModeChange",
+          "NavigationAttribute.recoverable",
+          "NavigationAttribute.systemBarStyle",
+          "NavigationAttribute.titleMode",
+          "NavigationAttribute.toolbarConfiguration",
+          "NavigationModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "textinput_model_file_106",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/text_field/text_field_model.h",
+      "expected_apis": [
+        "TextInput"
+      ],
+      "actual_affected_apis": [
+        "Text",
+        "TextAttribute.caretColor",
+        "TextAttribute.compressLeadingPunctuation",
+        "TextAttribute.copyOption",
+        "TextAttribute.ellipsisMode",
+        "TextAttribute.enableAutoSpacing",
+        "TextAttribute.enableHapticFeedback",
+        "TextAttribute.fallbackLineSpacing",
+        "TextAttribute.fontColor",
+        "TextAttribute.fontFamily",
+        "TextAttribute.fontFeature",
+        "TextAttribute.fontSize",
+        "TextAttribute.fontStyle",
+        "TextAttribute.fontVariations",
+        "TextAttribute.fontWeight",
+        "TextAttribute.halfLeading",
+        "TextAttribute.heightAdaptivePolicy",
+        "TextAttribute.includeFontPadding",
+        "TextAttribute.letterSpacing",
+        "TextAttribute.lineBreakStrategy",
+        "TextAttribute.lineHeight",
+        "TextAttribute.lineSpacing",
+        "TextAttribute.maxFontScale",
+        "TextAttribute.maxLines",
+        "TextAttribute.minFontScale",
+        "TextAttribute.minLines",
+        "TextAttribute.onCopy",
+        "TextAttribute.onTextSelectionChange",
+        "TextAttribute.onWillCopy",
+        "TextAttribute.orphanCharOptimization",
+        "TextAttribute.selectedBackgroundColor",
+        "TextAttribute.selectedDragPreviewStyle",
+        "TextAttribute.selection",
+        "TextAttribute.textAlign",
+        "TextAttribute.textDirection",
+        "TextAttribute.textIndent",
+        "TextAttribute.textOverflow",
+        "TextAttribute.wordBreak",
+        "TextInput",
+        "TextInputModifier",
+        "TextModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 39.9,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "TextInput"
+        ],
+        "missing": [],
+        "unexpected": [
+          "Text",
+          "TextAttribute.caretColor",
+          "TextAttribute.compressLeadingPunctuation",
+          "TextAttribute.copyOption",
+          "TextAttribute.ellipsisMode",
+          "TextAttribute.enableAutoSpacing",
+          "TextAttribute.enableHapticFeedback",
+          "TextAttribute.fallbackLineSpacing",
+          "TextAttribute.fontColor",
+          "TextAttribute.fontFamily",
+          "TextAttribute.fontFeature",
+          "TextAttribute.fontSize",
+          "TextAttribute.fontStyle",
+          "TextAttribute.fontVariations",
+          "TextAttribute.fontWeight",
+          "TextAttribute.halfLeading",
+          "TextAttribute.heightAdaptivePolicy",
+          "TextAttribute.includeFontPadding",
+          "TextAttribute.letterSpacing",
+          "TextAttribute.lineBreakStrategy",
+          "TextAttribute.lineHeight",
+          "TextAttribute.lineSpacing",
+          "TextAttribute.maxFontScale",
+          "TextAttribute.maxLines",
+          "TextAttribute.minFontScale",
+          "TextAttribute.minLines",
+          "TextAttribute.onCopy",
+          "TextAttribute.onTextSelectionChange",
+          "TextAttribute.onWillCopy",
+          "TextAttribute.orphanCharOptimization",
+          "TextAttribute.selectedBackgroundColor",
+          "TextAttribute.selectedDragPreviewStyle",
+          "TextAttribute.selection",
+          "TextAttribute.textAlign",
+          "TextAttribute.textDirection",
+          "TextAttribute.textIndent",
+          "TextAttribute.textOverflow",
+          "TextAttribute.wordBreak",
+          "TextInputModifier",
+          "TextModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "textinput_modifier_file_107",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/interfaces/native/implementation/text_input_modifier.cpp",
+      "expected_apis": [
+        "TextInput"
+      ],
+      "actual_affected_apis": [
+        "Text",
+        "TextAttribute.caretColor",
+        "TextAttribute.compressLeadingPunctuation",
+        "TextAttribute.copyOption",
+        "TextAttribute.ellipsisMode",
+        "TextAttribute.enableAutoSpacing",
+        "TextAttribute.enableHapticFeedback",
+        "TextAttribute.fallbackLineSpacing",
+        "TextAttribute.fontFamily",
+        "TextAttribute.fontFeature",
+        "TextAttribute.fontSize",
+        "TextAttribute.fontStyle",
+        "TextAttribute.fontWeight",
+        "TextAttribute.halfLeading",
+        "TextAttribute.heightAdaptivePolicy",
+        "TextAttribute.includeFontPadding",
+        "TextAttribute.letterSpacing",
+        "TextAttribute.lineBreakStrategy",
+        "TextAttribute.lineHeight",
+        "TextAttribute.maxFontScale",
+        "TextAttribute.minFontScale",
+        "TextAttribute.onCopy",
+        "TextAttribute.onTextSelectionChange",
+        "TextAttribute.onWillCopy",
+        "TextAttribute.orphanCharOptimization",
+        "TextAttribute.selectedBackgroundColor",
+        "TextAttribute.selectedDragPreviewStyle",
+        "TextAttribute.textAlign",
+        "TextAttribute.textDirection",
+        "TextAttribute.textIndent",
+        "TextAttribute.textOverflow",
+        "TextAttribute.wordBreak",
+        "TextInput",
+        "TextInputModifier",
+        "TextModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 38.7,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "TextInput"
+        ],
+        "missing": [],
+        "unexpected": [
+          "Text",
+          "TextAttribute.caretColor",
+          "TextAttribute.compressLeadingPunctuation",
+          "TextAttribute.copyOption",
+          "TextAttribute.ellipsisMode",
+          "TextAttribute.enableAutoSpacing",
+          "TextAttribute.enableHapticFeedback",
+          "TextAttribute.fallbackLineSpacing",
+          "TextAttribute.fontFamily",
+          "TextAttribute.fontFeature",
+          "TextAttribute.fontSize",
+          "TextAttribute.fontStyle",
+          "TextAttribute.fontWeight",
+          "TextAttribute.halfLeading",
+          "TextAttribute.heightAdaptivePolicy",
+          "TextAttribute.includeFontPadding",
+          "TextAttribute.letterSpacing",
+          "TextAttribute.lineBreakStrategy",
+          "TextAttribute.lineHeight",
+          "TextAttribute.maxFontScale",
+          "TextAttribute.minFontScale",
+          "TextAttribute.onCopy",
+          "TextAttribute.onTextSelectionChange",
+          "TextAttribute.onWillCopy",
+          "TextAttribute.orphanCharOptimization",
+          "TextAttribute.selectedBackgroundColor",
+          "TextAttribute.selectedDragPreviewStyle",
+          "TextAttribute.textAlign",
+          "TextAttribute.textDirection",
+          "TextAttribute.textIndent",
+          "TextAttribute.textOverflow",
+          "TextAttribute.wordBreak",
+          "TextInputModifier",
+          "TextModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "blank_pattern_header_108",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/blank/blank_pattern.h",
+      "expected_apis": [
+        "Blank"
+      ],
+      "actual_affected_apis": [
+        "Blank",
+        "BlankModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 27.9,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Blank"
+        ],
+        "missing": [],
+        "unexpected": [
+          "BlankModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "divider_pattern_header_109",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/divider/divider_pattern.h",
+      "expected_apis": [
+        "Divider"
+      ],
+      "actual_affected_apis": [
+        "Divider",
+        "DividerModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 30.1,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Divider"
+        ],
+        "missing": [],
+        "unexpected": [
+          "DividerModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "stack_pattern_header_110",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stack/stack_pattern.h",
+      "expected_apis": [
+        "Stack"
+      ],
+      "actual_affected_apis": [
+        "Stack",
+        "StackModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 29.8,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Stack"
+        ],
+        "missing": [],
+        "unexpected": [
+          "StackModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "flex_pattern_header_111",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/flex/flex_layout_pattern.h",
+      "expected_apis": [
+        "Flex"
+      ],
+      "actual_affected_apis": [
+        "Flex",
+        "FlexModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 37.1,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Flex"
+        ],
+        "missing": [],
+        "unexpected": [
+          "FlexModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "counter_pattern_header_112",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/counter/counter_pattern.h",
+      "expected_apis": [
+        "Counter"
+      ],
+      "actual_affected_apis": [
+        "Counter",
+        "CounterModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 26.4,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Counter"
+        ],
+        "missing": [],
+        "unexpected": [
+          "CounterModifier"
+        ],
+        "status": "partial"
+      },
+      "negative_expectation_violations": []
+    },
+    {
+      "case_id": "stepper_pattern_header_113",
+      "changed_file": "foundation/arkui/ace_engine/frameworks/core/components_ng/pattern/stepper/stepper_pattern.h",
+      "expected_apis": [
+        "Stepper"
+      ],
+      "actual_affected_apis": [
+        "Stepper",
+        "StepperModifier"
+      ],
+      "actual_must_run": [],
+      "missing_expected_apis": [],
+      "false_must_run": [],
+      "report_missing_fields": [
+        "graph_selection",
+        "affected_apis",
+        "selected_tests",
+        "selection_debug",
+        "bucket_gate_blockers",
+        "semantic_bucket",
+        "runnability_state"
+      ],
+      "status": "pass",
+      "elapsed_sec": 28.5,
+      "all_selected_targets": [],
+      "report_has_fields": {
+        "graph_selection": false,
+        "affected_apis": false,
+        "selected_tests": false,
+        "affected_api_entities": true,
+        "selection_debug": false,
+        "bucket_gate_blockers": false,
+        "semantic_bucket": false,
+        "runnability_state": false
+      },
+      "api_comparison": {
+        "found": [
+          "Stepper"
+        ],
+        "missing": [],
+        "unexpected": [
+          "StepperModifier"
         ],
         "status": "partial"
       },

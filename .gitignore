@@ -11,6 +11,7 @@ build/
 dist/
 
 arkui_xts_selector_report.json
+selected_tests.json
 work.zip
 .runs/
 local/

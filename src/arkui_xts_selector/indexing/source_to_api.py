@@ -225,7 +225,7 @@ def _map_method_by_role(
             method_name, qualified, role, file_path, family, sdk_index
         )
 
-    if role == "model_ng":
+    if role in ("model_ng", "model_other"):
         return _map_model_ng(method_name, qualified, role, file_path, family, sdk_index)
 
     if role == "native_modifier":
