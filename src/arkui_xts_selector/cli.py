@@ -1204,6 +1204,19 @@ def parse_args() -> argparse.Namespace:
         help="Optional changed line range used to derive touched source symbols, in 'start:end' or 'path:start:end' form. Can be repeated.",
     )
     parser.add_argument(
+        "--changed-lines",
+        action="append",
+        default=[],
+        help=(
+            "Changed hunk specified as PATH:START-END (1-based, inclusive). "
+            "Requires --use-graph-resolver. "
+            "Resolves changed line range to overlapping source symbols via an "
+            "externally-supplied symbol index, then queries the graph for tests. "
+            "Example: foundation/arkui/ace_engine/frameworks/core/components_ng/"
+            "pattern/button/button_model_ng.cpp:10-50. Can be repeated."
+        ),
+    )
+    parser.add_argument(
         "--symbol-query",
         action="append",
         default=[],
@@ -3071,6 +3084,135 @@ def main() -> int:
         except Exception as exc:
             report["symbol_query"] = {"error": str(exc)}
     # ---- End symbol-precision graph query ----
+
+    # ---- Hunk-precision graph query (opt-in, --changed-lines + --use-graph-resolver) ----
+    _raw_changed_lines = [
+        item.strip() for item in args.changed_lines if item and item.strip()
+    ]
+    if _raw_changed_lines and not args.use_graph_resolver:
+        print(
+            "warning: --changed-lines requires --use-graph-resolver, ignoring hunk query",
+            file=sys.stderr,
+        )
+    if args.use_graph_resolver and _raw_changed_lines:
+        hunk_query_started = time.perf_counter()
+        try:
+            from .hunk_impact import (
+                parse_changed_lines_arg,
+                resolve_hunk_to_symbols,
+                HunkQueryEntry,
+                _compute_overall_bucket,
+            )
+            from .graph.resolver import resolve_changed_symbol_to_tests
+            from .graph.schema import Graph
+
+            # Reuse graph path resolution from symbol_query block above
+            _hq_graph_path: "Path | None" = None
+            _hq_graph_search_roots = [
+                app_config.runtime_state_root,
+                PROJECT_ROOT / "config",
+                PROJECT_ROOT,
+            ]
+            for _hq_root in _hq_graph_search_roots:
+                if _hq_root is None:
+                    continue
+                _hq_candidate = Path(_hq_root) / "api_graph.json"
+                if _hq_candidate.is_file():
+                    _hq_graph_path = _hq_candidate
+                    break
+
+            _hq_graph: "Graph | None" = None
+            _hq_graph_load_error: str = ""
+            if _hq_graph_path is not None:
+                try:
+                    import json as _json2
+                    _hq_graph = Graph.from_dict(
+                        _json2.loads(_hq_graph_path.read_text(encoding="utf-8"))
+                    )
+                except Exception as _hqge:
+                    _hq_graph_load_error = str(_hqge)
+
+            # symbol_index: caller may supply via a side-channel file; in v1 we
+            # accept an empty index and report unresolved gracefully.
+            _symbol_index: dict = {}
+            _symbol_index_source = "empty (no symbol index file supplied)"
+            _sym_index_path = app_config.runtime_state_root
+            if _sym_index_path is not None:
+                _sym_idx_file = Path(_sym_index_path) / "symbol_spans.json"
+                if _sym_idx_file.is_file():
+                    try:
+                        import json as _json3
+                        _raw_idx = _json3.loads(_sym_idx_file.read_text(encoding="utf-8"))
+                        # Expected format: {file_path: [[sym, start, end], ...]}
+                        for fp, spans in _raw_idx.items():
+                            _symbol_index[fp] = [
+                                (str(s[0]), int(s[1]), int(s[2])) for s in spans
+                            ]
+                        _symbol_index_source = str(_sym_idx_file)
+                    except Exception as _sie:
+                        _symbol_index_source = f"error loading {_sym_idx_file}: {_sie}"
+
+            hunk_entries: list[dict] = []
+            parse_errors: list[str] = []
+
+            for _raw_hunk in _raw_changed_lines:
+                try:
+                    _hunk_path, _hunk_start, _hunk_end = parse_changed_lines_arg(_raw_hunk)
+                except ValueError as _pe:
+                    parse_errors.append(str(_pe))
+                    continue
+
+                _hunk_result = resolve_hunk_to_symbols(
+                    path=_hunk_path,
+                    line_start=_hunk_start,
+                    line_end=_hunk_end,
+                    symbol_index=_symbol_index,
+                )
+
+                _sym_selections: dict[str, list] = {}
+                if _hq_graph is not None:
+                    for _rsym in _hunk_result.resolved_symbols:
+                        _sel = resolve_changed_symbol_to_tests(
+                            _hq_graph, _rsym, source_file_path=_hunk_path
+                        )
+                        _sym_selections[_rsym] = _sel
+                elif _hunk_result.resolved_symbols:
+                    for _rsym in _hunk_result.resolved_symbols:
+                        _sym_selections[_rsym] = []
+
+                _hq_entry = HunkQueryEntry(
+                    path=_hunk_path,
+                    line_start=_hunk_start,
+                    line_end=_hunk_end,
+                    hunk_impact=_hunk_result,
+                    symbol_selections=_sym_selections,
+                    overall_bucket=_compute_overall_bucket(_sym_selections),
+                )
+                hunk_entries.append(_hq_entry.to_dict())
+
+            _hq_no_graph_note = ""
+            if _hq_graph is None:
+                _hq_no_graph_note = (
+                    f"graph not found (searched {[str(r) for r in _hq_graph_search_roots if r]})"
+                    if not _hq_graph_load_error
+                    else f"graph load error: {_hq_graph_load_error}"
+                )
+
+            report["hunk_query"] = {
+                "schema_version": "hunk-query-v1",
+                "changed_lines_inputs": _raw_changed_lines,
+                "graph_path": str(_hq_graph_path) if _hq_graph_path else None,
+                "graph_note": _hq_no_graph_note,
+                "symbol_index_source": _symbol_index_source,
+                "entries": hunk_entries,
+                "parse_errors": parse_errors,
+            }
+            report["timings_ms"]["hunk_query_graph"] = round(
+                (time.perf_counter() - hunk_query_started) * 1000, 3
+            )
+        except Exception as exc:
+            report["hunk_query"] = {"error": str(exc)}
+    # ---- End hunk-precision graph query ----
 
     report["json_output_mode"] = "stdout" if json_to_stdout else "file"
     report["requested_devices"] = list(app_config.devices)
