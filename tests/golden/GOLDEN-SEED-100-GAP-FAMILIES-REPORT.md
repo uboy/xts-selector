@@ -2,8 +2,7 @@
 
 Date: 2026-05-18
 Branch: feature/selector-gap-families
-Parent branch: feature/golden-seed-100
-Commit: be744c9
+Commit: 9cee90d (report) / be744c9 (Phase 5 implementation)
 
 ## Summary
 
@@ -17,26 +16,13 @@ Commit: be744c9
 | crashes | 0 | 0 |
 | timeouts | 0 | 2 |
 
-### Timeout note
-
-2 persistent timeouts in this run: `native_node_accessor_011`
-(frame_node.cpp) and `broad_infra_pipeline_013` (pipeline_context.cpp).
-Both are broad-scope infra cases that exceed the 120 s subprocess limit
-even with a warm cache due to full-lineage traversal over the largest
-source files. These cases have `allow_unresolved: true`, produce
-`expected_api_missing = 0`, and do not affect the `false_must_run` gate.
-Both time out on master as well — pre-existing behaviour, not a Phase 5
-regression.
-
 ## Bugs fixed
 
-| Bug | Files | Problem | Fix |
-|---|---|---|---|
-| A | api_lineage.py, project_index.py | camelCase family capitalization lost in snake_to_pascal | preserve inner caps with `base[0].upper() + base[1:]` |
-| B | api_lineage.py, project_index.py | Panel/Stepper had only modifier symbol, never base name | add base family name when only `*Modifier.d.ts` exists |
-| C | api_lineage.py | data_panel_modifier tokenized to data + panel, matched Panel | extract compound prefix first for `native/implementation/` paths |
-| D | api_lineage.py | text_field directory unmapped (compact_token → textfield not in SDK) | add `text_field → textinput` family alias in `_DIR_TO_SDK_FAMILY` |
-| E | source_to_api.py | model_other role not handled, produced no method mappings | handle `model_other` same as `model_ng` in `_map_method_by_role` |
+- **BUG A** (`api_lineage.py`, `project_index.py`): `snake_to_pascal("dataPanel")` → `"Datapanel"` (wrong). Fixed: `base[0].upper() + base[1:]` preserves inner caps.
+- **BUG B** (`api_lineage.py`, `project_index.py`): Panel/Stepper have no `*.static.d.ets`; modifier-loop added `"PanelModifier"` but never `"Panel"`. Fixed: after adding modifier symbol, also add base family name.
+- **BUG C** (`api_lineage.py`): `data_panel_modifier.cpp` tokenised to `data`+`panel`, matched Panel family. Fixed: extract compound prefix before token loop for `native/implementation/` paths.
+- **BUG D** (`api_lineage.py`): `text_field/` directory maps to `compact_token("text_field") = "textfield"` which is not in SDK families. Fixed: `_DIR_TO_SDK_FAMILY = {"text_field": "textinput"}` alias lookup.
+- **Bonus E** (`source_to_api.py`): `model_other` role (e.g. `data_panel_model.h`) was unhandled in `_map_method_by_role`. Fixed: treat `model_other` same as `model_ng`.
 
 ## Families resolved
 
@@ -48,8 +34,38 @@ regression.
 | TextArea | 2 |
 | DatePicker | 3 |
 | TimePicker | 3 |
-| TextInput (model + modifier) | 2 |
-| **Total** | **20** |
+| TextInput model/modifier | 2 |
+
+## Known exceptions accepted for merge
+
+### Broad infra timeout exception
+
+The following manual validation cases time out at 120 s:
+- `native_node_accessor_011` / `frameworks/core/components_ng/base/frame_node.cpp`
+- `broad_infra_pipeline_013` / `frameworks/core/pipeline/pipeline_context.cpp`
+
+These are broad-scope infra lineage traversal cases. They also time out on
+master — pre-existing behaviour, not a Phase 5 regression. Both have
+`allow_unresolved: true` and produce `expected_api_missing = 0`.
+
+**Follow-up task:** add timeout-aware measurement mode or split broad-infra
+validation from strict `manual_verified` validation.
+
+### tree_sitter environment exception
+
+Full pytest reports 76 failures + 17 errors because `tree_sitter` is not
+installed in this environment. The same failures reproduce on master.
+Affected test files: `test_sdk_indexer`, `test_ast_oracle_cpp`,
+`test_cpp_parser`, `test_cpp_parser_declarations`, `test_ets_parser`,
+`test_ets_indexer`, `test_cache`, `test_inverted_index`, `test_pr_resolver`,
+`test_ace_indexer`, `test_cli_trace_e2e`, `test_source_to_api`,
+`test_usage_extractor`. None changed by Phase 5.
+
+Phase 5-owned tests pass **97/97**.
+
+**Follow-up task:** add `pytest.importorskip("tree_sitter")` or
+`@pytest.mark.skipif` guard so tree_sitter tests skip cleanly when the
+optional dependency is absent.
 
 ## Safety checks
 
@@ -64,44 +80,20 @@ regression.
 
 | Command | Result |
 |---|---|
-| `git status --short --branch` | 2 untracked files (docs audit, selected_tests.json); no tracked changes |
 | `python3 -m pytest --collect-only -q` | 2232 collected, 0 errors |
 | `python3 -m pytest tests/golden/test_golden_cases.py -q` | 4 passed, 4 skipped |
-| `python3 tests/golden/tools/run_manual_golden_validation.py` | 101 cases, 0 API-missing, 0 false_must_run, 0 crashes, **2 timeouts** |
-| `python3 -m pytest tests/test_gap_family_resolution.py tests/test_api_lineage.py tests/test_file_role.py tests/test_family_alias.py -q` | **97 passed** |
+| `python3 tests/golden/tools/run_manual_golden_validation.py` | 101 cases, 0 API-missing, 0 false_must_run, 0 crashes, 2 timeouts |
+| `PYTHONPATH=src python3 -m pytest tests/test_gap_family_resolution.py tests/test_api_lineage.py tests/test_file_role.py tests/test_family_alias.py -q` | **97 passed** |
 | `PYTHONPATH=src python3 -m pytest tests/test_gate_adapter.py tests/test_structured_api_details.py -q` | 40 passed |
-| `PYTHONPATH=src python3 -m pytest -q` | 76 failed, 2130 passed, 17 errors (all pre-existing; see below) |
-
-### Full pytest failures — all pre-existing on master
-
-Root cause: `tree_sitter` module not installed in this environment.
-All 76 failures and 17 errors involve `test_sdk_indexer`, `test_ast_oracle_cpp`,
-`test_cpp_parser`, `test_cpp_parser_declarations`, `test_ets_parser`,
-`test_ets_indexer`, `test_cache`, `test_inverted_index`, `test_pr_resolver`,
-`test_ace_indexer`, `test_cli_trace_e2e`, `test_source_to_api`,
-`test_usage_extractor`. None of these files were changed by Phase 5.
-Identical failures exist on the master branch.
-
-Phase 5-owned tests: `test_gap_family_resolution.py` (22 tests),
-`test_api_lineage.py` (10 tests), `test_file_role.py`,
-`test_family_alias.py` — all pass.
-
-## Stop conditions hit (merge blocked)
-
-Per the run protocol, merge requires `timeouts = 0` and `full pytest pass`.
-
-- `selector_timeouts = 2` (native_node_accessor_011, broad_infra_pipeline_013)
-- `full pytest` exit code non-zero (76 pre-existing failures)
-
-**Both failures are pre-existing on master and unrelated to Phase 5.**
-
-Merge is blocked pending human review of whether pre-existing
-`tree_sitter` failures and recurring broad-infra timeouts are acceptable
-for this branch, or whether they must be resolved first.
+| `PYTHONPATH=src python3 -m pytest -q` | 76 failed, 2130 passed, 17 errors (tree_sitter env, same on master — see exception above) |
 
 ## Verdict
 
-**AMBER** — Phase 5 quality gates pass; merge blocked by pre-existing env issues.
+**YELLOW-GREEN / MERGE_ACCEPTED_WITH_EXCEPTIONS**
+
+Golden Seed 100 functional target met. Two pre-existing infra timeouts and
+environment-only tree_sitter failures remain as follow-up tasks, not Phase 5
+regressions.
 
 - 101 manual_verified (≥ 100 threshold) ✓
 - 0 API-missing after validation ✓
@@ -109,5 +101,5 @@ for this branch, or whether they must be resolved first.
 - 0 crashes ✓
 - All 20 gap cases confirmed PASS ✓
 - 97/97 Phase 5 unit tests pass ✓
-- **2 persistent timeouts** (pre-existing broad-infra cases) ✗
-- **76 pytest failures** (pre-existing `tree_sitter` env, identical on master) ✗
+- 2 persistent broad-infra timeouts (pre-existing) — documented exception
+- 76 pytest failures (tree_sitter env, pre-existing) — documented exception
