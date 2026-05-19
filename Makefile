@@ -1,10 +1,11 @@
-.PHONY: validate-collect validate-fast validate-golden validate-graph validate-full validate-measurement help
+.PHONY: validate-collect validate-fast validate-golden validate-graph validate-full validate-measurement validate-env help
 
 help:
 	@echo "Validation targets:"
+	@echo "  validate-env         - check required environment variables (roots must exist)"
 	@echo "  validate-collect     - collect only, 0 errors required"
 	@echo "  validate-fast        - collect + targeted unit tests (merge gate)"
-	@echo "  validate-golden      - golden schema + manual validation (merge gate)"
+	@echo "  validate-golden      - golden schema + manual validation (merge gate, requires env)"
 	@echo "  validate-graph       - graph/usage/coverage tests"
 	@echo "  validate-full        - full pytest (tree_sitter optional deps skip)"
 	@echo "  validate-measurement - broad-infra measurement-only (non-blocking)"
@@ -15,7 +16,10 @@ validate-collect:
 validate-fast:
 	PYTHONPATH=src python3 -m pytest tests/test_gap_family_resolution.py tests/test_api_lineage.py tests/test_file_role.py tests/test_family_alias.py tests/test_gate_adapter.py tests/test_structured_api_details.py tests/test_bucket_gate_policy.py tests/test_coverage_equivalence.py tests/test_report_ux_evidence.py -q
 
-validate-golden:
+validate-env:
+	bash scripts/check_env.sh
+
+validate-golden: validate-env
 	python3 -m pytest tests/golden/test_golden_cases.py -q
 	python3 tests/golden/tools/run_manual_golden_validation.py
 
