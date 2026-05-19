@@ -1,3 +1,6 @@
+<!-- SUPERSEDED: see docs/PRODUCT-STATUS-2026-05-19.md -->
+> **SUPERSEDED** — Project status audit from 2026-05-18 (pre-Wave-1). Superseded by `docs/PRODUCT-STATUS-2026-05-19.md` which covers the full post-Wave-1 state. Retained for historical reference.
+
 # Full Project Status Audit
 
 Date: 2026-05-18
