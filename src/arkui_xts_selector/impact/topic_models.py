@@ -1,8 +1,8 @@
 """Data models for Universal Impact Resolution — Phase B: Topic Resolver.
 
-These models represent ImpactTopic, SdkApiTopic, ApiDeclarationRef, and
-GestureResolutionResult.  They are additive and do not affect production
-selector output.
+These models represent ImpactTopic, SdkApiTopic, ApiDeclarationRef,
+ConsumerUsageEdge, and GestureResolutionResult.  They are additive and do
+not affect production selector output.
 
 Import boundary: this module imports only the standard library and
 ``arkui_xts_selector.impact.models``.
@@ -146,10 +146,13 @@ class GestureResolutionResult:
     impact_topics
         Typed impact topics derived from the source entity.
     sdk_api_topics
-        SDK-validated API topics.
+        SDK-validated API topics (Phase B.1 + B.2 validation).
+    consumer_usage_edges
+        XTS consumer usage edges found by Phase B.2 linker.
+        Empty when XTS root is not available.
     xts_usage_modules
         XTS module names found via the XTS usage index (empty when index
-        is not available).
+        is not available).  Derived from ``consumer_usage_edges``.
     recommended_families
         Target family strings recommended for test selection.
     max_bucket
@@ -163,7 +166,14 @@ class GestureResolutionResult:
     source_path: str
     impact_topics: Tuple[ImpactTopic, ...]
     sdk_api_topics: Tuple[SdkApiTopic, ...]
+    consumer_usage_edges: Tuple["ConsumerUsageEdge", ...]
     xts_usage_modules: Tuple[str, ...]
     recommended_families: Tuple[str, ...]
     max_bucket: Literal["must_run", "recommended", "possible", "unresolved"]
     unresolved_reasons: Tuple[str, ...]
+
+
+# NOTE: ConsumerUsageEdge is defined in gesture_xts_linker.py.
+# The type annotation "ConsumerUsageEdge" in GestureResolutionResult above
+# uses a forward-reference string, resolved at runtime only if needed.
+# Callers should import ConsumerUsageEdge from gesture_xts_linker directly.

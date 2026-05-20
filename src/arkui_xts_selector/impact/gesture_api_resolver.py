@@ -1,7 +1,9 @@
-"""GestureApiResolver — Universal Impact Resolution Phase B.1.
+"""GestureApiResolver — Universal Impact Resolution Phase B.1 + B.2.
 
 Maps gesture-layer ``SourceImpactEntity`` records to ``ImpactTopic`` and
-``SdkApiTopic`` records defined in ``config/api_topics.json``.
+``SdkApiTopic`` records defined in ``config/api_topics.json``.  Phase B.2
+adds SDK declaration validation (``GestureSdkValidator``) and XTS consumer
+usage linking (``GestureXtsLinker``).
 
 Scope:
 - ``components_ng/gestures/**``
@@ -16,6 +18,8 @@ Safety contract (non-negotiable):
   ``SdkApiTopic.public_names``.
 - No direct file-to-test hardcode.
 - ``false_must_run`` remains 0.
+- SDK env unavailable → graceful degradation, sdk_index_not_available.
+- XTS env unavailable → graceful degradation, xts_index_not_available.
 
 Import boundary: standard library + ``arkui_xts_selector.impact.*``.
 """
@@ -23,6 +27,7 @@ Import boundary: standard library + ``arkui_xts_selector.impact.*``.
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 from typing import Any, Optional
 
@@ -37,6 +42,11 @@ from arkui_xts_selector.impact.topic_models import (
     GestureResolutionResult,
     ImpactTopic,
     SdkApiTopic,
+)
+from arkui_xts_selector.impact.gesture_sdk_validator import GestureSdkValidator
+from arkui_xts_selector.impact.gesture_xts_linker import (
+    ConsumerUsageEdge,
+    GestureXtsLinker,
 )
 
 
@@ -199,21 +209,41 @@ class GestureApiResolver:
         config shipped with the package is used.
     sdk_api_index:
         Optional mapping of public SDK name -> declaration info.  Used to
-        validate API declarations.  When ``None``, SDK validation is skipped
-        and ``"sdk_not_validated"`` is added to unresolved reasons.  When an
-        empty ``{}`` is provided, all names are treated as missing.
+        validate API declarations inline (Phase B.1 legacy path).
+        When ``None``, SDK validation is skipped and ``"sdk_not_validated"``
+        is added to unresolved reasons.  When an empty ``{}`` is provided,
+        all names are treated as missing.
+    sdk_api_root:
+        Path to the ``interface_sdk-js/api`` directory.  When ``None``,
+        defaults to the ``INTERFACE_SDK_JS_ROOT`` environment variable.
+        Used by ``GestureSdkValidator`` (Phase B.2).  When unavailable,
+        ``"sdk_index_not_available"`` is recorded.
+    xts_root:
+        Path to the XTS/ACTS arkui directory.  When ``None``, defaults to
+        the ``XTS_ACTS_ROOT`` environment variable.  Used by
+        ``GestureXtsLinker`` (Phase B.2).  When unavailable,
+        ``"xts_index_not_available"`` is recorded.
     """
 
     def __init__(
         self,
         topics_config_path: Optional[str] = None,
         sdk_api_index: Optional[dict[str, Any]] = None,
+        sdk_api_root: Optional[str] = None,
+        xts_root: Optional[str] = None,
     ) -> None:
         if topics_config_path is None:
             pkg_root = pathlib.Path(__file__).parent.parent.parent.parent
             topics_config_path = str(pkg_root / "config" / "api_topics.json")
         self._topics_config_path = topics_config_path
-        self._sdk_api_index = sdk_api_index  # None means skip validation
+        self._sdk_api_index = sdk_api_index  # None means skip legacy validation
+
+        # Phase B.2: resolve env vars here so callers can pass explicit paths
+        _sdk_root = sdk_api_root or os.environ.get("INTERFACE_SDK_JS_ROOT")
+        _xts_root = xts_root or os.environ.get("XTS_ACTS_ROOT")
+        self._sdk_validator = GestureSdkValidator(sdk_api_root=_sdk_root)
+        self._xts_linker = GestureXtsLinker(xts_root=_xts_root)
+
         self._topics_by_id: dict[str, dict[str, Any]] = {}
         self._load_config()
 
@@ -265,18 +295,47 @@ class GestureApiResolver:
             for tid in topic_ids
         )
 
-        # Resolve SDK API topics
-        sdk_api_topics, sdk_reasons = self._resolve_sdk_topics(
+        # Resolve SDK API topics (Phase B.1 — inline index or skip)
+        sdk_api_topics_b1, sdk_reasons = self._resolve_sdk_topics(
             topic_ids, entity, confidence
         )
 
-        # Collect recommended families from SDK topics
-        recommended_families = self._collect_recommended_families(topic_ids)
+        # Phase B.2: re-validate SDK topics against real SDK declaration files
+        sdk_api_topics_b2 = self._run_sdk_validation(sdk_api_topics_b1)
+        sdk_api_topics = sdk_api_topics_b2
 
-        # XTS usage linking — not yet implemented (Phase C)
-        xts_modules: tuple[str, ...] = ()
+        # Phase B.2: XTS consumer usage linking
+        consumer_usage_edges, xts_modules, xts_reasons = self._run_xts_linking(
+            sdk_api_topics
+        )
+
+        # Collect recommended families from SDK topics and linker edges
+        recommended_families = self._collect_recommended_families(topic_ids)
+        if consumer_usage_edges:
+            recommended_families = self._augment_families_from_edges(
+                recommended_families, consumer_usage_edges
+            )
+
+        # Determine max_bucket based on B.2 evidence
+        max_bucket = self._compute_max_bucket(
+            base_max_bucket=max_bucket,
+            sdk_api_topics=sdk_api_topics,
+            consumer_usage_edges=consumer_usage_edges,
+        )
+
+        # Collect all unresolved reasons
         unresolved: list[str] = list(sdk_reasons)
-        unresolved.append("xts_index_not_available")
+        # Phase B.2 SDK validator status: add sdk_index_not_available if no SDK root.
+        # We keep sdk_not_validated from Phase B.1 (sdk_api_index=None path) as-is
+        # for backward compatibility.  When the validator IS available, we drop
+        # sdk_not_validated since real validation was performed.
+        if not self._sdk_validator.is_available:
+            if "sdk_index_not_available" not in unresolved:
+                unresolved.append("sdk_index_not_available")
+        else:
+            # Real SDK validation was performed — drop the "skipped" marker
+            unresolved = [r for r in unresolved if r != "sdk_not_validated"]
+        unresolved.extend(xts_reasons)
 
         # Safety gate: max_bucket must never be must_run from this resolver
         assert max_bucket != "must_run", (
@@ -288,10 +347,11 @@ class GestureApiResolver:
             source_path=entity.path,
             impact_topics=impact_topics,
             sdk_api_topics=sdk_api_topics,
+            consumer_usage_edges=tuple(consumer_usage_edges),
             xts_usage_modules=xts_modules,
             recommended_families=recommended_families,
             max_bucket=max_bucket,  # type: ignore[arg-type]
-            unresolved_reasons=tuple(unresolved),
+            unresolved_reasons=tuple(dict.fromkeys(unresolved)),  # dedup, order-preserving
         )
 
     def resolve_batch(
@@ -493,6 +553,113 @@ class GestureApiResolver:
         return tuple(families)
 
     # ------------------------------------------------------------------
+    # Phase B.2: SDK validation helper
+    # ------------------------------------------------------------------
+
+    def _run_sdk_validation(
+        self, sdk_topics: tuple[SdkApiTopic, ...]
+    ) -> tuple[SdkApiTopic, ...]:
+        """Re-validate SdkApiTopics against real SDK declaration files."""
+        if not sdk_topics:
+            return sdk_topics
+        validated = self._sdk_validator.validate_sdk_topics(list(sdk_topics))
+        return tuple(validated)
+
+    # ------------------------------------------------------------------
+    # Phase B.2: XTS linking helper
+    # ------------------------------------------------------------------
+
+    def _run_xts_linking(
+        self, sdk_topics: tuple[SdkApiTopic, ...]
+    ) -> tuple[list[ConsumerUsageEdge], tuple[str, ...], list[str]]:
+        """Find XTS consumer usage edges for SDK topics.
+
+        Returns (edges, xts_modules_tuple, xts_reasons_list).
+        """
+        xts_reasons: list[str] = []
+        if not self._xts_linker.is_available:
+            xts_reasons.append("xts_index_not_available")
+            return [], (), xts_reasons
+
+        edges = self._xts_linker.find_usage_edges_for_topics(list(sdk_topics))
+
+        # Derive unique XTS module names from edges
+        seen_modules: set[str] = set()
+        modules: list[str] = []
+        for edge in edges:
+            proj = edge.consumer_project
+            if proj and proj not in seen_modules:
+                seen_modules.add(proj)
+                modules.append(proj)
+
+        return edges, tuple(modules), xts_reasons
+
+    # ------------------------------------------------------------------
+    # Phase B.2: max_bucket computation
+    # ------------------------------------------------------------------
+
+    def _compute_max_bucket(
+        self,
+        base_max_bucket: str,
+        sdk_api_topics: tuple[SdkApiTopic, ...],
+        consumer_usage_edges: list[ConsumerUsageEdge],
+    ) -> str:
+        """Compute max_bucket based on evidence from B.2.
+
+        Rules (per design doc Section 8):
+        - Source topic + SDK declaration + XTS usage (non-import_only) → recommended
+        - Source topic + SDK declaration (no XTS usage) → possible
+        - No SDK topics → stays at base
+        - NEVER → must_run
+
+        ``base_max_bucket`` comes from the routing table (always "possible").
+        """
+        # Check if we have SDK-validated topics with public names
+        has_sdk_topics = any(
+            len(t.public_names) > 0 for t in sdk_api_topics
+        )
+
+        # Check for non-import-only XTS usage edges
+        has_strong_xts_usage = any(
+            edge.usage_kind != "import_only" and edge.confidence in ("strong", "medium")
+            for edge in consumer_usage_edges
+        )
+
+        if has_sdk_topics and has_strong_xts_usage:
+            result = "recommended"
+        elif has_sdk_topics:
+            # SDK topics present but no XTS usage → stays at possible
+            result = base_max_bucket
+        else:
+            result = base_max_bucket
+
+        # Safety gate: never must_run
+        assert result != "must_run", (
+            "GestureApiResolver._compute_max_bucket: must_run is forbidden"
+        )
+        return result
+
+    # ------------------------------------------------------------------
+    # Phase B.2: augment families from edges
+    # ------------------------------------------------------------------
+
+    def _augment_families_from_edges(
+        self,
+        existing_families: tuple[str, ...],
+        edges: list[ConsumerUsageEdge],
+    ) -> tuple[str, ...]:
+        """Add consumer_project values from strong XTS edges as recommended families."""
+        seen: set[str] = set(existing_families)
+        result = list(existing_families)
+        for edge in edges:
+            if edge.usage_kind != "import_only" and edge.consumer_project:
+                proj = edge.consumer_project
+                if proj not in seen:
+                    seen.add(proj)
+                    result.append(proj)
+        return tuple(result)
+
+    # ------------------------------------------------------------------
     # Empty result helper
     # ------------------------------------------------------------------
 
@@ -504,6 +671,7 @@ class GestureApiResolver:
             source_path=entity.path,
             impact_topics=(),
             sdk_api_topics=(),
+            consumer_usage_edges=(),
             xts_usage_modules=(),
             recommended_families=(),
             max_bucket="unresolved",

@@ -3,6 +3,8 @@
 This package provides:
 - Phase A: typed source entity classification for ArkUI AceEngine source paths.
 - Phase B.1: gesture API topic resolution (GestureApiResolver).
+- Phase B.2: SDK declaration validation (GestureSdkValidator) and XTS usage
+  linking (GestureXtsLinker, ConsumerUsageEdge).
 
 All additions are additive-only and do not affect production selector
 scoring, bucket assignment, or must_run logic.
@@ -25,6 +27,11 @@ from arkui_xts_selector.impact.topic_models import (
     SdkApiTopic,
 )
 from arkui_xts_selector.impact.gesture_api_resolver import GestureApiResolver
+from arkui_xts_selector.impact.gesture_sdk_validator import GestureSdkValidator
+from arkui_xts_selector.impact.gesture_xts_linker import (
+    ConsumerUsageEdge,
+    GestureXtsLinker,
+)
 
 __all__ = [
     # Phase A
@@ -42,4 +49,8 @@ __all__ = [
     "GestureResolutionResult",
     "ImpactTopic",
     "SdkApiTopic",
+    # Phase B.2
+    "ConsumerUsageEdge",
+    "GestureSdkValidator",
+    "GestureXtsLinker",
 ]
