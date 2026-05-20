@@ -1,0 +1,118 @@
+{
+  "version": "1",
+  "description": "Symbol token → topic/profile ID hints. NOT direct file→test mapping. SDK validation still required for public API claims.",
+  "hints": [
+    {
+      "symbol_tokens": ["PanRecognizer", "PanGestureRecognizer", "PanGesture"],
+      "topic_ids": ["gesture.pan"],
+      "profile_ids": [],
+      "confidence": "medium",
+      "notes": "Pan gesture recognizer symbol"
+    },
+    {
+      "symbol_tokens": ["TapRecognizer", "TapGesture", "ClickRecognizer"],
+      "topic_ids": ["gesture.tap"],
+      "profile_ids": [],
+      "confidence": "medium",
+      "notes": "Tap gesture"
+    },
+    {
+      "symbol_tokens": ["LongPressRecognizer", "LongPressGesture"],
+      "topic_ids": ["gesture.long_press"],
+      "profile_ids": [],
+      "confidence": "medium",
+      "notes": "Long press gesture"
+    },
+    {
+      "symbol_tokens": ["SwipeRecognizer", "SwipeGesture"],
+      "topic_ids": ["gesture.swipe"],
+      "profile_ids": [],
+      "confidence": "medium",
+      "notes": "Swipe gesture"
+    },
+    {
+      "symbol_tokens": ["PinchRecognizer", "PinchGesture"],
+      "topic_ids": ["gesture.pinch"],
+      "profile_ids": [],
+      "confidence": "medium",
+      "notes": "Pinch gesture"
+    },
+    {
+      "symbol_tokens": ["RotationRecognizer", "RotationGesture"],
+      "topic_ids": ["gesture.rotation"],
+      "profile_ids": [],
+      "confidence": "medium",
+      "notes": "Rotation gesture"
+    },
+    {
+      "symbol_tokens": ["GestureReferee", "GestureGroup"],
+      "topic_ids": ["gesture.core", "gesture.group", "gesture.custom_recognition"],
+      "profile_ids": [],
+      "confidence": "medium",
+      "notes": "Gesture referee/group"
+    },
+    {
+      "symbol_tokens": ["GestureRecognizer", "RecognizerCore"],
+      "topic_ids": ["gesture.core", "gesture.custom_recognition"],
+      "profile_ids": [],
+      "confidence": "medium",
+      "notes": "Base gesture recognizer"
+    },
+    {
+      "symbol_tokens": ["UIInputEvent", "ArkUI_UIInputEvent"],
+      "topic_ids": ["native.event.ui_input", "native.event.touch"],
+      "profile_ids": [],
+      "confidence": "medium",
+      "notes": "Native UI input event"
+    },
+    {
+      "symbol_tokens": ["EventConverter", "ArkUIEventConverter"],
+      "topic_ids": ["native.event.converter"],
+      "profile_ids": [],
+      "confidence": "medium",
+      "notes": "Native event converter"
+    },
+    {
+      "symbol_tokens": ["NativeGestureAPI", "OH_ArkUI_GestureRecognizer"],
+      "topic_ids": ["native.event.gesture_bridge"],
+      "profile_ids": [],
+      "confidence": "medium",
+      "notes": "Native gesture bridge"
+    },
+    {
+      "symbol_tokens": ["CanvasRenderingContext", "RenderingContext2D"],
+      "topic_ids": ["native.peer.canvas_rendering_context", "ani.canvas"],
+      "profile_ids": [],
+      "confidence": "medium",
+      "notes": "Canvas rendering context"
+    },
+    {
+      "symbol_tokens": ["XComponentController", "OH_NativeXComponent"],
+      "topic_ids": ["native.peer.xcomponent_controller"],
+      "profile_ids": [],
+      "confidence": "medium",
+      "notes": "XComponent controller"
+    },
+    {
+      "symbol_tokens": ["JSIBinding", "JsiBinding", "BindingsDefines", "PlatformApi", "BasicContext"],
+      "topic_ids": [],
+      "profile_ids": ["arkts_jsi_bridge"],
+      "confidence": "medium",
+      "notes": "JSI bridge — profile only, no exact SDK API"
+    },
+    {
+      "symbol_tokens": ["SelectOverlay", "SelectOverlayNode", "SelectOverlayManager"],
+      "topic_ids": [],
+      "profile_ids": ["select_overlay_infra"],
+      "confidence": "medium",
+      "notes": "Select overlay infrastructure"
+    },
+    {
+      "symbol_tokens": ["InspectorComposedComponent", "JSIViewRegister", "ViewRegisterImpl"],
+      "topic_ids": [],
+      "profile_ids": ["inspector_view_registration"],
+      "confidence": "medium",
+      "notes": "Inspector / view registration"
+    }
+  ]
+}

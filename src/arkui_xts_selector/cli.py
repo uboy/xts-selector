@@ -255,7 +255,7 @@ def resolve_pr_changed_files_with_ranges(
                     repo=owner_repo[1],
                     pr_ref=pr_ref,
                 )
-                return fetch_pr_changed_files_and_ranges_via_api(
+                files, ranges, _raw = fetch_pr_changed_files_and_ranges_via_api(
                     api_kind=api_kind,
                     api_url=api_url,
                     token=token,
@@ -264,6 +264,7 @@ def resolve_pr_changed_files_with_ranges(
                     pr_ref=pr_ref,
                     repo_root=app_config.git_repo_root,
                 )
+                return files, ranges
             except RuntimeError as exc:
                 api_error = exc
         if pr_source == "api":
@@ -2872,6 +2873,61 @@ def main() -> int:
             "warning: --changed-symbol requires --use-graph-resolver, ignoring symbol query",
             file=sys.stderr,
         )
+
+    # ---- Phase F: hint-based precision narrowing (always-on, no graph required) ----
+    # This adds topic/profile hints for symbol and hunk inputs. It never produces
+    # must_run. It is additive — existing report keys are not changed.
+    _phase_f_symbols = list(changed_symbols) if changed_symbols else []
+    _phase_f_lines = [
+        item.strip() for item in (args.changed_lines or []) if item and item.strip()
+    ]
+    if _phase_f_symbols or _phase_f_lines:
+        try:
+            from .impact.precision_entrypoint import run_precision
+
+            _pe_results: list[dict] = []
+            # One result per symbol
+            for _sym in _phase_f_symbols:
+                _src = str(changed_files[0]) if changed_files else ""
+                _pe_results.append(
+                    run_precision(changed_symbol=_sym, source_path=_src)
+                )
+            # One result per hunk (PATH:START-END form)
+            for _hunk in _phase_f_lines:
+                _pe_results.append(run_precision(changed_lines=_hunk))
+
+            # Collect narrowed topics: those present in both precision evidence
+            # AND the file-level affected API entities, as a convenience field.
+            _file_topics: set[str] = set()
+            for _ri in report.get("results", []):
+                for _ae in _ri.get("affected_api_entities", []):
+                    _file_topics.add(str(_ae))
+
+            report["precision_evidence"] = {
+                "schema_version": "phase-f-precision-v1",
+                "results": _pe_results,
+                "narrowed_topics": sorted(
+                    {
+                        tid
+                        for _pe in _pe_results
+                        for tid in _pe.get("matched_topic_ids", [])
+                    }
+                ),
+                "narrowed_profiles": sorted(
+                    {
+                        pid
+                        for _pe in _pe_results
+                        for pid in _pe.get("matched_profile_ids", [])
+                    }
+                ),
+                "limitations": [
+                    "symbol_token and hunk evidence cannot produce must_run",
+                    "topic_ids are lookup hints only; SDK validation still required",
+                ],
+            }
+        except Exception as _pf_exc:  # noqa: BLE001
+            report["precision_evidence"] = {"error": str(_pf_exc)}
+
     # ---- Graph-based resolver (Phase 7, experimental, under flag) ----
     if args.use_graph_resolver and changed_files:
         try:
