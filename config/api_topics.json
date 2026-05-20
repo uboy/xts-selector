@@ -142,6 +142,89 @@
       "max_without_usage": "possible",
       "recommended_families": [],
       "notes": "NDK native gesture API (C API). Separate from ArkTS gesture API topics. SDK declaration must be verified in interface_sdk-js/api or native headers."
+    },
+    {
+      "topic_id": "native.peer.canvas",
+      "domain": "native",
+      "matches_impact_topics": ["canvas.native_peer", "native.peer.canvas"],
+      "sdk_api_queries": [
+        {"public_name": "Canvas", "kind": "component"},
+        {"public_name": "CanvasRenderingContext2D", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call", "member_access"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [],
+      "notes": "Canvas native peer implementation. Public API names from interface_sdk-js/api only."
+    },
+    {
+      "topic_id": "native.peer.canvas_rendering_context",
+      "domain": "native",
+      "matches_impact_topics": ["canvas.native_peer", "native.peer.canvas_rendering_context"],
+      "sdk_api_queries": [
+        {"public_name": "CanvasRenderingContext2D", "kind": "module"},
+        {"public_name": "OffscreenCanvasRenderingContext2D", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["method_call", "member_access"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [],
+      "notes": "Canvas rendering context peer implementation. OffscreenCanvasRenderingContext2D validated separately."
+    },
+    {
+      "topic_id": "native.peer.xcomponent",
+      "domain": "native",
+      "matches_impact_topics": ["xcomponent.native_peer", "native.peer.xcomponent"],
+      "sdk_api_queries": [
+        {"public_name": "XComponent", "kind": "component"},
+        {"public_name": "XComponentController", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [],
+      "notes": "XComponent native peer implementation."
+    },
+    {
+      "topic_id": "native.peer.xcomponent_controller",
+      "domain": "native",
+      "matches_impact_topics": ["xcomponent.native_peer", "native.peer.xcomponent_controller"],
+      "sdk_api_queries": [
+        {"public_name": "XComponentController", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [],
+      "notes": "XComponentController native peer implementation."
+    },
+    {
+      "topic_id": "ani.canvas",
+      "domain": "native",
+      "matches_impact_topics": ["ani.canvas", "canvas.native_peer"],
+      "sdk_api_queries": [
+        {"public_name": "Canvas", "kind": "component"},
+        {"public_name": "CanvasRenderingContext2D", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [],
+      "notes": "ANI bridge for Canvas/CanvasRenderingContext2D. ANI symbol names are bridge evidence only — public names are SDK-visible Canvas/CanvasRenderingContext2D."
+    },
+    {
+      "topic_id": "ani.xcomponent",
+      "domain": "native",
+      "matches_impact_topics": ["ani.xcomponent", "xcomponent.native_peer"],
+      "sdk_api_queries": [
+        {"public_name": "XComponent", "kind": "component"},
+        {"public_name": "XComponentController", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [],
+      "notes": "ANI bridge for XComponent/XComponentController. ANI symbol names are bridge evidence only — public names are SDK-visible XComponent/XComponentController."
     }
   ]
 }

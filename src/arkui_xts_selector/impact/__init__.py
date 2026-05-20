@@ -5,6 +5,8 @@ This package provides:
 - Phase B.1: gesture API topic resolution (GestureApiResolver).
 - Phase B.2: SDK declaration validation (GestureSdkValidator) and XTS usage
   linking (GestureXtsLinker, ConsumerUsageEdge).
+- Phase B.3: native peer and ANI bridge topic resolution
+  (NativePeerResolver, AniBridgeResolver).
 
 All additions are additive-only and do not affect production selector
 scoring, bucket assignment, or must_run logic.
@@ -19,11 +21,13 @@ from arkui_xts_selector.impact.models import (
 )
 from arkui_xts_selector.impact.source_classifier import SourceClassifier
 from arkui_xts_selector.impact.topic_models import (
+    AniBridgeResolutionResult,
     ApiDeclarationRef,
     Domain,
     FanoutKind,
     GestureResolutionResult,
     ImpactTopic,
+    NativePeerResolutionResult,
     SdkApiTopic,
 )
 from arkui_xts_selector.impact.gesture_api_resolver import GestureApiResolver
@@ -32,6 +36,8 @@ from arkui_xts_selector.impact.gesture_xts_linker import (
     ConsumerUsageEdge,
     GestureXtsLinker,
 )
+from arkui_xts_selector.impact.native_peer_resolver import NativePeerResolver
+from arkui_xts_selector.impact.ani_bridge_resolver import AniBridgeResolver
 
 __all__ = [
     # Phase A
@@ -53,4 +59,9 @@ __all__ = [
     "ConsumerUsageEdge",
     "GestureSdkValidator",
     "GestureXtsLinker",
+    # Phase B.3
+    "AniBridgeResolver",
+    "AniBridgeResolutionResult",
+    "NativePeerResolver",
+    "NativePeerResolutionResult",
 ]
