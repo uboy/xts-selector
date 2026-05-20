@@ -1,0 +1,147 @@
+{
+  "schema_version": "v1",
+  "description": "SDK API topic mappings for impact resolution. Gesture topics only (Phase B.1). All public_name values must be SDK-visible names from interface_sdk-js/api — internal C++ names must not appear here.",
+  "topics": [
+    {
+      "topic_id": "gesture.pan",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.pan", "gesture.recognizer"],
+      "sdk_api_queries": [
+        {"public_name": "PanGesture", "kind": "component"},
+        {"public_name": "PanGestureOptions", "kind": "configuration"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_panGesture"
+      ],
+      "notes": "PanGesture recognizer — specific gesture type. Strong hint from pan_recognizer.cpp path."
+    },
+    {
+      "topic_id": "gesture.tap",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.tap", "gesture.recognizer"],
+      "sdk_api_queries": [
+        {"public_name": "TapGesture", "kind": "component"},
+        {"public_name": "TapGestureInterface", "kind": "component"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_tapGesture"
+      ],
+      "notes": "TapGesture recognizer."
+    },
+    {
+      "topic_id": "gesture.long_press",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.long_press", "gesture.recognizer"],
+      "sdk_api_queries": [
+        {"public_name": "LongPressGesture", "kind": "component"},
+        {"public_name": "LongPressGestureInterface", "kind": "component"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_longPressGesture"
+      ],
+      "notes": "LongPressGesture recognizer."
+    },
+    {
+      "topic_id": "gesture.swipe",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.swipe", "gesture.recognizer"],
+      "sdk_api_queries": [
+        {"public_name": "SwipeGesture", "kind": "component"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_swipeGesture"
+      ],
+      "notes": "SwipeGesture recognizer."
+    },
+    {
+      "topic_id": "gesture.pinch",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.pinch", "gesture.recognizer"],
+      "sdk_api_queries": [
+        {"public_name": "PinchGesture", "kind": "component"},
+        {"public_name": "PinchGestureOptions", "kind": "configuration"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_pinchGesture"
+      ],
+      "notes": "PinchGesture recognizer."
+    },
+    {
+      "topic_id": "gesture.rotation",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.rotation", "gesture.recognizer"],
+      "sdk_api_queries": [
+        {"public_name": "RotationGesture", "kind": "component"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_rotationGesture"
+      ],
+      "notes": "RotationGesture recognizer."
+    },
+    {
+      "topic_id": "gesture.group",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.group", "gesture.core", "gesture.recognizer_core"],
+      "sdk_api_queries": [
+        {"public_name": "GestureGroup", "kind": "component"},
+        {"public_name": "Gesture", "kind": "component"}
+      ],
+      "expected_usage_kinds": ["component_instantiation"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_gestureGroup"
+      ],
+      "notes": "GestureGroup and Gesture core — shared gesture grouping infrastructure."
+    },
+    {
+      "topic_id": "gesture.custom_recognition",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.core", "gesture.recognizer_core"],
+      "sdk_api_queries": [
+        {"public_name": "onGestureRecognizerJudgeBegin", "kind": "event_or_method"},
+        {"public_name": "onGestureJudgeBegin", "kind": "event_or_method"}
+      ],
+      "expected_usage_kinds": ["event_handler", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_customGestureRecognition",
+        "ace_ets_module_commonEvents_gestureHandler"
+      ],
+      "notes": "Custom gesture recognition and interception APIs."
+    },
+    {
+      "topic_id": "native.node.gesture",
+      "domain": "native",
+      "matches_impact_topics": ["native.node.gesture"],
+      "sdk_api_queries": [
+        {"public_name": "ArkUI_NativeGestureAPI_1", "kind": "module"},
+        {"public_name": "OH_ArkUI_GestureRecognizer", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["member_access", "function_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [],
+      "notes": "NDK native gesture API (C API). Separate from ArkTS gesture API topics. SDK declaration must be verified in interface_sdk-js/api or native headers."
+    }
+  ]
+}
