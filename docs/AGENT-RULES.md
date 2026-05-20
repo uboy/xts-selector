@@ -151,6 +151,18 @@ One vertical slice per patch. Do not implement multiple resolver domains in one 
 
 ## Required validation commands
 
+### Validation lanes
+
+| Lane | Requires env? | Intended use | Command |
+|---|---|---|---|
+| validate-fast | no | every patch | `make validate-fast` |
+| validate-graph | no | every patch | `make validate-graph` |
+| validate-universal-impact | no | every patch | `make validate-universal-impact` |
+| validate-pr-benchmark | no | every patch | `make validate-pr-benchmark` |
+| validate-all-local | no | pre-merge | `make validate-all-local` |
+| validate-real-env | yes | optional, with env | `make validate-real-env` |
+| validate-nightly | yes | scheduled | `make validate-nightly` |
+
 ### Before starting any implementation
 
 ```bash
@@ -174,7 +186,8 @@ Note: requires `ARKUI_ACE_ENGINE_ROOT`, `INTERFACE_SDK_JS_ROOT`, `XTS_ACTS_ROOT`
 ### After changing universal impact layer
 
 ```bash
-python3 -m pytest tests/test_source_classifier.py tests/test_pr_benchmark_source_classification.py -q
+make validate-universal-impact
+make validate-pr-benchmark
 python3 -m pytest tests/test_golden_corpus_integrity.py -q
 # plus phase-specific tests
 ```

@@ -26,6 +26,16 @@ work.zip
 .runs/
 local/
 .cache/
+*.cache
+
+# Generated reports
+reports/nightly/
+reports/local/
+
+# Local env files
+.env
+.env.local
+*.env
 
 .codex
 .runtime/
