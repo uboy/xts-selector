@@ -1,35 +1,34 @@
-Validate the golden corpus.
+Validate the golden corpus. See `docs/AGENT-RULES.md` for full rules.
 
-Do not change production code.
-Do not change expected APIs unless explicitly asked.
-Do not mark weak/path-only cases as `manual_verified`.
+**Hard constraints:** do not change production code; do not mark weak/path-only cases as `manual_verified`; `false_must_run` must remain 0; `manual_verified` must remain 212.
 
 Run:
 
 ```bash
 python3 -m pytest --collect-only -q
-python3 -m pytest tests/golden/test_golden_cases.py -q
+make validate-fast
+make validate-graph
+python3 -m pytest tests/golden/test_golden_cases.py tests/test_golden_corpus_integrity.py -q
 python3 tests/golden/tools/run_manual_golden_validation.py
 python3 tools/check_golden_quality.py
 ```
 
-Then inspect `tests/golden/manual_validation_results.json`.
+Inspect `tests/golden/manual_validation_results.json`.
 
 Report:
 
-```text
-manual_verified count
+```
+manual_verified count  (must be 212)
+generated_candidate count
 needs_review count
 expected APIs found / missing
-false_must_run count
+false_must_run count   (must be 0)
 fictional API count
 missing path count
 quality gate result
 GREEN/YELLOW/RED
 ```
 
-Rules:
-
-- GREEN only if manual cases pass, false_must_run is 0, no fictional APIs, no missing paths.
-- YELLOW if validation is incomplete but no known false truth is present.
-- RED if any manual_verified case has fictional API, missing path, or path_layer-only evidence.
+GREEN: manual cases pass, `false_must_run=0`, no fictional APIs, no missing paths.
+YELLOW: validation incomplete but no known false truth.
+RED: any `manual_verified` case has fictional API, missing path, or path_layer-only evidence.
