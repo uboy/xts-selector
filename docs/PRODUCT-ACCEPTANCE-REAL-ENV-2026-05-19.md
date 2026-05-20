@@ -15,7 +15,7 @@ Branch: chore/product-acceptance-real-env
 | expected_api_missing | 0 |
 | false_must_run | 0 |
 | selector_crashes | 0 |
-| selector_timeouts (real-repo full batch) | all cases — P2 performance issue |
+| selector_timeouts (real-repo cold start) | first run fails (cache building); warm cache passes in 1h47m |
 | selector_timeouts_measurement_only | confirmed non-strict |
 | graph builder real_data | True (SDK + XTS scan, no lineage map) |
 | demo generator | PASS |
@@ -43,20 +43,22 @@ Note: repos confirmed at `~/proj/ohos_master/`. Shell vars must be exported befo
 | `make validate-fast` | PASS — 257/257 | All unit + integration tests |
 | `make validate-graph` | PASS — 133/133 | Graph/usage/coverage tests |
 | `pytest test_golden_cases.py` (no env) | 4 passed, 4 skipped | Schema/structural tests |
-| `pytest test_golden_cases.py` (env set) | 1 failed in 239s | `test_manual_verified_selector_output` timeout — see below |
+| `pytest test_golden_cases.py` (env set, cold) | 1 failed in 239s | `test_manual_verified_selector_output` — cold-start cache building exceeded 120s/case |
+| `pytest test_golden_cases.py` (env set, warm) | **1 passed in 6472s (1h47m)** | All 212 cases pass with warm cache |
 | `run_manual_golden_validation.py` (committed result) | expected_api_missing=0, false_must_run=0 | 212/212 cases, from committed `manual_validation_results.json` |
 | `make graph-stats` | 2712 collected, 212 mv, 0 nr | Confirmed |
 
 ### test_manual_verified_selector_output with real env — explanation
 
-This test runs the selector on all 212 golden cases with `ARKUI_ACE_ENGINE_ROOT` set and a 120s per-case timeout. With real repos and cold cache, selector initialization per case exceeds 120s, causing the first case to fail the assert.
+This test runs the selector on all 212 golden cases with `ARKUI_ACE_ENGINE_ROOT` set and a 120s per-case timeout.
 
-This is a **P2 performance issue** (cold start / no cache warming), not a correctness issue:
-- `false_must_run` remains 0 (enforced by unit tests, unaffected by timeout)
-- `expected_api_missing` = 0 confirmed on warm-cache run (committed `manual_validation_results.json`)
-- The timeout is not selector correctness failure — it is SDK index rebuild overhead
+**Cold start (first run):** Selector initialization rebuilds SDK + XTS indexes per-case, exceeding 120s → first case fails assert. Duration: 239s before failure.
 
-Mitigation: set `ARKUI_XTS_CACHE_DIR` and run one warm-up pass before the test suite.
+**Warm cache (re-run):** All 212 cases pass. Duration: 6472s (1h47m). Exit code 0.
+
+Conclusion: test is **correct** with warm cache. Cold-start failure is a P2 performance issue, not a correctness regression.
+
+Mitigation: set `ARKUI_XTS_CACHE_DIR` and run one warm-up pass before the test suite. Cache persists across runs.
 
 ## Real API graph results
 
@@ -121,18 +123,18 @@ Test method: Python API (`resolve_hunk_to_symbols`, `parse_changed_lines_arg`) w
 
 ## Product verdict
 
-**YELLOW** — strictly on the real-env full-suite timeout issue.
+**GREEN** — all correctness and safety gates pass with real environment.
 
-All correctness and safety gates are GREEN:
 - false_must_run = 0 ✓
 - expected_api_missing = 0 ✓
-- graph builder works with real SDK/XTS data ✓
+- `test_manual_verified_selector_output` passes with warm cache (1h47m, 212/212 cases) ✓
+- graph builder works with real SDK/XTS data (real_data=True) ✓
 - changed-symbol correctly resolves and refuses ✓
 - demo generator correctly gates internal names ✓
 - hunk impact correctly gates unresolved hunks ✓
 - all unit/integration tests pass (257 + 133) ✓
 
-The YELLOW is solely because `test_manual_verified_selector_output` times out on cold-start with real repos (P2 performance, not correctness). With cache warming, this test should pass.
+Known P2 issue: cold-start cache rebuild causes 120s per-case timeout failure on first run. After warm-up, all tests pass. Not a correctness issue.
 
 ## Remaining work
 
