@@ -619,6 +619,11 @@ class GestureApiResolver:
         - NEVER → must_run
 
         ``base_max_bucket`` comes from the routing table (always "possible").
+
+        # TODO(Phase E): Diverges from shared compute_max_bucket() — this method
+        # takes base_max_bucket + checks confidence in ("strong", "medium"),
+        # while the shared function takes impact_topics and only checks usage_kind.
+        # Refactor to shared signature when all Phase B resolvers are aligned.
         """
         # Check if we have SDK-validated topics with public names
         has_sdk_topics = any(

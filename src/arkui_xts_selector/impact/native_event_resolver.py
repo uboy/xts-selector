@@ -451,6 +451,10 @@ class NativeEventResolver:
         sdk_api_topics: tuple[SdkApiTopic, ...],
         consumer_usage_edges: list[ConsumerUsageEdge],
     ) -> str:
+        # TODO(Phase E): Diverges from shared compute_max_bucket() — takes
+        # base_max_bucket param and checks edge confidence, while the shared
+        # function takes impact_topics and only checks usage_kind.
+        # Refactor to shared signature when all Phase B resolvers are aligned.
         has_sdk_topics = any(len(t.public_names) > 0 for t in sdk_api_topics)
         has_strong_xts_usage = any(
             edge.usage_kind != "import_only" and edge.confidence in ("strong", "medium")
