@@ -3,9 +3,19 @@
 Verifies topic routing, graceful degradation, and safety invariants.
 """
 
+from __future__ import annotations
+
 import json
+import pathlib
+import sys
+from pathlib import Path
 
 import pytest
+
+# Ensure src layout package root is on sys.path when running without PYTHONPATH=src.
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(_ROOT / "src"))
 
 from arkui_xts_selector.impact.source_classifier import SourceClassifier
 from arkui_xts_selector.impact.native_event_resolver import NativeEventResolver
