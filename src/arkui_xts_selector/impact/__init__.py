@@ -7,6 +7,7 @@ This package provides:
   linking (GestureXtsLinker, ConsumerUsageEdge).
 - Phase B.3: native peer and ANI bridge topic resolution
   (NativePeerResolver, AniBridgeResolver).
+- Phase B.4: native event topic resolution (NativeEventResolver).
 
 All additions are additive-only and do not affect production selector
 scoring, bucket assignment, or must_run logic.
@@ -27,6 +28,7 @@ from arkui_xts_selector.impact.topic_models import (
     FanoutKind,
     GestureResolutionResult,
     ImpactTopic,
+    NativeEventResolutionResult,
     NativePeerResolutionResult,
     SdkApiTopic,
 )
@@ -38,6 +40,7 @@ from arkui_xts_selector.impact.gesture_xts_linker import (
 )
 from arkui_xts_selector.impact.native_peer_resolver import NativePeerResolver
 from arkui_xts_selector.impact.ani_bridge_resolver import AniBridgeResolver
+from arkui_xts_selector.impact.native_event_resolver import NativeEventResolver
 
 __all__ = [
     # Phase A
@@ -64,4 +67,7 @@ __all__ = [
     "AniBridgeResolutionResult",
     "NativePeerResolver",
     "NativePeerResolutionResult",
+    # Phase B.4
+    "NativeEventResolver",
+    "NativeEventResolutionResult",
 ]

@@ -264,3 +264,47 @@ class AniBridgeResolutionResult:
     recommended_families: Tuple[str, ...]
     max_bucket: Literal["must_run", "recommended", "possible", "unresolved"]
     unresolved_reasons: Tuple[str, ...]
+
+
+# ---------------------------------------------------------------------------
+# NativeEventResolutionResult — Phase B.4
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class NativeEventResolutionResult:
+    """Resolution result for a single native_event- or native_node-layer source entity.
+
+    Fields
+    ------
+    source_entity_id
+        ID of the classified ``SourceImpactEntity`` that was resolved.
+    source_path
+        Original source file path.
+    impact_topics
+        Typed impact topics derived from the source entity.
+    sdk_api_topics
+        SDK-validated API topics.  Native C++ / NDK internal names must NOT
+        appear as public_names — only SDK-visible C-API names are allowed.
+    consumer_usage_edges
+        XTS consumer usage edges (empty when XTS root is not available).
+    xts_usage_modules
+        XTS module names derived from consumer_usage_edges.
+    recommended_families
+        Target family strings recommended for test selection.
+    max_bucket
+        Maximum allowed selector bucket.  NEVER ``"must_run"`` from this
+        resolver — exact coverage equivalence is not proven here.
+    unresolved_reasons
+        Reasons for incomplete resolution at any layer.
+    """
+
+    source_entity_id: str
+    source_path: str
+    impact_topics: Tuple[ImpactTopic, ...]
+    sdk_api_topics: Tuple[SdkApiTopic, ...]
+    consumer_usage_edges: Tuple["ConsumerUsageEdge", ...]
+    xts_usage_modules: Tuple[str, ...]
+    recommended_families: Tuple[str, ...]
+    max_bucket: Literal["must_run", "recommended", "possible", "unresolved"]
+    unresolved_reasons: Tuple[str, ...]
