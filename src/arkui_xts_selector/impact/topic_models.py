@@ -369,3 +369,87 @@ class NativeEventResolutionResult:
     recommended_families: Tuple[str, ...]
     max_bucket: Literal["must_run", "recommended", "possible", "unresolved"]
     unresolved_reasons: Tuple[str, ...]
+
+
+# ---------------------------------------------------------------------------
+# ProfileTargetCandidate — Phase D
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ProfileTargetCandidate:
+    """A candidate test target discovered by broad infra profile query.
+
+    Fields
+    ------
+    target_name
+        Module or test file name (not full path).
+    source_file
+        Path relative to XTS root.
+    evidence_kind
+        ``"query_term_match"`` or ``"path_pattern_match"``.
+    confidence
+        ``"weak"`` or ``"medium"``.
+    query_term
+        Which candidate query term matched.
+    """
+
+    target_name: str
+    source_file: str
+    evidence_kind: str   # "query_term_match" | "path_pattern_match"
+    confidence: str      # "weak" | "medium"
+    query_term: str      # which term matched
+
+
+# ---------------------------------------------------------------------------
+# InfraProfileResolutionResult — Phase D
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class InfraProfileResolutionResult:
+    """Resolution result for a broad infrastructure profile entity.
+
+    max_bucket is NEVER ``"must_run"`` — infra profiles cap at ``"recommended"``.
+    affected_api_entities is always empty — exact SDK API is never inferred from
+    infra profiles.
+
+    Fields
+    ------
+    profile_id
+        Matched profile identifier, or ``None`` when unmatched.
+    source_layer
+        Source layer of the entity.
+    source_path
+        Original source file path.
+    risk_surface
+        Human-readable risk surface description from config.
+    candidate_query_terms
+        Terms used to search for candidate targets.
+    max_bucket
+        ``"possible"`` | ``"recommended"`` | ``"unresolved"``.
+        NEVER ``"must_run"``.
+    confidence
+        ``"none"`` | ``"low"`` | ``"medium"``.
+    affected_api_entities
+        Always empty tuple — exact SDK API must not be inferred from infra profiles.
+    profile_targets
+        Candidate targets discovered via query term search.
+        Empty when XTS env is not available.
+    limitations
+        Known limitations from the profile config.
+    unresolved_reasons
+        Reasons for incomplete resolution (e.g. ``"xts_index_not_available"``).
+    """
+
+    profile_id: Optional[str]
+    source_layer: str
+    source_path: str
+    risk_surface: str
+    candidate_query_terms: Tuple[str, ...]
+    max_bucket: str       # "possible" | "recommended" | "unresolved", NEVER "must_run"
+    confidence: str       # "none" | "low" | "medium"
+    affected_api_entities: Tuple[str, ...] = ()   # always empty for infra profiles
+    profile_targets: Tuple[ProfileTargetCandidate, ...] = ()
+    limitations: Tuple[str, ...] = ()
+    unresolved_reasons: Tuple[str, ...] = ()

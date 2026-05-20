@@ -1,0 +1,55 @@
+{
+  "profiles": [
+    {
+      "profile_id": "arkts_jsi_bridge",
+      "source_layers": ["jsi_bridge"],
+      "path_hints": [
+        "bridge/declarative_frontend/engine/jsi",
+        "jsi_bindings",
+        "bindings_defines"
+      ],
+      "description": "ArkTS-to-C++ JSI runtime binding infrastructure. Changes may affect ArkTS component mounting, lifecycle, or property binding across all components.",
+      "risk_surface": "broad ArkTS/C++ runtime binding — unsafe to infer exact SDK API",
+      "max_bucket": "recommended",
+      "target_policy": "bounded_smoke",
+      "candidate_query_terms": ["BasicContext", "PlatformApi", "JSI", "ArkTS runtime", "component smoke", "BridgeContext"],
+      "limitations": ["exact SDK API cannot be inferred", "XTS_ACTS_ROOT required for target discovery"],
+      "unresolved_reason_no_env": "xts_index_not_available",
+      "notes": "Do not emit exact SDK API. Bounded smoke only."
+    },
+    {
+      "profile_id": "inspector_view_registration",
+      "source_layers": ["inspector"],
+      "path_hints": [
+        "inspector_composed_component",
+        "jsi_view_register_impl",
+        "inspector"
+      ],
+      "description": "Component view registration and inspector metadata. Changes may affect component discovery, dev-tools integration, or view registration correctness.",
+      "risk_surface": "view registration / inspector metadata / component discovery",
+      "max_bucket": "recommended",
+      "target_policy": "bounded_smoke",
+      "candidate_query_terms": ["inspector", "view register", "component metadata", "common component smoke"],
+      "limitations": ["exact SDK API cannot be inferred", "broad component surface"],
+      "unresolved_reason_no_env": "xts_index_not_available",
+      "notes": "Do not emit exact SDK API."
+    },
+    {
+      "profile_id": "select_overlay_infra",
+      "source_layers": ["select_overlay"],
+      "path_hints": [
+        "select_overlay_node",
+        "pattern/select_overlay",
+        "select_overlay"
+      ],
+      "description": "Select/Menu/Popup overlay infrastructure. Changes affect Select, Menu, Popup overlay interaction and positioning.",
+      "risk_surface": "select overlay / menu / popup interaction infrastructure",
+      "max_bucket": "recommended",
+      "target_policy": "direct_domain_smoke_then_bounded",
+      "candidate_query_terms": ["Select", "Menu", "Popup", "Overlay", "select_overlay"],
+      "limitations": ["exact coverage equivalence required for must_run — not emitted here"],
+      "unresolved_reason_no_env": "xts_index_not_available",
+      "notes": "Select/Menu/Popup domain first, bounded overlay smoke as fallback."
+    }
+  ]
+}
