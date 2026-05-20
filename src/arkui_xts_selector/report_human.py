@@ -16,10 +16,27 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Iterable
 
-from rich import box
-from rich.console import Console
-from rich.padding import Padding
-from rich.table import Table
+# Lazy imports: rich is loaded only when a rendering function is called
+# to avoid ImportError when the optional dependency is missing.
+_rich_available = False
+_rich_box = None
+_RichConsole = None
+_RichPadding = None
+_RichTable = None
+
+
+def _ensure_rich():
+    global _rich_available, _rich_box, _RichConsole, _RichPadding, _RichTable
+    if _rich_available:
+        return
+    try:
+        from rich import box as _rich_box
+        from rich.console import Console as _RichConsole
+        from rich.padding import Padding as _RichPadding
+        from rich.table import Table as _RichTable
+        _rich_available = True
+    except ImportError:
+        _rich_available = False
 
 from .daily_prebuilt import (
     daily_component_candidates,
@@ -89,21 +106,24 @@ def _human_preview(values: Iterable[object], limit: int = 8) -> str:
     return f"{', '.join(items[:limit])}, ... (+{len(items) - limit})"
 
 
-def _human_console() -> Console:
+def _human_console() -> "_RichConsole":
+    _ensure_rich()
     stream = sys.stdout
     is_tty = bool(getattr(stream, "isatty", lambda: False)())
     width = shutil.get_terminal_size((120, 40)).columns if is_tty else 120
-    return Console(
-        file=stream,
-        force_terminal=False,
-        no_color=True,
-        highlight=False,
-        soft_wrap=False,
-        width=width,
-    )
+    if _rich_available:
+        return _RichConsole(
+            file=stream,
+            force_terminal=False,
+            no_color=True,
+            highlight=False,
+            soft_wrap=False,
+            width=width,
+        )
+    return None
 
 
-def _add_table_column(table: Table, header: str) -> None:
+def _add_table_column(table: "_RichTable", header: str) -> None:
     title = _human_value(header)
     compact = compact_token(title)
     kwargs: dict[str, object] = {"overflow": "fold", "vertical": "top"}
@@ -138,9 +158,25 @@ def _print_human_table(
     rows: list[list[object]] | list[tuple[object, ...]],
     indent: int = 0,
 ) -> None:
+    _ensure_rich()
+    if not _rich_available:
+        if not rows:
+            return
+        col_widths = [
+            max(len(h), max((len(str(c)) for c in col), default=0))
+            for h, col in zip(headers, zip(*rows))
+        ]
+        padding = " " * indent
+        sep_fmt = padding + "  ".join(f"{{:<{w}}}" for w in col_widths)
+        print(sep_fmt.format(*headers))
+        print(padding + "  ".join("-" * w for w in col_widths))
+        for row in rows:
+            vals = [str(c) if c is not None else "-" for c in row]
+            print(sep_fmt.format(*vals))
+        return
     console = _human_console()
-    table = Table(
-        box=box.ROUNDED,
+    table = _RichTable(
+        box=_rich_box.ROUNDED,
         show_header=True,
         show_lines=False,
         expand=True,
@@ -152,7 +188,7 @@ def _print_human_table(
     for row in rows:
         normalized_row = [_human_value(cell) for cell in row]
         table.add_row(*normalized_row)
-    renderable = Padding(table, (0, 0, 0, indent)) if indent else table
+    renderable = _RichPadding(table, (0, 0, 0, indent)) if indent else table
     console.print(renderable)
 
 
