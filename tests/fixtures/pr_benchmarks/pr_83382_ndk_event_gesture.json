@@ -1,0 +1,41 @@
+{
+  "case_id": "pr_83382_ndk_event_gesture",
+  "pr_number": 83382,
+  "description": "NDK native event and gesture implementation: ui_input_event.cpp, event_converter.cpp, gesture_impl.cpp.",
+  "changed_files": [
+    "interfaces/native/event/ui_input_event.cpp",
+    "interfaces/native/node/event_converter.cpp",
+    "interfaces/native/node/gesture_impl.cpp"
+  ],
+  "expected_classifications": [
+    {
+      "path": "interfaces/native/event/ui_input_event.cpp",
+      "expected_layer": "native_event",
+      "expected_role": "ndk_event_implementation",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["native.event.ui_input"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "interfaces/native/node/event_converter.cpp",
+      "expected_layer": "native_node",
+      "expected_role": "ndk_event_implementation",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["native.node.event"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "interfaces/native/node/gesture_impl.cpp",
+      "expected_layer": "native_node",
+      "expected_role": "ndk_node_gesture_implementation",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["native.node.gesture"],
+      "must_not_be_unknown": true
+    }
+  ],
+  "benchmark_constraints": {
+    "false_must_run": 0,
+    "zero_target_regression_allowed": false,
+    "notes": "gesture_impl.cpp must be classified as native_node/ndk_node_gesture_implementation (not generic native_node/ndk_event_implementation). event_converter.cpp is native_node. ui_input_event.cpp is native_event. Do not collapse into generic all_event_consuming_components."
+  }
+}

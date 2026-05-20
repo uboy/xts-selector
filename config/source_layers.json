@@ -1,0 +1,278 @@
+{
+  "schema_version": "v1",
+  "description": "Source path classification rules for Universal Impact Resolution (Phase A). Rules are evaluated in order; first match wins. These rules classify source layers and roles — they do NOT map files directly to XTS test targets.",
+  "rules": [
+    {
+      "id": "test_only_dir",
+      "path_regex": ".*/test/.*\\.(cpp|h|ts|ets|js)$",
+      "layer": "test_only",
+      "role": "unit_test",
+      "topic_templates": [],
+      "confidence": "strong",
+      "notes": "Files under a test/ directory are test-only and do not affect production API surface."
+    },
+    {
+      "id": "test_only_suffix",
+      "path_regex": ".*_test\\.(cpp|h)$",
+      "layer": "test_only",
+      "role": "unit_test",
+      "topic_templates": [],
+      "confidence": "strong",
+      "notes": "Files with _test suffix are unit tests."
+    },
+    {
+      "id": "mock_file",
+      "path_regex": ".*/mock_[^/]+\\.(cpp|h)$",
+      "layer": "test_only",
+      "role": "unit_test",
+      "topic_templates": [],
+      "confidence": "strong",
+      "notes": "Mock files are test infrastructure."
+    },
+    {
+      "id": "build_config_gn",
+      "path_regex": ".*/BUILD\\.gn$",
+      "layer": "build_config",
+      "role": "build_artifact",
+      "topic_templates": [],
+      "confidence": "strong",
+      "notes": "Build definition files do not directly affect SDK API surface."
+    },
+    {
+      "id": "build_config_cmake",
+      "path_regex": ".*/CMakeLists\\.txt$",
+      "layer": "build_config",
+      "role": "build_artifact",
+      "topic_templates": [],
+      "confidence": "strong"
+    },
+    {
+      "id": "build_config_gni",
+      "path_regex": ".*\\.gni$",
+      "layer": "build_config",
+      "role": "build_artifact",
+      "topic_templates": [],
+      "confidence": "strong"
+    },
+    {
+      "id": "native_peer_implementation",
+      "path_regex": "interfaces/native/implementation/.*_(modifier|accessor|peer_impl)\\.(cpp|h)$",
+      "layer": "native_peer",
+      "role": "sdk_peer_implementation",
+      "topic_templates": ["{family}.native_peer"],
+      "family_from_filename": true,
+      "confidence": "medium",
+      "notes": "C-API peer implementation files. Family hint derived from filename stem. SDK declaration must be validated before claiming public API impact."
+    },
+    {
+      "id": "native_peer_impl_header",
+      "path_regex": "interfaces/native/implementation/[^/]+\\.h$",
+      "layer": "native_peer",
+      "role": "sdk_peer_implementation",
+      "topic_templates": ["{family}.native_peer"],
+      "family_from_filename": true,
+      "confidence": "weak",
+      "notes": "Header files in native/implementation — peer implementation headers."
+    },
+    {
+      "id": "native_peer_impl_other",
+      "path_regex": "interfaces/native/implementation/[^/]+\\.cpp$",
+      "layer": "native_peer",
+      "role": "sdk_peer_implementation",
+      "topic_templates": ["{family}.native_peer"],
+      "family_from_filename": true,
+      "confidence": "medium",
+      "notes": "Other .cpp files in native/implementation that don't match modifier/accessor/peer_impl suffix."
+    },
+    {
+      "id": "ani_bridge",
+      "path_regex": "interfaces/native/ani/[^/]+\\.(cpp|h)$",
+      "layer": "ani_bridge",
+      "role": "ani_modifier_binding",
+      "topic_templates": ["{family}.ani_bridge"],
+      "family_from_filename": true,
+      "confidence": "medium",
+      "notes": "ANI modifier binding files. ANI names are bridge evidence only — not public API identity."
+    },
+    {
+      "id": "ani_bridge_subdirs",
+      "path_regex": "interfaces/native/ani/.+\\.(cpp|h)$",
+      "layer": "ani_bridge",
+      "role": "ani_modifier_binding",
+      "topic_templates": ["{family}.ani_bridge"],
+      "family_from_filename": true,
+      "confidence": "medium"
+    },
+    {
+      "id": "gesture_referee",
+      "path_regex": "components_ng/gestures/gesture_referee\\.(cpp|h)$",
+      "layer": "gesture_referee",
+      "role": "gesture_referee_core",
+      "topic_templates": ["gesture.core", "gesture.referee"],
+      "confidence": "medium",
+      "notes": "Gesture referee is shared gesture infrastructure, not all-component impact."
+    },
+    {
+      "id": "gesture_recognizer_base",
+      "path_regex": "components_ng/gestures/gesture_recognizer\\.(cpp|h)$",
+      "layer": "gesture_framework",
+      "role": "gesture_recognizer_core",
+      "topic_templates": ["gesture.core", "gesture.recognizer"],
+      "confidence": "medium",
+      "notes": "Base gesture recognizer; affects all gesture API types."
+    },
+    {
+      "id": "gesture_pan_recognizer",
+      "path_regex": "components_ng/gestures/recognizers/pan_recognizer\\.(cpp|h)$",
+      "layer": "gesture_framework",
+      "role": "gesture_recognizer_core",
+      "topic_templates": ["gesture.pan", "gesture.recognizer"],
+      "family_from_filename": true,
+      "confidence": "medium",
+      "notes": "PanGesture recognizer implementation."
+    },
+    {
+      "id": "gesture_framework_recognizers",
+      "path_regex": "components_ng/gestures/recognizers/[^/]+\\.(cpp|h)$",
+      "layer": "gesture_framework",
+      "role": "gesture_recognizer_core",
+      "topic_templates": ["gesture.core", "gesture.recognizer"],
+      "family_from_filename": true,
+      "confidence": "medium",
+      "notes": "Gesture recognizer implementations. family_from_filename extracts gesture type hint."
+    },
+    {
+      "id": "gesture_framework_core",
+      "path_regex": "components_ng/gestures/[^/]+\\.(cpp|h)$",
+      "layer": "gesture_framework",
+      "role": "gesture_recognizer_core",
+      "topic_templates": ["gesture.core", "gesture.recognizer"],
+      "confidence": "medium",
+      "notes": "Top-level gesture framework files."
+    },
+    {
+      "id": "gesture_framework_subdirs",
+      "path_regex": "components_ng/gestures/.+\\.(cpp|h)$",
+      "layer": "gesture_framework",
+      "role": "gesture_recognizer_core",
+      "topic_templates": ["gesture.core", "gesture.recognizer"],
+      "confidence": "medium"
+    },
+    {
+      "id": "native_node_gesture_impl",
+      "path_regex": "interfaces/native/node/gesture_impl\\.(cpp|h)$",
+      "layer": "native_node",
+      "role": "ndk_node_gesture_implementation",
+      "topic_templates": ["native.node.gesture"],
+      "confidence": "medium",
+      "notes": "NDK node gesture implementation — separate from generic event layer."
+    },
+    {
+      "id": "native_event",
+      "path_regex": "interfaces/native/event/[^/]+\\.(cpp|h)$",
+      "layer": "native_event",
+      "role": "ndk_event_implementation",
+      "topic_templates": ["native.event.ui_input", "native.event.touch", "native.event.key"],
+      "confidence": "medium",
+      "notes": "NDK native event layer. Prefer native XTS consumers over broad ArkTS event fanout."
+    },
+    {
+      "id": "native_node",
+      "path_regex": "interfaces/native/node/[^/]+\\.(cpp|h)$",
+      "layer": "native_node",
+      "role": "ndk_event_implementation",
+      "topic_templates": ["native.node.event", "native.node.api"],
+      "confidence": "medium",
+      "notes": "NDK native node layer."
+    },
+    {
+      "id": "jsi_engine_bridge",
+      "path_regex": "bridge/declarative_frontend/engine/jsi/[^/]+\\.(cpp|h|ts|js|inl)$",
+      "layer": "jsi_bridge",
+      "role": "jsi_runtime_bridge",
+      "topic_templates": ["bridge.jsi.runtime"],
+      "confidence": "medium",
+      "notes": "JSI runtime bridge. Exact SDK API resolution requires symbol/hunk evidence."
+    },
+    {
+      "id": "jsi_bindings_definition",
+      "path_regex": "bridge/declarative_frontend/engine/[^/]*bindings[^/]*\\.(h|cpp)$",
+      "layer": "jsi_bridge",
+      "role": "jsi_binding_definition",
+      "topic_templates": ["bridge.jsi.binding_definition"],
+      "confidence": "medium",
+      "notes": "JSI binding definition headers — macro/define changes need declaration+usage evidence for exact coverage."
+    },
+    {
+      "id": "jsi_bridge_subdirs",
+      "path_regex": "bridge/declarative_frontend/engine/jsi/.+\\.(cpp|h|ts|js|inl)$",
+      "layer": "jsi_bridge",
+      "role": "jsi_runtime_bridge",
+      "topic_templates": ["bridge.jsi.runtime"],
+      "confidence": "medium"
+    },
+    {
+      "id": "jsi_view_register",
+      "path_regex": "bridge/declarative_frontend/engine/jsi/[^/]*view_register[^/]*\\.(cpp|h)$",
+      "layer": "jsi_bridge",
+      "role": "jsi_native_module_bridge",
+      "topic_templates": ["bridge.jsi.view_register"],
+      "confidence": "medium",
+      "notes": "JSI view registration bridge."
+    },
+    {
+      "id": "select_overlay_pattern",
+      "path_regex": "components_ng/pattern/select_overlay/[^/]+\\.(cpp|h)$",
+      "layer": "select_overlay",
+      "role": "selection_overlay_runtime",
+      "topic_templates": ["select.overlay", "select.menu", "text.selection_overlay"],
+      "confidence": "medium",
+      "notes": "Select overlay pattern. Direct Select/Text tests should rank above broad overlay profile."
+    },
+    {
+      "id": "select_overlay_node",
+      "path_regex": ".*/select_overlay_node\\.(cpp|h)$",
+      "layer": "select_overlay",
+      "role": "selection_overlay_runtime",
+      "topic_templates": ["select.overlay", "text.selection_overlay", "rich_editor.selection_overlay"],
+      "confidence": "medium"
+    },
+    {
+      "id": "inspector_composed_component",
+      "path_regex": ".*/inspector_composed_component\\.(cpp|h)$",
+      "layer": "inspector",
+      "role": "inspector_runtime",
+      "topic_templates": ["common_method.inspector_label", "inspector.composed"],
+      "confidence": "medium",
+      "notes": "Inspector composed component runtime."
+    },
+    {
+      "id": "inspector_dir",
+      "path_regex": ".*/inspector/[^/]+\\.(cpp|h)$",
+      "layer": "inspector",
+      "role": "inspector_runtime",
+      "topic_templates": ["inspector.runtime"],
+      "confidence": "medium",
+      "notes": "Inspector directory files."
+    },
+    {
+      "id": "component_pattern",
+      "path_regex": "components_ng/pattern/[^/]+/[^/]+\\.(cpp|h)$",
+      "layer": "component_pattern",
+      "role": "component_behavior",
+      "topic_templates": ["{family}.component_pattern"],
+      "family_from_filename": true,
+      "confidence": "weak",
+      "notes": "Catch-all for recognized component pattern directories."
+    },
+    {
+      "id": "unknown",
+      "path_regex": ".*",
+      "layer": "unknown",
+      "role": "unknown",
+      "topic_templates": [],
+      "confidence": "none",
+      "notes": "Fallback rule — no specific layer matched. Manual review required."
+    }
+  ]
+}
