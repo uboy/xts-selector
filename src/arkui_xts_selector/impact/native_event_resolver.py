@@ -54,6 +54,7 @@ from arkui_xts_selector.impact.gesture_xts_linker import (
     _make_edge_id,
     _derive_project,
 )
+from arkui_xts_selector.impact.consumer_usage_linker import ConsumerUsageLinker
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +165,8 @@ class NativeEventResolver:
         _xts_root = xts_root or os.environ.get("XTS_ACTS_ROOT")
         self._sdk_validator = GestureSdkValidator(sdk_api_root=_sdk_root)
         self._xts_linker = _NativeEventXtsLinker(xts_root=_xts_root)
+        # Phase C: generalised consumer linker (replaces _NativeEventXtsLinker)
+        self._consumer_linker = ConsumerUsageLinker(xts_root=_xts_root)
 
         self._topics_by_id: dict[str, dict[str, Any]] = {}
         self._load_config()

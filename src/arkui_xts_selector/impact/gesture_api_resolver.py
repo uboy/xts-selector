@@ -48,6 +48,10 @@ from arkui_xts_selector.impact.gesture_xts_linker import (
     ConsumerUsageEdge,
     GestureXtsLinker,
 )
+from arkui_xts_selector.impact.consumer_usage_linker import (
+    ConsumerUsageLinker,
+    compute_max_bucket as _compute_max_bucket_shared,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -243,6 +247,8 @@ class GestureApiResolver:
         _xts_root = xts_root or os.environ.get("XTS_ACTS_ROOT")
         self._sdk_validator = GestureSdkValidator(sdk_api_root=_sdk_root)
         self._xts_linker = GestureXtsLinker(xts_root=_xts_root)
+        # Phase C: generalised consumer linker (replaces domain-specific linker)
+        self._consumer_linker = ConsumerUsageLinker(xts_root=_xts_root)
 
         self._topics_by_id: dict[str, dict[str, Any]] = {}
         self._load_config()

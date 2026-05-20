@@ -173,10 +173,71 @@ class GestureResolutionResult:
     unresolved_reasons: Tuple[str, ...]
 
 
-# NOTE: ConsumerUsageEdge is defined in gesture_xts_linker.py.
-# The type annotation "ConsumerUsageEdge" in GestureResolutionResult above
-# uses a forward-reference string, resolved at runtime only if needed.
-# Callers should import ConsumerUsageEdge from gesture_xts_linker directly.
+# NOTE: The legacy ConsumerUsageEdge (old field names) is still defined in
+# gesture_xts_linker.py for backward compat with Phase B.1–B.4 tests.
+# The canonical ConsumerUsageEdge below (Phase C) uses the normalised field
+# names from the Universal Impact Resolution Design, Section 5.
+# New code should import from topic_models; Phase B resolvers continue to
+# import the legacy class from gesture_xts_linker.
+
+
+# ---------------------------------------------------------------------------
+# ConsumerUsageEdge — Phase C normalised model (design doc Section 5)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ConsumerUsageEdge:
+    """An XTS consumer usage edge linking an SDK API topic to a test file.
+
+    This is the Phase C normalised model.  The legacy Phase B model with
+    ``sdk_api_topic_id`` / ``api_public_name`` / ``consumer_file`` /
+    ``consumer_project`` fields lives in ``gesture_xts_linker.py``.
+
+    Fields
+    ------
+    edge_id
+        Short hash identifier: 12-hex-char MD5 of ``"name:file:line"``.
+    sdk_api_name
+        SDK-visible public name (e.g. ``"PanGesture"``).
+    sdk_topic_id
+        The ``SdkApiTopic.topic_id`` this edge belongs to.
+    usage_file
+        Relative path to the XTS consumer file (relative to XTS root).
+    usage_line
+        Line number in ``usage_file``, or ``None`` when not recorded.
+    usage_kind
+        One of: ``"component_instantiation"``, ``"method_call"``,
+        ``"event_handler"``, ``"property_attribute"``,
+        ``"native_api_call"``, ``"import_only"``, ``"unknown"``.
+        ``"import_only"`` or ``"unknown"`` alone cannot raise max_bucket.
+    usage_symbol
+        Matched symbol text (or ``None``).
+    owning_module
+        XTS module / project derived from file path.
+    hap_name
+        Optional HAP artifact name.
+    confidence
+        ``"strong"``, ``"medium"``, or ``"weak"``.
+        ``"import_only"`` → ``"weak"`` always.
+    evidence_types
+        Tuple of evidence type strings (e.g. ``("xts_usage_scan",)``).
+    limitations
+        Tuple of limitation strings (empty for strong evidence).
+    """
+
+    edge_id: str
+    sdk_api_name: str
+    sdk_topic_id: str
+    usage_file: str
+    usage_line: Optional[int]
+    usage_kind: str
+    usage_symbol: Optional[str]
+    owning_module: str
+    hap_name: Optional[str]
+    confidence: str
+    evidence_types: Tuple[str, ...]
+    limitations: Tuple[str, ...]
 
 
 # ---------------------------------------------------------------------------

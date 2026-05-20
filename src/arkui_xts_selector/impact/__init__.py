@@ -1,13 +1,16 @@
-"""Universal Impact Resolution — Phase A/B: Source Classifier + Topic Resolver.
+"""Universal Impact Resolution — Phase A/B/C: Source Classifier + Topic Resolver.
 
 This package provides:
 - Phase A: typed source entity classification for ArkUI AceEngine source paths.
 - Phase B.1: gesture API topic resolution (GestureApiResolver).
 - Phase B.2: SDK declaration validation (GestureSdkValidator) and XTS usage
-  linking (GestureXtsLinker, ConsumerUsageEdge).
+  linking (GestureXtsLinker, ConsumerUsageEdge [legacy]).
 - Phase B.3: native peer and ANI bridge topic resolution
   (NativePeerResolver, AniBridgeResolver).
 - Phase B.4: native event topic resolution (NativeEventResolver).
+- Phase C: generalised XTS consumer usage linker (ConsumerUsageLinker) and
+  shared bucket computation (compute_max_bucket).  The Phase C
+  ConsumerUsageEdge (normalised field names) lives in topic_models.
 
 All additions are additive-only and do not affect production selector
 scoring, bucket assignment, or must_run logic.
@@ -41,6 +44,10 @@ from arkui_xts_selector.impact.gesture_xts_linker import (
 from arkui_xts_selector.impact.native_peer_resolver import NativePeerResolver
 from arkui_xts_selector.impact.ani_bridge_resolver import AniBridgeResolver
 from arkui_xts_selector.impact.native_event_resolver import NativeEventResolver
+from arkui_xts_selector.impact.consumer_usage_linker import (
+    ConsumerUsageLinker,
+    compute_max_bucket,
+)
 
 __all__ = [
     # Phase A
@@ -70,4 +77,7 @@ __all__ = [
     # Phase B.4
     "NativeEventResolver",
     "NativeEventResolutionResult",
+    # Phase C
+    "ConsumerUsageLinker",
+    "compute_max_bucket",
 ]

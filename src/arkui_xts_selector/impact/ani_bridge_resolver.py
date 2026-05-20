@@ -43,6 +43,7 @@ from arkui_xts_selector.impact.topic_models import (
 from arkui_xts_selector.impact.gesture_sdk_validator import GestureSdkValidator
 from arkui_xts_selector.impact.native_peer_resolver import _NativePeerXtsLinker
 from arkui_xts_selector.impact.gesture_xts_linker import ConsumerUsageEdge
+from arkui_xts_selector.impact.consumer_usage_linker import ConsumerUsageLinker
 
 
 # ---------------------------------------------------------------------------
@@ -137,6 +138,8 @@ class AniBridgeResolver:
         _xts_root = xts_root or os.environ.get("XTS_ACTS_ROOT")
         self._sdk_validator = GestureSdkValidator(sdk_api_root=_sdk_root)
         self._xts_linker = _NativePeerXtsLinker(xts_root=_xts_root)
+        # Phase C: generalised consumer linker (replaces _NativePeerXtsLinker)
+        self._consumer_linker = ConsumerUsageLinker(xts_root=_xts_root)
 
         self._topics_by_id: dict[str, dict[str, Any]] = {}
         self._load_config()
