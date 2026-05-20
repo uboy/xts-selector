@@ -1,20 +1,31 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .venv/
 *.egg-info/
+.coverage
+coverage.xml
+htmlcov/
 
 .scratchpad/
 coordination/
 
 build/
 dist/
+out/
 
 arkui_xts_selector_report.json
 selected_tests.json
+api_graph.json
+*api_graph*.json
+*.log
+*.out
 work.zip
 .runs/
 local/
+.cache/
 
 .codex
 .runtime/

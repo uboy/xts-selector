@@ -700,7 +700,7 @@ PYTHONPATH=src python3 -m arkui_xts_selector.cli coverage-eval \
 
 ### Step N7.5 — Update final report
 
-- [ ] Создать `docs/NEXT_ITERATION_FINAL_REPORT.md` по аналогии с `IMPLEMENTATION_FINAL_REPORT.md` со всеми финальными числами.
+- [ ] Создать `docs/archive/2026-05-19/NEXT_ITERATION_FINAL_REPORT.md` по аналогии с `IMPLEMENTATION_FINAL_REPORT.md` со всеми финальными числами.
 
 ### Acceptance N7
 
@@ -712,7 +712,7 @@ PYTHONPATH=src python3 -m arkui_xts_selector.cli coverage-eval \
 ### Commit
 
 ```bash
-git add docs/NEXT_ITERATION_FINAL_REPORT.md
+git add docs/archive/2026-05-19/NEXT_ITERATION_FINAL_REPORT.md
 git commit -m "Phase N7: final validation + iteration 2 report"
 ```
 
@@ -816,7 +816,7 @@ for k in ['canonical_api_resolution_rate', 'pr_canonical_coverage',
 
 ## Reference
 
-- `docs/IMPLEMENTATION_FINAL_REPORT.md` — итог итерации 1.
+- `docs/archive/2026-05-19/IMPLEMENTATION_FINAL_REPORT.md` — итог итерации 1.
 - `docs/IMPLEMENTATION_RUNBOOK.md` — runbook итерации 1 (Tracks 1-8).
 - `docs/CANONICAL_RATE_IMPROVEMENT_PLAN.md` — обоснование Tracks 1-8.
 - `docs/POST_PHASE10_BACKLOG.md` — backlog с описанием B.1, B.2 (концептуально).

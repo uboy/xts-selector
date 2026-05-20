@@ -58,17 +58,17 @@ Author: Denis Mazur
 
 | File | Action taken |
 |------|-------------|
-| `docs/IMPLEMENTATION_FINAL_REPORT.md` | Added SUPERSEDED header note (2026-05-08 iteration, superseded by Phase-5A merge) |
-| `docs/NEXT_ITERATION_FINAL_REPORT.md` | Added SUPERSEDED header note (2026-05-08 iteration, superseded by Phase-5A merge) |
-| `docs/BATCH_VALIDATION_PHASE12_REPORT.md` | Added SUPERSEDED header note (Phase 12 batch, superseded by later phases + Phase-5A) |
-| `docs/FULL-PROJECT-BRANCH-AUDIT-2026-05-17.md` | Added SUPERSEDED header note (superseded by FULL-PROJECT-STATUS-AUDIT-2026-05-18.md) |
-| `docs/PHASE-5A-MERGE-REPORT-2026-05-18.md` | No change — current, authoritative |
-| `docs/FULL-PROJECT-STATUS-AUDIT-2026-05-18.md` | No change — most recent full audit |
-| `docs/MODEL-FILE-RESOLUTION-REPORT-2026-05-18.md` | No change — current |
-| `docs/P0-STABILIZATION-REPORT-2026-05-17.md` | No change — relevant historical context |
-| `docs/PHASE-3-MERGE-REPORT-2026-05-18.md` | No change — historical merge record |
-| `docs/CLI-MAPPING-CLEANUP-REPORT-2026-05-17.md` | No change — historical record |
-| `docs/MERGE-READINESS-REPORT-2026-05-17.md` | No change — historical record |
+| `docs/archive/2026-05-19/IMPLEMENTATION_FINAL_REPORT.md` | Added SUPERSEDED header note (2026-05-08 iteration, superseded by Phase-5A merge) |
+| `docs/archive/2026-05-19/NEXT_ITERATION_FINAL_REPORT.md` | Added SUPERSEDED header note (2026-05-08 iteration, superseded by Phase-5A merge) |
+| `docs/archive/2026-05-19/BATCH_VALIDATION_PHASE12_REPORT.md` | Added SUPERSEDED header note (Phase 12 batch, superseded by later phases + Phase-5A) |
+| `docs/archive/2026-05-19/FULL-PROJECT-BRANCH-AUDIT-2026-05-17.md` | Added SUPERSEDED header note (superseded by FULL-PROJECT-STATUS-AUDIT-2026-05-18.md) |
+| `docs/archive/2026-05-19/PHASE-5A-MERGE-REPORT-2026-05-18.md` | No change — current, authoritative |
+| `docs/archive/2026-05-19/FULL-PROJECT-STATUS-AUDIT-2026-05-18.md` | No change — most recent full audit |
+| `docs/archive/2026-05-19/MODEL-FILE-RESOLUTION-REPORT-2026-05-18.md` | No change — current |
+| `docs/archive/2026-05-19/P0-STABILIZATION-REPORT-2026-05-17.md` | No change — relevant historical context |
+| `docs/archive/2026-05-19/PHASE-3-MERGE-REPORT-2026-05-18.md` | No change — historical merge record |
+| `docs/archive/2026-05-19/CLI-MAPPING-CLEANUP-REPORT-2026-05-17.md` | No change — historical record |
+| `docs/archive/2026-05-19/MERGE-READINESS-REPORT-2026-05-17.md` | No change — historical record |
 | All other docs | No change — retained as-is |
 | `docs/archive/2026-05-19/` | Directory created for future use |
 

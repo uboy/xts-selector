@@ -38,7 +38,9 @@ This is not runtime coverage. It is a test selection helper.
 
 ## Current Safety Baseline
 
-- **183 manual_verified** golden cases; **29 needs_review**; **0 false_must_run**.
+- Product Acceptance is **GREEN**; see [docs/PRODUCT-ACCEPTANCE-GREEN-2026-05-19.md](docs/PRODUCT-ACCEPTANCE-GREEN-2026-05-19.md).
+- **212 manual_verified** golden cases; **0 needs_review**; **0 false_must_run**; **0 expected_api_missing**.
+- Warm-cache golden validation passed **212/212** on real OpenHarmony repositories in **6472s / 1h47m**.
 - `bucket_gate_passed`, `bucket_gate_blockers`, and `bucket_gate_summary` are present in JSON output.
 - `affected_api_entity_details` exists alongside the legacy `affected_api_entities` string array.
 - Golden Seed is trusted only when quality gates pass.
@@ -51,7 +53,7 @@ Wave 1 added the following modules alongside the existing production CLI:
 
 | Capability | Module | Status | Notes |
 |---|---|---|---|
-| Legacy file→family→test selection | `signal_inference.py`, `scoring.py`, `coverage_planner.py` | Stable | 183 golden verified |
+| Legacy file→family→test selection | `signal_inference.py`, `scoring.py`, `coverage_planner.py` | Stable | 212 golden verified |
 | Graph resolver — API query mode | `graph/resolver.py` `resolve_api_query()` | Beta | Not default; use `--use-graph-resolver` |
 | Graph resolver — symbol query mode | `graph/resolver.py` `resolve_changed_symbol_to_tests()` | Beta | Wired to resolver; not exposed as a standalone CLI flag yet |
 | Graph resolver — changed-file mode | `graph/resolver.py` via `--use-graph-resolver` | Alpha | Default-off for broad runs; validated through shadow tests |
@@ -81,11 +83,21 @@ python3 tests/golden/tools/run_manual_golden_validation.py
 # Collect only — verify 0 collection errors
 python3 -m pytest --collect-only -q
 
+# Fast merge gate
+make validate-fast
+
+# Graph/usage/coverage gate
+make validate-graph
+
 # Golden corpus tests
 python3 -m pytest tests/golden/test_golden_cases.py -q
 
-# Full manual golden validation
-python3 tests/golden/tools/run_manual_golden_validation.py
+# Real-env golden validation, when the OHOS roots are exported
+make validate-env
+make validate-golden
+
+# Nightly profile
+make validate-nightly
 
 # Full suite
 python3 -m pytest -q
@@ -200,6 +212,10 @@ Current interpretation rule:
 ## Documentation
 
 - [docs/CLI_REFERENCE.md](docs/CLI_REFERENCE.md) - detailed CLI reference for `arkui-xts-selector` and `xts_compare`
+- [docs/PRODUCT-ACCEPTANCE-GREEN-2026-05-19.md](docs/PRODUCT-ACCEPTANCE-GREEN-2026-05-19.md) - final accepted GREEN state
+- [docs/PRODUCT-STATUS-2026-05-19.md](docs/PRODUCT-STATUS-2026-05-19.md) - current product status and remaining work
+- [docs/VALIDATION-MATRIX-2026-05-19.md](docs/VALIDATION-MATRIX-2026-05-19.md) - validation lanes and blocking policy
+- [docs/ENVIRONMENT-BOOTSTRAP-2026-05-19.md](docs/ENVIRONMENT-BOOTSTRAP-2026-05-19.md) - real repository environment setup
 - [docs/TARGET_ARCHITECTURE.md](docs/TARGET_ARCHITECTURE.md) - current target architecture (typed graph, bucket gates, parser levels)
 - [docs/ARCHITECTURE_V1.md](docs/ARCHITECTURE_V1.md) - V1 historical baseline (kept for context)
 - [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) - scope and expected behavior

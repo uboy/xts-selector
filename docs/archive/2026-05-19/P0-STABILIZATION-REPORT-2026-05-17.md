@@ -1,3 +1,5 @@
+SUPERSEDED: This report is historical. Current accepted state is documented in docs/PRODUCT-ACCEPTANCE-GREEN-2026-05-19.md.
+
 # P0 Stabilization Report
 
 Generated: 2026-05-17

@@ -1,3 +1,5 @@
+SUPERSEDED: This report is historical. Current accepted state is documented in docs/PRODUCT-ACCEPTANCE-GREEN-2026-05-19.md.
+
 # Wave 2 Integration Report
 
 Date: 2026-05-19

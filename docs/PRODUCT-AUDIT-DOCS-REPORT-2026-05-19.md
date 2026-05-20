@@ -13,7 +13,7 @@ Three documentation changes were made:
 
 1. **README.md** updated — safety baseline counts corrected (183/29), `needs_review` bucket added to table, Wave 1 capabilities table added, Wave 1 CLI workflow commands added, Architecture section expanded with three new module descriptions and Wave 1 report links.
 2. **docs/PRODUCT-STATUS-2026-05-19.md** created — comprehensive product status covering maturity, capabilities, safety guarantees, JSON contract, known limitations, roadmap, and Wave 1 deliverables.
-3. **docs/FULL-PROJECT-STATUS-AUDIT-2026-05-18.md** marked SUPERSEDED — preceding overall status doc now has a `SUPERSEDED` header pointing to the new product status file.
+3. **docs/archive/2026-05-19/FULL-PROJECT-STATUS-AUDIT-2026-05-18.md** marked SUPERSEDED — preceding overall status doc now has a `SUPERSEDED` header pointing to the new product status file.
 
 No production code was changed.
 
@@ -26,7 +26,7 @@ No production code was changed.
 | `README.md` | Updated — corrected golden counts (101→183/29), added Wave 1 capabilities table, added Wave 1 CLI commands, added `needs_review` bucket, expanded Architecture section |
 | `docs/PRODUCT-STATUS-2026-05-19.md` | Created — full product status for post-Wave-1 state |
 | `docs/PRODUCT-AUDIT-DOCS-REPORT-2026-05-19.md` | Created — this report |
-| `docs/FULL-PROJECT-STATUS-AUDIT-2026-05-18.md` | Updated — added SUPERSEDED header pointing to new product status |
+| `docs/archive/2026-05-19/FULL-PROJECT-STATUS-AUDIT-2026-05-18.md` | Updated — added SUPERSEDED header pointing to new product status |
 
 ---
 

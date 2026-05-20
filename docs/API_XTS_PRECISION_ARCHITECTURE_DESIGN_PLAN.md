@@ -421,7 +421,7 @@ DoD:
 
 - `src/arkui_xts_selector/batch_validate.py`
 - quality report generation
-- `docs/NEXT_ITERATION_FINAL_REPORT.md`
+- `docs/archive/2026-05-19/NEXT_ITERATION_FINAL_REPORT.md`
 
 Шаги:
 

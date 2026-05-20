@@ -1,3 +1,5 @@
+SUPERSEDED: This report is historical. Current accepted state is documented in docs/PRODUCT-ACCEPTANCE-GREEN-2026-05-19.md.
+
 # Phase 5A merge report
 
 Date: 2026-05-18
