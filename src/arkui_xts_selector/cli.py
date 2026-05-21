@@ -1237,6 +1237,22 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--git-root", help="Git root to use with --git-diff.")
     parser.add_argument(
+        "--from-git-diff",
+        metavar="BASE_REV",
+        help=(
+            "Auto-derive precision evidence (changed line ranges + symbols) from "
+            "git diff BASE_REV..HEAD.  Feeds the Phase F precision pipeline without "
+            "requiring manual --changed-symbol / --changed-lines flags.  "
+            "Example: --from-git-diff HEAD~1"
+        ),
+    )
+    parser.add_argument(
+        "--from-git-diff-head",
+        metavar="HEAD_REV",
+        default="HEAD",
+        help="Head revision for --from-git-diff.  Defaults to HEAD.",
+    )
+    parser.add_argument(
         "--pr-url",
         help="GitCode/CodeHub PR or MR URL, for example https://gitcode.com/.../pull/82225 or https://codehub.example.com/.../merge_requests/12",
     )
@@ -2927,6 +2943,118 @@ def main() -> int:
             }
         except Exception as _pf_exc:  # noqa: BLE001
             report["precision_evidence"] = {"error": str(_pf_exc)}
+
+    # ---- Phase H-D: auto-derive precision from git diff (--from-git-diff) ----
+    # When --from-git-diff BASE_REV is provided, we parse git diff output to
+    # extract changed line ranges and touched symbols per file, then feed them
+    # into the existing Phase F precision pipeline.  This is additive — it
+    # merges results into an existing precision_evidence block or creates one.
+    # It never produces must_run (same constraint as Phase F).
+    _from_git_diff_rev = getattr(args, "from_git_diff", None)
+    if _from_git_diff_rev:
+        try:
+            from .impact.diff_precision_extractor import extract_precision_from_git_diff
+            from .impact.precision_entrypoint import run_precision as _run_precision_hd
+
+            _head_rev = getattr(args, "from_git_diff_head", "HEAD") or "HEAD"
+            _repo_path = str(app_config.git_repo_root) if app_config.git_repo_root else "."
+            _diff_entries = extract_precision_from_git_diff(
+                base_rev=_from_git_diff_rev,
+                head_rev=_head_rev,
+                repo_path=_repo_path,
+            )
+
+            _hd_results: list[dict] = []
+            for _entry in _diff_entries:
+                _epath = _entry.get("path", "")
+                _err_reasons = _entry.get("unresolved_reasons", [])
+                if _err_reasons and not _epath:
+                    # Sentinel error entry (git unavailable / bad ref)
+                    _hd_results.append(
+                        {
+                            "kind": "git_diff_error",
+                            "source_path": "",
+                            "matched_topic_ids": [],
+                            "matched_profile_ids": [],
+                            "confidence": "none",
+                            "evidence_types": ["git_diff"],
+                            "limitations": [],
+                            "unresolved_reasons": _err_reasons,
+                        }
+                    )
+                    continue
+
+                # Emit one hunk result per line range
+                for _lstart, _lend in _entry.get("changed_lines", []):
+                    _hd_results.append(
+                        _run_precision_hd(
+                            changed_lines=f"{_epath}:{_lstart}-{_lend}"
+                        )
+                    )
+                # Emit one symbol result per touched symbol
+                for _sym in _entry.get("changed_symbols", []):
+                    _hd_results.append(
+                        _run_precision_hd(
+                            changed_symbol=_sym,
+                            source_path=_epath,
+                        )
+                    )
+
+            if _hd_results:
+                _existing_pe = report.get("precision_evidence")
+                if isinstance(_existing_pe, dict) and "results" in _existing_pe:
+                    # Merge into existing Phase F block
+                    _existing_pe["results"].extend(_hd_results)
+                    _existing_pe["narrowed_topics"] = sorted(
+                        set(_existing_pe.get("narrowed_topics", []))
+                        | {
+                            tid
+                            for _pe in _hd_results
+                            for tid in _pe.get("matched_topic_ids", [])
+                        }
+                    )
+                    _existing_pe["narrowed_profiles"] = sorted(
+                        set(_existing_pe.get("narrowed_profiles", []))
+                        | {
+                            pid
+                            for _pe in _hd_results
+                            for pid in _pe.get("matched_profile_ids", [])
+                        }
+                    )
+                    _existing_pe["git_diff_base_rev"] = _from_git_diff_rev
+                    _existing_pe["git_diff_head_rev"] = _head_rev
+                else:
+                    # Create a new precision_evidence block from git diff alone
+                    report["precision_evidence"] = {
+                        "schema_version": "phase-f-precision-v1",
+                        "results": _hd_results,
+                        "narrowed_topics": sorted(
+                            {
+                                tid
+                                for _pe in _hd_results
+                                for tid in _pe.get("matched_topic_ids", [])
+                            }
+                        ),
+                        "narrowed_profiles": sorted(
+                            {
+                                pid
+                                for _pe in _hd_results
+                                for pid in _pe.get("matched_profile_ids", [])
+                            }
+                        ),
+                        "limitations": [
+                            "symbol_token and hunk evidence cannot produce must_run",
+                            "topic_ids are lookup hints only; SDK validation still required",
+                        ],
+                        "git_diff_base_rev": _from_git_diff_rev,
+                        "git_diff_head_rev": _head_rev,
+                    }
+        except Exception as _hd_exc:  # noqa: BLE001
+            _existing_pe2 = report.get("precision_evidence")
+            if isinstance(_existing_pe2, dict):
+                _existing_pe2["git_diff_error"] = str(_hd_exc)
+            else:
+                report["precision_evidence"] = {"git_diff_error": str(_hd_exc)}
 
     # ---- Graph-based resolver (Phase 7, experimental, under flag) ----
     if args.use_graph_resolver and changed_files:
