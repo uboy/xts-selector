@@ -57,3 +57,15 @@ jobs:
         run: pip install -e . && pip install pytest
       - name: validate-pr-benchmark
         run: make validate-pr-benchmark
+
+  validate-joint-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: pip install -e . && pip install pytest
+      - name: validate-joint-integration
+        run: make validate-joint-integration
