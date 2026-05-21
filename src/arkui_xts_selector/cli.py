@@ -1253,6 +1253,16 @@ def parse_args() -> argparse.Namespace:
         help="Head revision for --from-git-diff.  Defaults to HEAD.",
     )
     parser.add_argument(
+        "--universal-impact",
+        action="store_true",
+        default=False,
+        help=(
+            "Run the universal impact pipeline (Phase H-E) after the legacy report.  "
+            "Adds 'universal_impact' and 'resolution_confidence' keys to the JSON output.  "
+            "Additive only — existing keys are unchanged.  Default: off."
+        ),
+    )
+    parser.add_argument(
         "--pr-url",
         help="GitCode/CodeHub PR or MR URL, for example https://gitcode.com/.../pull/82225 or https://codehub.example.com/.../merge_requests/12",
     )
@@ -3428,6 +3438,31 @@ def main() -> int:
         except Exception as exc:
             report["hunk_query"] = {"error": str(exc)}
     # ---- End hunk-precision graph query ----
+
+    # ---- Phase H-E: universal impact pipeline (opt-in, --universal-impact) ----
+    # Additive block.  Adds 'universal_impact' and 'resolution_confidence' keys.
+    # Existing keys are NOT changed.  default is off; enable by default in Track F.
+    if getattr(args, "universal_impact", False) and changed_files:
+        _ui_started = time.perf_counter()
+        try:
+            from .impact.universal_pipeline import UniversalImpactPipeline
+
+            _ui_pipeline = UniversalImpactPipeline(
+                sdk_root=str(app_config.sdk_api_root) if app_config.sdk_api_root else None,
+                xts_root=str(app_config.xts_root) if app_config.xts_root else None,
+                ace_engine_root=str(app_config.git_repo_root) if app_config.git_repo_root else None,
+            )
+            _ui_result = _ui_pipeline.run([str(f) for f in changed_files])
+            _ui_dict = _ui_result.to_dict()
+            report["universal_impact"] = _ui_dict
+            report["resolution_confidence"] = _ui_dict["resolution_confidence"]
+            report["timings_ms"]["universal_impact_pipeline"] = round(
+                (time.perf_counter() - _ui_started) * 1000, 3
+            )
+        except Exception as _ui_exc:  # noqa: BLE001
+            report["universal_impact"] = {"error": str(_ui_exc)}
+            report["resolution_confidence"] = {"error": str(_ui_exc)}
+    # ---- End universal impact pipeline ----
 
     report["json_output_mode"] = "stdout" if json_to_stdout else "file"
     report["requested_devices"] = list(app_config.devices)
