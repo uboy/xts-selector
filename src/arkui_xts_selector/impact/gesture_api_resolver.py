@@ -50,7 +50,7 @@ from arkui_xts_selector.impact.gesture_xts_linker import (
 )
 from arkui_xts_selector.impact.consumer_usage_linker import (
     ConsumerUsageLinker,
-    compute_max_bucket as _compute_max_bucket_shared,
+    compute_max_bucket,
 )
 
 
@@ -323,10 +323,11 @@ class GestureApiResolver:
             )
 
         # Determine max_bucket based on B.2 evidence
-        max_bucket = self._compute_max_bucket(
-            base_max_bucket=max_bucket,
-            sdk_api_topics=sdk_api_topics,
-            consumer_usage_edges=consumer_usage_edges,
+        max_bucket = compute_max_bucket(
+            impact_topics,
+            sdk_api_topics,
+            tuple(consumer_usage_edges),
+            filter_by_confidence=True,
         )
 
         # Collect all unresolved reasons
@@ -599,56 +600,6 @@ class GestureApiResolver:
                 modules.append(proj)
 
         return edges, tuple(modules), xts_reasons
-
-    # ------------------------------------------------------------------
-    # Phase B.2: max_bucket computation
-    # ------------------------------------------------------------------
-
-    def _compute_max_bucket(
-        self,
-        base_max_bucket: str,
-        sdk_api_topics: tuple[SdkApiTopic, ...],
-        consumer_usage_edges: list[ConsumerUsageEdge],
-    ) -> str:
-        """Compute max_bucket based on evidence from B.2.
-
-        Rules (per design doc Section 8):
-        - Source topic + SDK declaration + XTS usage (non-import_only) → recommended
-        - Source topic + SDK declaration (no XTS usage) → possible
-        - No SDK topics → stays at base
-        - NEVER → must_run
-
-        ``base_max_bucket`` comes from the routing table (always "possible").
-
-        # TODO(Phase E): Diverges from shared compute_max_bucket() — this method
-        # takes base_max_bucket + checks confidence in ("strong", "medium"),
-        # while the shared function takes impact_topics and only checks usage_kind.
-        # Refactor to shared signature when all Phase B resolvers are aligned.
-        """
-        # Check if we have SDK-validated topics with public names
-        has_sdk_topics = any(
-            len(t.public_names) > 0 for t in sdk_api_topics
-        )
-
-        # Check for non-import-only XTS usage edges
-        has_strong_xts_usage = any(
-            edge.usage_kind != "import_only" and edge.confidence in ("strong", "medium")
-            for edge in consumer_usage_edges
-        )
-
-        if has_sdk_topics and has_strong_xts_usage:
-            result = "recommended"
-        elif has_sdk_topics:
-            # SDK topics present but no XTS usage → stays at possible
-            result = base_max_bucket
-        else:
-            result = base_max_bucket
-
-        # Safety gate: never must_run
-        assert result != "must_run", (
-            "GestureApiResolver._compute_max_bucket: must_run is forbidden"
-        )
-        return result
 
     # ------------------------------------------------------------------
     # Phase B.2: augment families from edges

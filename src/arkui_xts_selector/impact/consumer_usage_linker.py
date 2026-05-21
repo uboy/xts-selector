@@ -285,6 +285,8 @@ def compute_max_bucket(
     impact_topics: tuple[ImpactTopic, ...],
     sdk_api_topics: tuple[SdkApiTopic, ...],
     usage_edges: tuple[ConsumerUsageEdge, ...],
+    *,
+    filter_by_confidence: bool = False,
 ) -> str:
     """Common bucket computation rule for all Phase B resolvers.
 
@@ -293,13 +295,33 @@ def compute_max_bucket(
     Never returns ``"must_run"`` — that requires exact coverage equivalence
     plus a runnable target (handled separately by the gate, not by resolvers).
 
+    Parameters
+    ----------
+    impact_topics
+        Topics derived from the source entity (from domain routing).
+    sdk_api_topics
+        SDK-validated topics with public names.
+    usage_edges
+        XTS consumer usage edges for the SDK topics.
+    filter_by_confidence
+        When ``True``, edges are only counted as "strong" if
+        ``confidence in ("strong", "medium")`` in addition to having a
+        non-import ``usage_kind``.  Phase B resolvers set this to ``True``
+        to match the original per-resolver semantics.  Default ``False``
+        (original shared-function behaviour) is preserved for backward
+        compatibility and Phase C+ callers that use the normalised model.
+
     Rules
     -----
     - No impact topics → ``"unresolved"``
     - No SDK topics → ``"possible"``
+    - When ``filter_by_confidence=True``: "has SDK" means at least one topic
+      with a non-empty ``public_names`` tuple (matches per-resolver semantics).
     - SDK topics but no usage edges → ``"possible"``
     - Only ``import_only`` or ``unknown`` edges → ``"possible"``
-    - SDK topics + non-import strong usage → ``"recommended"``
+    - When ``filter_by_confidence=True``: edges with ``confidence="weak"``
+      are treated the same as ``import_only`` and do not raise the bucket.
+    - SDK topics + non-import (strong/medium when filtered) usage → ``"recommended"``
     """
     if not impact_topics:
         return "unresolved"
@@ -307,18 +329,33 @@ def compute_max_bucket(
     if not sdk_api_topics:
         return "possible"
 
+    # When running in resolver mode (filter_by_confidence=True), require that
+    # at least one SDK topic carries public names — matching the original
+    # per-resolver check: any(len(t.public_names) > 0 for t in sdk_api_topics).
+    if filter_by_confidence and not any(
+        len(getattr(t, "public_names", ())) > 0 for t in sdk_api_topics
+    ):
+        return "possible"
+
     if not usage_edges:
         return "possible"
 
-    strong_edges = [
-        e for e in usage_edges
-        if e.usage_kind not in ("import_only", "unknown")
-    ]
+    if filter_by_confidence:
+        strong_edges = [
+            e for e in usage_edges
+            if e.usage_kind not in ("import_only", "unknown")
+            and getattr(e, "confidence", "strong") in ("strong", "medium")
+        ]
+    else:
+        strong_edges = [
+            e for e in usage_edges
+            if e.usage_kind not in ("import_only", "unknown")
+        ]
     if not strong_edges:
         return "possible"
 
-    # SDK declaration + non-import usage → recommended
-    # Safety gate: never must_run
+    # SDK declaration + non-import (and confidence-qualified when filtered) usage
+    # → recommended.  Safety gate: never must_run.
     result = "recommended"
     assert result != "must_run", "compute_max_bucket: must_run is forbidden"
     return result

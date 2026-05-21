@@ -54,7 +54,10 @@ from arkui_xts_selector.impact.gesture_xts_linker import (
     _make_edge_id,
     _derive_project,
 )
-from arkui_xts_selector.impact.consumer_usage_linker import ConsumerUsageLinker
+from arkui_xts_selector.impact.consumer_usage_linker import (
+    ConsumerUsageLinker,
+    compute_max_bucket,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -233,10 +236,11 @@ class NativeEventResolver:
         )
 
         # Compute max_bucket from evidence
-        max_bucket = self._compute_max_bucket(
-            base_max_bucket=max_bucket,
-            sdk_api_topics=sdk_api_topics,
-            consumer_usage_edges=consumer_usage_edges,
+        max_bucket = compute_max_bucket(
+            impact_topics,
+            sdk_api_topics,
+            tuple(consumer_usage_edges),
+            filter_by_confidence=True,
         )
 
         # Collect recommended families
@@ -440,37 +444,6 @@ class NativeEventResolver:
                 modules.append(proj)
 
         return edges, tuple(modules), xts_reasons
-
-    # ------------------------------------------------------------------
-    # max_bucket computation
-    # ------------------------------------------------------------------
-
-    def _compute_max_bucket(
-        self,
-        base_max_bucket: str,
-        sdk_api_topics: tuple[SdkApiTopic, ...],
-        consumer_usage_edges: list[ConsumerUsageEdge],
-    ) -> str:
-        # TODO(Phase E): Diverges from shared compute_max_bucket() — takes
-        # base_max_bucket param and checks edge confidence, while the shared
-        # function takes impact_topics and only checks usage_kind.
-        # Refactor to shared signature when all Phase B resolvers are aligned.
-        has_sdk_topics = any(len(t.public_names) > 0 for t in sdk_api_topics)
-        has_strong_xts_usage = any(
-            edge.usage_kind != "import_only" and edge.confidence in ("strong", "medium")
-            for edge in consumer_usage_edges
-        )
-
-        if has_sdk_topics and has_strong_xts_usage:
-            result = "recommended"
-        else:
-            result = base_max_bucket
-
-        # Safety gate: never must_run
-        assert result != "must_run", (
-            "NativeEventResolver._compute_max_bucket: must_run is forbidden"
-        )
-        return result
 
     # ------------------------------------------------------------------
     # Recommended families
