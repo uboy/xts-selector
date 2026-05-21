@@ -1,4 +1,4 @@
-.PHONY: validate-collect validate-fast validate-golden validate-graph validate-graph-builder validate-full validate-measurement validate-env validate-nightly validate-real-env validate-universal-impact validate-pr-benchmark validate-all-local graph-stats help
+.PHONY: validate-collect validate-fast validate-golden validate-graph validate-graph-builder validate-full validate-measurement validate-env validate-nightly validate-real-env validate-universal-impact validate-pr-benchmark validate-joint-integration validate-all-local graph-stats help
 
 help:
 	@echo "Validation targets:"
@@ -12,7 +12,8 @@ help:
 	@echo "  validate-measurement        - broad-infra measurement-only (non-blocking)"
 	@echo "  validate-universal-impact   - all universal-impact phase A-F tests (no env required)"
 	@echo "  validate-pr-benchmark       - all PR benchmark acceptance tests (no env required)"
-	@echo "  validate-all-local          - combined pre-merge lane: fast+graph+universal+benchmark (no env required)"
+	@echo "  validate-joint-integration  - joint pipeline integration harness (Phase H Track F)"
+	@echo "  validate-all-local          - combined pre-merge lane: fast+graph+universal+benchmark+joint (no env required)"
 	@echo "  validate-nightly            - full nightly profile: fast+graph (strict) + golden+measurement (env-gated, non-blocking)"
 	@echo "  validate-real-env           - hard-fails if env missing; runs golden + manual validation"
 	@echo "  graph-stats                 - report collected/manual_verified/needs_review counts (best-effort)"
@@ -123,9 +124,21 @@ validate-pr-benchmark:
 		-q
 
 # ---------------------------------------------------------------------------
+# Joint pipeline integration harness (Phase H Track F, no env required).
+# Validates false_must_run=0 AND under_resolution=0 jointly across both
+# legacy and universal pipelines on all 7 PR fixtures.
+# ---------------------------------------------------------------------------
+validate-joint-integration:
+	PYTHONPATH=src python3 -m pytest \
+		tests/test_joint_pipeline_integration.py \
+		tests/test_no_under_resolution.py \
+		tests/test_pr_84287_pipeline_parity.py \
+		-q
+
+# ---------------------------------------------------------------------------
 # Combined local pre-merge lane (no env required).
 # ---------------------------------------------------------------------------
-validate-all-local: validate-fast validate-graph validate-universal-impact validate-pr-benchmark
+validate-all-local: validate-fast validate-graph validate-universal-impact validate-pr-benchmark validate-joint-integration
 
 # Best-effort stats: collected tests, manual_verified, needs_review.
 graph-stats:
