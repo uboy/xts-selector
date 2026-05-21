@@ -426,7 +426,7 @@ class CliDesignV1Tests(unittest.TestCase):
             ),
             mock.patch(
                 "arkui_xts_selector.cli.fetch_pr_changed_files_and_ranges_via_api",
-                return_value=(expected, {}),
+                return_value=(expected, {}, {}),
             ) as api_fetch,
             mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files") as git_fetch,
         ):
@@ -469,7 +469,7 @@ class CliDesignV1Tests(unittest.TestCase):
             ) as metadata_fetch,
             mock.patch(
                 "arkui_xts_selector.cli.fetch_pr_changed_files_and_ranges_via_api",
-                return_value=(expected, {}),
+                return_value=(expected, {}, {}),
             ) as api_fetch,
             mock.patch("arkui_xts_selector.cli.fetch_pr_changed_files") as git_fetch,
         ):
@@ -522,7 +522,7 @@ class CliDesignV1Tests(unittest.TestCase):
                 ) as metadata_fetch,
                 mock.patch(
                     "arkui_xts_selector.cli.fetch_pr_changed_files_and_ranges_via_api",
-                    return_value=(expected, {}),
+                    return_value=(expected, {}, {}),
                 ),
             ):
                 resolved = resolve_pr_changed_files(

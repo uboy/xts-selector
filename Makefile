@@ -1,18 +1,22 @@
-.PHONY: validate-collect validate-fast validate-golden validate-graph validate-graph-builder validate-full validate-measurement validate-env validate-nightly validate-real-env graph-stats help
+.PHONY: validate-collect validate-fast validate-golden validate-graph validate-graph-builder validate-full validate-measurement validate-env validate-nightly validate-real-env validate-universal-impact validate-pr-benchmark validate-joint-integration validate-all-local graph-stats help
 
 help:
 	@echo "Validation targets:"
-	@echo "  validate-env           - check required environment variables (roots must exist)"
-	@echo "  validate-collect       - collect only, 0 errors required"
-	@echo "  validate-fast          - collect + targeted unit tests (merge gate, STRICT)"
-	@echo "  validate-golden        - golden schema + manual validation (merge gate, requires env)"
-	@echo "  validate-graph         - graph/usage/coverage tests (STRICT)"
-	@echo "  validate-graph-builder - real API graph builder tests"
-	@echo "  validate-full          - full pytest (tree_sitter optional deps skip)"
-	@echo "  validate-measurement   - broad-infra measurement-only (non-blocking)"
-	@echo "  validate-nightly       - full nightly profile: fast+graph (strict) + golden+measurement (env-gated, non-blocking)"
-	@echo "  validate-real-env      - like validate-golden but hard-fails on missing env"
-	@echo "  graph-stats            - report collected/manual_verified/needs_review counts (best-effort)"
+	@echo "  validate-env                - check required environment variables (roots must exist)"
+	@echo "  validate-collect            - collect only, 0 errors required"
+	@echo "  validate-fast               - collect + targeted unit tests (merge gate, STRICT)"
+	@echo "  validate-golden             - golden schema + manual validation (merge gate, requires env)"
+	@echo "  validate-graph              - graph/usage/coverage tests (STRICT)"
+	@echo "  validate-graph-builder      - real API graph builder tests"
+	@echo "  validate-full               - full pytest (tree_sitter optional deps skip)"
+	@echo "  validate-measurement        - broad-infra measurement-only (non-blocking)"
+	@echo "  validate-universal-impact   - all universal-impact phase A-F tests (no env required)"
+	@echo "  validate-pr-benchmark       - all PR benchmark acceptance tests (no env required)"
+	@echo "  validate-joint-integration  - joint pipeline integration harness (Phase H Track F)"
+	@echo "  validate-all-local          - combined pre-merge lane: fast+graph+universal+benchmark+joint (no env required)"
+	@echo "  validate-nightly            - full nightly profile: fast+graph (strict) + golden+measurement (env-gated, non-blocking)"
+	@echo "  validate-real-env           - hard-fails if env missing; runs golden + manual validation"
+	@echo "  graph-stats                 - report collected/manual_verified/needs_review counts (best-effort)"
 	@echo ""
 	@echo "Failure policy:"
 	@echo "  STRICT (exit 1): false_must_run > 0, collection errors, fast/graph test failures"
@@ -72,6 +76,69 @@ validate-real-env:
 	python3 -m pytest tests/golden/test_golden_cases.py -q
 	python3 tests/golden/tools/run_manual_golden_validation.py
 	@echo "=== validate-real-env: complete ==="
+
+# ---------------------------------------------------------------------------
+# Universal impact lane (no env required) — all Phase A-F tests.
+# ---------------------------------------------------------------------------
+validate-universal-impact:
+	PYTHONPATH=src python3 -m pytest \
+		tests/test_source_classifier.py \
+		tests/test_pr_benchmark_source_classification.py \
+		tests/test_universal_impact_phase_b_integration.py \
+		tests/test_gesture_api_resolver.py \
+		tests/test_gesture_sdk_validation.py \
+		tests/test_gesture_xts_usage_edges.py \
+		tests/test_pr_benchmark_gesture_resolution.py \
+		tests/test_native_peer_resolver.py \
+		tests/test_ani_bridge_resolver.py \
+		tests/test_pr_benchmark_native_peer_ani_resolution.py \
+		tests/test_native_event_resolver.py \
+		tests/test_pr_benchmark_native_event_resolution.py \
+		tests/test_consumer_usage_linker.py \
+		tests/test_phase_c_consumer_linker_integration.py \
+		tests/test_pr_benchmark_consumer_usage_lift.py \
+		tests/test_broad_infra_profile_resolver.py \
+		tests/test_pr_benchmark_broad_infra_profiles.py \
+		tests/test_fanout_limiter.py \
+		tests/test_pr_benchmark_acceptance_metrics.py \
+		tests/test_bucket_policy_no_drift.py \
+		tests/test_symbol_span_index.py \
+		tests/test_precision_resolver.py \
+		tests/test_changed_lines_cli_precision.py \
+		tests/test_pr_benchmark_hunk_symbol_precision.py \
+		-q
+
+# ---------------------------------------------------------------------------
+# PR benchmark acceptance lane (no env required).
+# ---------------------------------------------------------------------------
+validate-pr-benchmark:
+	PYTHONPATH=src python3 -m pytest \
+		tests/test_pr_benchmark_source_classification.py \
+		tests/test_pr_benchmark_gesture_resolution.py \
+		tests/test_pr_benchmark_native_peer_ani_resolution.py \
+		tests/test_pr_benchmark_native_event_resolution.py \
+		tests/test_pr_benchmark_consumer_usage_lift.py \
+		tests/test_pr_benchmark_broad_infra_profiles.py \
+		tests/test_pr_benchmark_acceptance_metrics.py \
+		tests/test_pr_benchmark_hunk_symbol_precision.py \
+		-q
+
+# ---------------------------------------------------------------------------
+# Joint pipeline integration harness (Phase H Track F, no env required).
+# Validates false_must_run=0 AND under_resolution=0 jointly across both
+# legacy and universal pipelines on all 7 PR fixtures.
+# ---------------------------------------------------------------------------
+validate-joint-integration:
+	PYTHONPATH=src python3 -m pytest \
+		tests/test_joint_pipeline_integration.py \
+		tests/test_no_under_resolution.py \
+		tests/test_pr_84287_pipeline_parity.py \
+		-q
+
+# ---------------------------------------------------------------------------
+# Combined local pre-merge lane (no env required).
+# ---------------------------------------------------------------------------
+validate-all-local: validate-fast validate-graph validate-universal-impact validate-pr-benchmark validate-joint-integration
 
 # Best-effort stats: collected tests, manual_verified, needs_review.
 graph-stats:

@@ -1,0 +1,59 @@
+{
+  "case_id": "pr_84506_select_inspector",
+  "pr_number": 84506,
+  "description": "Select overlay node, inspector_composed_component, JSI view register, and linear_map utility changes. Select/inspector paths can trigger over-broad selection.",
+  "changed_files": [
+    "frameworks/base/utils/linear_map.h",
+    "frameworks/bridge/declarative_frontend/engine/jsi/jsi_view_register_impl.cpp",
+    "frameworks/core/components_ng/pattern/select_overlay/select_overlay_node.cpp",
+    "frameworks/core/components_v2/inspector/inspector_composed_component.cpp",
+    "frameworks/core/components_v2/inspector/inspector_composed_component.h"
+  ],
+  "expected_classifications": [
+    {
+      "path": "frameworks/base/utils/linear_map.h",
+      "expected_layer": "unknown",
+      "expected_role": "unknown",
+      "expected_confidence": "none",
+      "expected_topic_hints_include": [],
+      "must_not_be_unknown": false
+    },
+    {
+      "path": "frameworks/bridge/declarative_frontend/engine/jsi/jsi_view_register_impl.cpp",
+      "expected_layer": "jsi_bridge",
+      "expected_role": ["jsi_native_module_bridge", "jsi_runtime_bridge"],
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["bridge.jsi"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/components_ng/pattern/select_overlay/select_overlay_node.cpp",
+      "expected_layer": "select_overlay",
+      "expected_role": "selection_overlay_runtime",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["select.overlay"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/components_v2/inspector/inspector_composed_component.cpp",
+      "expected_layer": "inspector",
+      "expected_role": "inspector_runtime",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["inspector"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/components_v2/inspector/inspector_composed_component.h",
+      "expected_layer": "inspector",
+      "expected_role": "inspector_runtime",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["inspector"],
+      "must_not_be_unknown": true
+    }
+  ],
+  "benchmark_constraints": {
+    "false_must_run": 0,
+    "zero_target_regression_allowed": false,
+    "notes": "linear_map.h is a generic utility — unknown classification is expected and acceptable. Select/inspector files must rank direct Select/inspector targets above broad fanout. jsi_view_register_impl.cpp should be jsi_bridge."
+  }
+}

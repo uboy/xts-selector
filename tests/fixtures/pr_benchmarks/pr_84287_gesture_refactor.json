@@ -1,0 +1,68 @@
+{
+  "case_id": "pr_84287_gesture_refactor",
+  "pr_number": 84287,
+  "description": "Gesture framework refactor: gesture_referee, gesture_recognizer, and pan_recognizer changes that previously returned no_matching_pattern.",
+  "changed_files": [
+    "frameworks/core/components_ng/gestures/gesture_referee.cpp",
+    "frameworks/core/components_ng/gestures/gesture_referee.h",
+    "frameworks/core/components_ng/gestures/recognizers/gesture_recognizer.cpp",
+    "frameworks/core/components_ng/gestures/recognizers/gesture_recognizer.h",
+    "frameworks/core/components_ng/gestures/recognizers/pan_recognizer.cpp",
+    "frameworks/core/components_ng/gestures/recognizers/pan_recognizer.h"
+  ],
+  "expected_classifications": [
+    {
+      "path": "frameworks/core/components_ng/gestures/gesture_referee.cpp",
+      "expected_layer": "gesture_referee",
+      "expected_role": "gesture_referee_core",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["gesture.core", "gesture.referee"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/components_ng/gestures/gesture_referee.h",
+      "expected_layer": "gesture_referee",
+      "expected_role": "gesture_referee_core",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["gesture.core", "gesture.referee"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/components_ng/gestures/recognizers/gesture_recognizer.cpp",
+      "expected_layer": "gesture_framework",
+      "expected_role": "gesture_recognizer_core",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["gesture.core", "gesture.recognizer"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/components_ng/gestures/recognizers/gesture_recognizer.h",
+      "expected_layer": "gesture_framework",
+      "expected_role": "gesture_recognizer_core",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["gesture.core", "gesture.recognizer"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/components_ng/gestures/recognizers/pan_recognizer.cpp",
+      "expected_layer": "gesture_framework",
+      "expected_role": "gesture_recognizer_core",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["gesture.pan", "gesture.recognizer"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/components_ng/gestures/recognizers/pan_recognizer.h",
+      "expected_layer": "gesture_framework",
+      "expected_role": "gesture_recognizer_core",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["gesture.pan", "gesture.recognizer"],
+      "must_not_be_unknown": true
+    }
+  ],
+  "benchmark_constraints": {
+    "false_must_run": 0,
+    "zero_target_regression_allowed": false,
+    "notes": "This PR previously stopped at no_matching_pattern. Phase A must produce gesture source entities for all files. Gesture referee is shared infra — not all-component impact. Must not classify as unknown."
+  }
+}

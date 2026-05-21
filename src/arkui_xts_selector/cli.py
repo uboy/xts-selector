@@ -255,7 +255,7 @@ def resolve_pr_changed_files_with_ranges(
                     repo=owner_repo[1],
                     pr_ref=pr_ref,
                 )
-                return fetch_pr_changed_files_and_ranges_via_api(
+                files, ranges, _raw = fetch_pr_changed_files_and_ranges_via_api(
                     api_kind=api_kind,
                     api_url=api_url,
                     token=token,
@@ -264,6 +264,7 @@ def resolve_pr_changed_files_with_ranges(
                     pr_ref=pr_ref,
                     repo_root=app_config.git_repo_root,
                 )
+                return files, ranges
             except RuntimeError as exc:
                 api_error = exc
         if pr_source == "api":
@@ -1235,6 +1236,32 @@ def parse_args() -> argparse.Namespace:
         "--git-diff", help="Optional git diff ref, for example HEAD~1..HEAD."
     )
     parser.add_argument("--git-root", help="Git root to use with --git-diff.")
+    parser.add_argument(
+        "--from-git-diff",
+        metavar="BASE_REV",
+        help=(
+            "Auto-derive precision evidence (changed line ranges + symbols) from "
+            "git diff BASE_REV..HEAD.  Feeds the Phase F precision pipeline without "
+            "requiring manual --changed-symbol / --changed-lines flags.  "
+            "Example: --from-git-diff HEAD~1"
+        ),
+    )
+    parser.add_argument(
+        "--from-git-diff-head",
+        metavar="HEAD_REV",
+        default="HEAD",
+        help="Head revision for --from-git-diff.  Defaults to HEAD.",
+    )
+    parser.add_argument(
+        "--universal-impact",
+        action="store_true",
+        default=False,
+        help=(
+            "Run the universal impact pipeline (Phase H-E) after the legacy report.  "
+            "Adds 'universal_impact' and 'resolution_confidence' keys to the JSON output.  "
+            "Additive only — existing keys are unchanged.  Default: off."
+        ),
+    )
     parser.add_argument(
         "--pr-url",
         help="GitCode/CodeHub PR or MR URL, for example https://gitcode.com/.../pull/82225 or https://codehub.example.com/.../merge_requests/12",
@@ -2872,6 +2899,175 @@ def main() -> int:
             "warning: --changed-symbol requires --use-graph-resolver, ignoring symbol query",
             file=sys.stderr,
         )
+
+    # ---- Phase F: hint-based precision narrowing (always-on, no graph required) ----
+    # This adds topic/profile hints for symbol and hunk inputs. It never produces
+    # must_run. It is additive — existing report keys are not changed.
+    _phase_f_symbols = list(changed_symbols) if changed_symbols else []
+    _phase_f_lines = [
+        item.strip() for item in (args.changed_lines or []) if item and item.strip()
+    ]
+    if _phase_f_symbols or _phase_f_lines:
+        try:
+            from .impact.precision_entrypoint import run_precision
+
+            _pe_results: list[dict] = []
+            # One result per symbol
+            for _sym in _phase_f_symbols:
+                _src = str(changed_files[0]) if changed_files else ""
+                _pe_results.append(
+                    run_precision(changed_symbol=_sym, source_path=_src)
+                )
+            # One result per hunk (PATH:START-END form)
+            for _hunk in _phase_f_lines:
+                _pe_results.append(run_precision(changed_lines=_hunk))
+
+            # Collect narrowed topics: those present in both precision evidence
+            # AND the file-level affected API entities, as a convenience field.
+            _file_topics: set[str] = set()
+            for _ri in report.get("results", []):
+                for _ae in _ri.get("affected_api_entities", []):
+                    _file_topics.add(str(_ae))
+
+            report["precision_evidence"] = {
+                "schema_version": "phase-f-precision-v1",
+                "results": _pe_results,
+                "narrowed_topics": sorted(
+                    {
+                        tid
+                        for _pe in _pe_results
+                        for tid in _pe.get("matched_topic_ids", [])
+                    }
+                ),
+                "narrowed_profiles": sorted(
+                    {
+                        pid
+                        for _pe in _pe_results
+                        for pid in _pe.get("matched_profile_ids", [])
+                    }
+                ),
+                "limitations": [
+                    "symbol_token and hunk evidence cannot produce must_run",
+                    "topic_ids are lookup hints only; SDK validation still required",
+                ],
+            }
+        except Exception as _pf_exc:  # noqa: BLE001
+            report["precision_evidence"] = {"error": str(_pf_exc)}
+
+    # ---- Phase H-D: auto-derive precision from git diff (--from-git-diff) ----
+    # When --from-git-diff BASE_REV is provided, we parse git diff output to
+    # extract changed line ranges and touched symbols per file, then feed them
+    # into the existing Phase F precision pipeline.  This is additive — it
+    # merges results into an existing precision_evidence block or creates one.
+    # It never produces must_run (same constraint as Phase F).
+    _from_git_diff_rev = getattr(args, "from_git_diff", None)
+    if _from_git_diff_rev:
+        try:
+            from .impact.diff_precision_extractor import extract_precision_from_git_diff
+            from .impact.precision_entrypoint import run_precision as _run_precision_hd
+
+            _head_rev = getattr(args, "from_git_diff_head", "HEAD") or "HEAD"
+            _repo_path = str(app_config.git_repo_root) if app_config.git_repo_root else "."
+            _diff_entries = extract_precision_from_git_diff(
+                base_rev=_from_git_diff_rev,
+                head_rev=_head_rev,
+                repo_path=_repo_path,
+            )
+
+            _hd_results: list[dict] = []
+            for _entry in _diff_entries:
+                _epath = _entry.get("path", "")
+                _err_reasons = _entry.get("unresolved_reasons", [])
+                if _err_reasons and not _epath:
+                    # Sentinel error entry (git unavailable / bad ref).
+                    # Use kind="hunk" to stay within the Phase F schema enum;
+                    # the error detail is surfaced via unresolved_reasons.
+                    _hd_results.append(
+                        {
+                            "kind": "hunk",
+                            "source_path": "",
+                            "matched_topic_ids": [],
+                            "matched_profile_ids": [],
+                            "confidence": "none",
+                            "evidence_types": ["git_diff"],
+                            "limitations": [],
+                            "unresolved_reasons": _err_reasons,
+                        }
+                    )
+                    continue
+
+                # Emit one hunk result per line range
+                for _lstart, _lend in _entry.get("changed_lines", []):
+                    _hd_results.append(
+                        _run_precision_hd(
+                            changed_lines=f"{_epath}:{_lstart}-{_lend}"
+                        )
+                    )
+                # Emit one symbol result per touched symbol
+                for _sym in _entry.get("changed_symbols", []):
+                    _hd_results.append(
+                        _run_precision_hd(
+                            changed_symbol=_sym,
+                            source_path=_epath,
+                        )
+                    )
+
+            if _hd_results:
+                _existing_pe = report.get("precision_evidence")
+                if isinstance(_existing_pe, dict) and "results" in _existing_pe:
+                    # Merge into existing Phase F block
+                    _existing_pe["results"].extend(_hd_results)
+                    _existing_pe["narrowed_topics"] = sorted(
+                        set(_existing_pe.get("narrowed_topics", []))
+                        | {
+                            tid
+                            for _pe in _hd_results
+                            for tid in _pe.get("matched_topic_ids", [])
+                        }
+                    )
+                    _existing_pe["narrowed_profiles"] = sorted(
+                        set(_existing_pe.get("narrowed_profiles", []))
+                        | {
+                            pid
+                            for _pe in _hd_results
+                            for pid in _pe.get("matched_profile_ids", [])
+                        }
+                    )
+                    _existing_pe["git_diff_base_rev"] = _from_git_diff_rev
+                    _existing_pe["git_diff_head_rev"] = _head_rev
+                else:
+                    # Create a new precision_evidence block from git diff alone
+                    report["precision_evidence"] = {
+                        "schema_version": "phase-f-precision-v1",
+                        "results": _hd_results,
+                        "narrowed_topics": sorted(
+                            {
+                                tid
+                                for _pe in _hd_results
+                                for tid in _pe.get("matched_topic_ids", [])
+                            }
+                        ),
+                        "narrowed_profiles": sorted(
+                            {
+                                pid
+                                for _pe in _hd_results
+                                for pid in _pe.get("matched_profile_ids", [])
+                            }
+                        ),
+                        "limitations": [
+                            "symbol_token and hunk evidence cannot produce must_run",
+                            "topic_ids are lookup hints only; SDK validation still required",
+                        ],
+                        "git_diff_base_rev": _from_git_diff_rev,
+                        "git_diff_head_rev": _head_rev,
+                    }
+        except Exception as _hd_exc:  # noqa: BLE001
+            _existing_pe2 = report.get("precision_evidence")
+            if isinstance(_existing_pe2, dict):
+                _existing_pe2["git_diff_error"] = str(_hd_exc)
+            else:
+                report["precision_evidence"] = {"git_diff_error": str(_hd_exc)}
+
     # ---- Graph-based resolver (Phase 7, experimental, under flag) ----
     if args.use_graph_resolver and changed_files:
         try:
@@ -3244,6 +3440,31 @@ def main() -> int:
         except Exception as exc:
             report["hunk_query"] = {"error": str(exc)}
     # ---- End hunk-precision graph query ----
+
+    # ---- Phase H-E: universal impact pipeline (opt-in, --universal-impact) ----
+    # Additive block.  Adds 'universal_impact' and 'resolution_confidence' keys.
+    # Existing keys are NOT changed.  default is off; enable by default in Track F.
+    if getattr(args, "universal_impact", False) and changed_files:
+        _ui_started = time.perf_counter()
+        try:
+            from .impact.universal_pipeline import UniversalImpactPipeline
+
+            _ui_pipeline = UniversalImpactPipeline(
+                sdk_root=str(app_config.sdk_api_root) if app_config.sdk_api_root else None,
+                xts_root=str(app_config.xts_root) if app_config.xts_root else None,
+                ace_engine_root=str(app_config.git_repo_root) if app_config.git_repo_root else None,
+            )
+            _ui_result = _ui_pipeline.run([str(f) for f in changed_files])
+            _ui_dict = _ui_result.to_dict()
+            report["universal_impact"] = _ui_dict
+            report["resolution_confidence"] = _ui_dict["resolution_confidence"]
+            report["timings_ms"]["universal_impact_pipeline"] = round(
+                (time.perf_counter() - _ui_started) * 1000, 3
+            )
+        except Exception as _ui_exc:  # noqa: BLE001
+            report["universal_impact"] = {"error": str(_ui_exc)}
+            report["resolution_confidence"] = {"error": str(_ui_exc)}
+    # ---- End universal impact pipeline ----
 
     report["json_output_mode"] = "stdout" if json_to_stdout else "file"
     report["requested_devices"] = list(app_config.devices)

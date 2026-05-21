@@ -1,0 +1,86 @@
+{
+  "case_id": "pr_84852_capi_canvas",
+  "pr_number": 84852,
+  "description": "C-API peer implementation and ANI modifier changes for Canvas and XComponent drawing layer.",
+  "changed_files": [
+    "frameworks/core/interfaces/native/ani/canvas_ani_modifier.cpp",
+    "frameworks/core/interfaces/native/implementation/drawing_canvas_peer_impl.h",
+    "frameworks/core/interfaces/native/implementation/drawing_rendering_context_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/drawing_rendering_context_peer_impl.cpp",
+    "frameworks/core/interfaces/native/implementation/drawing_rendering_context_peer_impl.h",
+    "frameworks/core/interfaces/native/implementation/x_component_controller_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/x_component_controller_peer_impl.cpp",
+    "frameworks/core/interfaces/native/implementation/x_component_controller_peer_impl.h"
+  ],
+  "expected_classifications": [
+    {
+      "path": "frameworks/core/interfaces/native/ani/canvas_ani_modifier.cpp",
+      "expected_layer": "ani_bridge",
+      "expected_role": "ani_modifier_binding",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["canvas.ani_bridge"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/interfaces/native/implementation/drawing_canvas_peer_impl.h",
+      "expected_layer": "native_peer",
+      "expected_role": "sdk_peer_implementation",
+      "expected_confidence": ["medium", "weak"],
+      "expected_topic_hints_include": ["drawing_canvas.native_peer"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/interfaces/native/implementation/drawing_rendering_context_accessor.cpp",
+      "expected_layer": "native_peer",
+      "expected_role": "sdk_peer_implementation",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["drawing_rendering_context.native_peer"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/interfaces/native/implementation/drawing_rendering_context_peer_impl.cpp",
+      "expected_layer": "native_peer",
+      "expected_role": "sdk_peer_implementation",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["drawing_rendering_context.native_peer"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/interfaces/native/implementation/drawing_rendering_context_peer_impl.h",
+      "expected_layer": "native_peer",
+      "expected_role": "sdk_peer_implementation",
+      "expected_confidence": ["medium", "weak"],
+      "expected_topic_hints_include": ["drawing_rendering_context.native_peer"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/interfaces/native/implementation/x_component_controller_accessor.cpp",
+      "expected_layer": "native_peer",
+      "expected_role": "sdk_peer_implementation",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["x_component_controller.native_peer"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/interfaces/native/implementation/x_component_controller_peer_impl.cpp",
+      "expected_layer": "native_peer",
+      "expected_role": "sdk_peer_implementation",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["x_component_controller.native_peer"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/interfaces/native/implementation/x_component_controller_peer_impl.h",
+      "expected_layer": "native_peer",
+      "expected_role": "sdk_peer_implementation",
+      "expected_confidence": ["medium", "weak"],
+      "expected_topic_hints_include": ["x_component_controller.native_peer"],
+      "must_not_be_unknown": true
+    }
+  ],
+  "benchmark_constraints": {
+    "false_must_run": 0,
+    "zero_target_regression_allowed": false,
+    "notes": "All files must classify as native_peer or ani_bridge. ANI symbol names are bridge evidence only, not public API identity. SDK declaration validation required before API impact claim."
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "version": "1",
+  "default_policy": {
+    "direct_before_profile": true,
+    "rank_order": [
+      "coverage_equivalence",
+      "direct_xts_usage",
+      "sdk_plus_usage",
+      "infra_profile",
+      "fallback"
+    ],
+    "caps": {
+      "max_recommended_direct_per_api": 5,
+      "max_recommended_profile_per_profile": 5,
+      "max_possible_per_domain": 5,
+      "max_total_recommended": 20,
+      "max_total_possible": 20
+    },
+    "deduplicate_by_module": true,
+    "preserve_one_per_direct_api": true,
+    "suppress_broad_must_run": true,
+    "explain_suppressed": true
+  },
+  "bucket_rules": {
+    "profile_max_bucket": "recommended",
+    "score_cannot_promote_bucket": true,
+    "must_run_requires": [
+      "strong_source_impact",
+      "sdk_declaration",
+      "strong_xts_usage",
+      "coverage_equivalence",
+      "runnable_target"
+    ]
+  }
+}

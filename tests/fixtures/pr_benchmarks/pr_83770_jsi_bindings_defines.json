@@ -1,0 +1,41 @@
+{
+  "case_id": "pr_83770_jsi_bindings_defines",
+  "pr_number": 83770,
+  "description": "JSI binding definitions header (bindings_defines.h) and jsi_bindings changes. Macro/define changes need declaration+usage evidence for exact coverage.",
+  "changed_files": [
+    "frameworks/bridge/declarative_frontend/engine/bindings_defines.h",
+    "frameworks/bridge/declarative_frontend/engine/jsi/jsi_bindings.h",
+    "frameworks/bridge/declarative_frontend/engine/jsi/jsi_bindings.inl"
+  ],
+  "expected_classifications": [
+    {
+      "path": "frameworks/bridge/declarative_frontend/engine/bindings_defines.h",
+      "expected_layer": "jsi_bridge",
+      "expected_role": "jsi_binding_definition",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["bridge.jsi.binding_definition"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/bridge/declarative_frontend/engine/jsi/jsi_bindings.h",
+      "expected_layer": "jsi_bridge",
+      "expected_role": "jsi_runtime_bridge",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["bridge.jsi.runtime"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/bridge/declarative_frontend/engine/jsi/jsi_bindings.inl",
+      "expected_layer": "jsi_bridge",
+      "expected_role": "jsi_runtime_bridge",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["bridge.jsi.runtime"],
+      "must_not_be_unknown": true
+    }
+  ],
+  "benchmark_constraints": {
+    "false_must_run": 0,
+    "zero_target_regression_allowed": false,
+    "notes": "bindings_defines.h must classify as jsi_binding_definition. Macro/define changes must not be promoted to exact API coverage without declaration and usage evidence."
+  }
+}

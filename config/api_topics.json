@@ -1,0 +1,281 @@
+{
+  "schema_version": "v1",
+  "description": "SDK API topic mappings for impact resolution. Gesture topics only (Phase B.1). All public_name values must be SDK-visible names from interface_sdk-js/api — internal C++ names must not appear here.",
+  "topics": [
+    {
+      "topic_id": "gesture.pan",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.pan", "gesture.recognizer"],
+      "sdk_api_queries": [
+        {"public_name": "PanGesture", "kind": "component"},
+        {"public_name": "PanGestureOptions", "kind": "configuration"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_panGesture"
+      ],
+      "notes": "PanGesture recognizer — specific gesture type. Strong hint from pan_recognizer.cpp path."
+    },
+    {
+      "topic_id": "gesture.tap",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.tap", "gesture.recognizer"],
+      "sdk_api_queries": [
+        {"public_name": "TapGesture", "kind": "component"},
+        {"public_name": "TapGestureInterface", "kind": "component"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_tapGesture"
+      ],
+      "notes": "TapGesture recognizer."
+    },
+    {
+      "topic_id": "gesture.long_press",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.long_press", "gesture.recognizer"],
+      "sdk_api_queries": [
+        {"public_name": "LongPressGesture", "kind": "component"},
+        {"public_name": "LongPressGestureInterface", "kind": "component"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_longPressGesture"
+      ],
+      "notes": "LongPressGesture recognizer."
+    },
+    {
+      "topic_id": "gesture.swipe",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.swipe", "gesture.recognizer"],
+      "sdk_api_queries": [
+        {"public_name": "SwipeGesture", "kind": "component"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_swipeGesture"
+      ],
+      "notes": "SwipeGesture recognizer."
+    },
+    {
+      "topic_id": "gesture.pinch",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.pinch", "gesture.recognizer"],
+      "sdk_api_queries": [
+        {"public_name": "PinchGesture", "kind": "component"},
+        {"public_name": "PinchGestureOptions", "kind": "configuration"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_pinchGesture"
+      ],
+      "notes": "PinchGesture recognizer."
+    },
+    {
+      "topic_id": "gesture.rotation",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.rotation", "gesture.recognizer"],
+      "sdk_api_queries": [
+        {"public_name": "RotationGesture", "kind": "component"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_rotationGesture"
+      ],
+      "notes": "RotationGesture recognizer."
+    },
+    {
+      "topic_id": "gesture.group",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.group", "gesture.core", "gesture.recognizer_core"],
+      "sdk_api_queries": [
+        {"public_name": "GestureGroup", "kind": "component"},
+        {"public_name": "Gesture", "kind": "component"}
+      ],
+      "expected_usage_kinds": ["component_instantiation"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_gestureGroup"
+      ],
+      "notes": "GestureGroup and Gesture core — shared gesture grouping infrastructure."
+    },
+    {
+      "topic_id": "gesture.custom_recognition",
+      "domain": "gesture",
+      "matches_impact_topics": ["gesture.core", "gesture.recognizer_core"],
+      "sdk_api_queries": [
+        {"public_name": "onGestureRecognizerJudgeBegin", "kind": "event_or_method"},
+        {"public_name": "onGestureJudgeBegin", "kind": "event_or_method"}
+      ],
+      "expected_usage_kinds": ["event_handler", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [
+        "ace_ets_module_commonEvents_customGestureRecognition",
+        "ace_ets_module_commonEvents_gestureHandler"
+      ],
+      "notes": "Custom gesture recognition and interception APIs."
+    },
+    {
+      "topic_id": "native.node.gesture",
+      "domain": "native",
+      "matches_impact_topics": ["native.node.gesture"],
+      "sdk_api_queries": [
+        {"public_name": "ArkUI_NativeGestureAPI_1", "kind": "module"},
+        {"public_name": "OH_ArkUI_GestureRecognizer", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["member_access", "function_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [],
+      "notes": "NDK native gesture API (C API). Separate from ArkTS gesture API topics. SDK declaration must be verified in interface_sdk-js/api or native headers."
+    },
+    {
+      "topic_id": "native.peer.canvas",
+      "domain": "native",
+      "matches_impact_topics": ["canvas.native_peer", "native.peer.canvas"],
+      "sdk_api_queries": [
+        {"public_name": "Canvas", "kind": "component"},
+        {"public_name": "CanvasRenderingContext2D", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call", "member_access"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [],
+      "notes": "Canvas native peer implementation. Public API names from interface_sdk-js/api only."
+    },
+    {
+      "topic_id": "native.peer.canvas_rendering_context",
+      "domain": "native",
+      "matches_impact_topics": ["canvas.native_peer", "native.peer.canvas_rendering_context"],
+      "sdk_api_queries": [
+        {"public_name": "CanvasRenderingContext2D", "kind": "module"},
+        {"public_name": "OffscreenCanvasRenderingContext2D", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["method_call", "member_access"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [],
+      "notes": "Canvas rendering context peer implementation. OffscreenCanvasRenderingContext2D validated separately."
+    },
+    {
+      "topic_id": "native.peer.xcomponent",
+      "domain": "native",
+      "matches_impact_topics": ["xcomponent.native_peer", "native.peer.xcomponent"],
+      "sdk_api_queries": [
+        {"public_name": "XComponent", "kind": "component"},
+        {"public_name": "XComponentController", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [],
+      "notes": "XComponent native peer implementation."
+    },
+    {
+      "topic_id": "native.peer.xcomponent_controller",
+      "domain": "native",
+      "matches_impact_topics": ["xcomponent.native_peer", "native.peer.xcomponent_controller"],
+      "sdk_api_queries": [
+        {"public_name": "XComponentController", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [],
+      "notes": "XComponentController native peer implementation."
+    },
+    {
+      "topic_id": "ani.canvas",
+      "domain": "native",
+      "matches_impact_topics": ["ani.canvas", "canvas.native_peer"],
+      "sdk_api_queries": [
+        {"public_name": "Canvas", "kind": "component"},
+        {"public_name": "CanvasRenderingContext2D", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [],
+      "notes": "ANI bridge for Canvas/CanvasRenderingContext2D. ANI symbol names are bridge evidence only — public names are SDK-visible Canvas/CanvasRenderingContext2D."
+    },
+    {
+      "topic_id": "ani.xcomponent",
+      "domain": "native",
+      "matches_impact_topics": ["ani.xcomponent", "xcomponent.native_peer"],
+      "sdk_api_queries": [
+        {"public_name": "XComponent", "kind": "component"},
+        {"public_name": "XComponentController", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["component_instantiation", "method_call"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "recommended_families": [],
+      "notes": "ANI bridge for XComponent/XComponentController. ANI symbol names are bridge evidence only — public names are SDK-visible XComponent/XComponentController."
+    },
+    {
+      "topic_id": "native.event.ui_input",
+      "domain": "native",
+      "matches_impact_topics": ["native.event.ui_input"],
+      "sdk_api_queries": [
+        {"public_name": "ArkUI_UIInputEvent", "kind": "module"},
+        {"public_name": "ArkUI_NodeTouchEvent", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["function_call", "member_access"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "notes": "NDK C-API UI input event. Public names from interface_sdk-js/api native headers only. Internal event impl names are evidence only."
+    },
+    {
+      "topic_id": "native.event.converter",
+      "domain": "native",
+      "matches_impact_topics": ["native.event.converter"],
+      "sdk_api_queries": [
+        {"public_name": "ArkUI_NodeEvent", "kind": "module"},
+        {"public_name": "ArkUI_UIInputEvent", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["function_call", "member_access"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "notes": "Shared event converter/infra layer. SDK names must be verified in native headers."
+    },
+    {
+      "topic_id": "native.event.gesture_bridge",
+      "domain": "native",
+      "matches_impact_topics": ["native.event.gesture_bridge", "native.node.gesture_event"],
+      "sdk_api_queries": [
+        {"public_name": "ArkUI_NativeGestureAPI_1", "kind": "module"},
+        {"public_name": "OH_ArkUI_GestureRecognizer", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["function_call", "member_access"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "notes": "NDK gesture bridge between native event layer and gesture recognizer API. Preserves existing native.node.gesture from GestureApiResolver; adds bridge topic."
+    },
+    {
+      "topic_id": "native.event.touch",
+      "domain": "native",
+      "matches_impact_topics": ["native.event.touch", "native.event.ui_input"],
+      "sdk_api_queries": [
+        {"public_name": "ArkUI_NodeTouchEvent", "kind": "module"}
+      ],
+      "expected_usage_kinds": ["function_call", "member_access"],
+      "fanout_kind": "bounded_family",
+      "max_without_usage": "possible",
+      "notes": "NDK touch event. ArkUI_NodeTouchEvent is the C-API touch event type."
+    }
+  ]
+}

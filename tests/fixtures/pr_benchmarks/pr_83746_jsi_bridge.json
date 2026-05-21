@@ -1,0 +1,59 @@
+{
+  "case_id": "pr_83746_jsi_bridge",
+  "pr_number": 83746,
+  "description": "JSI bridge refactor: BUILD.gn, jsi_bindings.h/.inl, jsi_class_base.cpp/.h — can return zero targets with current selector.",
+  "changed_files": [
+    "frameworks/bridge/declarative_frontend/engine/jsi/BUILD.gn",
+    "frameworks/bridge/declarative_frontend/engine/jsi/jsi_bindings.h",
+    "frameworks/bridge/declarative_frontend/engine/jsi/jsi_bindings.inl",
+    "frameworks/bridge/declarative_frontend/engine/jsi/jsi_class_base.cpp",
+    "frameworks/bridge/declarative_frontend/engine/jsi/jsi_class_base.h"
+  ],
+  "expected_classifications": [
+    {
+      "path": "frameworks/bridge/declarative_frontend/engine/jsi/BUILD.gn",
+      "expected_layer": "build_config",
+      "expected_role": "build_artifact",
+      "expected_confidence": "strong",
+      "expected_topic_hints_include": [],
+      "must_not_be_unknown": false
+    },
+    {
+      "path": "frameworks/bridge/declarative_frontend/engine/jsi/jsi_bindings.h",
+      "expected_layer": "jsi_bridge",
+      "expected_role": "jsi_runtime_bridge",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["bridge.jsi.runtime"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/bridge/declarative_frontend/engine/jsi/jsi_bindings.inl",
+      "expected_layer": "jsi_bridge",
+      "expected_role": "jsi_runtime_bridge",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["bridge.jsi.runtime"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/bridge/declarative_frontend/engine/jsi/jsi_class_base.cpp",
+      "expected_layer": "jsi_bridge",
+      "expected_role": "jsi_runtime_bridge",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["bridge.jsi.runtime"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/bridge/declarative_frontend/engine/jsi/jsi_class_base.h",
+      "expected_layer": "jsi_bridge",
+      "expected_role": "jsi_runtime_bridge",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["bridge.jsi.runtime"],
+      "must_not_be_unknown": true
+    }
+  ],
+  "benchmark_constraints": {
+    "false_must_run": 0,
+    "zero_target_regression_allowed": false,
+    "notes": "BUILD.gn is build_config, not jsi_bridge. All JSI source files must classify as jsi_bridge. Broad JSI profile must not produce must_run. Exact API resolution requires symbol/hunk evidence beyond Phase A."
+  }
+}

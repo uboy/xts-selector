@@ -1,0 +1,115 @@
+{
+  "case_id": "pr_83063_accessor_refactor",
+  "pr_number": 83063,
+  "description": "Large accessor refactor across many native/implementation files. Positive coverage-equivalence example: 4 must_run targets. New architecture must not downgrade these.",
+  "changed_files": [
+    "frameworks/core/interfaces/native/implementation/action_sheet_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/alert_dialog_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/animation_extender_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/arc_list_extender_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/arc_list_item_extender_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/arc_swiper_controller_helper_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/bind_sheet_utils.cpp",
+    "frameworks/core/interfaces/native/implementation/builder_node_ops_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/canvas_rendering_context2d_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/common_method_modifier.cpp",
+    "frameworks/core/interfaces/native/implementation/content_modifier_helper_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/custom_dialog_controller_peer_impl.cpp",
+    "frameworks/core/interfaces/native/implementation/date_picker_dialog_extender.cpp",
+    "frameworks/core/interfaces/native/implementation/drag_event_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/frame_node_extender_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/image_animator_modifier.cpp",
+    "frameworks/core/interfaces/native/implementation/image_modifier.cpp",
+    "frameworks/core/interfaces/native/implementation/list_item_modifier.cpp",
+    "frameworks/core/interfaces/native/implementation/list_scroller_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/nav_destination_modifier.cpp",
+    "frameworks/core/interfaces/native/implementation/navigation_modifier.cpp",
+    "frameworks/core/interfaces/native/implementation/node_container_modifier.cpp",
+    "frameworks/core/interfaces/native/implementation/node_container_ops_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/prompt_action_extender_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/refresh_modifier.cpp",
+    "frameworks/core/interfaces/native/implementation/router_extender_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/scroll_modifier.cpp",
+    "frameworks/core/interfaces/native/implementation/scrollable_common_method_modifier.cpp",
+    "frameworks/core/interfaces/native/implementation/swiper_controller_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/tab_content_modifier.cpp",
+    "frameworks/core/interfaces/native/implementation/text_picker_dialog_extender.cpp",
+    "frameworks/core/interfaces/native/implementation/theme_ops_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/ui_common_event_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/ui_scrollable_common_event_accessor.cpp",
+    "frameworks/core/interfaces/native/implementation/web_modifier.cpp",
+    "frameworks/core/interfaces/native/utility/callback_helper.h",
+    "frameworks/core/interfaces/native/utility/converter.cpp"
+  ],
+  "expected_classifications": [
+    {
+      "path": "frameworks/core/interfaces/native/implementation/action_sheet_accessor.cpp",
+      "expected_layer": "native_peer",
+      "expected_role": "sdk_peer_implementation",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["action_sheet.native_peer"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/interfaces/native/implementation/alert_dialog_accessor.cpp",
+      "expected_layer": "native_peer",
+      "expected_role": "sdk_peer_implementation",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["alert_dialog.native_peer"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/interfaces/native/implementation/canvas_rendering_context2d_accessor.cpp",
+      "expected_layer": "native_peer",
+      "expected_role": "sdk_peer_implementation",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["canvas_rendering_context2d.native_peer"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/interfaces/native/implementation/common_method_modifier.cpp",
+      "expected_layer": "native_peer",
+      "expected_role": "sdk_peer_implementation",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["common_method.native_peer"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/interfaces/native/implementation/image_modifier.cpp",
+      "expected_layer": "native_peer",
+      "expected_role": "sdk_peer_implementation",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["image.native_peer"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/interfaces/native/implementation/navigation_modifier.cpp",
+      "expected_layer": "native_peer",
+      "expected_role": "sdk_peer_implementation",
+      "expected_confidence": "medium",
+      "expected_topic_hints_include": ["navigation.native_peer"],
+      "must_not_be_unknown": true
+    },
+    {
+      "path": "frameworks/core/interfaces/native/utility/callback_helper.h",
+      "expected_layer": "unknown",
+      "expected_role": "unknown",
+      "expected_confidence": "none",
+      "expected_topic_hints_include": [],
+      "must_not_be_unknown": false
+    },
+    {
+      "path": "frameworks/core/interfaces/native/utility/converter.cpp",
+      "expected_layer": "unknown",
+      "expected_role": "unknown",
+      "expected_confidence": "none",
+      "expected_topic_hints_include": [],
+      "must_not_be_unknown": false
+    }
+  ],
+  "benchmark_constraints": {
+    "false_must_run": 0,
+    "zero_target_regression_allowed": false,
+    "notes": "Positive coverage-equivalence example. All implementation/ accessor and modifier files must classify as native_peer. Utility files (callback_helper.h, converter.cpp) may be unknown — acceptable. The 4 existing must_run targets from the PR report must not be downgraded by Phase A (which does not change target selection)."
+  }
+}
