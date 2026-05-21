@@ -279,3 +279,40 @@ class TestUnresolvedWinsOverShallow:
         assert result.affects_must_run is False
         # human_summary mentions unresolved
         assert "manual review required" in result.human_summary
+
+
+# ---------------------------------------------------------------------------
+# Test 9 (W1): layer=unknown + profiled + topic present -> shallow (not deep)
+# ---------------------------------------------------------------------------
+
+
+class TestUnknownLayerProfiledWithTopic:
+    """Regression for Track C edge case (W1).
+
+    An entity with layer="unknown" that is in profiled_paths AND has a matched
+    topic must resolve to level="shallow", not level="deep".  Without the W1
+    guard the final else branch would fall through to level="deep" because
+    all_layers_known=False and has_topic=True bypasses the ``not has_topic``
+    branch but still reaches the bare ``level = "deep"`` assignment.
+    """
+
+    def test_unknown_layer_profiled_with_topic_is_shallow(self):
+        path = "frameworks/bridge/declarative_frontend/engine/jsi/jsi_mystery.cpp"
+        eid = f"{path}#unknown#sdk_peer_implementation"
+        entity = _entity(path, layer="unknown", entity_id=eid)
+        # File is matched by an infra profile (so NOT in unresolved_files)
+        profile = _profile(path, profile_id="jsi_bridge_profile")
+        # A topic also references this entity
+        topic = _topic(entity_id=eid, topic_id="gesture.pan")
+
+        result = compute_resolution_confidence(
+            entities=[entity],
+            profile_matches=[profile],
+            topic_matches=[topic],
+        )
+        assert result.level == "shallow", (
+            f"Expected shallow for unknown-layer+profiled+topic, got {result.level!r}"
+        )
+        assert path in result.shallow_files
+        assert result.unresolved_files == ()
+        assert result.affects_must_run is False

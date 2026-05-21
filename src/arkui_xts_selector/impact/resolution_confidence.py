@@ -185,7 +185,24 @@ def compute_resolution_confidence(
                     )
             level = "shallow"
         else:
-            level = "deep"
+            # Guard: layer=unknown + profiled + topic present → still shallow.
+            # These files bypassed unresolved_files (because they matched a
+            # profile) but their layer is still unknown, so deep is incorrect.
+            for entity in entities:
+                if (
+                    entity.layer == "unknown"
+                    and entity.path not in shallow_files
+                    and entity.path not in unresolved_files
+                ):
+                    shallow_files.append(entity.path)
+                    reasons.append(
+                        f"{entity.path} has layer=unknown (profiled) but topic"
+                        " present — still shallow; unknown layer prevents deep resolution"
+                    )
+            if shallow_files:
+                level = "shallow"
+            else:
+                level = "deep"
 
     human_summary = _build_summary(level, entities, shallow_files, unresolved_files)
 

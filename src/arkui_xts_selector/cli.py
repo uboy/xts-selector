@@ -2979,10 +2979,12 @@ def main() -> int:
                 _epath = _entry.get("path", "")
                 _err_reasons = _entry.get("unresolved_reasons", [])
                 if _err_reasons and not _epath:
-                    # Sentinel error entry (git unavailable / bad ref)
+                    # Sentinel error entry (git unavailable / bad ref).
+                    # Use kind="hunk" to stay within the Phase F schema enum;
+                    # the error detail is surfaced via unresolved_reasons.
                     _hd_results.append(
                         {
-                            "kind": "git_diff_error",
+                            "kind": "hunk",
                             "source_path": "",
                             "matched_topic_ids": [],
                             "matched_profile_ids": [],
