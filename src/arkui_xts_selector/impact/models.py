@@ -31,6 +31,10 @@ SourceLayer = Literal[
     "generated_binding",
     "test_only",
     "build_config",
+    # Phase H-B: broad infra layers for top-pain files
+    "component_universal",
+    "node_universal",
+    "pipeline_universal",
     "unknown",
 ]
 

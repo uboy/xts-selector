@@ -256,6 +256,33 @@
       "notes": "Inspector directory files."
     },
     {
+      "id": "view_abstract_infra",
+      "path_regex": "components_ng/base/view_abstract\\.(cpp|h)$",
+      "layer": "component_universal",
+      "role": "component_behavior",
+      "topic_templates": [],
+      "confidence": "medium",
+      "notes": "view_abstract.cpp is a cross-component property setter (universal component infra). Exact SDK API cannot be inferred — bounded smoke only."
+    },
+    {
+      "id": "frame_node_infra",
+      "path_regex": "components_ng/base/frame_node\\.(cpp|h)$",
+      "layer": "node_universal",
+      "role": "component_behavior",
+      "topic_templates": [],
+      "confidence": "medium",
+      "notes": "frame_node.cpp is the base node inherited by every UI component. Exact SDK API cannot be inferred — bounded smoke only."
+    },
+    {
+      "id": "pipeline_context_infra",
+      "path_regex": "pipeline_ng/pipeline_context\\.(cpp|h)$",
+      "layer": "pipeline_universal",
+      "role": "component_behavior",
+      "topic_templates": [],
+      "confidence": "medium",
+      "notes": "pipeline_context.cpp is the global render pipeline. Exact SDK API cannot be inferred — bounded smoke only."
+    },
+    {
       "id": "component_pattern",
       "path_regex": "components_ng/pattern/[^/]+/[^/]+\\.(cpp|h)$",
       "layer": "component_pattern",
