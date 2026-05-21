@@ -83,6 +83,21 @@ _LAYER_LIMITATIONS: dict[str, tuple[str, ...]] = {
     "native_node": (
         "prefer_native_xts_consumers_over_broad_arkets_fanout",
     ),
+    "component_universal": (
+        "broad_infra_profile_only",
+        "exact_sdk_api_cannot_be_inferred",
+        "bounded_smoke_only",
+    ),
+    "node_universal": (
+        "broad_infra_profile_only",
+        "exact_sdk_api_cannot_be_inferred",
+        "bounded_smoke_only",
+    ),
+    "pipeline_universal": (
+        "broad_infra_profile_only",
+        "exact_sdk_api_cannot_be_inferred",
+        "bounded_smoke_only",
+    ),
 }
 
 

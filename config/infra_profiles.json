@@ -35,6 +35,52 @@
       "notes": "Do not emit exact SDK API."
     },
     {
+      "profile_id": "component_universal_profile",
+      "source_layers": ["component_universal"],
+      "path_hints": [
+        "components_ng/base/view_abstract"
+      ],
+      "description": "view_abstract.cpp cross-component property setter infrastructure. Changes may affect universal component properties (background, border, opacity, transform, etc.) across all components, bounded smoke only — exact SDK API cannot be inferred",
+      "risk_surface": "universal component property setter — cross-component infra",
+      "max_bucket": "recommended",
+      "target_policy": "bounded_smoke",
+      "candidate_query_terms": ["Button", "Text", "Image", "Column", "Row", "component smoke", "universal property"],
+      "limitations": ["exact SDK API cannot be inferred", "bounded smoke only", "XTS_ACTS_ROOT required for target discovery"],
+      "unresolved_reason_no_env": "xts_index_not_available",
+      "notes": "Do not emit exact SDK API. Bounded smoke only — exact SDK API cannot be inferred."
+    },
+    {
+      "profile_id": "node_universal_profile",
+      "source_layers": ["node_universal"],
+      "path_hints": [
+        "components_ng/base/frame_node"
+      ],
+      "description": "frame_node.cpp base node infrastructure. Any FrameNode-derived component (all UI components) may be affected by changes here. Bounded smoke only — exact SDK API cannot be inferred",
+      "risk_surface": "base node for every UI component — universal node infra",
+      "max_bucket": "recommended",
+      "target_policy": "bounded_smoke",
+      "candidate_query_terms": ["component lifecycle", "node lifecycle", "onAppear", "onDisappear", "onAttach", "lifecycle smoke"],
+      "limitations": ["exact SDK API cannot be inferred", "bounded smoke only", "XTS_ACTS_ROOT required for target discovery"],
+      "unresolved_reason_no_env": "xts_index_not_available",
+      "notes": "Do not emit exact SDK API. Bounded smoke only — exact SDK API cannot be inferred."
+    },
+    {
+      "profile_id": "pipeline_universal_profile",
+      "source_layers": ["pipeline_universal"],
+      "path_hints": [
+        "pipeline_ng/pipeline_context",
+        "pipeline_context"
+      ],
+      "description": "pipeline_context.cpp global render pipeline infrastructure. Changes affect rendering, layout measure passes, and frame scheduling for all components. Bounded smoke only — exact SDK API cannot be inferred",
+      "risk_surface": "global render pipeline — universal rendering/layout infra",
+      "max_bucket": "recommended",
+      "target_policy": "bounded_smoke",
+      "candidate_query_terms": ["rendering", "layout", "measure", "FlexLayout", "render pipeline", "frame scheduling"],
+      "limitations": ["exact SDK API cannot be inferred", "bounded smoke only", "XTS_ACTS_ROOT required for target discovery"],
+      "unresolved_reason_no_env": "xts_index_not_available",
+      "notes": "Do not emit exact SDK API. Bounded smoke only — exact SDK API cannot be inferred."
+    },
+    {
       "profile_id": "select_overlay_infra",
       "source_layers": ["select_overlay"],
       "path_hints": [
